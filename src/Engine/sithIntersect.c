@@ -238,7 +238,7 @@ int sithIntersect_CollideThings(sithThing *pThing, const rdVector3 *a2, const rd
 }
 
 // MoTS added: Tree collision (one sphere per mesh)
-// Added: outMesh
+// Added: outNode
 int sithIntersect_TreeIntersection(rdHierarchyNode *paNodes,rdVector3 *pPoseVec,rdVector3 *pDirVec,float a4,float range, sithThing *v11,float *pOut,rdVector3 *pOutVec, rdHierarchyNode** outNode, int raycastFlags, rdVector3* pRefDir)
 {
     rdModel3 *prVar1;
@@ -257,7 +257,7 @@ int sithIntersect_TreeIntersection(rdHierarchyNode *paNodes,rdVector3 *pPoseVec,
     if (uVar3 != 0xffffffff) {
         rdMatrix_Copy34(&local_60, &v11->lookOrientation);
         rdVector_Copy3(&local_60.scale, &v11->position);
-        rdModel3_GetMeshMatrix(&v11->rdthing, &local_60, uVar3, &local_30);
+        rdModel3_GetMeshMatrix(&v11->rdthing, &local_60, /*uVar3*/paNodes->idx, &local_30);
         rdVector_Copy3(&local_6c, &local_30.scale);
         prVar1 = v11->rdthing.model3;
         uVar3 = (v11->rdthing).geosetSelect;
