@@ -903,32 +903,49 @@ void sithPuppet_advanceidk(sithThing *pThing, float a2)
 }
 
 // Added
-int sithPuppet_FindDamagedJoint(sithThing* pThing, rdVector3* pPos, rdVector3* pDir, float dirLen)
+int sithPuppet_FindHitLoc(sithThing* pReceiverThing, rdVector3* pPos)
 {
-	if (pThing->rdthing.model3 && pThing->animclass)
+	if (pReceiverThing->rdthing.model3 && pReceiverThing->animclass)
 	{
-		rdHierarchyNode* node = NULL;
-		float tmp = 3.4e+38;
-		rdVector3 tmpVec;
-		rdVector_Zero3(&tmpVec);
-		sithIntersect_TreeIntersection(pThing->rdthing.model3->hierarchyNodes, pPos, pDir, dirLen, 0.0f, pThing, &tmp, &tmpVec, &node, 0, NULL);//pDir);
-
-		if (node)
+		if (pReceiverThing->rdthing.frameTrue != rdroid_frameTrue)
+			rdPuppet_BuildJointMatrices(&pReceiverThing->rdthing, &pReceiverThing->lookOrientation);
+		
+		// find the closest joint to this position
+		//rdHierarchyNode* pFoundNode = NULL;
+		int foundJoint = -1;
+		float dist = 10000.0f;
+		for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
 		{
-			// select a body part based on the node flags
-			if (node->type & 0x11) // hip or torso
-				return JOINTTYPE_TORSO;
-			else if (node->type & 0x8) // head/neck
-				return JOINTTYPE_NECK;
-			else if (node->type & 0x2) // left arm
-				return JOINTTYPE_SECONDARYWEAPJOINT;
-			else if (node->type & 0x4) // right arm
-				return JOINTTYPE_PRIMARYWEAPJOINT;
-			else if (node->type & 0x20) // left leg
-				return JOINTTYPE_LEFTLEG;
-			else if (node->type & 0x40) // right leg
-				return JOINTTYPE_RIGHTLEG;
+			int jointIdx = pReceiverThing->animclass->bodypart_to_joint[i];
+			if(jointIdx < 0 || jointIdx >= pReceiverThing->rdthing.model3->numHierarchyNodes)
+				continue;
+		
+			rdHierarchyNode* pNode = &pReceiverThing->rdthing.model3->hierarchyNodes[jointIdx];
+			int meshIdx = pNode->meshIdx;
+			if (meshIdx == 0xffffffff)
+				continue;
+		
+			rdModel3* pModel = pReceiverThing->rdthing.model3;
+			int geoset = pReceiverThing->rdthing.geosetSelect;
+			if (geoset == 0xffffffff)
+				geoset = pModel->geosetSelect;
+		
+			rdMatrix34* meshMatrix = &pReceiverThing->rdthing.hierarchyNodeMatrices[pNode->idx];
+		
+			//float radius = pModel->geosets[geoset].meshes[pNode->meshIdx].radius;
+			float distToCenter = rdVector_Dist3(pPos, &meshMatrix->scale);
+			if (distToCenter < dist)
+			{
+				dist = distToCenter;
+				foundJoint = i;
+				//pFoundNode = pNode;
+			}
 		}
+		
+		//if(pFoundNode)
+		//	std_pHS->messagePrint("hit node %s\n", pFoundNode->name);
+		
+		return foundJoint;
 	}
 	return -1;
 }

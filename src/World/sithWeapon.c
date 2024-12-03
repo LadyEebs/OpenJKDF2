@@ -147,8 +147,11 @@ void sithWeapon_sub_4D35E0(sithThing *weapon)
         if (searchRes->hitType & SITHCOLLISION_THING)
         {
 			int joint = -1;
-#ifdef LIGHTSABER_DISMEMBER
-			joint = sithPuppet_FindDamagedJoint(searchRes->receiver, &weapon->position, &weaponPos_, 1.0f);//weapon->weaponParams.range);
+#ifdef REGIONAL_DAMAGE
+			rdVector3 hitPos;
+			rdVector_Copy3(&hitPos, &weapon->position);
+			rdVector_MultAcc3(&hitPos, &weapon->lookOrientation.lvec, searchRes->distance);
+			joint = sithPuppet_FindHitLoc(searchRes->receiver, &hitPos);
 #endif
 			sithThing_Damage(searchRes->receiver, weapon, damage_, weapon->weaponParams.damageClass, joint);
             if ( weapon->weaponParams.force != 0.0 )
@@ -342,8 +345,11 @@ void sithWeapon_sub_4D3920(sithThing *weapon)
         if ( (searchRes->hitType & SITHCOLLISION_THING) != 0 )
         {
 			int joint = -1;
-#ifdef LIGHTSABER_DISMEMBER
-			joint = sithPuppet_FindDamagedJoint(searchRes->receiver, &weapon->position, &lookOrient, 1.0f);//range);
+#ifdef REGIONAL_DAMAGE
+			rdVector3 hitPos;
+			rdVector_Copy3(&hitPos, &weapon->position);
+			rdVector_MultAcc3(&hitPos, &weapon->lookOrientation.lvec, searchRes->distance);
+			joint = sithPuppet_FindHitLoc(searchRes->receiver, &hitPos);
 #endif
             sithThing_Damage(searchRes->receiver, weapon, amount, weapon->weaponParams.damageClass, joint);
             if ( weapon->weaponParams.force != 0.0 )
@@ -762,8 +768,11 @@ int sithWeapon_Collide(sithThing *physicsThing, sithThing *collidedThing, sithCo
         if (physicsThing->weaponParams.damage != 0.0)
 		{
 			int joint = -1;
-#ifdef LIGHTSABER_DISMEMBER
-			joint = sithPuppet_FindDamagedJoint(collidedThing, &physicsThing->position, &physicsThing->lookOrientation.lvec, 1.0f);// a4->distance);
+#ifdef REGIONAL_DAMAGE
+			rdVector3 hitPos;
+			rdVector_Copy3(&hitPos, &physicsThing->position);
+			rdVector_MultAcc3(&hitPos, &physicsThing->lookOrientation.lvec, a4->distance);
+			joint = sithPuppet_FindHitLoc(collidedThing, &hitPos);
 #endif
             sithThing_Damage(collidedThing, physicsThing, physicsThing->weaponParams.damage, physicsThing->weaponParams.damageClass, joint);
         }
@@ -813,8 +822,11 @@ int sithWeapon_Collide(sithThing *physicsThing, sithThing *collidedThing, sithCo
         if (physicsThing->weaponParams.damage != 0.0)
 		{
 			int joint = -1;
-#ifdef LIGHTSABER_DISMEMBER
-			joint = sithPuppet_FindDamagedJoint(collidedThing, &physicsThing->position, &physicsThing->lookOrientation.lvec, 1.0f);//a4->distance);
+#ifdef REGIONAL_DAMAGE
+			rdVector3 hitPos;
+			rdVector_Copy3(&hitPos, &physicsThing->position);
+			rdVector_MultAcc3(&hitPos, &physicsThing->lookOrientation.lvec, a4->distance);
+			joint = sithPuppet_FindHitLoc(collidedThing, &hitPos);
 #endif
             sithThing_Damage(collidedThing, physicsThing, physicsThing->weaponParams.damage, physicsThing->weaponParams.damageClass, joint);
         }

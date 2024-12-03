@@ -28,7 +28,7 @@ void jkSaber_SpawnSparks(jkPlayerInfo *pPlayerInfo, rdVector3 *pPos, sithSector 
 void jkSaber_Enable(sithThing *pThing, float damage, float bladeLength, float stunDelay);
 void jkSaber_Disable(sithThing *player);
 
-#ifdef LIGHTSABER_DISMEMBER
+#ifdef REGIONAL_DAMAGE
 extern int jkSaber_dismember;
 #endif
 

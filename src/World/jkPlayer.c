@@ -257,7 +257,7 @@ void jkPlayer_StartupVars()
 	sithCvar_RegisterFlex("g_saberTrailShutter", 50.0f, &jkSaber_trailShutter, CVARFLAG_LOCAL | CVARFLAG_UPDATABLE_DEFAULT);
 #endif
 
-#ifdef LIGHTSABER_DISMEMBER
+#ifdef REGIONAL_DAMAGE
 	sithCvar_RegisterInt("g_saberRealisticCombat", 0, &jkSaber_dismember, CVARFLAG_LOCAL | CVARFLAG_UPDATABLE_DEFAULT);
 #endif
 }

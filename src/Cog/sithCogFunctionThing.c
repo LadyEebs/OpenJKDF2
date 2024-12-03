@@ -1739,7 +1739,23 @@ void sithCogFunctionThing_SetRootJoint(sithCog* ctx)
 }
 #endif
 
-#ifdef LIGHTSABER_DISMEMBER
+#ifdef REGIONAL_DAMAGE
+
+void sithCogFunctionThing_JointForPosition(sithCog* ctx)
+{
+	rdVector3 pos;
+	int posValid = sithCogExec_PopVector3(ctx, &pos);
+	sithThing* pThing = sithCogExec_PopThing(ctx);
+
+	if (!posValid || !pThing)
+	{
+		sithCogExec_PushInt(ctx, -1);
+		return;
+	}
+	
+	int joint = sithPuppet_FindHitLoc(pThing, &pos);
+	sithCogExec_PushInt(ctx, joint);
+}
 
 void sithCogFunctionThing_DismemberJoint(sithCog* ctx)
 {
@@ -2926,7 +2942,8 @@ void sithCogFunctionThing_Startup(void* ctx)
 	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_IsJointAmputated, "isjointamputated");	
 	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_SetRootJoint, "setrootjoint");
 #endif
-#ifdef LIGHTSABER_DISMEMBER
+#ifdef REGIONAL_DAMAGE
+	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_JointForPosition, "jointforposition");
 	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_DismemberJoint, "dismemberjoint");
 #endif
     sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_SetActorWeapon, "setactorweapon");

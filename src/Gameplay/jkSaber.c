@@ -38,7 +38,7 @@ extern sithThing* jkSaber_paDecalThings[64];
 extern int jkSaber_numDecalThings;
 #endif
 
-#ifdef LIGHTSABER_DISMEMBER
+#ifdef REGIONAL_DAMAGE
 int jkSaber_dismember = 0;
 #endif
 
@@ -600,12 +600,12 @@ void  jkSaber_UpdateCollision2(sithThing *pPlayerThing,rdVector3 *pSaberPos,rdVe
 #ifdef LIGHTSABER_MARKS
 	doDamage = (pPlayerThing->jkFlags & JKFLAG_SABERDAMAGE);
 #endif
-#ifdef LIGHTSABER_DISMEMBER
+#ifdef REGIONAL_DAMAGE
 	doDamage = doDamage || (jkSaber_dismember == 2); // always damage if jkSaber_dismember = 2
 #endif
 
 	float saberLength = !(pPlayerThing->jkFlags & JKFLAG_SABERDAMAGE) ? pPlayerThing->playerInfo->polyline.length : pCollideInfo->bladeLength;
-#ifdef LIGHTSABER_DISMEMBER
+#ifdef REGIONAL_DAMAGE
 	if(jkSaber_dismember == 2)
 		saberLength = pPlayerThing->playerInfo->polyline.length;
 #endif
@@ -659,9 +659,9 @@ void  jkSaber_UpdateCollision2(sithThing *pPlayerThing,rdVector3 *pSaberPos,rdVe
 			}
 
 			int jointIndex = -1;
-#ifdef LIGHTSABER_DISMEMBER
+#ifdef REGIONAL_DAMAGE
 			if(doDamage)
-				jointIndex = sithPuppet_FindDamagedJoint(resultThing, pSaberPos, pSaberDir, saberLength);
+				jointIndex = sithPuppet_FindHitLoc(resultThing, &local_54);
 #endif
 
 #ifdef LIGHTSABER_MARKS
@@ -835,8 +835,8 @@ void jkSaber_UpdateEffectCollision(sithThing* pPlayerThing, rdVector3* pSaberPos
 			}
 
 			int jointIndex = -1;
-#ifdef LIGHTSABER_DISMEMBER
-			jointIndex = sithPuppet_FindDamagedJoint(resultThing, pSaberPos, pSaberDir, saberLength);
+#ifdef REGIONAL_DAMAGE
+			jointIndex = sithPuppet_FindHitLoc(resultThing, &local_54);
 #endif
 
 			if (resultThing->type != SITH_THING_ACTOR
@@ -844,7 +844,7 @@ void jkSaber_UpdateEffectCollision(sithThing* pPlayerThing, rdVector3* pSaberPos
 				|| !(resultThing->actorParams.typeflags & SITH_AF_BLEEDS))
 			{
 				jkSaber_SpawnSparks(playerInfo, &local_54, pSectorIter, SPARKTYPE_BLOOD);
-#ifdef LIGHTSABER_DISMEMBER
+#ifdef REGIONAL_DAMAGE
 				if(jkSaber_dismember == 2)
 					sithThing_Damage(searchResult->receiver, pPlayerThing, pCollideInfo->damage, SITH_DAMAGE_SABER, jointIndex);
 #endif
@@ -884,7 +884,7 @@ void jkSaber_UpdateEffectCollision(sithThing* pPlayerThing, rdVector3* pSaberPos
 			}
 
 			jkSaber_SpawnSparks(playerInfo, &local_54, pSectorIter, SPARKTYPE_BLOOD);
-#ifdef LIGHTSABER_DISMEMBER
+#ifdef REGIONAL_DAMAGE
 			if (jkSaber_dismember == 2)
 				sithThing_Damage(resultThing, pPlayerThing, pCollideInfo->damage, SITH_DAMAGE_SABER, jointIndex);
 #endif
@@ -1087,7 +1087,7 @@ void jkSaber_Disable(sithThing *player)
 #ifdef JKM_SABER
     player->playerInfo->jkmUnk1 = 0; // MOTS added
 #endif
-#ifdef LIGHTSABER_DISMEMBER
+#ifdef REGIONAL_DAMAGE
 	player->playerInfo->saberCollideInfo.damage = (jkSaber_dismember == 2) ? 25.0f : 0.0f;
 #elif LIGHTSABER_MARKS
 	player->playerInfo->saberCollideInfo.damage = 0;

@@ -1161,7 +1161,7 @@ void jkCog_GetOpenFrames(sithCog *ctx)
     sithCogExec_PushInt(ctx,Video_dword_5528A0);
 }
 
-#ifdef LIGHTSABER_DISMEMBER
+#ifdef REGIONAL_DAMAGE
 
 void jkCog_GetSaberDismemberment(sithCog* ctx)
 {
@@ -1233,7 +1233,7 @@ void jkCog_RegisterVerbs()
 	sithCogScript_RegisterVerb(sithCog_pSymbolTable, jkCog_SetPovSprite, "jksetpovsprite");
 #endif
 
-#ifdef LIGHTSABER_DISMEMBER
+#ifdef REGIONAL_DAMAGE
 	sithCogScript_RegisterVerb(sithCog_pSymbolTable, jkCog_GetSaberDismemberment, "jkgetsaberdismemberment");
 #endif
 

@@ -41,7 +41,7 @@ void sithPuppet_resetidk(sithThing *pThing);
 void sithPuppet_advanceidk(sithThing *pThing, float a2);
 
 // Added
-int sithPuppet_FindDamagedJoint(sithThing* pThing, rdVector3* pPos, rdVector3* pDir, float dirLen);
+int sithPuppet_FindHitLoc(sithThing* pReceiverThing, rdVector3* pPos);
 
 //static int (*sithPuppet_Startup)() = (void*)sithPuppet_Startup_ADDR;
 //static void (*sithPuppet_FreeEntry)(sithThing *puppet) = (void*)sithPuppet_FreeEntry_ADDR;
