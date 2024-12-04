@@ -1757,7 +1757,7 @@ void sithCogFunctionThing_JointForPosition(sithCog* ctx)
 	sithCogExec_PushInt(ctx, joint);
 }
 
-void sithCogFunctionThing_Dismemberable(sithCog* ctx)
+void sithCogFunctionThing_GetJointDamage(sithCog* ctx)
 {
 	uint32_t idx = sithCogExec_PopInt(ctx);
 	sithThing* pThing = sithCogExec_PopThing(ctx);
@@ -1771,27 +1771,7 @@ void sithCogFunctionThing_Dismemberable(sithCog* ctx)
 		sithCogExec_PushInt(ctx, 0);
 		return;
 	}
-
-	float jointHealthPercentage[JOINTTYPE_NUM_JOINTS] =
-	{
-		0.10f,	//JOINTTYPE_HEAD
-		1.0f,   //JOINTTYPE_NECK
-		0.30f,	//JOINTTYPE_TORSO,
-		0.01f,	//JOINTTYPE_PRIMARYWEAP,
-		0.01f,	//JOINTTYPE_SECONDARYWEAP,
-		0.05f,	//JOINTTYPE_PRIMARYWEAPJOINT,
-		0.05f,	//JOINTTYPE_SECONDARYWEAPJOINT,
-		0.20f,	//JOINTTYPE_RIGHTLEG,
-		0.20f,	//JOINTTYPE_LEFTLEG,
-	};
-
-	if (pThing->actorParams.locationDamage[idx] < (pThing->actorParams.health * jointHealthPercentage[idx]))
-	{
-		sithCogExec_PushInt(ctx, 0);
-		return;
-	}
-
-	sithCogExec_PushInt(ctx, 1);
+	sithCogExec_PushInt(ctx, pThing->actorParams.locationDamage[idx]);
 }
 
 void sithCogFunctionThing_DismemberJoint(sithCog* ctx)
@@ -2981,7 +2961,7 @@ void sithCogFunctionThing_Startup(void* ctx)
 #endif
 #ifdef REGIONAL_DAMAGE
 	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_JointForPosition, "jointforposition");
-	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_Dismemberable, "dismemberable");	
+	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_GetJointDamage, "getjointdamage");
 	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_DismemberJoint, "dismemberjoint");
 #endif
     sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_SetActorWeapon, "setactorweapon");
