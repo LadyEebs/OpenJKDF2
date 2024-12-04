@@ -508,8 +508,8 @@ void CalculatePointLighting(uint bucket_index, vec3 normal, vec3 view, vec4 shad
 
 				if ((aoFlags & 0x1) == 0x1 && numOccluders > 0u)
 				{
-					float localShadow = clamp(dot(shadows.xyz, diff.xyz) / (aperture * 0.3 + 0.7), 0.0, 1.0);
-					intensity *= localShadow;// * localShadow;
+					//float localShadow = clamp(dot(shadows.xyz, diff.xyz) / (aperture * 0.3 + 0.7), 0.0, 1.0);
+					//intensity *= localShadow;// * localShadow;
 				}
 
 				if (intensity <= 0.0)
