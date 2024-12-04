@@ -1849,8 +1849,8 @@ void sithCogFunctionThing_DismemberJoint(sithCog* ctx)
 					//memcpy(&pLimb->rdthing.hierarchyNodeMatrices, &rdthing->hierarchyNodeMatrices, sizeof(rdMatrix34) * rdthing->model3->numHierarchyNodes);
 
 
-					rdVector3 kickVec = { 0.0f, 0.7f, 1.4f };
-					rdVector_Copy3(&pLimb->physicsParams.vel, &kickVec);
+				//	rdVector3 kickVec = { 0.0f, 0.7f, 1.4f };
+				//	rdVector_Copy3(&pLimb->physicsParams.vel, &kickVec);
 					rdPuppet_BuildJointMatrices(&pLimb->rdthing, &pLimb->lookOrientation);
 
 #ifdef RAGDOLLS
