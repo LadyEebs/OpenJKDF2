@@ -571,7 +571,7 @@ void sithCogFunctionPlayer_SyncScores(sithCog *ctx)
 // MOTS added
 void sithCogFunctionPlayer_KillPlayerQuietly(sithCog *ctx)
 {
-    sithActor_SpawnDeadBodyMaybe(sithPlayer_pLocalPlayerThing, NULL, 12345678); // Magic number special case
+    sithActor_SpawnDeadBodyMaybe(sithPlayer_pLocalPlayerThing, NULL, 12345678, -1); // Magic number special case
     return;
 }
 

@@ -499,7 +499,7 @@ float sithThing_Damage(sithThing *sender, sithThing *reciever, float amount, int
             if ( sender->type != SITH_THING_PLAYER )
                 return amount;
         }
-        amount = amount - sithActor_Hit(sender, reciever, amount, damageClass);
+        amount = amount - sithActor_Hit(sender, reciever, amount, damageClass, hitJoint);
     }
     return amount;
 }

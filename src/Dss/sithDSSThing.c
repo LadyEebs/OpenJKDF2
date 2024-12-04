@@ -740,7 +740,7 @@ int sithDSSThing_ProcessDeath(sithCogMsg *msg)
         int senderType = pSender->type;
         if ( senderType == SITH_THING_ACTOR)
         {
-            sithActor_SpawnDeadBodyMaybe(pSender, pReceiver, 0);
+            sithActor_SpawnDeadBodyMaybe(pSender, pReceiver, 0, -1);
         }
         else if (senderType == SITH_THING_PLAYER)
         {
@@ -749,7 +749,7 @@ int sithDSSThing_ProcessDeath(sithCogMsg *msg)
                 sithPlayer_HandleSentDeathPkt(pSender);
                 return 1;
             }
-            sithActor_SpawnDeadBodyMaybe(pSender, pReceiver, 0);
+            sithActor_SpawnDeadBodyMaybe(pSender, pReceiver, 0, -1);
         }
         return 1;
     }

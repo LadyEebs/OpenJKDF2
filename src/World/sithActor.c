@@ -81,7 +81,8 @@ void sithActor_Tick(sithThing *thing, int deltaMs)
 }
 
 // MOTS altered
-float sithActor_Hit(sithThing *sender, sithThing *receiver, float amount, int flags)
+// Added: joint
+float sithActor_Hit(sithThing *sender, sithThing *receiver, float amount, int flags, int joint)
 {
     sithThing *receiver_; // edi
     double v6; // st7
@@ -166,7 +167,7 @@ LABEL_32:
     }
     if ( sithComm_multiplayerFlags )
         sithDSSThing_SendDeath(sender, receiver_, 0, -1, 255);
-    sithActor_SpawnDeadBodyMaybe(sender, receiver_, flags);
+    sithActor_SpawnDeadBodyMaybe(sender, receiver_, flags, joint);
     return amount - sender->actorParams.health;
 }
 
@@ -211,7 +212,7 @@ void sithActor_HurtSound(sithThing *thing, float amount, int hurtType)
 }
 
 // MOTS altered
-void sithActor_SpawnDeadBodyMaybe(sithThing *thing, sithThing *a3, int a4)
+void sithActor_SpawnDeadBodyMaybe(sithThing *thing, sithThing *a3, int a4, int joint)
 {
     sithThing *v8; // eax
     uint32_t v10; // edx
@@ -220,7 +221,8 @@ void sithActor_SpawnDeadBodyMaybe(sithThing *thing, sithThing *a3, int a4)
 
 
     thing->actorParams.health = 0.0;
-    if ( (thing->thingflags & SITH_TF_CAPTURED) == 0 || (sithCog_SendMessageFromThing(thing, a3, SITH_MESSAGE_KILLED), (thing->thingflags & SITH_TF_WILLBEREMOVED) == 0) )
+	// Added: replaced sithCog_SendMessageFromThing with sithCog_SendMessageFromThingEx to pass joint data
+    if ( (thing->thingflags & SITH_TF_CAPTURED) == 0 || (sithCog_SendMessageFromThingEx(thing, a3, SITH_MESSAGE_KILLED, a4, joint, 0, 0), (thing->thingflags & SITH_TF_WILLBEREMOVED) == 0) )
     {
         sithSoundClass_StopSound(thing, 0);
 

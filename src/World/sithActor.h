@@ -19,9 +19,9 @@
 
 void sithActor_SetMaxHeathForDifficulty(sithThing *thing);
 void sithActor_Tick(sithThing *thing, int deltaMs);
-float sithActor_Hit(sithThing *sender, sithThing *receiver, float amount, int flags);
+float sithActor_Hit(sithThing *sender, sithThing *receiver, float amount, int flags, int joint); // Added: joint
 void sithActor_HurtSound(sithThing *thing, float amount, int hurtType);
-void sithActor_SpawnDeadBodyMaybe(sithThing *thing, sithThing *a3, int a4);
+void sithActor_SpawnDeadBodyMaybe(sithThing *thing, sithThing *a3, int a4, int joint); // Added: joint
 int sithActor_sub_4ED1D0(sithThing *thing, sithSurface *surface, sithCollisionSearchEntry *searchEnt);
 void sithActor_MoveJointsForEyePYR(sithThing *actor, const rdVector3 *eyePYR);
 int sithActor_ActorActorCollide(sithThing *thing, sithThing *thing2, sithCollisionSearchEntry *a3, int a4);

@@ -785,7 +785,7 @@ LABEL_50:
     }
     else if ( sithTime_curSeconds > (double)instinct->param1 )
     {
-        sithActor_SpawnDeadBodyMaybe(actor->thing, actor->thing, 2);
+        sithActor_SpawnDeadBodyMaybe(actor->thing, actor->thing, 2, -1);
         return 0;
     }
     actor->thing->actorParams.eyePYR.y = _frand() * (flagsa + flagsa) - flagsa;

@@ -1019,7 +1019,7 @@ debug_controls:
 
         // Added: dedicated
         if (!(sithNet_isServer && jkGuiNetHost_bIsDedicated)) {
-            sithActor_Hit(player, player, 200.0, 1);
+            sithActor_Hit(player, player, 200.0, 1, -1);
             result = 1;
         }
         else {

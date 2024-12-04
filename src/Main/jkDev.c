@@ -533,7 +533,7 @@ int jkDev_CmdDispStats(stdDebugConsoleCmd *pCmd, const char *pArgStr)
 
 int jkDev_CmdKill(stdDebugConsoleCmd *pCmd, const char *pArgStr)
 {
-    sithActor_Hit(sithPlayer_pLocalPlayerThing, sithPlayer_pLocalPlayerThing, 200.0, 1);
+    sithActor_Hit(sithPlayer_pLocalPlayerThing, sithPlayer_pLocalPlayerThing, 200.0, 1, -1);
     return 1;
 }
 
