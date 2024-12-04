@@ -1815,7 +1815,7 @@ void sithCogFunctionThing_DismemberJoint(sithCog* ctx)
 				sithThing* pLimb = sithThing_Create(pThing, &pThing->position, &pThing->lookOrientation, pThing->sector, pThing);
 				if (pLimb)
 				{
-					pLimb->thingflags |= SITH_TF_CAPTURED;
+					//pLimb->thingflags |= SITH_TF_CAPTURED;
 					rdThing_SetModel3(&pLimb->rdthing, pThing->rdthing.model3);
 					sithThing_DetachThing(pLimb);
 				//	pLimb->moveType = SITH_MT_PHYSICS;
