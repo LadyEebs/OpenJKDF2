@@ -1680,7 +1680,7 @@ void sithCogFunctionThing_AmputateJoint(sithCog *ctx)
         if ( pThing != (sithThing *)-196 )
         {
             sithAnimclass* animclass = pThing->animclass;
-            if (animclass && idx < 0xA)
+            if (animclass && idx < 0xA && idx >= 0)
             {
                 int jointIdx = animclass->bodypart_to_joint[idx];
                 if ( jointIdx >= 0 ) {
@@ -1705,7 +1705,7 @@ void sithCogFunctionThing_IsJointAmputated(sithCog* ctx)
 	{
 		rdThing* rdthing = &pThing->rdthing;
 		sithAnimclass* animclass = pThing->animclass;
-		if (animclass && idx < 0xA)
+		if (animclass && idx < 0xA && idx >= 0)
 		{
 			int jointIdx = animclass->bodypart_to_joint[idx];
 			if (jointIdx >= 0)
@@ -1726,7 +1726,7 @@ void sithCogFunctionThing_SetRootJoint(sithCog* ctx)
 	{
 		rdThing* rdthing = &pThing->rdthing;
 		sithAnimclass* animclass = pThing->animclass;
-		if (animclass && idx < 0xA)
+		if (animclass && idx < 0xA && idx >= 0)
 		{
 			int jointIdx = animclass->bodypart_to_joint[idx];
 			if (jointIdx >= 0)
