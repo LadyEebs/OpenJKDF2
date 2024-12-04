@@ -152,6 +152,10 @@ float sithActor_Hit(sithThing *sender, sithThing *receiver, float amount, int fl
     }
 
     sender->actorParams.health -= amount;
+#ifdef REGIONAL_DAMAGE
+	if (joint != -1)
+		sender->actorParams.locationDamage[joint] += amount;
+#endif
     if ( sender == sithPlayer_pLocalPlayerThing )
     {
         fR = amount * 0.04;

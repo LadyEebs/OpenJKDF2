@@ -2863,6 +2863,9 @@ typedef struct sithThingParticleParams
     uint32_t field_74;
     uint32_t field_78;
     uint32_t field_7C;
+#ifdef REGIONAL_DAMAGE
+	uint32_t dummy[JOINTTYPE_NUM_JOINTS];
+#endif
 } sithThingParticleParams;
 
 typedef struct sithThingExplosionParams
@@ -2899,6 +2902,9 @@ typedef struct sithThingExplosionParams
 #if !defined(DECAL_RENDERING) && !defined(RENDER_DROID2)
 	uint32_t field_80;
 #endif
+#ifdef REGIONAL_DAMAGE
+	uint32_t dummy[JOINTTYPE_NUM_JOINTS];
+#endif
 } sithThingExplosionParams;
 
 typedef struct sithBackpackItem
@@ -2922,6 +2928,9 @@ typedef struct sithThingItemParams
     int16_t field_1E;
     sithBackpackItem contents[12];
     uint32_t field_80;
+#ifdef REGIONAL_DAMAGE
+	uint32_t dummy[JOINTTYPE_NUM_JOINTS];
+#endif
 } sithThingItemParams;
 
 typedef struct sithThingWeaponParams
@@ -2974,6 +2983,9 @@ typedef struct sithThingWeaponParams
     uint32_t field_88;
     uint32_t field_8C;
 #endif
+#ifdef REGIONAL_DAMAGE
+	uint32_t dummy[JOINTTYPE_NUM_JOINTS];
+#endif
 } sithThingWeaponParams;
 
 typedef struct sithThingActorParams
@@ -3010,6 +3022,9 @@ typedef struct sithThingActorParams
     uint32_t field_1CC;
 #ifdef JKM_TYPES
     uint32_t unk_1D0;
+#endif
+#ifdef REGIONAL_DAMAGE
+	float locationDamage[JOINTTYPE_NUM_JOINTS];
 #endif
 } sithThingActorParams;
 
