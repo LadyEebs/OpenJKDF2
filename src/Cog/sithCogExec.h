@@ -47,6 +47,10 @@ extern sithCog* sithCogExec_pIdkMotsCtx;
 extern sithCog* sithCog_pActionCog;
 extern int sithCog_actionCogIdk;
 
+#ifdef GAMEPLAY_COGS
+extern sithCog* sithCog_pCombatCog;
+#endif
+
 void sithCogExec_Exec(sithCog *cog_ctx);
 void sithCogExec_ExecCog(sithCog *ctx, int trigIdx);
 int sithCogExec_PopValue(sithCog *ctx, sithCogStackvar *stackVar);

@@ -16,6 +16,7 @@
 #define LIGHTSABER_MARKS     // visual enhancement for lightsabers, draws impact decals with saber collision, requires DECAL_RENDERING
 //#define LIGHTSABER_GLOW    // visual enhancement for lightsabers, draws a sprite-based glow similar to Jedi Outcast/Academy
 #define REGIONAL_DAMAGE      // dismemberment enhancements and regional damage support
+#define GAMEPLAY_COGS        // adds some gameplay system cogs (like MasterCog and ActionCog) that can be used for specific shared game logic
 
 // Old render pipeline features
 #define STENCIL_BUFFER       // mark the stencil buffer with dynamic/transparent stuff, so we can effectively cull things like decals

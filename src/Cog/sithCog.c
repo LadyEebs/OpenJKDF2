@@ -405,6 +405,9 @@ void sithCog_Shutdown()
     sithCogExec_pIdkMotsCtx = NULL;
     sithCog_pActionCog = NULL;
     sithCog_actionCogIdk = 0;
+#ifdef GAMEPLAY_COGS
+	sithCog_pCombatCog = NULL;
+#endif
 }
 
 int sithCog_Open()
@@ -530,6 +533,9 @@ void sithCog_Close()
         sithCog_pActionCog = NULL; // MOTS added
         sithCog_actionCogIdk = -1; // MOTS added
         sithCog_bOpened = 0;
+#ifdef GAMEPLAY_COGS
+		sithCog_pCombatCog = NULL;
+#endif
     }
 }
 

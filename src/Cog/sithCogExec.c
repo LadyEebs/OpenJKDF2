@@ -26,6 +26,10 @@ sithCog* sithCogExec_pIdkMotsCtx = NULL;
 sithCog* sithCog_pActionCog = NULL;
 int sithCog_actionCogIdk = 0;
 
+#ifdef GAMEPLAY_COGS
+sithCog* sithCog_pCombatCog = NULL;
+#endif
+
 void sithCogExec_Exec(sithCog *cog_ctx)
 {
     sithCogScript *cogscript;

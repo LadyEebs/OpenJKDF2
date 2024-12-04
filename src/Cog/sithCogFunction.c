@@ -1028,6 +1028,23 @@ void sithCogFunction_SetActionCog(sithCog *ctx)
     sithCog_pActionCog = (pCog == (void*)-1) ? NULL : pCog;
 }
 
+#ifdef GAMEPLAY_COGS
+void sithCogFunction_GetCombatCog(sithCog* ctx)
+{
+	if (sithCog_pCombatCog)
+		sithCogExec_PushInt(ctx, sithCog_pCombatCog->selfCog);
+	else
+		sithCogExec_PushInt(ctx, -1);
+}
+
+void sithCogFunction_SetCombatCog(sithCog* ctx)
+{
+	//sithCog_actionCogIdk = sithCogExec_PopInt(ctx);
+	sithCog* pCog = sithCogExec_PopCog(ctx);
+	sithCog_pCombatCog = (pCog == (void*)-1) ? NULL : pCog;
+}
+#endif
+
 void sithCogFunction_NewColorEffect(sithCog *ctx)
 {
     int addB; // ebx
@@ -1894,6 +1911,10 @@ void sithCogFunction_Startup(void* ctx)
         sithCogScript_RegisterVerb(ctx,sithCogFunction_GetActionCog,"getactioncog"); // MOTS
         sithCogScript_RegisterVerb(ctx,sithCogFunction_SetActionCog,"setactioncog"); // MOTS
     }
+#ifdef GAMEPLAY_COGS
+	sithCogScript_RegisterVerb(ctx, sithCogFunction_GetCombatCog, "getcombatcog");
+	sithCogScript_RegisterVerb(ctx, sithCogFunction_SetCombatCog, "setcombatcog");
+#endif
 
     // Droidworks removes start
     sithCogScript_RegisterVerb(ctx, sithCogFunction_SetMultiModeFlags, "setmultimodeflags");
