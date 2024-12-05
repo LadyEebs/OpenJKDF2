@@ -1511,7 +1511,7 @@ void sithInventory_SendKilledMessageToAll(sithThing *player, sithThing *sender)
           && player->actorParams.playerinfo->iteminfo[i].state & ITEMSTATE_AVAILABLE 
           && desc->cog )
         {
-            sithCog_SendMessage(desc->cog, SITH_MESSAGE_KILLED, SENDERTYPE_THING, player->thingIdx, SENDERTYPE_THING, sender ? sender->thingIdx : -1, 0);
+            sithCog_SendMessageEx(desc->cog, SITH_MESSAGE_KILLED, SENDERTYPE_THING, player->thingIdx, SENDERTYPE_THING, sender ? sender->thingIdx : -1, 0, 0, -1, 0, 0);
         }
     }
 }

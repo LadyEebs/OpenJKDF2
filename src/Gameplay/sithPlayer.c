@@ -341,7 +341,7 @@ void sithPlayer_HandleSentDeathPkt(sithThing *thing)
         sithDSSThing_SendDeath(thing, thing, 1, -1, 255);
 
     if ( (thing->thingflags & SITH_TF_CAPTURED) == 0
-      || (sithCog_SendMessageFromThing(thing, thing, SITH_MESSAGE_KILLED), (thing->thingflags & SITH_TF_WILLBEREMOVED) == 0) )
+      || (sithCog_SendMessageFromThingEx(thing, thing, SITH_MESSAGE_KILLED, 0, -1, 0, 0), (thing->thingflags & SITH_TF_WILLBEREMOVED) == 0) )
     {
         sithSoundClass_StopSound(thing, 0);
         sithThing_detachallchildren(thing);
