@@ -329,6 +329,19 @@ void sithCogFunctionThing_SetHealth(sithCog *ctx)
         pThing->actorParams.health = amt;
 }
 
+#ifdef QOL_IMPROVEMENTS
+// Added
+void sithCogFunctionThing_GetThingMaxHealth(sithCog* ctx)
+{
+	sithThing* pThing = sithCogExec_PopThing(ctx);
+
+	if (pThing && (pThing->type == SITH_THING_ACTOR || pThing->type == SITH_THING_PLAYER))
+		sithCogExec_PushFlex(ctx, pThing->actorParams.maxHealth);
+	else
+		sithCogExec_PushFlex(ctx, -1.0);
+}
+#endif
+
 void sithCogFunctionThing_DestroyThing(sithCog *ctx)
 {
     sithThing* pThing = sithCogExec_PopThing(ctx);
@@ -2954,6 +2967,10 @@ void sithCogFunctionThing_Startup(void* ctx)
     sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_GetThingThrust, "getthingthrust");
     sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_SetHealth, "setthinghealth");
     sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_SetHealth, "sethealth");
+#ifdef QOL_IMPROVEMENTS
+	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_GetThingMaxHealth, "getmaxhealth");
+	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_GetThingMaxHealth, "getthingmaxhealth");
+#endif
     sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_AmputateJoint, "amputatejoint");
 #ifdef QOL_IMPROVEMENTS
 	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_IsJointAmputated, "isjointamputated");	
