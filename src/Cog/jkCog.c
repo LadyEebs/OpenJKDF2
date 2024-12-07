@@ -1165,7 +1165,7 @@ void jkCog_GetOpenFrames(sithCog *ctx)
 
 void jkCog_GetSaberDismemberment(sithCog* ctx)
 {
-	sithCogExec_PushInt(ctx, jkSaber_dismember);
+	sithCogExec_PushInt(ctx, sithNet_isMulti ? 0 : jkSaber_dismember);
 }
 
 #endif
