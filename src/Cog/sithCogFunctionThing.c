@@ -1693,7 +1693,7 @@ void sithCogFunctionThing_AmputateJoint(sithCog *ctx)
         if ( pThing != (sithThing *)-196 )
         {
             sithAnimclass* animclass = pThing->animclass;
-            if (animclass && idx < 0xA && idx >= 0)
+            if (animclass && idx < JOINTTYPE_NUM_JOINTS && idx >= 0)
             {
                 int jointIdx = animclass->bodypart_to_joint[idx];
                 if ( jointIdx >= 0 ) {
@@ -1718,7 +1718,7 @@ void sithCogFunctionThing_IsJointAmputated(sithCog* ctx)
 	{
 		rdThing* rdthing = &pThing->rdthing;
 		sithAnimclass* animclass = pThing->animclass;
-		if (animclass && idx < 0xA && idx >= 0)
+		if (animclass && idx < JOINTTYPE_NUM_JOINTS && idx >= 0)
 		{
 			int jointIdx = animclass->bodypart_to_joint[idx];
 			if (jointIdx >= 0)
@@ -1739,7 +1739,7 @@ void sithCogFunctionThing_SetRootJoint(sithCog* ctx)
 	{
 		rdThing* rdthing = &pThing->rdthing;
 		sithAnimclass* animclass = pThing->animclass;
-		if (animclass && idx < 0xA && idx >= 0)
+		if (animclass && idx < JOINTTYPE_NUM_JOINTS && idx >= 0)
 		{
 			int jointIdx = animclass->bodypart_to_joint[idx];
 			if (jointIdx >= 0)
@@ -1778,7 +1778,7 @@ void sithCogFunctionThing_GetJointDamage(sithCog* ctx)
 		|| pThing->type != SITH_THING_ACTOR
 		|| !pThing->rdthing.model3
 		|| !pThing->animclass
-		|| idx >= 0xA
+		|| idx >= JOINTTYPE_NUM_JOINTS
 		|| idx < 0)
 	{
 		sithCogExec_PushInt(ctx, 0);
@@ -1793,7 +1793,7 @@ void sithCogFunctionThing_DismemberJoint(sithCog* ctx)
 	uint32_t idx = sithCogExec_PopInt(ctx);
 	sithThing* pThing = sithCogExec_PopThing(ctx);
 
-	if (!pThing || !pThing->rdthing.model3 || !pThing->animclass || idx >= 0xA)
+	if (!pThing || !pThing->rdthing.model3 || !pThing->animclass || idx >= JOINTTYPE_NUM_JOINTS)
 	{
 		sithCogExec_PushInt(ctx, -1);
 		return;
