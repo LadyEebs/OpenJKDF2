@@ -1472,7 +1472,7 @@ void do_hooks()
     hook_function(sithThing_FreeEverything_ADDR, sithThing_FreeEverything);
     hook_function(sithThing_sub_4CD100_ADDR, sithThing_sub_4CD100);
     hook_function(sithThing_DoesRdThingInit_ADDR, sithThing_DoesRdThingInit);
-    hook_function(sithThing_sub_4CD8A0_ADDR, sithThing_sub_4CD8A0);
+    hook_function(sithThing_InstantiateFromTemplate_ADDR, sithThing_InstantiateFromTemplate);
     hook_function(sithThing_SetPosAndRot_ADDR, sithThing_SetPosAndRot);
     hook_function(sithThing_LeaveSector_ADDR, sithThing_LeaveSector);
     hook_function(sithThing_EnterSector_ADDR, sithThing_EnterSector);
