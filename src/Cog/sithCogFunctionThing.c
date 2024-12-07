@@ -1821,12 +1821,12 @@ void sithCogFunctionThing_DismemberJoint(sithCog* ctx)
 			{
 				// temporarily override some things for spawning a copy
 				int type = pThing->type;
-				int thingType = pThing->thingtype;
+				int controlType = pThing->controlType;
 				int moveType = pThing->moveType;
 				int flags = pThing->thingflags;
 				sithCog* cog = pThing->class_cog;
 				pThing->type = SITH_THING_CORPSE;
-				pThing->thingtype = SITH_THING_CORPSE;
+				pThing->controlType = SITH_THING_CORPSE;
 				pThing->moveType = SITH_MT_NONE;
 				pThing->class_cog = NULL;//sithCog_LoadCogscript("00_bloodtrail.cog");// NULL;
 				//pThing->pTemplate = pBloodTemplate;
@@ -1896,7 +1896,7 @@ void sithCogFunctionThing_DismemberJoint(sithCog* ctx)
 
 				// restore
 				pThing->type = type;
-				pThing->thingtype = thingType;
+				pThing->controlType = controlType;
 				pThing->moveType = moveType;
 				pThing->class_cog = cog;
 				pThing->thingflags = flags;
