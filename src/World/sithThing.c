@@ -1653,6 +1653,8 @@ int sithThing_ParseArgs(stdConffileArg *arg, sithThing* pThing)
     int v2; // ebp
     int param; // eax
     int paramIdx; // edi
+	int v7; // eax
+	int v8; // eax
 
     v2 = 0;
     param = (int)stdHashTable_GetKeyVal(sithThing_paramKeyToParamValMap, arg->key);
@@ -1665,33 +1667,38 @@ int sithThing_ParseArgs(stdConffileArg *arg, sithThing* pThing)
     {
         case SITH_THING_ACTOR:
         case SITH_THING_PLAYER:
-			v2 = sithActor_LoadParams(arg, pThing, paramIdx);
-			break;
+			v7 = sithActor_LoadParams(arg, pThing, paramIdx);
+			goto LABEL_10;
         case SITH_THING_WEAPON:
-			v2 = sithWeapon_LoadParams(arg, pThing, paramIdx);
-			break;
-        case SITH_THING_ITEM:
-			v2 = sithItem_LoadThingParams(arg, pThing, paramIdx);
-			break;
-        case SITH_THING_EXPLOSION:
-			v2 = sithExplosion_LoadThingParams(arg, pThing, paramIdx);
-            break;
-        case SITH_THING_PARTICLE:
-			v2 = sithParticle_LoadThingParams(arg, pThing, paramIdx);
-            break;
-        default:
+			v7 = sithWeapon_LoadParams(arg, pThing, paramIdx);
+		goto LABEL_10;
+		case SITH_THING_ITEM:
+			v7 = sithItem_LoadThingParams(arg, pThing, paramIdx);
+		goto LABEL_10;
+		case SITH_THING_EXPLOSION:
+			v7 = sithExplosion_LoadThingParams(arg, pThing, paramIdx);
+		goto LABEL_10;
+		case SITH_THING_PARTICLE:
+			v7 = sithParticle_LoadThingParams(arg, pThing, paramIdx);
+	LABEL_10:
+		v2 = v7;
+		default:
             break;
     }
     if ( v2 )
         return 1;
-    if ( pThing->moveType == SITH_MT_PHYSICS )
-    {
-		v2 = sithPhysics_LoadThingParams(arg, pThing, paramIdx);
-    }
-    else if (pThing->moveType != SITH_MT_PATH)
-    {
-		v2 = sithTrackThing_LoadPathParams(arg, pThing, paramIdx);
-    }
+	if (pThing->moveType == SITH_MT_PHYSICS)
+	{
+		v8 = sithPhysics_LoadThingParams(arg, pThing, paramIdx);
+	}
+	else
+	{
+		if (pThing->moveType != SITH_MT_PATH)
+			goto LABEL_18;
+		v8 = sithTrackThing_LoadPathParams(arg, pThing, paramIdx);
+	}
+	v2 = v8;
+LABEL_18:
     if ( v2 )
         return 1;
 	return pThing->controlType == SITH_CT_AI && sithAI_LoadThingActorParams(arg, pThing, paramIdx);
