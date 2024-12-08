@@ -466,6 +466,17 @@ void jkSaber_UpdateLength(sithThing *thing)
         thing->jkFlags &= ~JKFLAG_SABERFORCEON;
     }
 
+#ifdef ANIMCLASS_NAMES
+	if (thing->animclass->bodypart[JOINTTYPE_PRIMARYWEAP].jointIdx >= 0)
+	{
+		jkSaber_UpdateCollision(thing, thing->animclass->bodypart[JOINTTYPE_PRIMARYWEAP].jointIdx, 0); // MOTS added: last arg
+		if (thing->jkFlags & JKFLAG_DUALSABERS)
+		{
+			if (thing->animclass->bodypart[JOINTTYPE_SECONDARYWEAP].jointIdx >= 0)
+				jkSaber_UpdateCollision(thing, thing->animclass->bodypart[JOINTTYPE_SECONDARYWEAP].jointIdx, 1); // MOTS added: last arg
+		}
+	}
+#else
     if ( thing->animclass->bodypart_to_joint[JOINTTYPE_PRIMARYWEAP] >= 0 )
     {
         jkSaber_UpdateCollision(thing, thing->animclass->bodypart_to_joint[JOINTTYPE_PRIMARYWEAP], 0); // MOTS added: last arg
@@ -475,6 +486,7 @@ void jkSaber_UpdateLength(sithThing *thing)
                 jkSaber_UpdateCollision(thing, thing->animclass->bodypart_to_joint[JOINTTYPE_SECONDARYWEAP], 1); // MOTS added: last arg
         }
     }
+#endif
 }
 
 #ifdef LIGHTSABER_MARKS

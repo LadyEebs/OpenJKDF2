@@ -916,7 +916,11 @@ int sithPuppet_FindHitLoc(sithThing* pReceiverThing, rdVector3* pPos)
 		float dist = 10000.0f;
 		for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
 		{
+#ifdef ANIMCLASS_NAMES
+			int jointIdx = pReceiverThing->animclass->bodypart[i].jointIdx;
+#else
 			int jointIdx = pReceiverThing->animclass->bodypart_to_joint[i];
+#endif
 			if(jointIdx < 0 || jointIdx >= pReceiverThing->rdthing.model3->numHierarchyNodes)
 				continue;
 		

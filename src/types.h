@@ -1368,11 +1368,22 @@ typedef struct sithAnimclassMode
 #endif
 } sithAnimclassMode;
 
+#ifdef ANIMCLASS_NAMES
+typedef struct sithBodyPart
+{
+	int jointIdx;
+} sithBodyPart;
+#endif
+
 typedef struct sithAnimclass
 {
     char name[32];
     sithAnimclassMode modes[6];
-    int bodypart_to_joint[JOINTTYPE_NUM_JOINTS];
+#ifdef ANIMCLASS_NAMES
+	sithBodyPart bodypart[JOINTTYPE_NUM_JOINTS];
+#else
+	int bodypart_to_joint[JOINTTYPE_NUM_JOINTS];
+#endif
 } sithAnimclass;
 
 typedef struct sithAdjoin

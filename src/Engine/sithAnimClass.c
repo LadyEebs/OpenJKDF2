@@ -146,8 +146,12 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
     if (!stdConffile_OpenRead(fpath))
         return 0;
 
-    _memset(animclass->bodypart_to_joint, 0xFFu, sizeof(animclass->bodypart_to_joint));
-    while ( stdConffile_ReadArgs() )
+#ifdef ANIMCLASS_NAMES
+	_memset(animclass->bodypart, 0xFFu, sizeof(animclass->bodypart));
+#else
+	_memset(animclass->bodypart_to_joint, 0xFFu, sizeof(animclass->bodypart_to_joint));
+#endif
+	while ( stdConffile_ReadArgs() )
     {
         if ( !stdConffile_entry.numArgs )
             continue;
@@ -200,13 +204,15 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 					bodypart_idx = _atoi(stdConffile_entry.args[0].key);
 					joint_idx = _atoi(stdConffile_entry.args[0].value);
 				}
+				if (bodypart_idx < JOINTTYPE_NUM_JOINTS && bodypart_idx >= 0) // Added: check for negative
+					animclass->bodypart[bodypart_idx].jointIdx = joint_idx;
 #else
                 bodypart_idx = _atoi(stdConffile_entry.args[0].key);
 				joint_idx = _atoi(stdConffile_entry.args[0].value);
-#endif
                 if ( bodypart_idx < JOINTTYPE_NUM_JOINTS && bodypart_idx >= 0) // Added: check for negative
                     animclass->bodypart_to_joint[bodypart_idx] = joint_idx;
-            }
+#endif
+			}
         }
         else if ( stdConffile_entry.numArgs > 1u )
         {

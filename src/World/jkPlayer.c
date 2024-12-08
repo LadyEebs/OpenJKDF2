@@ -1466,7 +1466,11 @@ void jkPlayer_renderWeaponMesh(sithThing* thing)
 	if (!thing->animclass)
 		return;
 
+#ifdef ANIMCLASS_NAMES
+	int primary_mesh = thing->animclass->bodypart[JOINTTYPE_PRIMARYWEAP].jointIdx;
+#else
 	int primary_mesh = thing->animclass->bodypart_to_joint[JOINTTYPE_PRIMARYWEAP];
+#endif
 	rdMatrix34* primaryMat = &thing->rdthing.hierarchyNodeMatrices[primary_mesh];
 	if (thing->jkFlags & JKFLAG_PERSUASION)
 	{
@@ -1520,9 +1524,13 @@ void jkPlayer_renderSaberBlade(sithThing* thing)
 	if (!thing->animclass)
 		return;
 
+#ifdef ANIMCLASS_NAMES
+	int primary_mesh = thing->animclass->bodypart[JOINTTYPE_PRIMARYWEAP].jointIdx;
+	int secondary_mesh = thing->animclass->bodypart[JOINTTYPE_SECONDARYWEAP].jointIdx;
+#else
 	int primary_mesh = thing->animclass->bodypart_to_joint[JOINTTYPE_PRIMARYWEAP];
 	int secondary_mesh = thing->animclass->bodypart_to_joint[JOINTTYPE_SECONDARYWEAP];
-
+#endif
 	// Attempt to find a proper secondary weapon hand
 	if (thing->jkFlags & JKFLAG_DUALSABERS && primary_mesh == secondary_mesh && thing->rdthing.model3)
 	{
@@ -1540,7 +1548,11 @@ void jkPlayer_renderSaberBlade(sithThing* thing)
 
 		if (primary_mesh != secondary_mesh)
 		{
+#ifdef ANIMCLASS_NAMES
+			thing->animclass->bodypart[JOINTTYPE_SECONDARYWEAP].jointIdx = secondary_mesh;
+#else
 			thing->animclass->bodypart_to_joint[JOINTTYPE_SECONDARYWEAP] = secondary_mesh;
+#endif
 		}
 	}
 
@@ -1617,8 +1629,13 @@ void jkPlayer_renderSaberWeaponMesh(sithThing *thing)
     if (!thing->animclass)
         return;
 
-    int primary_mesh = thing->animclass->bodypart_to_joint[JOINTTYPE_PRIMARYWEAP];
-    int secondary_mesh = thing->animclass->bodypart_to_joint[JOINTTYPE_SECONDARYWEAP];
+#ifdef ANIMCLASS_NAMES
+	int primary_mesh = thing->animclass->bodypart[JOINTTYPE_PRIMARYWEAP].jointIdx;
+	int secondary_mesh = thing->animclass->bodypart[JOINTTYPE_SECONDARYWEAP].jointIdx;
+#else
+	int primary_mesh = thing->animclass->bodypart_to_joint[JOINTTYPE_PRIMARYWEAP];
+	int secondary_mesh = thing->animclass->bodypart_to_joint[JOINTTYPE_SECONDARYWEAP];
+#endif
 
     // Attempt to find a proper secondary weapon hand
     if (thing->jkFlags & JKFLAG_DUALSABERS && primary_mesh == secondary_mesh && thing->rdthing.model3) {
@@ -1633,9 +1650,14 @@ void jkPlayer_renderSaberWeaponMesh(sithThing *thing)
             }
         }
 
-        if (primary_mesh != secondary_mesh) {
-            thing->animclass->bodypart_to_joint[JOINTTYPE_SECONDARYWEAP] = secondary_mesh;
-        }
+        if (primary_mesh != secondary_mesh)
+		{
+#ifdef ANIMCLASS_NAMES
+			thing->animclass->bodypart[JOINTTYPE_SECONDARYWEAP].jointIdx = secondary_mesh;
+#else
+			thing->animclass->bodypart_to_joint[JOINTTYPE_SECONDARYWEAP] = secondary_mesh;
+#endif
+		}
     }
 
     rdMatrix34* primaryMat = &thing->rdthing.hierarchyNodeMatrices[primary_mesh];

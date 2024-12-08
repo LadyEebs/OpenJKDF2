@@ -2437,7 +2437,11 @@ void sithRender_RenderThings()
 						sithAnimclass* animclass = thingIter->animclass;
 						if (animclass)
 						{
+						#ifdef ANIMCLASS_NAMES
+							int jointIdx = animclass->bodypart[JOINTTYPE_TORSO].jointIdx; // torso
+						#else
 							int jointIdx = animclass->bodypart_to_joint[JOINTTYPE_TORSO]; // torso
+						#endif
 							if (jointIdx >= 0)
 							{
 								if (thingIter->rdthing.model3 && jointIdx < thingIter->rdthing.model3->numHierarchyNodes)
