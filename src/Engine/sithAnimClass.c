@@ -170,7 +170,7 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 						if(stricmp(sithAnimClass_nameToBodypart[name].name, stdConffile_entry.args[0].key) == 0)
 						{
 							bodypart_idx = sithAnimClass_nameToBodypart[name].index;
-							printf("found joint %s (%d) in puppet %s\n", sithAnimClass_nameToBodypart[name].name, sithAnimClass_nameToBodypart[name].index, fpath);
+							//printf("found joint %s (%d) in puppet %s\n", sithAnimClass_nameToBodypart[name].name, sithAnimClass_nameToBodypart[name].index, fpath);
 							break;
 						}
 					}
