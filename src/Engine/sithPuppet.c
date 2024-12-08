@@ -68,6 +68,37 @@ static const char* sithPuppet_animNames[43+2] = {
     "buttpunch"
 };
 
+#ifdef ANIMCLASS_NAMES
+stdHashTable* sithPuppet_jointNamesToIdxHashtable = NULL;
+
+static const char* sithPuppet_jointNames[] =
+{
+	"head",
+	"neck",
+	"torso",
+	"weapon",
+	"weapon2",
+	"aim",
+	"aim2",
+	"turretpitch",
+	"turretyaw",
+#ifdef REGIONAL_DAMAGE
+	"rshoulder",
+	"lshoulder",
+	"rforearm",
+	"lforearm",
+	"rhand",
+	"lhand",
+	"rthigh",
+	"lthigh",
+	"rcalf",
+	"lcalf",
+	"rfoot",
+	"lfoot",
+#endif
+};
+#endif
+
 int sithPuppet_Startup()
 {
     sithPuppet_hashtable = stdHashTable_New(64);
@@ -80,6 +111,13 @@ int sithPuppet_Startup()
         {
             stdHashTable_SetKeyVal(sithPuppet_animNamesToIdxHashtable, sithPuppet_animNames[i], (void *)(intptr_t)i);
         }
+#ifdef ANIMCLASS_NAMES
+		sithPuppet_jointNamesToIdxHashtable = stdHashTable_New(JOINTTYPE_NUM_JOINTS * 2);
+		for (int i = 0; i < JOINTTYPE_NUM_JOINTS; i++)
+		{
+			stdHashTable_SetKeyVal(sithPuppet_jointNamesToIdxHashtable, sithPuppet_jointNames[i], (void*)(intptr_t)(i + 1));
+		}
+#endif
         return 1;
     }
     else
@@ -106,6 +144,13 @@ void sithPuppet_Shutdown()
         stdHashTable_Free(sithPuppet_animNamesToIdxHashtable);
         sithPuppet_animNamesToIdxHashtable = 0;
     }
+#ifdef ANIMCLASS_NAMES
+	if (sithPuppet_jointNamesToIdxHashtable)
+	{
+		stdHashTable_Free(sithPuppet_jointNamesToIdxHashtable);
+		sithPuppet_jointNamesToIdxHashtable = 0;
+	}
+#endif
 }
 
 sithPuppet* sithPuppet_NewEntry(sithThing *thing)

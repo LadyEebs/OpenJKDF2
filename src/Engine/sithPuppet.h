@@ -22,6 +22,10 @@
 #define sithPuppet_sub_4E4A20_ADDR (0x004E4A20)
 #define sithPuppet_DefaultCallback_ADDR (0x004E4B10)
 
+#ifdef ANIMCLASS_NAMES
+extern stdHashTable* sithPuppet_jointNamesToIdxHashtable;
+#endif
+
 int sithPuppet_Startup();
 void sithPuppet_Shutdown();
 sithPuppet* sithPuppet_NewEntry(sithThing *thing);

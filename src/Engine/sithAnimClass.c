@@ -9,39 +9,6 @@
 #include "World/sithModel.h"
 #endif
 
-#ifdef ANIMCLASS_NAMES
-typedef struct sithAnimClass_NameToBodypart
-{
-	const char* name;
-	int index;
-} sithAnimClass_NameToBodypart;
-
-static const sithAnimClass_NameToBodypart sithAnimClass_nameToBodypart[] =
-{
-	{"head", JOINTTYPE_HEAD},
-	{"neck", JOINTTYPE_NECK},
-	{"torso", JOINTTYPE_TORSO},
-	{"weapon", JOINTTYPE_PRIMARYWEAP},
-	{"weapon2", JOINTTYPE_SECONDARYWEAP},
-	{"aim", JOINTTYPE_PRIMARYWEAPJOINT},
-	{"aim2", JOINTTYPE_SECONDARYWEAPJOINT},
-	{"turretpitch", JOINTTYPE_TURRETPITCH},
-	{"turretyaw", JOINTTYPE_SECONDARYWEAPJOINT},
-#ifdef REGIONAL_DAMAGE
-	{"rforearm", JOINTTYPE_RFOREARM},
-	{"lforearm", JOINTTYPE_LFOREARM},
-	{"rcalf", JOINTTYPE_RCALF},
-	{"lcalf", JOINTTYPE_LCALF},
-	{"rthigh", JOINTTYPE_RTHIGH},
-	{"lthigh", JOINTTYPE_LTHIGH},
-	{"rhand", JOINTTYPE_RHAND},
-	{"lhand", JOINTTYPE_LHAND},
-	{"rshoulder", JOINTTYPE_RSHOULDER},
-	{"lshoulder", JOINTTYPE_LSHOULDER},
-#endif
-};
-#endif
-
 int sithAnimClass_Load(sithWorld *world, int a2)
 {
     int num_animclasses; // ebx
@@ -125,7 +92,7 @@ sithAnimclass* sithAnimClass_LoadEntry(char *a1)
 int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 {
     int mode; // ebx
-    unsigned int bodypart_idx; // esi
+    int bodypart_idx; // esi
     int joint_idx; // eax
     intptr_t animNameIdx; // ebp
     sithWorld *world; // esi
@@ -181,14 +148,7 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 					bodypart_idx = -1;
 					joint_idx = -1;
 
-					for (int name = 0; name < ARRAYSIZE(sithAnimClass_nameToBodypart); ++name)
-					{
-						if (!stricmp(sithAnimClass_nameToBodypart[name].name, stdConffile_entry.args[0].key))
-						{
-							bodypart_idx = sithAnimClass_nameToBodypart[name].index;
-							break;
-						}
-					}
+					bodypart_idx = (intptr_t)stdHashTable_GetKeyVal(sithPuppet_jointNamesToIdxHashtable, stdConffile_entry.args[0].key) - 1;
 
 					for (int node = 0; node < model->numHierarchyNodes; ++node)
 					{
