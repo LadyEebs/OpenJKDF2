@@ -5,11 +5,11 @@
 #include "General/stdString.h"
 #include "General/stdHashTable.h"
 #include "jk.h"
-#ifdef AICLASS_NAMES
+#ifdef ANIMCLASS_NAMES
 #include "World/sithModel.h"
 #endif
 
-#ifdef AICLASS_NAMES
+#ifdef ANIMCLASS_NAMES
 typedef struct sithAnimClass_NameToBodypart
 {
 	const char* name;
@@ -137,7 +137,7 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
     int flags; // [esp+8h] [ebp-88h] BYREF
     int hipri; // [esp+Ch] [ebp-84h]
     char keyframe_fpath[128]; // [esp+10h] [ebp-80h] BYREF
-#ifdef AICLASS_NAMES
+#ifdef ANIMCLASS_NAMES
 	rdModel3* model = NULL;
 	int namedBodypart = 0;
 #endif
@@ -151,7 +151,7 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
     {
         if ( !stdConffile_entry.numArgs )
             continue;
-#ifdef AICLASS_NAMES
+#ifdef ANIMCLASS_NAMES
 		if (!_strcmp(stdConffile_entry.args[0].key, "model"))
 		{
 			model = sithModel_LoadEntry(stdConffile_entry.args[0].value, 0);
@@ -170,7 +170,7 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
             {
                 if ( !stdConffile_entry.numArgs || !_strcmp(stdConffile_entry.args[0].key, "end") )
                     break;
-#ifdef AICLASS_NAMES
+#ifdef ANIMCLASS_NAMES
 				// new name or old index syntax
 				if(model && stdConffile_entry.numArgs > 1 && !isdigit(stdConffile_entry.args[0].key[0]))
 				{
