@@ -5,6 +5,9 @@
 #include "General/stdString.h"
 #include "General/stdHashTable.h"
 #include "jk.h"
+#ifdef AICLASS_NAMES
+#include "World/sithModel.h"
+#endif
 
 #ifdef AICLASS_NAMES
 typedef struct sithAnimClass_NameToBodypart
@@ -134,6 +137,10 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
     int flags; // [esp+8h] [ebp-88h] BYREF
     int hipri; // [esp+Ch] [ebp-84h]
     char keyframe_fpath[128]; // [esp+10h] [ebp-80h] BYREF
+#ifdef AICLASS_NAMES
+	rdModel3* model = NULL;
+	int namedBodypart = 0;
+#endif
 
     mode = 0;
     if (!stdConffile_OpenRead(fpath))
@@ -144,6 +151,13 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
     {
         if ( !stdConffile_entry.numArgs )
             continue;
+#ifdef AICLASS_NAMES
+		if (!_strcmp(stdConffile_entry.args[0].key, "model"))
+		{
+			model = sithModel_LoadEntry(stdConffile_entry.args[0].value, 0);
+		}
+		else
+#endif
         if ( !_strcmp(stdConffile_entry.args[0].key, "mode") )
         {
             mode = _atoi(stdConffile_entry.args[0].value);
@@ -157,28 +171,39 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
                 if ( !stdConffile_entry.numArgs || !_strcmp(stdConffile_entry.args[0].key, "end") )
                     break;
 #ifdef AICLASS_NAMES
-				// check if number or name
-				if (isdigit(stdConffile_entry.args[0].key[0])) // number
-				{
-					bodypart_idx = _atoi(stdConffile_entry.args[0].key);
-				}
-				else // name
+				// new name or old index syntax
+				if(model && stdConffile_entry.numArgs > 1 && !isdigit(stdConffile_entry.args[0].key[0]))
 				{
 					bodypart_idx = -1;
+					joint_idx = -1;
+
 					for (int name = 0; name < ARRAYSIZE(sithAnimClass_nameToBodypart); ++name)
 					{
-						if(stricmp(sithAnimClass_nameToBodypart[name].name, stdConffile_entry.args[0].key) == 0)
+						if (!stricmp(sithAnimClass_nameToBodypart[name].name, stdConffile_entry.args[0].key))
 						{
 							bodypart_idx = sithAnimClass_nameToBodypart[name].index;
-							//printf("found joint %s (%d) in puppet %s\n", sithAnimClass_nameToBodypart[name].name, sithAnimClass_nameToBodypart[name].index, fpath);
+							break;
+						}
+					}
+
+					for (int node = 0; node < model->numHierarchyNodes; ++node)
+					{
+						if (!stricmp(model->hierarchyNodes[node].name, stdConffile_entry.args[1].key))
+						{
+							joint_idx = node;
 							break;
 						}
 					}
 				}
+				else // old syntax
+				{
+					bodypart_idx = _atoi(stdConffile_entry.args[0].key);
+					joint_idx = _atoi(stdConffile_entry.args[0].value);
+				}
 #else
                 bodypart_idx = _atoi(stdConffile_entry.args[0].key);
+				joint_idx = _atoi(stdConffile_entry.args[0].value);
 #endif
-                joint_idx = _atoi(stdConffile_entry.args[0].value);
                 if ( bodypart_idx < JOINTTYPE_NUM_JOINTS && bodypart_idx >= 0) // Added: check for negative
                     animclass->bodypart_to_joint[bodypart_idx] = joint_idx;
             }
