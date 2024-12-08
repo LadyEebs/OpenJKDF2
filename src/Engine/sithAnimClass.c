@@ -21,6 +21,12 @@ static const sithAnimClass_NameToBodypart sithAnimClass_nameToBodypart[] =
 	{"head", JOINTTYPE_HEAD},
 	{"neck", JOINTTYPE_NECK},
 	{"torso", JOINTTYPE_TORSO},
+	{"weapon", JOINTTYPE_PRIMARYWEAP},
+	{"weapon2", JOINTTYPE_SECONDARYWEAP},
+	{"aim", JOINTTYPE_PRIMARYWEAPJOINT},
+	{"aim2", JOINTTYPE_SECONDARYWEAPJOINT},
+	{"turretpitch", JOINTTYPE_TURRETPITCH},
+	{"turretyaw", JOINTTYPE_SECONDARYWEAPJOINT},
 #ifdef REGIONAL_DAMAGE
 	{"rforearm", JOINTTYPE_RFOREARM},
 	{"lforearm", JOINTTYPE_LFOREARM},
@@ -33,12 +39,6 @@ static const sithAnimClass_NameToBodypart sithAnimClass_nameToBodypart[] =
 	{"rshoulder", JOINTTYPE_RSHOULDER},
 	{"lshoulder", JOINTTYPE_LSHOULDER},
 #endif
-	{"weapon", JOINTTYPE_PRIMARYWEAP},
-	{"weapon2", JOINTTYPE_SECONDARYWEAP},
-	{"aim", JOINTTYPE_PRIMARYWEAPJOINT},
-	{"aim2", JOINTTYPE_SECONDARYWEAPJOINT},
-	{"turretpitch", JOINTTYPE_TURRETPITCH},
-	{"turretyaw", JOINTTYPE_SECONDARYWEAPJOINT},
 };
 #endif
 
