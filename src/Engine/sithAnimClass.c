@@ -6,6 +6,39 @@
 #include "General/stdHashTable.h"
 #include "jk.h"
 
+#ifdef AICLASS_NAMES
+typedef struct sithAnimClass_NameToBodypart
+{
+	const char* name;
+	int index;
+} sithAnimClass_NameToBodypart;
+
+static const sithAnimClass_NameToBodypart sithAnimClass_nameToBodypart[] =
+{
+	{"head", JOINTTYPE_HEAD},
+	{"neck", JOINTTYPE_NECK},
+	{"torso", JOINTTYPE_TORSO},
+#ifdef REGIONAL_DAMAGE
+	{"rforearm", JOINTTYPE_RFOREARM},
+	{"lforearm", JOINTTYPE_LFOREARM},
+	{"rcalf", JOINTTYPE_RCALF},
+	{"lcalf", JOINTTYPE_LCALF},
+	{"rthigh", JOINTTYPE_RTHIGH},
+	{"lthigh", JOINTTYPE_LTHIGH},
+	{"rhand", JOINTTYPE_RHAND},
+	{"lhand", JOINTTYPE_LHAND},
+	{"rshoulder", JOINTTYPE_RSHOULDER},
+	{"lshoulder", JOINTTYPE_LSHOULDER},
+#endif
+	{"weapon", JOINTTYPE_PRIMARYWEAP},
+	{"weapon2", JOINTTYPE_SECONDARYWEAP},
+	{"aim", JOINTTYPE_PRIMARYWEAPJOINT},
+	{"aim2", JOINTTYPE_SECONDARYWEAPJOINT},
+	{"turretpitch", JOINTTYPE_TURRETPITCH},
+	{"turretyaw", JOINTTYPE_SECONDARYWEAPJOINT},
+};
+#endif
+
 int sithAnimClass_Load(sithWorld *world, int a2)
 {
     int num_animclasses; // ebx
@@ -123,9 +156,30 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
             {
                 if ( !stdConffile_entry.numArgs || !_strcmp(stdConffile_entry.args[0].key, "end") )
                     break;
+#ifdef AICLASS_NAMES
+				// check if number or name
+				if (isdigit(stdConffile_entry.args[0].key[0])) // number
+				{
+					bodypart_idx = _atoi(stdConffile_entry.args[0].key);
+				}
+				else // name
+				{
+					bodypart_idx = -1;
+					for (int name = 0; name < ARRAYSIZE(sithAnimClass_nameToBodypart); ++name)
+					{
+						if(stricmp(sithAnimClass_nameToBodypart[name].name, stdConffile_entry.args[0].key) == 0)
+						{
+							bodypart_idx = sithAnimClass_nameToBodypart[name].index;
+							printf("found joint %s (%d) in puppet %s\n", sithAnimClass_nameToBodypart[name].name, sithAnimClass_nameToBodypart[name].index, fpath);
+							break;
+						}
+					}
+				}
+#else
                 bodypart_idx = _atoi(stdConffile_entry.args[0].key);
+#endif
                 joint_idx = _atoi(stdConffile_entry.args[0].value);
-                if ( bodypart_idx < JOINTTYPE_NUM_JOINTS )
+                if ( bodypart_idx < JOINTTYPE_NUM_JOINTS && bodypart_idx >= 0) // Added: check for negative
                     animclass->bodypart_to_joint[bodypart_idx] = joint_idx;
             }
         }
