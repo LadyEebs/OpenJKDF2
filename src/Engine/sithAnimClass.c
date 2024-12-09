@@ -115,6 +115,7 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 
 #ifdef ANIMCLASS_NAMES
 	_memset(animclass->bodypart, 0xFFu, sizeof(animclass->bodypart));
+	animclass->jointToBodypart = NULL;
 #else
 	_memset(animclass->bodypart_to_joint, 0xFFu, sizeof(animclass->bodypart_to_joint));
 #endif
@@ -126,6 +127,9 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 		if (!_strcmp(stdConffile_entry.args[0].key, "model"))
 		{
 			model = sithModel_LoadEntry(stdConffile_entry.args[0].value, 0);
+			animclass->jointToBodypart = (int*)rdroid_pHS->alloc(sizeof(int) * model->numHierarchyNodes);
+			if(animclass->jointToBodypart)
+				_memset(animclass->jointToBodypart, -1, sizeof(int) * model->numHierarchyNodes);
 		}
 		else
 #endif
@@ -155,6 +159,8 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 						if (!stricmp(model->hierarchyNodes[node].name, stdConffile_entry.args[1].key))
 						{
 							joint_idx = node;
+							if(animclass->jointToBodypart)
+								animclass->jointToBodypart[node] = bodypart_idx;
 							break;
 						}
 					}

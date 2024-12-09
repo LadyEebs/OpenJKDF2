@@ -1389,6 +1389,7 @@ typedef struct sithAnimclass
     sithAnimclassMode modes[6];
 #ifdef ANIMCLASS_NAMES
 	sithBodyPart bodypart[JOINTTYPE_NUM_JOINTS];
+	int* jointToBodypart;
 #else
 	int bodypart_to_joint[JOINTTYPE_NUM_JOINTS];
 #endif
