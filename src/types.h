@@ -464,6 +464,14 @@ typedef struct rdMatrix44
     rdVector4 vD;
 } rdMatrix44;
 
+typedef struct rdQuat
+{
+	float x;
+	float y;
+	float z;
+	float w;
+} rdQuat;
+
 typedef struct rdLight
 {
     uint32_t id;

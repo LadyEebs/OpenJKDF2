@@ -3,14 +3,6 @@
 
 #include "types.h"
 
-typedef struct rdQuat
-{
-	float x;
-	float y;
-	float z;
-	float w;
-} rdQuat;
-
 void rdQuat_Set(rdQuat* out, float x, float y, float z, float w);
 
 void rdQuat_BuildFromAxisAngle(rdQuat* out, rdVector3* axis, float angle);
