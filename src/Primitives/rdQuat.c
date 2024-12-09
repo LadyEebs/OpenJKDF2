@@ -33,6 +33,60 @@ void rdQuat_BuildFromVector(rdQuat* out, rdVector3* axis)
 	rdQuat_MulAcc(out, &q2);
 }
 
+void rdQuat_BuildFrom34(rdQuat* out, const rdMatrix34* matrix)
+{
+	float trace = matrix->rvec.x + matrix->lvec.y + matrix->uvec.z;
+	if (trace > 0.0f)
+	{
+		float s = 0.5f / sqrtf(trace + 1.0f);
+		out->w = 0.25f / s;
+		out->x = (matrix->uvec.y - matrix->lvec.z) * s;
+		out->y = (matrix->rvec.z - matrix->uvec.x) * s;
+		out->z = (matrix->lvec.x - matrix->rvec.y) * s;
+	}
+	else
+	{
+		if (matrix->rvec.x > matrix->lvec.y && matrix->rvec.x > matrix->uvec.z)
+		{
+			float s = 2.0f * sqrtf(1.0f + matrix->rvec.x - matrix->lvec.y - matrix->uvec.z);
+			out->w = (matrix->uvec.y - matrix->lvec.z) / s;
+			out->x = 0.25f * s;
+			out->y = (matrix->rvec.y + matrix->lvec.x) / s;
+			out->z = (matrix->rvec.z + matrix->uvec.x) / s;
+		}
+		else if (matrix->lvec.y > matrix->uvec.z)
+		{
+			float s = 2.0f * sqrtf(1.0f + matrix->lvec.y - matrix->rvec.x - matrix->uvec.z);
+			out->w = (matrix->rvec.z - matrix->uvec.x) / s;
+			out->x = (matrix->rvec.y + matrix->lvec.x) / s;
+			out->y = 0.25f * s;
+			out->z = (matrix->lvec.z + matrix->uvec.y) / s;
+		}
+		else
+		{
+			float s = 2.0f * sqrtf(1.0f + matrix->uvec.z - matrix->rvec.x - matrix->lvec.y);
+			out->w = (matrix->lvec.x - matrix->rvec.y) / s;
+			out->x = (matrix->rvec.z + matrix->uvec.x) / s;
+			out->y = (matrix->lvec.z + matrix->uvec.y) / s;
+			out->z = 0.25f * s;
+		}
+	}
+}
+
+void rdQuat_BuildFromVectors(rdQuat* out, const rdVector3* v1, const rdVector3* v2)
+{
+	rdVector3 cross;
+	rdVector_Cross3(&cross, v2, v1);
+	
+	float dot = rdVector_Dot3(v1, v2);
+	float s = sqrt((1.0f + dot) * 2.0f);
+	
+	out->w = s * 0.5f;
+	out->x = cross.x / s;
+	out->y = cross.y / s;
+	out->z = cross.z / s;
+}
+
 void rdQuat_ExtractAxisAngle(rdQuat* q, rdVector3* axis, float* angle)
 {
 	*angle = 2.0f * acosf(q->w);

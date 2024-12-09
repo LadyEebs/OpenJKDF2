@@ -7,6 +7,8 @@ void rdQuat_Set(rdQuat* out, float x, float y, float z, float w);
 
 void rdQuat_BuildFromAxisAngle(rdQuat* out, rdVector3* axis, float angle);
 void rdQuat_BuildFromVector(rdQuat* out, rdVector3* axis);
+void rdQuat_BuildFrom34(rdQuat* out, const rdMatrix34* matrix);
+void rdQuat_BuildFromVectors(rdQuat* out, const rdVector3* v1, const rdVector3* v2);
 
 void rdQuat_ExtractAxisAngle(rdQuat* q, rdVector3* axis, float* angle);
 
