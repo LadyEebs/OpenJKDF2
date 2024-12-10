@@ -1126,9 +1126,9 @@ void sithPuppet_Physicalize(sithThing* pThing, rdVector3* pInitialVel)
 		pJoint->nextPosWeight = 0.0f;
 
 		// todo: we're gonna need a better way of deciding how big of a radius to make for each joint
-		if (pNode->meshIdx != -1)
-			pJoint->radius = pThing->rdthing.model3->geosets[0].meshes[pNode->meshIdx].radius;// * 0.35f;
-		else
+		//if (pNode->meshIdx != -1)
+		//	pJoint->radius = pThing->rdthing.model3->geosets[0].meshes[pNode->meshIdx].radius * 0.35f;
+		//else
 			pJoint->radius = 0.01f;
 
 		// the joint contains a dummy thing for collision handling
