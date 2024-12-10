@@ -3261,6 +3261,7 @@ struct sithPuppet
 	sithThing* pParent;
 	sithPuppetJoint joints[JOINTTYPE_NUM_JOINTS];
 	rdVector3 center;
+	float radius;
 	int physicalized;
 	float lastTimeStep;
 	int collisions;
