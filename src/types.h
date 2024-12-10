@@ -1343,6 +1343,8 @@ typedef struct rdMaterial
     rdTexture* textures;
 } rdMaterial;
 
+#ifndef PUPPET_PHYSICS
+
 struct sithPuppet
 {
     int field_0;
@@ -1355,6 +1357,8 @@ struct sithPuppet
     int currentTrack;
     int animStartedMs;
 };
+
+#endif
 
 typedef struct sithAnimclassEntry
 {
@@ -1380,6 +1384,11 @@ typedef struct sithAnimclassMode
 typedef struct sithBodyPart
 {
 	int jointIdx;
+#ifdef PUPPET_PHYSICS
+	uint32_t flags;
+	float mass;
+	float bounce;
+#endif
 } sithBodyPart;
 #endif
 
@@ -2531,8 +2540,13 @@ typedef struct rdThing
 #ifdef VERTEX_COLORS
 	rdVector3 color;
 #endif
+#ifdef PUPPET_PHYSICS
+	rdMatrix34** paHiearchyNodeMatrixOverrides;
+#endif
 #ifdef RAGDOLLS
 	rdRagdoll* pRagdoll;
+#endif
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 	rdMatrix34* paHierarchyNodeMatricesPrev;
 #endif
 } rdThing;
@@ -3213,6 +3227,48 @@ typedef struct sithThing
 	sithThing* nextDrawThing;
 #endif
 } sithThing;
+
+#ifdef PUPPET_PHYSICS
+
+typedef struct sithPuppetJoint
+{
+	sithThing thing;         // physicalized thing representation
+	rdVector3 pos;           // current position
+	rdVector3 lastPos;       // last position
+	rdVector3 nextPosAcc;    // accumulated position
+	rdVector3 forces;        // accumulated forces
+	rdMatrix34 refMat;       // reference transform
+	rdMatrix34 tmpMat;       // updated transform
+	rdMatrix34 lookOrient;   // final transform
+	uint32_t  flags;         // flags
+	float     nextPosWeight; // weight of accumulated position for normalization
+	float     radius;
+} sithPuppetJoint;
+
+struct sithPuppet
+{
+	int field_0;
+	int field_4;
+	int majorMode;
+	int currentAnimation;
+	sithAnimclassEntry* playingAnim;
+	int otherTrack;
+	int field_18;
+	int currentTrack;
+	int animStartedMs;
+	
+	// todo: consider moving this to another struct
+	sithThing* pParent;
+	sithPuppetJoint joints[JOINTTYPE_NUM_JOINTS];
+	rdVector3 center;
+	int physicalized;
+	float lastTimeStep;
+	int collisions;
+	int expireMs;
+	int lastCollideMs;
+};
+
+#endif
 
 typedef int (__cdecl *sithThing_handler_t)(sithThing*);
 // end sithThing

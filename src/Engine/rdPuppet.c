@@ -115,10 +115,12 @@ void rdPuppet_BuildJointMatrices(rdThing *thing, rdMatrix34 *matrix)
     // Added: Fix a crash?
     if (!thing->hierarchyNodeMatrices) return;
 
-#ifdef RAGDOLLS
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 	if (thing->paHierarchyNodeMatricesPrev) // todo: only do this when needed
 		_memcpy(thing->paHierarchyNodeMatricesPrev, thing->hierarchyNodeMatrices, sizeof(rdMatrix34) * model->numHierarchyNodes);
+#endif
 
+#ifdef RAGDOLLS
 	extern int jkPlayer_ragdolls; // low key hate that this is here, find a better way
 	if (jkPlayer_ragdolls && thing->pRagdoll)
 	{

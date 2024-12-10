@@ -159,8 +159,17 @@ void sithWeapon_sub_4D35E0(sithThing *weapon)
                 damageReceiver = searchRes->receiver;
                 if ( damageReceiver->moveType == SITH_MT_PHYSICS && MOTS_ONLY_FLAG(damageReceiver->type != SITH_THING_COG))
                 {
-                    rdVector_Scale3(&tmp2, &weaponPos_, weapon->weaponParams.force);
+					float force = weapon->weaponParams.force;
+#ifdef REGIONAL_DAMAGE
+					//if (joint == JOINTTYPE_HEAD) // boost head shot to makes for a nice backflip effect
+						//force *= 100.0f;
+#endif
+                    rdVector_Scale3(&tmp2, &weaponPos_, force);
                     sithPhysics_ThingApplyForce(damageReceiver, &tmp2);
+#ifdef PUPPET_PHYSICS
+					if (joint >= 0 && damageReceiver->puppet)// && damageReceiver->puppet->physicalized)
+						sithPuppet_ApplyJointForce(damageReceiver, joint, &tmp2);
+#endif
                 }
 			#ifdef RAGDOLLS
 				else if (weapon->weaponParams.force != 0.0 && damageReceiver->moveType == SITH_MT_RAGDOLL && damageReceiver->rdthing.pRagdoll && damageReceiver->physicsParams.mass != 0.0)
@@ -357,10 +366,19 @@ void sithWeapon_sub_4D3920(sithThing *weapon)
                 receiveThing = searchRes->receiver;
                 if ( receiveThing->moveType == SITH_MT_PHYSICS )
                 {
-                    tmp2.x = weapon->weaponParams.force * lookOrient.x;
-                    tmp2.y = weapon->weaponParams.force * lookOrient.y;
-                    tmp2.z = weapon->weaponParams.force * lookOrient.z;
+					float force = weapon->weaponParams.force;
+#ifdef REGIONAL_DAMAGE
+					//if (joint == JOINTTYPE_HEAD) // boost head shot to makes for a nice backflip effect
+						//force *= 100.0f;
+#endif
+                    tmp2.x = force * lookOrient.x;
+                    tmp2.y = force * lookOrient.y;
+                    tmp2.z = force * lookOrient.z;
                     sithPhysics_ThingApplyForce(receiveThing, &tmp2);
+#ifdef PUPPET_PHYSICS
+					if (joint >= 0 && receiveThing->puppet)// && receiveThing->puppet->physicalized)
+						sithPuppet_ApplyJointForce(receiveThing, joint, &tmp2);
+#endif
                 }
 #ifdef RAGDOLLS
 				else if (receiveThing->moveType == SITH_MT_RAGDOLL && receiveThing->rdthing.pRagdoll && receiveThing->physicsParams.mass != 0.0)
@@ -829,6 +847,17 @@ int sithWeapon_Collide(sithThing *physicsThing, sithThing *collidedThing, sithCo
 			joint = sithPuppet_FindHitLoc(collidedThing, &hitPos);
 #endif
             sithThing_Damage(collidedThing, physicsThing, physicsThing->weaponParams.damage, physicsThing->weaponParams.damageClass, joint);
+#ifdef PUPPET_PHYSICS
+			if (joint >= 0 && collidedThing->puppet)// && collidedThing->puppet->physicalized)
+			{
+				float force = physicsThing->weaponParams.force;
+				//if (joint == JOINTTYPE_HEAD) // boost head shot to makes for a nice backflip effect
+					//force *= 100.0f;
+				rdVector3 tmp2;
+				rdVector_Scale3(&tmp2, &vel, force);
+				sithPuppet_ApplyJointForce(collidedThing, joint, &tmp2);
+			}
+#endif
         }
         if (physicsThing->weaponParams.typeflags & SITH_WF_EXPLODE_ON_THING_HIT)
         {

@@ -2018,6 +2018,36 @@ void sithCogFunctionThing_GetActorWeaponMots(sithCog *ctx)
     }
 }
 
+#ifdef PUPPET_PHYSICS
+void sithCogFunctionThing_SetJointFlags(sithCog* ctx)
+{
+	int flags = sithCogExec_PopInt(ctx);
+	int idx = sithCogExec_PopInt(ctx);
+	sithThing* pThing = sithCogExec_PopThing(ctx);
+	if (pThing && pThing->puppet)
+		pThing->puppet->joints[idx].flags |= flags;
+}
+
+void sithCogFunctionThing_ClearJointFlags(sithCog* ctx)
+{
+	int flags = sithCogExec_PopInt(ctx);
+	int idx = sithCogExec_PopInt(ctx);
+	sithThing* pThing = sithCogExec_PopThing(ctx);
+	if (pThing && pThing->puppet)
+		pThing->puppet->joints[idx].flags &= ~flags;
+}
+
+void sithCogFunctionThing_GetJointFlags(sithCog* ctx)
+{
+	int idx = sithCogExec_PopInt(ctx);
+	sithThing* pThing = sithCogExec_PopThing(ctx);
+	if (pThing && pThing->puppet)
+		sithCogExec_PushInt(ctx, pThing->puppet->joints[idx].flags);
+	else
+		sithCogExec_PushInt(ctx, -1);
+}
+#endif
+
 void sithCogFunctionThing_GetPhysicsFlags(sithCog *ctx)
 {
     sithThing* pThing = sithCogExec_PopThing(ctx);
@@ -3013,6 +3043,11 @@ void sithCogFunctionThing_Startup(void* ctx)
     else {
         sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_GetActorWeapon, "getactorweapon");
     }
+#ifdef PUPPET_PHYSICS
+	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_SetJointFlags, "setjointflags");
+	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_ClearJointFlags, "clearjointflags");
+	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_GetJointFlags, "getjointflags");
+#endif
     sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_GetPhysicsFlags, "getphysicsflags");
     sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_SetPhysicsFlags, "setphysicsflags");
     sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_ClearPhysicsFlags, "clearphysicsflags");

@@ -128,7 +128,7 @@ int jkGuiGeneral_ShowAdvanced()
     jkGuiGeneral_aElementsAdvanced[9].selectedTextEntry = jkPlayer_bJankyPhysics;
     jkGuiGeneral_aElementsAdvanced[10].selectedTextEntry = jkPlayer_bKeepCorpses;
     jkGuiGeneral_aElementsAdvanced[11].selectedTextEntry = jkPlayer_bUseOldPlayerPhysics;
-#ifdef RAGDOLLS
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 	jkGuiGeneral_aElementsAdvanced[12].selectedTextEntry = jkPlayer_ragdolls;
 #endif
     
@@ -145,7 +145,7 @@ int jkGuiGeneral_ShowAdvanced()
             jkPlayer_bJankyPhysics = jkGuiGeneral_aElementsAdvanced[9].selectedTextEntry;
             jkPlayer_bKeepCorpses = jkGuiGeneral_aElementsAdvanced[10].selectedTextEntry;
             jkPlayer_bUseOldPlayerPhysics = jkGuiGeneral_aElementsAdvanced[11].selectedTextEntry;
-#ifdef RAGDOLLS
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 			jkPlayer_ragdolls = jkGuiGeneral_aElementsAdvanced[12].selectedTextEntry;
 #endif
 

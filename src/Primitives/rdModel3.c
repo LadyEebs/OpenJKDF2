@@ -62,7 +62,7 @@ rdModel3* rdModel3_New(char *path)
     return 0;
 }
 
-#ifdef RAGDOLLS
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 // todo: pulled from rdThing_AccumulateMatrices, which only uses the thing to access the matrix and amputated joints
 // could just pass those in to a shared function instead (currently ommitted amputated joints)
 void rdModel3_AccumulateMatrices(rdMatrix34* matrices, rdHierarchyNode* node, rdMatrix34* acc)
@@ -545,7 +545,7 @@ int rdModel3_Load(char *model_fpath, rdModel3 *model)
 
     rdModel3_CalcNumParents(model); // MOTS added
 
-#ifdef RAGDOLLS
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 	// generate base pose matrices
 	if(model->numHierarchyNodes)
 	{
@@ -875,7 +875,7 @@ void rdModel3_FreeEntry(rdModel3 *model)
     if (model->materials )
         rdroid_pHS->free(model->materials);
 
-#ifdef RAGDOLLS
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 	if(model->paBasePoseMatrices)
 		rdroid_pHS->free(model->paBasePoseMatrices);
 #endif

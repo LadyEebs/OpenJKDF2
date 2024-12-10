@@ -187,7 +187,7 @@ extern int jkPlayer_aimLock;
 #if defined(DECAL_RENDERING) || defined(RENDER_DROID2)
 extern int jkPlayer_enableDecals;
 #endif
-#ifdef RAGDOLLS
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 extern int jkPlayer_ragdolls;
 extern int jkPlayer_debugRagdolls;
 #endif

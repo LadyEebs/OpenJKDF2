@@ -47,6 +47,22 @@ void sithPuppet_advanceidk(sithThing *pThing, float a2);
 // Added
 int sithPuppet_FindHitLoc(sithThing* pReceiverThing, rdVector3* pPos);
 
+#ifdef PUPPET_PHYSICS
+void sithPuppet_Physicalize(sithThing* pThing, rdVector3* pInitialVel);
+void sithPuppet_Unphysicalize(sithThing* pThing);
+void sithPuppet_ConstrainJoints(sithThing* pThing, int jointA, int jointB, float minDistance);
+void sithPuppet_ConstrainBody(sithThing* pThing);
+int sithPuppet_CollideJoint(sithSector* sector, sithThing* pThing, rdVector3* pos, rdVector3* dir, float radius, rdVector3* hitNormOut);
+void sithPuppet_UpdateJointPositions(sithSector* sector, sithThing* pThing, float deltaSeconds);
+void sithPuppet_Constrain(sithSector* pSector, sithThing* pThing, float deltaSeconds);
+void sithPuppet_UpdateJointMatrices(sithThing* pThing, int init);
+void sithPuppet_ApplyJointForce(sithThing* pThing, int joint, const rdVector3* forceVec);
+void sithPuppet_ApplyForce(sithThing* pThing, const rdVector3* forceVec);
+void sithPuppet_UpdateJoints(sithThing* pThing, float deltaSeconds);
+void sithPuppet_Collide(sithThing* pThing, float deltaSeconds);
+void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds);
+#endif
+
 //static int (*sithPuppet_Startup)() = (void*)sithPuppet_Startup_ADDR;
 //static void (*sithPuppet_FreeEntry)(sithThing *puppet) = (void*)sithPuppet_FreeEntry_ADDR;
 //static void (*sithPuppet_Tick)(sithThing *thing, float a2) = (void*)sithPuppet_Tick_ADDR;

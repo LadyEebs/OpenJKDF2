@@ -115,6 +115,8 @@ typedef struct rdModel3
     rdVector3 insertOffset;
 #ifdef RAGDOLLS
 	rdRagdollSkeleton* pSkel;
+#endif
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 	rdMatrix34* paBasePoseMatrices;
 #endif
 } rdModel3;

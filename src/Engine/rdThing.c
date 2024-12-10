@@ -52,9 +52,14 @@ int rdThing_NewEntry(rdThing *thing, sithThing *parent)
 #ifdef VERTEX_COLORS
 	thing->color.x = thing->color.y = thing->color.z = 1.0f;
 #endif
-#ifdef RAGDOLLS
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 	thing->paHierarchyNodeMatricesPrev = 0;
+#endif
+#ifdef RAGDOLLS
 	thing->pRagdoll = 0;
+#endif
+#ifdef PUPPET_PHYSICS
+	thing->paHiearchyNodeMatrixOverrides = 0;
 #endif
     return 1;
 }
@@ -87,18 +92,26 @@ void rdThing_FreeEntry(rdThing *thing)
             rdroid_pHS->free(thing->amputatedJoints);
             thing->amputatedJoints = 0;
         }
-#ifdef RAGDOLLS
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 		if (thing->paHierarchyNodeMatricesPrev)
 		{
 			rdroid_pHS->free(thing->paHierarchyNodeMatricesPrev);
 			thing->paHierarchyNodeMatricesPrev = 0;
 		}
-
+#endif
+#ifdef RAGDOLLS
 		if (thing->pRagdoll)
 		{
 			rdRagdoll_FreeEntry(thing->pRagdoll);
 			rdroid_pHS->free(thing->pRagdoll);
 			thing->pRagdoll = 0;
+		}
+#endif
+#ifdef PUPPET_PHYSICS
+		if (thing->paHiearchyNodeMatrixOverrides)
+		{
+			rdroid_pHS->free(thing->paHiearchyNodeMatrixOverrides);
+			thing->paHiearchyNodeMatrixOverrides = 0;
 		}
 #endif
     }
@@ -140,11 +153,17 @@ int rdThing_SetModel3(rdThing *thing, rdModel3 *model)
         return 0;
 	_memset(thing->amputatedJoints, 0, sizeof(int) * model->numHierarchyNodes);
 
-#ifdef RAGDOLLS
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 	thing->paHierarchyNodeMatricesPrev = (rdMatrix34*)rdroid_pHS->alloc(sizeof(rdMatrix34) * model->numHierarchyNodes);
 	if (!thing->paHierarchyNodeMatricesPrev)
 		return 0;
 	_memset(thing->paHierarchyNodeMatricesPrev, 0, sizeof(rdMatrix34) * model->numHierarchyNodes);
+#endif
+#ifdef PUPPET_PHYSICS
+	thing->paHiearchyNodeMatrixOverrides = (rdMatrix34**)rdroid_pHS->alloc(sizeof(rdMatrix34*) * model->numHierarchyNodes);
+	if (!thing->paHiearchyNodeMatrixOverrides)
+		return 0;
+	_memset(thing->paHiearchyNodeMatrixOverrides, 0, sizeof(rdMatrix34*) * model->numHierarchyNodes);
 #endif
 
     rdHierarchyNode* iter = model->hierarchyNodes;
@@ -243,6 +262,37 @@ void rdThing_AccumulateMatrices(rdThing *thing, rdHierarchyNode *node, rdMatrix3
 	extern int jkPlayer_ragdolls; // low key hate that this is here, find a better way
 	// the join matrix is already copied to hierarchyNodeMatrices in rdPuppet_BuildJointMatrices
 	if (!jkPlayer_ragdolls || !thing->pRagdoll || node->skelJoint == -1)
+#endif
+#ifdef PUPPET_PHYSICS
+	if (thing->paHiearchyNodeMatrixOverrides[node->idx]) // use override if available
+	{
+		// invert the parent matrix
+//		rdMatrix34 invMat;
+//		rdMatrix_InvertOrtho34(&invMat, acc);
+//
+//		// undo the parent pivot transform
+//		if (node->parent)
+//			rdMatrix_PostTranslate34(&invMat, &node->parent->pivot);
+//	
+//		// move to local space
+//		rdMatrix_Multiply34(&matrix, &invMat, thing->paHiearchyNodeMatrixOverrides[node->idx]);
+//		
+//		// remove the local pivot
+//		rdVector_Neg3(&negPivot, &node->pivot);
+//		rdMatrix_PreTranslate34(&matrix, &negPivot);
+//
+//	//	rdMatrix_Multiply34(&thing->hierarchyNodeMatrices[node->idx], acc, &matrix);
+//		rdMatrix_Copy34(&thing->hierarchyNodeMatrices[node->idx], &matrix);
+//
+//		//if (node->parent)
+//		//	rdMatrix_PreTranslate34(&thing->hierarchyNodeMatrices[node->idx], &node->parent->pivot);
+//
+//	//	rdVector_Neg3(&negPivot, &node->pivot);
+////		rdMatrix_PostTranslate34(&thing->hierarchyNodeMatrices[node->idx], &negPivot);
+
+		rdMatrix_Copy34(&thing->hierarchyNodeMatrices[node->idx], thing->paHiearchyNodeMatrixOverrides[node->idx]);
+	}
+	else
 #endif
 	{
 		rdMatrix_BuildTranslate34(&matrix, &node->pivot);

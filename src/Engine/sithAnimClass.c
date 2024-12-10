@@ -107,6 +107,10 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 #ifdef ANIMCLASS_NAMES
 	rdModel3* model = NULL;
 	int namedBodypart = 0;
+#ifdef PUPPET_PHYSICS
+	float mass = 1.0f / JOINTTYPE_NUM_JOINTS;
+	float bounce = 1.0f;
+#endif
 #endif
 
     mode = 0;
@@ -164,14 +168,40 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 							break;
 						}
 					}
+#ifdef PUPPET_PHYSICS
+					if (stdConffile_entry.numArgs <= 2)
+						flags = 0;
+					else
+						_sscanf(stdConffile_entry.args[2].value, "%x", &flags);
+
+					if(stdConffile_entry.numArgs <= 3)
+						mass = 1.0;
+					else
+						mass = _atof(stdConffile_entry.args[3].key);
+
+					if(stdConffile_entry.numArgs <= 4)
+						bounce = 1.0;
+					else
+						bounce = _atof(stdConffile_entry.args[4].key);
+#endif
 				}
 				else // old syntax
 				{
 					bodypart_idx = _atoi(stdConffile_entry.args[0].key);
 					joint_idx = _atoi(stdConffile_entry.args[0].value);
+					flags = 0;
+					mass = 1.0f;
+					bounce = 1.0f;
 				}
 				if (bodypart_idx < JOINTTYPE_NUM_JOINTS && bodypart_idx >= 0) // Added: check for negative
+				{
 					animclass->bodypart[bodypart_idx].jointIdx = joint_idx;
+#ifdef PUPPET_PHYSICS
+					animclass->bodypart[bodypart_idx].flags = flags & ~JOINTFLAGS_COLLIDED;
+					animclass->bodypart[bodypart_idx].mass = mass;
+					animclass->bodypart[bodypart_idx].bounce = bounce;
+#endif
+				}
 #else
                 bodypart_idx = _atoi(stdConffile_entry.args[0].key);
 				joint_idx = _atoi(stdConffile_entry.args[0].value);
@@ -260,6 +290,10 @@ void sithAnimClass_Free(sithWorld *world)
             v2 = 0;
             do
             {
+#ifdef ANIMCLASS_NAMES
+				if(world->animclasses[v2].jointToBodypart)
+					rdroid_pHS->free(world->animclasses[v2].jointToBodypart);
+#endif
                 stdHashTable_FreeKey(sithPuppet_hashtable, world->animclasses[v2].name);
                 ++v1;
                 ++v2;

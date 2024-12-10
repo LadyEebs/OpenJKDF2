@@ -15,6 +15,7 @@
 #include "stdPlatform.h"
 #include "AI/sithAI.h"
 #include "jk.h"
+#include "Primitives/rdQuat.h"
 
 #include <math.h>
 
@@ -98,6 +99,35 @@ static const char* sithPuppet_jointNames[] =
 	"lfoot",
 #endif
 };
+
+#ifdef PUPPET_PHYSICS
+static int sithPuppet_jointChildren[] =
+{
+	-1,							// JOINTTYPE_HEAD
+	JOINTTYPE_HEAD,				// JOINTTYPE_NECK
+	JOINTTYPE_NECK,				// JOINTTYPE_TORSO
+	-1,							// JOINTTYPE_PRIMARYWEAP
+	-1,							// JOINTTYPE_SECONDARYWEAP
+	JOINTTYPE_PRIMARYWEAP,		// JOINTTYPE_PRIMARYWEAPJOINT
+	JOINTTYPE_SECONDARYWEAP,	// JOINTTYPE_SECONDARYWEAPJOINT
+	-1,							// JOINTTYPE_TURRETPITCH
+	-1,							// JOINTTYPE_TURRETYAW
+	JOINTTYPE_TORSO,			// JOINTTYPE_HIP
+	JOINTTYPE_RFOREARM,			// JOINTTYPE_RSHOULDER
+	JOINTTYPE_LFOREARM,			// JOINTTYPE_LSHOULDER
+	JOINTTYPE_RHAND,			// JOINTTYPE_RFOREARM
+	JOINTTYPE_LHAND,			// JOINTTYPE_LFOREARM
+	-1,							// JOINTTYPE_RHAND
+	-1,							// JOINTTYPE_LHAND
+	JOINTTYPE_RCALF,			// JOINTTYPE_RTHIGH
+	JOINTTYPE_LCALF,			// JOINTTYPE_LTHIGH
+	JOINTTYPE_RFOOT,			// JOINTTYPE_RCALF
+	JOINTTYPE_LFOOT,			// JOINTTYPE_LCALF
+	-1,							// JOINTTYPE_RFOOT
+	-1,							// JOINTTYPE_LFOOT
+};
+#endif
+
 #endif
 
 int sithPuppet_Startup()
@@ -186,6 +216,11 @@ sithPuppet* sithPuppet_NewEntry(sithThing *thing)
         result->field_18 = -1;
         result->currentTrack = -1;
     }
+#ifdef PUPPET_PHYSICS
+	result->pParent = thing;
+	_memset(result->joints, 0, sizeof(result->joints));
+	result->lastTimeStep = sithTime_deltaSeconds;
+#endif
     return result;
 }
 
@@ -365,26 +400,37 @@ void sithPuppet_Tick(sithThing *thing, float deltaSeconds)
     {
         if ( thing->moveType == SITH_MT_PHYSICS )
         {
-            v3 = sithPuppet_sub_4E4380(thing);
-            v4 = thing->puppet;
-            v5 = v4->playingAnim;
-            if ( v5 )
-            {
-                if ( (v5->flags & 1) != 0 )
-                {
-                    v6 = v4->otherTrack;
-                    if ( v6 >= 0 )
-                    {
-                        thinga = v3 * deltaSeconds;
-                        v8 = thinga;
-                        if ( v8 < 0.0 )
-                            v8 = -v8;
-                        v31 = v8 * 280.0;
-                        rdPuppet_AdvanceTrack(thing->rdthing.puppet, v6, v31);
-                    }
-                }
-            }
-            sithPuppet_FidgetAnim(thing);
+		#ifdef PUPPET_PHYSICS
+			// do physicalized animation if necessary
+			if(thing->puppet->physicalized && jkPlayer_ragdolls)
+			{
+				sithPuppet_UpdatePhysicsAnim(thing, deltaSeconds);
+			}
+			else // otherwise update the animation
+		#endif
+			{
+
+				v3 = sithPuppet_sub_4E4380(thing);
+				v4 = thing->puppet;
+				v5 = v4->playingAnim;
+				if ( v5 )
+				{
+					if ( (v5->flags & 1) != 0 )
+					{
+						v6 = v4->otherTrack;
+						if ( v6 >= 0 )
+						{
+							thinga = v3 * deltaSeconds;
+							v8 = thinga;
+							if ( v8 < 0.0 )
+								v8 = -v8;
+							v31 = v8 * 280.0;
+							rdPuppet_AdvanceTrack(thing->rdthing.puppet, v6, v31);
+						}
+					}
+				}
+				sithPuppet_FidgetAnim(thing);
+			}
         }
         if ( rdPuppet_UpdateTracks(thing->rdthing.puppet, deltaSeconds) && thing->moveType == SITH_MT_PATH )
         {
@@ -1003,3 +1049,1041 @@ int sithPuppet_FindHitLoc(sithThing* pReceiverThing, rdVector3* pPos)
 	}
 	return -1;
 }
+
+#ifdef PUPPET_PHYSICS
+
+int sithPuppet_GetJointNodeIndex(sithThing* pThing, int idx)
+{
+	sithBodyPart* pBodypart = &pThing->animclass->bodypart[idx];
+	if(pBodypart->flags & JOINTFLAGS_PHYSICS)
+		return pThing->animclass->bodypart[idx].jointIdx;
+	return -1;
+}
+
+void sithPuppet_Physicalize(sithThing* pThing, rdVector3* pInitialVel)
+{
+	if (!pThing->animclass || pThing->rdthing.type != RD_THINGTYPE_MODEL || !pThing->rdthing.model3 || !pThing->puppet || !pThing->rdthing.puppet || (g_debugmodeFlags & DEBUGFLAG_NO_PUPPETS))
+		return;
+
+//	rdPuppet_BuildJointMatrices(&pThing->rdthing, &pThing->lookOrientation);
+
+	if (pThing->rdthing.paHiearchyNodeMatrixOverrides)
+		memset(pThing->rdthing.paHiearchyNodeMatrixOverrides, NULL, sizeof(rdMatrix34*) * pThing->rdthing.model3->numHierarchyNodes);
+
+	rdVector3 thingVel;
+	rdVector_Scale3(&thingVel, pInitialVel, sithTime_deltaSeconds);
+
+	for (int i = 0; i < JOINTTYPE_NUM_JOINTS; i++)
+	{
+		int nodeIdx = pThing->animclass->bodypart[i].jointIdx;//sithPuppet_GetJointNodeIndex(pThing, i);
+		if(nodeIdx < 0)
+			continue;
+
+		rdHierarchyNode* pNode = &pThing->rdthing.model3->hierarchyNodes[nodeIdx];
+
+		sithPuppetJoint* pJoint = &pThing->puppet->joints[i];
+		pJoint->flags = pThing->animclass->bodypart[i].flags;
+
+		// pin the hip to the thing origin
+		//if(i == JOINTTYPE_HIP)
+		//	pJoint->flags |= JOINTFLAGS_ROOT | JOINTFLAGS_PINNED;
+
+		rdMatrix_Copy34(&pJoint->lookOrient, &pThing->rdthing.hierarchyNodeMatrices[nodeIdx]);
+
+		//rdVector3 pivotWS;
+		//rdMatrix_TransformVector34(&pivotWS, &pNode->pivot, &pThing->rdthing.hierarchyNodeMatrices[nodeIdx]);
+
+
+		rdVector_Copy3(&pJoint->pos, &pThing->rdthing.hierarchyNodeMatrices[nodeIdx].scale);
+		rdVector_Copy3(&pJoint->lastPos, &pThing->rdthing.paHierarchyNodeMatricesPrev[nodeIdx].scale);
+
+		//rdVector_Sub3Acc(&pJoint->pos, &pivotWS);
+	//	rdVector_Sub3Acc(&pJoint->lastPos, &pivotWS);
+
+		// add the initial velocity
+		//rdVector_Add3Acc(&pJoint->pos, &thingVel);
+
+		// clear next position accumulator
+		rdVector_Zero3(&pJoint->nextPosAcc);
+		pJoint->nextPosWeight = 0.0f;
+
+		// todo: we're gonna need a better way of deciding how big of a radius to make for each joint
+		if (pNode->meshIdx != -1)
+			pJoint->radius = pThing->rdthing.model3->geosets[0].meshes[pNode->meshIdx].radius * 0.35f;
+		else
+			pJoint->radius = 0.01f;
+
+		// the joint contains a dummy thing for collision handling
+		sithThing_DoesRdThingInit(&pJoint->thing);
+		pJoint->thing.thingIdx = -1;
+		pJoint->thing.signature = -1;
+		pJoint->thing.thing_id = -1;
+		pJoint->thing.type = SITH_THING_ACTOR;
+		pJoint->thing.collide = SITH_COLLIDE_SPHERE;
+		pJoint->thing.moveSize = pJoint->radius;
+		pJoint->thing.collideSize = pJoint->radius;
+		pJoint->thing.moveType = SITH_MT_NONE;
+		pJoint->thing.prev_thing = pThing;
+		pJoint->thing.child_signature = pThing->signature;
+		_memcpy(&pJoint->thing.physicsParams, &pThing->physicsParams, sizeof(sithThingPhysParams));
+		pJoint->thing.physicsParams.physflags = 0;
+		rdMatrix_Identity34(&pJoint->thing.lookOrientation); // don't think we care about orientation?
+		pJoint->thing.parentThing = pThing;
+	}
+
+	sithPuppet_UpdateJointMatrices(pThing, 1);
+
+	// the relative change in the center will be used to update the thing position
+	rdVector_Zero3(&pThing->puppet->center);
+	for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
+	{
+		sithPuppetJoint* pJoint = &pThing->puppet->joints[i];
+		rdVector_Add3Acc(&pThing->puppet->center, &pJoint->pos);
+	}
+	rdVector_InvScale3Acc(&pThing->puppet->center, (float)JOINTTYPE_NUM_JOINTS);
+
+	// mark for physics
+	pThing->puppet->physicalized = 1;
+}
+
+void sithPuppet_Unphysicalize(sithThing* pThing)
+{
+	pThing->puppet->physicalized = 0;
+	if (pThing->rdthing.paHiearchyNodeMatrixOverrides)
+		memset(pThing->rdthing.paHiearchyNodeMatrixOverrides, NULL, sizeof(rdMatrix34*) * pThing->rdthing.model3->numHierarchyNodes);
+}
+
+void sithPuppet_ConstrainJoints(sithThing* pThing, int jointA, int jointB, float minDistance)
+{
+	int nodeIdxA = sithPuppet_GetJointNodeIndex(pThing, jointA);
+	int nodeIdxB = sithPuppet_GetJointNodeIndex(pThing, jointB);
+
+	if(nodeIdxA < 0 || nodeIdxB < 0)
+		return;
+
+	//if (pThing->rdthing.amputatedJoints[nodeIdxA] || pThing->rdthing.amputatedJoints[nodeIdxB])
+	//	return;
+
+	// todo: precompute the constraint distance
+	rdVector3* pBasePosA = &pThing->rdthing.model3->paBasePoseMatrices[nodeIdxA].scale;
+	rdVector3* pBasePosB = &pThing->rdthing.model3->paBasePoseMatrices[nodeIdxB].scale;
+	float distance = rdVector_Dist3(pBasePosB, pBasePosA) * 0.95f;
+
+	sithPuppetJoint* pJointA = &pThing->puppet->joints[jointA];
+	sithPuppetJoint* pJointB = &pThing->puppet->joints[jointB];
+
+	// calculate the delta
+	rdVector3 delta;
+	rdVector_Sub3(&delta, &pJointB->pos, &pJointA->pos);
+
+	//float deltaLen = rdVector_Normalize3Acc(&delta);
+	float deltaLen = rdVector_Len3(&delta);
+	if(minDistance >= 0 && deltaLen > distance * minDistance)
+		return;
+		
+	float invMassA = 1.0f / (pThing->animclass->bodypart[jointA].mass);
+	float invMassB = 1.0f / (pThing->animclass->bodypart[jointB].mass);
+	float diff = (deltaLen - distance) / (deltaLen * (invMassA + invMassB));
+		
+	if (!(pJointA->flags & JOINTFLAGS_PINNED))
+	{
+		rdVector3 deltaA;
+		rdVector_Scale3(&deltaA, &delta, (double)diff * invMassA);
+		
+		rdVector3 offsetA;
+		rdVector_Add3(&offsetA, &pJointA->pos, &deltaA);
+		rdVector_Add3Acc(&pJointA->nextPosAcc, &offsetA);
+		pJointA->nextPosWeight++;
+	}
+
+	if (!(pJointB->flags & JOINTFLAGS_PINNED))
+	{
+		rdVector3 deltaB;
+		rdVector_Scale3(&deltaB, &delta, (double)diff * invMassB);
+
+		rdVector3 offsetB;
+		rdVector_Sub3(&offsetB, &pJointB->pos, &deltaB);
+		rdVector_Add3Acc(&pJointB->nextPosAcc, &offsetB);
+		pJointB->nextPosWeight++;
+	}
+}
+
+//void sithPuppet_ConstraintPointToPlane(sithThing* pThing, const rdVector3* Point, const rdVector3* Normal, int jointA, int jointB, float dampening)
+//{
+//	sithPuppetJoint* pA = &pThing->puppet->joints[jointA];
+//	sithPuppetJoint* pB = &pThing->puppet->joints[jointB];
+//
+//	rdVector4 plane;
+//	rdVector_Normalize3((rdVector3*)&plane, Normal);
+//	plane.w = rdVector_Dot3(Point, Normal);
+//
+//	// Get distance from plane
+//	float D = rdVector_Dot3(&pA->pos, (rdVector3*)&plane) - plane.w;
+//	if (D > 0)
+//	{
+//		// Setup masses
+//		float invMass0 = 1.0f / pThing->animclass->bodypart[jointA].mass;
+//		float invMass1 = 1.0f / pThing->animclass->bodypart[jointB].mass;
+//		float totalInvMass = invMass0 + invMass1;
+//		if (totalInvMass == 0.0f)
+//			return;
+//
+//		// Move particles towards plane
+//		D *= dampening / totalInvMass;
+//		rdVector_Scale3Acc((rdVector3*)&plane, D);
+//		rdVector_MultAcc3(&pA->pos, (rdVector3*)&plane, -invMass0);
+//		rdVector_MultAcc3(&pA->pos, (rdVector3*)&plane, invMass1);
+//	}
+//}
+//
+//void sithPuppet_ConstrainJointToPlane(rdVector4* out, sithThing* pThing, int joint, int planeJointA, int planeJointB, int planeJointC)
+//{
+//	int nodeIdx  = sithPuppet_GetJointNodeIndex(pThing, pThing);
+//	int nodeIdxA = sithPuppet_GetJointNodeIndex(pThing, planeJointA);
+//	int nodeIdxB = sithPuppet_GetJointNodeIndex(pThing, planeJointB);
+//	int nodeIdxC = sithPuppet_GetJointNodeIndex(pThing, planeJointC);
+//
+//	if (pThing < 0 || nodeIdxA < 0 || nodeIdxB < 0 || nodeIdxC < 0)
+//		return;
+//
+//	sithPuppetJoint* pJoint  = &pThing->puppet->joints[joint];
+//	sithPuppetJoint* pJointA = &pThing->puppet->joints[planeJointA];
+//	sithPuppetJoint* pJointB = &pThing->puppet->joints[planeJointB];
+//	sithPuppetJoint* pJointC = &pThing->puppet->joints[planeJointC];
+//
+//	rdVector3 v1;
+//	rdVector_Sub3(&v1, &pJointB->pos, &pJointA->pos);
+//
+//	rdVector3 v2;
+//	rdVector_Sub3(&v2, &pJointC->pos, &pJointA->pos);
+//
+//	rdVector3 pos;
+//	rdVector_Add3(&pos, &pJoint->pos, &pJointA->pos);
+//	rdVector_Scale3Acc(&pos, 0.5f);
+//
+//	rdVector3 normal;
+//	rdVector_Cross3(&normal, &v2, &v1);
+//
+//	sithPuppet_ConstraintPointToPlane(pThing, &pos, &normal, joint, planeJointA, 1.0f);
+//}
+
+void sithPuppet_ConstrainBody(sithThing* pThing)
+{
+	// head constraints
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_HEAD,      JOINTTYPE_NECK, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_HEAD,     JOINTTYPE_TORSO, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_HEAD, JOINTTYPE_RSHOULDER, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_HEAD, JOINTTYPE_LSHOULDER, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_HEAD,       JOINTTYPE_HIP, -1);
+
+	// neck constraints
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_NECK,     JOINTTYPE_TORSO, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_NECK, JOINTTYPE_RSHOULDER, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_NECK, JOINTTYPE_LSHOULDER, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_NECK,       JOINTTYPE_HIP, -1);
+
+	// torso constraints
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_TORSO,       JOINTTYPE_HIP, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_TORSO, JOINTTYPE_RSHOULDER, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_TORSO, JOINTTYPE_LSHOULDER, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_TORSO,    JOINTTYPE_RTHIGH, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_TORSO,    JOINTTYPE_LTHIGH, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_TORSO,     JOINTTYPE_LFOOT, 0.8f); // prevent torso getting too close to foot
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_TORSO,     JOINTTYPE_RFOOT, 0.8f); // prevent torso getting too close to foot
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_TORSO,     JOINTTYPE_LCALF, 0.9f); // prevent calf getting too close to torso
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_TORSO,     JOINTTYPE_RCALF, 0.9f); // prevent calf getting too close to torso
+
+	// hip constraints
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_HIP, JOINTTYPE_RSHOULDER, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_HIP, JOINTTYPE_LSHOULDER, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_HIP,    JOINTTYPE_RTHIGH, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_HIP,    JOINTTYPE_LTHIGH, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_HIP,     JOINTTYPE_LCALF, 0.9f); // prevent calf getting too close to hip
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_HIP,     JOINTTYPE_RCALF, 0.9f); // prevent calf getting too close to hip
+
+	// arm constraints
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RSHOULDER, JOINTTYPE_LSHOULDER, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RFOREARM,   JOINTTYPE_LFOREARM, 0.75f); // prevent forearms from getting too close together
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RHAND,         JOINTTYPE_LHAND, 0.8f); // prevent hands getting too close together
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_LFOREARM,      JOINTTYPE_RHAND, 0.75f); // prevent calf getting too close to other foot
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RFOREARM,      JOINTTYPE_LHAND, 0.75f); // prevent calf getting too close to other foot
+
+	// right arm
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER, -1);
+	sithPuppet_ConstrainJoints(pThing,    JOINTTYPE_RHAND,  JOINTTYPE_RFOREARM, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RSHOULDER, JOINTTYPE_RTHIGH, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RSHOULDER, JOINTTYPE_LTHIGH, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_LHAND, 0.75f); // prevent forearm getting too close to other hand
+
+	// left arm
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER, -1);
+	sithPuppet_ConstrainJoints(pThing,    JOINTTYPE_LHAND,  JOINTTYPE_LFOREARM, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_LSHOULDER, JOINTTYPE_RTHIGH, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_LSHOULDER, JOINTTYPE_LTHIGH, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_RHAND, 0.75f); // prevent forearm getting too close to other hand
+
+	// leg constraints
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_LTHIGH, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RCALF, JOINTTYPE_LCALF, 0.8f); // prevent calfs getting too close together
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RFOOT, JOINTTYPE_LFOOT, 0.7f); // prevent feet getting too close together
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_LCALF, JOINTTYPE_RFOOT, 0.75f); // prevent calf getting too close to other foot
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RCALF, JOINTTYPE_LFOOT, 0.75f); // prevent calf getting too close to other foot
+
+	// right leg
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RFOOT,  JOINTTYPE_RCALF, -1);
+
+	// left arm
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_LFOOT,  JOINTTYPE_LCALF, -1);
+
+	// weapon
+	sithPuppet_ConstrainJoints(pThing,   JOINTTYPE_PRIMARYWEAP, JOINTTYPE_RHAND, -1);
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_SECONDARYWEAP, JOINTTYPE_LHAND, -1);
+
+
+	//sithPuppet_ConstrainJoints(pThing, JOINTTYPE_LHAND, JOINTTYPE_HIP, 0.75f); // prevent getting too close to hip
+	//sithPuppet_ConstrainJoints(pThing, JOINTTYPE_LHAND, JOINTTYPE_HEAD, 0.85f); // prevent getting too close to head
+	//sithPuppet_ConstrainJoints(pThing, JOINTTYPE_LHAND, JOINTTYPE_RFOOT, 0.5f); // prevent getting too close to foot
+	//sithPuppet_ConstrainJoints(pThing, JOINTTYPE_LHAND, JOINTTYPE_LFOOT, 0.5f); // prevent getting too close to foot
+	//sithPuppet_ConstrainJoints(pThing, JOINTTYPE_LHAND, JOINTTYPE_LSHOULDER, 0.5f); // prevent getting too close to shoulder
+	//sithPuppet_ConstrainJoints(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_TORSO, 1.0f); // prevent getting too close to torso
+	//sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RHAND, JOINTTYPE_HIP, 0.75f); // prevent getting too close to hip
+	//sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RHAND, JOINTTYPE_HEAD, 0.85f); // prevent getting too close to head
+	//sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RHAND, JOINTTYPE_LFOOT, 0.5f); // prevent getting too close to foot
+	//sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RHAND, JOINTTYPE_RFOOT, 0.5f); // prevent getting too close to foot
+	//sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RHAND, JOINTTYPE_RSHOULDER, 0.5f); // prevent getting too close to shoulder
+	//sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_TORSO, 1.0f); // prevent getting too close to torso
+	//sithPuppet_ConstrainJoints(pThing, JOINTTYPE_TORSO, JOINTTYPE_LFOOT, 0.75f); // prevent getting too close to foot
+	//sithPuppet_ConstrainJoints(pThing, JOINTTYPE_TORSO, JOINTTYPE_RFOOT, 0.75f); // prevent getting too close to foot
+	//sithPuppet_ConstrainJoints(pThing, JOINTTYPE_HEAD, JOINTTYPE_HIP, 0.6f); // prevent getting too close to hip
+	//sithPuppet_ConstrainJoints(pThing, JOINTTYPE_HEAD, JOINTTYPE_TORSO, 0.8f); // prevent getting too close to torso
+}
+
+// updates a joints matrix using a reference triangle to attempt to orient the joint correctly (since we don't handle rotation in the joint system)
+void sithPuppet_UpdateJointMatrix(sithThing* pThing, int joint, int refJointA, int refJointB, int refJointC, int init)
+{
+	int nodeIdx     = pThing->animclass->bodypart[joint].jointIdx;//sithPuppet_GetJointNodeIndex(pThing, joint);
+	int refNodeIdxA = pThing->animclass->bodypart[refJointA].jointIdx;//sithPuppet_GetJointNodeIndex(pThing, refJointA);
+	int refNodeIdxB = pThing->animclass->bodypart[refJointB].jointIdx;//sithPuppet_GetJointNodeIndex(pThing, refJointB);
+	int refNodeIdxC = pThing->animclass->bodypart[refJointC].jointIdx;//sithPuppet_GetJointNodeIndex(pThing, refJointC);
+
+	if (nodeIdx < 0 || refNodeIdxA < 0 || refNodeIdxB < 0 || refNodeIdxC < 0)
+		return;
+
+	//if (pThing->rdthing.amputatedJoints[nodeIdx] || pThing->rdthing.amputatedJoints[refNodeIdxA] || pThing->rdthing.amputatedJoints[refNodeIdxB])
+	//	return;
+	
+	sithPuppetJoint* pJoint = &pThing->puppet->joints[joint];
+	//if(pJoint->flags & JOINTFLAGS_ROOT)
+		//return;
+
+	sithPuppetJoint* pRefJointA = &pThing->puppet->joints[refJointA];
+	sithPuppetJoint* pRefJointB = &pThing->puppet->joints[refJointB];
+	sithPuppetJoint* pRefJointC = &pThing->puppet->joints[refJointC];
+
+	const rdVector3* pPos0 = &pJoint->pos;
+	const rdVector3* pPos1 = &pRefJointA->pos;
+	const rdVector3* pPos2 = &pRefJointB->pos;
+	const rdVector3* pPos3 = &pRefJointC->pos;
+
+	rdMatrix34 m;
+	rdMatrix34* pMat = init ? &m : &pJoint->tmpMat;
+	rdMatrix_Identity34(pMat);
+
+	rdVector_Sub3(&pMat->uvec, pPos2, pPos1);
+	rdVector_Normalize3Acc(&pMat->uvec);
+
+	rdVector_Sub3(&pMat->rvec, pPos3, pPos1);
+	rdVector_Normalize3Acc(&pMat->rvec);
+
+	rdVector_Cross3(&pMat->lvec, &pMat->uvec, &pMat->rvec);
+	rdVector_Normalize3Acc(&pMat->lvec);
+
+	rdVector_Cross3(&pMat->rvec, &pMat->lvec, &pMat->uvec);
+	rdVector_Normalize3Acc(&pMat->rvec);
+
+	if(init)
+	{
+		rdMatrix34 invMat;
+		rdMatrix_InvertOrtho34(&invMat, &m);
+		rdMatrix_Multiply34(&pJoint->refMat, &invMat, &pThing->rdthing.hierarchyNodeMatrices[nodeIdx]);
+	}
+}
+/*
+// Adds debug plane for drawing in debug mode
+void ragdoll::AddDebugPlane( const vector3& Point, const vector3& Normal, xcolor Color )
+{
+	ASSERT(m_NDebugPlanes < MAX_DEBUG_PLANES);
+	debug_plane& Plane = m_DebugPlanes[m_NDebugPlanes++];
+	Plane.Point  = Point;
+	Plane.Normal = Normal;
+	Plane.Color  = Color;
+}
+
+// Keeps ParticleA (connected to ParticleB) behind the plane
+void ragdoll::KeepBehindPlane( const vector3&   Point, const vector3&   Normal, particle*  pA, particle*  pB, f32 Damp )
+{
+	ASSERT( pA );
+	ASSERT( pB );
+
+	// Setup plane
+	plane Plane ;
+	Plane.Setup(Point, Normal) ;
+
+	// Get distance from plane
+	f32 D = Plane.Distance(pA->m_Pos) ;
+	if (D > 0)
+	{
+		// Setup masses
+		f32 InvMass0 = pA->GetInvMass() ;
+		f32 InvMass1 = pB->GetInvMass() ;
+		f32 TotalInvMass = InvMass0 + InvMass1 ;
+		if( TotalInvMass == 0.0f )
+			return ;
+		
+		// Move particles towards plane
+		D *= Damp / TotalInvMass ;
+		Plane.Normal *= D;
+		pA->m_Pos -= InvMass0 * Plane.Normal ;
+		pB->m_Pos += InvMass1 * Plane.Normal ;
+		#ifdef X_DEBUG
+		AddDebugPlane(Point, Normal, XCOLOR_YELLOW) ;
+		#endif
+	}
+	else
+	{
+	#ifdef X_DEBUG
+	AddDebugPlane(Point, Normal, XCOLOR_RED) ;
+	#endif
+	}
+}
+
+// Keeps ParticleA (connected to ParticleB) on the plane
+void ragdoll::KeepOnPlane( const vector3&   Point, const vector3&   Normal, particle*  pA, particle*  pB )
+{
+	ASSERT( pA );
+	ASSERT( pB );
+	
+	// Setup plane
+	plane Plane ;
+	Plane.Setup(Point, Normal) ;
+	
+	// Setup masses
+	f32 InvMass0 = pA->GetInvMass() ;
+	f32 InvMass1 = pB->GetInvMass() ;
+	f32 TotalInvMass = InvMass0 + InvMass1 ;
+	if( TotalInvMass == 0.0f )
+		return;
+		
+	// Move particles towards plane
+	f32 D = Plane.Distance(pA->m_Pos) ;
+	D *= 1.0f / TotalInvMass ;
+	Plane.Normal *= D;
+	pA->m_Pos -= InvMass0 * Plane.Normal ;
+	pB->m_Pos += InvMass1 * Plane.Normal ;
+	#ifdef X_DEBUG
+	AddDebugPlane(Point, Normal, XCOLOR_GREEN) ;
+	#endif
+}
+
+void ragdoll::ApplyHumanConstraints( void )
+{
+CONTEXT("ragdoll::ApplyHumanConstraints") ;
+s32     i ;
+vector3 Point, Normal, Out ;
+vector3 Torso2Torso, Torso2Hip,
+Hip2Torso, Hip2Hip, Hip2Knee,
+Knee2Hip, Knee2Foot ;
+
+vector3 Shoulder2Torso, Shoulder2Elbow,  Shoulder2Shoulder ;
+
+// Do both sides of body
+for (i = 0 ; i < 2 ; i++)
+{
+	// Useful info
+	f32 Side     = (i == 0) ? 1.0f : -1.0f ;
+	joint_side& Joints   = m_Joints.m_Side ;
+	joint_side& OpJoints = m_Joints.m_Side[i^1] ;
+
+	// Keep shoulder behind of hip plane
+	Torso2Torso    = OpJoints.m_pTorso->m_Pos - Joints.m_pTorso->m_Pos ;
+	Torso2Hip      = Joints.m_pHip->m_Pos - Joints.m_pTorso->m_Pos ;
+	Point          = (Joints.m_pShoulder->m_Pos + Joints.m_pTorso->m_Pos) * 0.5f ;
+	Normal         = Torso2Torso.Cross(Torso2Hip) * Side ;
+	KeepBehindPlane(Point, Normal, Joints.m_pShoulder, Joints.m_pTorso, 1.0f) ;
+
+	// Stop knee from going too far out
+	Normal = Joints.m_pHip->m_Pos - OpJoints.m_pHip->m_Pos ;
+	Point  = Joints.m_pHip->m_Pos + (2.0f * Normal) ;
+	KeepBehindPlane(Point, Normal, Joints.m_pKnee, Joints.m_pHip) ;
+
+	// Keep knee behind hip plane
+	Hip2Torso   = Joints.m_pTorso->m_Pos - Joints.m_pHip->m_Pos ;
+	Torso2Torso = OpJoints.m_pTorso->m_Pos - Joints.m_pTorso->m_Pos ;
+	Normal      = Hip2Torso.Cross(Torso2Torso) * Side ;
+	Point       = (Normal * 0.01f) + ((Joints.m_pKnee->m_Pos + Joints.m_pHip->m_Pos) * 0.5f) ;
+
+	KeepBehindPlane(Point, Normal, Joints.m_pKnee, Joints.m_pHip, 1.0f) ;
+
+	// Keep foot behind thigh plane
+	Knee2Hip    = Joints.m_pHip->m_Pos   - Joints.m_pKnee->m_Pos ;
+	Knee2Foot   = Joints.m_pFoot->m_Pos  - Joints.m_pKnee->m_Pos ;
+	Hip2Hip     = OpJoints.m_pHip->m_Pos - Joints.m_pHip->m_Pos ;
+	Point       = (Joints.m_pFoot->m_Pos + Joints.m_pKnee->m_Pos) * 0.5f ;
+	Normal      = Hip2Hip.Cross(Knee2Hip) * Side ;
+	KeepBehindPlane(Point, Normal, Joints.m_pFoot, Joints.m_pKnee, 1.0f) ;
+
+	// Compute leg plane normal
+	Hip2Hip  = OpJoints.m_pHip->m_Pos - Joints.m_pHip->m_Pos ;
+	Hip2Knee = Joints.m_pKnee->m_Pos  - Joints.m_pHip->m_Pos ;
+	Out      = Hip2Hip.Cross(Hip2Knee) ;
+	Normal   = Out.Cross(Hip2Knee) ;
+
+	// Keep foot on leg plane without causing any twist - works finally!!!
+	Point  = (Joints.m_pFoot->m_Pos + Joints.m_pKnee->m_Pos) * 0.5f ;
+	KeepOnPlane(Point, Normal, Joints.m_pFoot, Joints.m_pKnee) ;
+
+	// Keep elbow behind side plane (stop it going into the head)
+	Normal         = OpJoints.m_pShoulder->m_Pos - Joints.m_pShoulder->m_Pos ;
+	Point          = (Joints.m_pElbow->m_Pos + Joints.m_pShoulder->m_Pos) * 0.5f ;
+	KeepBehindPlane(Point, Normal, Joints.m_pElbow, Joints.m_pShoulder, 1.0f) ;
+
+	// Keep elbow infront of torso
+	Shoulder2Shoulder = OpJoints.m_pShoulder->m_Pos - Joints.m_pShoulder->m_Pos ;
+	Shoulder2Torso = Joints.m_pTorso->m_Pos - Joints.m_pShoulder->m_Pos ;
+	Point          = (Joints.m_pElbow->m_Pos + Joints.m_pShoulder->m_Pos) * 0.5f ;
+	Normal         = Shoulder2Shoulder.Cross(Shoulder2Torso) * Side ;
+	Point -= Normal * 0.0001f ;  // Keep slightly infront so geom arm rotation doesn't flip
+
+	KeepBehindPlane(Point, Normal, Joints.m_pElbow, Joints.m_pShoulder, 1.0f) ;
+
+	// Keep wrist behind upper arm plane
+	Shoulder2Torso = Joints.m_pTorso->m_Pos - Joints.m_pShoulder->m_Pos ;
+	Shoulder2Elbow = Joints.m_pElbow->m_Pos - Joints.m_pShoulder->m_Pos ;
+	Point          = (Joints.m_pWrist->m_Pos + Joints.m_pElbow->m_Pos) * 0.5f ;
+	Normal         = Shoulder2Torso.Cross(Shoulder2Elbow) * Side ;
+	KeepBehindPlane(Point, Normal, Joints.m_pWrist, Joints.m_pElbow) ;
+	}
+}
+*/
+void sithPuppet_UpdateJointMatrices(sithThing* pThing, int init)
+{
+	// orient the head and torso with respect to the shoulders
+	sithPuppet_UpdateJointMatrix(pThing,  JOINTTYPE_HEAD, JOINTTYPE_HEAD, JOINTTYPE_RSHOULDER, JOINTTYPE_LSHOULDER, init);
+	sithPuppet_UpdateJointMatrix(pThing,  JOINTTYPE_NECK, JOINTTYPE_HEAD, JOINTTYPE_RSHOULDER, JOINTTYPE_LSHOULDER, init);
+	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_TORSO,  JOINTTYPE_HIP, JOINTTYPE_RSHOULDER, JOINTTYPE_LSHOULDER, init);
+
+	// orient the hip with respect to the legs
+	sithPuppet_UpdateJointMatrix(pThing,   JOINTTYPE_HIP, JOINTTYPE_TORSO, JOINTTYPE_LTHIGH, JOINTTYPE_RTHIGH, init);
+
+	// orient the shoulders with respect to the arms and hip
+	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_LSHOULDER, JOINTTYPE_LSHOULDER, JOINTTYPE_LFOREARM, JOINTTYPE_HIP, init);
+	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RSHOULDER, JOINTTYPE_RSHOULDER, JOINTTYPE_RFOREARM, JOINTTYPE_HIP, init);
+
+	// orient the hands with respect to the forearms and hip
+	sithPuppet_UpdateJointMatrix(pThing,     JOINTTYPE_LHAND, JOINTTYPE_LHAND, JOINTTYPE_LFOREARM, JOINTTYPE_HIP, init);
+	sithPuppet_UpdateJointMatrix(pThing,     JOINTTYPE_RHAND, JOINTTYPE_RHAND, JOINTTYPE_RFOREARM, JOINTTYPE_HIP, init);
+	
+	// orient the thigh with respect to the calves and hip
+	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_LTHIGH, JOINTTYPE_LTHIGH, JOINTTYPE_LCALF, JOINTTYPE_HIP, init);
+	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_RTHIGH, JOINTTYPE_RCALF, JOINTTYPE_HIP, init);
+
+	// orient the calves with respect to the thighs and hip
+	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RCALF, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, JOINTTYPE_HIP, init);
+	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_LCALF, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, JOINTTYPE_HIP, init);
+
+	// orient the forearms with respect to the shoulders and torso
+	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER, JOINTTYPE_TORSO, init);
+	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER, JOINTTYPE_TORSO, init);
+
+	// orient the feet with respect to the calves and hip
+	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_LFOOT, JOINTTYPE_LFOOT, JOINTTYPE_LCALF, JOINTTYPE_HIP, init);
+	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RFOOT, JOINTTYPE_RFOOT, JOINTTYPE_RCALF, JOINTTYPE_HIP, init);
+
+	// build joint matrices from reference joints
+//	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_HEAD, JOINTTYPE_RTHIGH, JOINTTYPE_LTHIGH, init);
+//	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_NECK, JOINTTYPE_RTHIGH, JOINTTYPE_LTHIGH, init);
+//	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_TORSO, JOINTTYPE_RTHIGH, JOINTTYPE_LTHIGH, init);
+//	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_HIP, JOINTTYPE_LSHOULDER, JOINTTYPE_RSHOULDER, init);
+//	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RSHOULDER, JOINTTYPE_TORSO, JOINTTYPE_HIP, init);
+//	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_LSHOULDER, JOINTTYPE_HIP, JOINTTYPE_TORSO, init);
+//	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_HIP, JOINTTYPE_TORSO, init);
+//	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_TORSO, JOINTTYPE_HIP, init);
+//	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_LHAND, JOINTTYPE_LFOREARM, JOINTTYPE_HIP, init);
+//	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RHAND, JOINTTYPE_HIP, JOINTTYPE_RFOREARM, init);
+//	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_TORSO, JOINTTYPE_HIP, init);
+//	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_LTHIGH, JOINTTYPE_HIP, JOINTTYPE_TORSO, init);
+//	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RCALF, JOINTTYPE_TORSO, JOINTTYPE_HIP, init);
+//	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_LCALF, JOINTTYPE_HIP, JOINTTYPE_TORSO, init);
+//	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_LFOOT, JOINTTYPE_LTHIGH, JOINTTYPE_LCALF, init);
+//	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RFOOT, JOINTTYPE_RTHIGH, JOINTTYPE_RCALF, init);
+}
+
+void sithPuppet_ApplyJointMatrices(sithThing* thing)
+{
+	for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
+	{
+		int nodeIdx = sithPuppet_GetJointNodeIndex(thing, i);
+		if (nodeIdx < 0 || thing->rdthing.amputatedJoints[nodeIdx])
+			continue;
+
+		sithPuppetJoint* pJoint = &thing->puppet->joints[i];
+
+#if 0
+		int childJoint = -1;//sithPuppet_jointChildren[i];
+
+		switch (i)
+		{
+		case JOINTTYPE_NECK:
+			childJoint = JOINTTYPE_TORSO;//JOINTTYPE_HEAD;
+			break;
+		case JOINTTYPE_TORSO:
+			childJoint = JOINTTYPE_NECK;//JOINTTYPE_HIP;
+			break;
+		case JOINTTYPE_HIP:
+			childJoint = JOINTTYPE_TORSO;
+			break;
+		case JOINTTYPE_RSHOULDER:
+			childJoint = JOINTTYPE_TORSO;//JOINTTYPE_RFOREARM;
+			break;
+		case JOINTTYPE_LSHOULDER:
+			childJoint = JOINTTYPE_TORSO;//JOINTTYPE_LFOREARM;
+			break;
+		case JOINTTYPE_RFOREARM:
+			childJoint = JOINTTYPE_RSHOULDER;//JOINTTYPE_RHAND;
+			break;
+		case JOINTTYPE_LFOREARM:
+			childJoint = JOINTTYPE_LSHOULDER;//JOINTTYPE_LHAND;
+			break;
+		case JOINTTYPE_RTHIGH:
+			childJoint = JOINTTYPE_TORSO;//JOINTTYPE_RCALF;
+			break;
+		case JOINTTYPE_LTHIGH:
+			childJoint = JOINTTYPE_TORSO;//JOINTTYPE_LCALF;
+			break;
+		case JOINTTYPE_RCALF:
+			childJoint = JOINTTYPE_RTHIGH;//JOINTTYPE_RFOOT;
+			break;
+		case JOINTTYPE_LCALF:
+			childJoint = JOINTTYPE_RTHIGH;//JOINTTYPE_LFOOT;
+			break;
+		default:
+			break;
+		};
+
+		if (childJoint >= 0)
+		{
+			sithPuppetJoint* pChildJoint = &thing->puppet->joints[childJoint];
+
+			rdVector3 dir1;
+			rdVector_Sub3(&dir1, &pChildJoint->pos, &pJoint->pos);
+			rdVector_Normalize3Acc(&dir1);
+
+			rdVector3 dir2;
+			rdVector_Sub3(&dir2, &pChildJoint->lastPos, &pJoint->lastPos);
+			rdVector_Normalize3Acc(&dir2);
+
+			rdQuat q;
+			rdQuat_BuildFromVectors(&q, &dir2, &dir1);
+
+			rdQuat temp = pJoint->orient;
+			rdQuat_Mul(&pJoint->orient, &q, &temp);//pJoint->lastOrient);
+
+			//rdVector3 axis;
+			//float angle;
+			//rdQuat_ExtractAxisAngle(&pJoint->orient, &axis, &angle);
+			//
+			//angle = stdMath_Clamp(angle, -10.0, 10.0); 
+			//rdQuat_BuildFromAxisAngle(&pJoint->orient, &axis, angle);
+
+			pJoint->lastOrient = temp;
+
+			rdQuat_ToMatrix(&pJoint->lookOrient, &pJoint->orient);
+		}
+#endif
+//	rdQuat_ToMatrix(&pJoint->lookOrient, &pJoint->orient);
+
+	//rdQuat_ToMatrix(&pJoint->lookOrient, &pJoint->orient);
+
+		rdMatrix_Multiply34(&pJoint->lookOrient, &pJoint->tmpMat, &pJoint->refMat);
+		rdVector_Copy3(&pJoint->lookOrient.scale, &pJoint->pos);
+
+	//	rdMatrix34* pAnimMat = &thing->rdthing.model3->paBasePoseMatrices[nodeIdx]; // todo: this is dumb and wrong
+	////	rdMatrix_Copy34(&pJoint->lookOrient, pAnimMat);
+	//	rdVector_Copy3(&pJoint->lookOrient.scale, &pJoint->pos);
+
+		thing->rdthing.paHiearchyNodeMatrixOverrides[nodeIdx] = &pJoint->lookOrient;
+	}
+}
+
+float sithPuppet_ragdollDrag = 0.5f;
+float sithPuppet_ragdollRotFriction = 0.85f;
+float sithPuppet_ragdollRotFricThreshold = 35.0f;
+
+void sithPuppet_UpdateOrientation(rdQuat* outQuat, const rdVector3* translation, const rdQuat* orientation)
+{
+	float angle = rdVector_Len3(translation) * (180.0f / 3.141592f);
+
+	rdQuat rotation;
+	rdQuat_BuildFromAxisAngle(&rotation, translation, angle);
+
+	rdQuat_Mul(outQuat, &rotation, orientation);
+}
+
+int sithPuppet_CollideJoint(sithSector* sector, sithThing* pThing, rdVector3* pos, rdVector3* dir, float radius, rdVector3* hitNormOut)
+{
+	uint32_t collideFlags = /*SITH_RAYCAST_ONLY_COG_THINGS | */ /*RAYCAST_800 |*/ RAYCAST_2;
+
+	int result = 0;
+	rdVector3 dirNorm;
+	float dirLen = rdVector_Normalize3(&dirNorm, dir);
+	sithCollision_SearchRadiusForThings(sector, pThing, pos, &dirNorm, dirLen, radius, collideFlags);
+	for (sithCollisionSearchEntry* pEntry = sithCollision_NextSearchResult(); pEntry; pEntry = sithCollision_NextSearchResult())
+	{
+		if ((pEntry->hitType & SITHCOLLISION_WORLD) != 0)
+		{
+			rdVector_Copy3(hitNormOut, &pEntry->hitNorm);
+			result = 1;
+			break;
+		}
+		if ((pEntry->hitType & SITHCOLLISION_THING) != 0)
+		{
+			int parent = sithThing_GetParent(pThing);
+
+			if (pEntry->receiver != pThing && pEntry->receiver->thingIdx != parent && pEntry->face)
+			{
+				rdVector_Copy3(hitNormOut, &pEntry->hitNorm);
+				result = 1;
+				break;
+			}
+		}
+	}
+	sithCollision_SearchClose();
+
+	if (!result)
+		rdVector_Zero3(hitNormOut);
+
+	return result;
+}
+
+void sithPuppet_UpdateJointPositions(sithSector* sector, sithThing* pThing, float deltaSeconds)
+{
+	for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
+	{
+		int nodeIdx = sithPuppet_GetJointNodeIndex(pThing, i);
+		if (nodeIdx < 0)// || pThing->rdthing.amputatedJoints[nodeIdx])
+			continue;
+
+		sithPuppetJoint* pJoint = &pThing->puppet->joints[i];
+		//if (pJoint->flags & JOINTFLAGS_ROOT)
+		//{
+		//	rdVector_Copy3(&pJoint->pos, &pThing->position);
+		//	continue;
+		//}
+
+		if (pJoint->nextPosWeight > 0.0)
+		{
+			rdVector_Copy3(&pJoint->thing.position, &pJoint->pos);
+
+			// normalize the new position accumulator
+			rdVector_InvScale3Acc(&pJoint->nextPosAcc, pJoint->nextPosWeight);
+
+			rdVector3 vel;
+			rdVector_Sub3(&vel, &pJoint->nextPosAcc, &pJoint->pos);
+			rdVector_ClipPrecision3(&vel);
+			if (!rdVector_IsZero3(&vel))
+			{
+				rdVector3 hitNorm;
+				if (pThing->rdthing.amputatedJoints[nodeIdx] || !sithPuppet_CollideJoint(sector, &pJoint->thing, &pJoint->nextPosAcc, &vel, pJoint->radius, &hitNorm))
+				{
+					rdVector_Copy3(&pJoint->pos, &pJoint->nextPosAcc);
+				}
+				else
+				{
+					rdVector_Sub3(&vel, &pJoint->nextPosAcc, &pJoint->lastPos);
+
+					float dot = rdVector_Dot3(&vel, &hitNorm);
+					if (rdVector_Dot3(&vel, &hitNorm) < 0)
+					{
+						// bounce slightly on hit
+						rdVector3 reflected;
+						rdVector_Reflect3(&reflected, &vel, &hitNorm);
+						rdVector_Scale3Acc(&reflected, pThing->animclass->bodypart[i].bounce);
+						rdVector_Sub3(&pJoint->lastPos, &pJoint->pos, &reflected);
+					}
+					pJoint->flags |= JOINTFLAGS_COLLIDED;
+				}
+			}
+		}
+
+		rdVector_Copy3(&pJoint->thing.position, &pJoint->pos);
+		rdVector_Zero3(&pJoint->nextPosAcc);
+		pJoint->nextPosWeight = 0;
+	}
+}
+
+void sithPuppet_Constrain(sithSector* pSector, sithThing* pThing, float deltaSeconds)
+{
+	// do fewer iterations if we're not directly visible
+	int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 5 : 1;
+	for (int i = 0; i < iterations; ++i)
+	{
+		sithPuppet_ConstrainBody(pThing);
+		sithPuppet_UpdateJointPositions(pSector, pThing, deltaSeconds);
+	}
+}
+
+void sithPuppet_ApplyJointForce(sithThing* pThing, int joint, const rdVector3* forceVec)
+{
+	int nodeIdx = sithPuppet_GetJointNodeIndex(pThing, joint);
+	if (nodeIdx < 0 || pThing->rdthing.amputatedJoints[nodeIdx])
+		return;
+	
+	sithPuppetJoint* pJoint = &pThing->puppet->joints[joint];
+
+	// apply the force
+	float jointMass = pThing->physicsParams.mass * pThing->animclass->bodypart[joint].mass;
+	rdVector_MultAcc3(&pJoint->forces, forceVec, 1.0f / jointMass);
+
+	// reset the timer to activate the puppet
+	pThing->puppet->expireMs = 0;
+}
+
+void sithPuppet_ApplyForce(sithThing* pThing, const rdVector3* forceVec)
+{
+	for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
+		sithPuppet_ApplyJointForce(pThing, i, forceVec);
+}
+
+static void sithPuppet_AccumulateJointForces(sithThing* pThing, float deltaSeconds)
+{
+	float gravity = sithWorld_pCurrentWorld->worldGravity;
+	if ((pThing->physicsParams.physflags & SITH_PF_PARTIALGRAVITY) != 0)
+		gravity *= 0.5;
+
+	for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
+	{
+		int nodeIdx = sithPuppet_GetJointNodeIndex(pThing, i);
+		if (nodeIdx < 0)// || pThing->rdthing.amputatedJoints[nodeIdx])
+			continue;
+
+		sithPuppetJoint* pJoint = &pThing->puppet->joints[i];
+		//rdVector_Zero3(&pJoint->forces);
+
+		if (pThing->physicsParams.mass != 0.0
+			&& (pThing->sector->flags & SITH_SECTOR_HASTHRUST)
+			&& !(pThing->physicsParams.physflags & SITH_PF_NOTHRUST))
+		{
+			rdVector_MultAcc3(&pJoint->forces, &pThing->sector->thrust, deltaSeconds);
+		}
+
+		// gravity
+		if (pThing->physicsParams.mass != 0.0
+			&& pThing->physicsParams.physflags & SITH_PF_USEGRAVITY
+			&& !(pThing->sector->flags & SITH_SECTOR_NOGRAVITY))
+		{
+			pJoint->forces.z -= gravity * deltaSeconds;
+		}
+
+	//	rdVector3 vel;
+	//	rdVector_Sub3(&vel, &pJoint->pos, &pJoint->lastPos);
+	//
+	//	float drag = (pJoint->flags & JOINTFLAGS_COLLIDED) ? pJoint->thing.physicsParams.surfaceDrag : pJoint->thing.physicsParams.airDrag;
+	//	float scaled = deltaSeconds * drag;
+	//	if (scaled > 1.0)
+	//		scaled = 1.0;
+	//
+	//	rdVector_MultAcc3(&pJoint->forces, &vel, -scaled);
+
+		//sithPhysics_ApplyDrag(&pJoint->forces, (pJoint->flags & JOINTFLAGS_COLLIDED) ? pJoint->thing.physicsParams.surfaceDrag : pJoint->thing.physicsParams.airDrag, 0, deltaSeconds);
+	}
+}
+
+static void sithPuppet_ResetJointForces(sithThing* pThing)
+{
+	// reset forces, leave sector, and update the joint matrix
+	for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
+	{
+		sithPuppetJoint* pJoint = &pThing->puppet->joints[i];
+		rdVector_Zero3(&pJoint->forces);
+		sithThing_LeaveSector(&pJoint->thing);
+	}
+}
+
+void sithPuppet_UpdateJoints(sithThing* pThing, float deltaSeconds)
+{
+	// try to account for variable time steps
+	// todo: fixed time step?
+	float timestepRatio = pThing->puppet->lastTimeStep ? deltaSeconds / pThing->puppet->lastTimeStep : 1.0f;
+	for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
+	{
+		int nodeIdx = sithPuppet_GetJointNodeIndex(pThing, i);
+		if (nodeIdx < 0)// || pThing->rdthing.amputatedJoints[nodeIdx])
+			continue;
+
+		sithPuppetJoint* pJoint = &pThing->puppet->joints[i];
+
+		rdVector3 vel;
+		rdVector_Sub3(&vel, &pJoint->pos, &pJoint->lastPos);
+		
+		// apply forces
+		rdVector_MultAcc3(&vel, &pJoint->forces, deltaSeconds);
+
+		// damping
+		//rdVector_Scale3Acc(&vel, timestepRatio * powf((pJoint->flags & JOINTFLAGS_COLLIDED) ? 0.8f : 0.998f, deltaSeconds * 1000.0f));
+		float drag = (pJoint->flags & JOINTFLAGS_COLLIDED) ? pJoint->thing.physicsParams.surfaceDrag : pJoint->thing.physicsParams.airDrag;
+		sithPhysics_ApplyDrag(&vel, drag, 0.0f, deltaSeconds);
+
+		rdVector_ClipPrecision3(&vel);
+		if (rdVector_IsZero3(&vel))
+			continue;
+
+		// copy the old pos
+		rdVector_Copy3(&pJoint->lastPos, &pJoint->pos);
+
+		// update the joint thing position and sector
+		rdVector_Copy3(&pJoint->thing.position, &pJoint->pos);
+		rdVector_Copy3(&pJoint->thing.physicsParams.vel, &vel); // copy the vel in case we get modified (ex. entering water)
+		sithThing_EnterSector(&pJoint->thing, pThing->sector, 1, 0);
+
+		// add the vel
+		//if (!(pJoint->flags & JOINTFLAGS_ROOT))
+			rdVector_Add3Acc(&pJoint->pos, &pJoint->thing.physicsParams.vel);
+
+	//	rdQuat tempOrient = pJoint->orient;
+	//	rdVector3 angular_acceleration;
+	//	rdVector_Scale3(&angular_acceleration, &pJoint->torque, deltaSeconds * 1.0f);// / rigidBody->inertiaVector.x);
+	//
+	//	rdVector_Add3(&pJoint->angularVelocity, &pJoint->angularVelocity, &angular_acceleration);
+	//	
+	//	rdQuat angular_rate_q = {0.0f, pJoint->angularVelocity.x, pJoint->angularVelocity.y, pJoint->angularVelocity.z};
+	//	rdQuat delta_q;
+	//	rdQuat_BuildFromVectors(&delta_q, &angular_rate_q, &angular_acceleration);
+	//	rdQuat_MulAcc(&pJoint->orient, &delta_q);
+	//	
+	//	pJoint->lastOrient = tempOrient;
+	}
+}
+
+void sithPuppet_Collide(sithThing* pThing, float deltaSeconds)
+{
+	float totalImpactVolume = 0.0f;
+	int anyCollision = 0; // did any joint collide?
+	for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
+	{
+		int nodeIdx = sithPuppet_GetJointNodeIndex(pThing, i);
+		if (nodeIdx < 0 || pThing->rdthing.amputatedJoints[nodeIdx]) // don't bother colliding if amputated
+			continue;
+		
+		sithPuppetJoint* pJoint = &pThing->puppet->joints[i];
+
+		rdVector3 vel;
+		rdVector_Sub3(&vel, &pJoint->pos, &pJoint->lastPos);
+		rdVector_ClipPrecision3(&vel);
+		if (rdVector_IsZero3(&vel))
+			continue;
+
+		rdVector3 hitNorm;
+		int collided = sithPuppet_CollideJoint(pThing->sector, &pJoint->thing, &pJoint->pos, &vel, pJoint->radius, &hitNorm);
+		if (collided)
+		{
+			pJoint->flags |= JOINTFLAGS_COLLIDED;
+
+			anyCollision = 1;
+
+			rdVector_Copy3(&pJoint->pos, &pJoint->lastPos);
+
+			rdVector3 reflected;
+			rdVector_Reflect3(&reflected, &vel, &hitNorm);
+			rdVector_Scale3Acc(&reflected, pThing->animclass->bodypart[i].bounce);
+			rdVector_Sub3(&pJoint->lastPos, &pJoint->pos, &reflected);
+
+			float impactVolume = -rdVector_Dot3(&hitNorm, &vel) * 1000.0f;
+			totalImpactVolume += impactVolume;
+		}
+		else
+		{
+			pJoint->flags &= ~JOINTFLAGS_COLLIDED;
+		}
+	}
+
+	if (anyCollision)
+	{
+		totalImpactVolume /= (float)anyCollision;
+		if (totalImpactVolume > 0.1f && (sithTime_curMs - pThing->puppet->lastCollideMs > 50))
+		{
+			if (totalImpactVolume > 1.0)
+				totalImpactVolume = 1.0;
+			sithSoundClass_PlayThingSoundclass(pThing, SITH_SC_CORPSEHIT, totalImpactVolume);
+		}
+		pThing->puppet->lastCollideMs = sithTime_curMs;
+	}
+
+	// if anything collide, set a timer for expiration
+	if (anyCollision)
+	{
+		// only set a new timer if one wasn't already set
+		pThing->puppet->expireMs = !pThing->puppet->expireMs ? sithTime_curMs + 1500 : pThing->puppet->expireMs;
+	}
+	// otherwise we're free-floating, let the sim run indefinitely until it settles
+	else if (sithTime_curMs < pThing->puppet->expireMs)
+	{
+		pThing->puppet->expireMs = 0;
+	}
+}
+
+extern void sithPhysics_FindFloor(sithThing*, int); // fixme
+
+void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds)
+{
+	// only run while expireMs is 0 or hasn't expired yet
+	if (thing->puppet->expireMs && thing->puppet->expireMs < sithTime_curMs)
+	{
+		thing->puppet->lastCollideMs = sithTime_curMs;
+		return;
+	}
+
+	sithPuppet_AccumulateJointForces(thing, deltaSeconds);
+	sithPuppet_UpdateJoints(thing, deltaSeconds);
+	sithPuppet_Collide(thing, deltaSeconds);
+
+	thing->puppet->lastTimeStep = deltaSeconds;
+
+	sithPuppet_Constrain(thing->sector, thing, deltaSeconds);
+	sithPuppet_UpdateJointMatrices(thing, 0);
+	sithPuppet_ApplyJointMatrices(thing);
+
+	sithPuppet_ResetJointForces(thing);
+
+	// the relative change in the center will be used to update the thing position
+	rdVector3 lastCenter;
+	rdVector_Copy3(&lastCenter, &thing->puppet->center);
+
+	rdVector_Zero3(&thing->puppet->center);
+	for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
+	{
+		sithPuppetJoint* pJoint = &thing->puppet->joints[i];
+		rdVector_Add3Acc(&thing->puppet->center, &pJoint->pos);
+	}
+	rdVector_InvScale3Acc(&thing->puppet->center, (float)JOINTTYPE_NUM_JOINTS);
+
+	float radius = 0.0f;
+	for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
+	{
+		sithPuppetJoint* pJoint = &thing->puppet->joints[i];
+		radius = fmax(radius, rdVector_Dist3(&pJoint->pos, &thing->puppet->center));
+	}
+	thing->treeSize = thing->collideSize = radius;
+
+	rdVector3 centerVel;
+	rdVector_Sub3(&centerVel, &thing->puppet->center, &lastCenter);
+	rdVector_Copy3(&thing->physicsParams.vel, &centerVel);
+
+	float velLen = rdVector_Normalize3Acc(&centerVel);
+	sithCollision_UpdateThingCollision(thing, &centerVel, velLen, 0);
+
+	sithPhysics_FindFloor(thing, 0);
+}
+
+#endif

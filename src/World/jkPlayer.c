@@ -76,7 +76,7 @@ int jkPlayer_enableShadows = 1;
 int jkPlayer_enableDecals = 1;
 #endif
 
-#ifdef RAGDOLLS
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 int jkPlayer_ragdolls = 1;
 int jkPlayer_debugRagdolls = 0;
 #endif
@@ -304,7 +304,7 @@ void jkPlayer_ResetVars()
 	jkPlayer_enableDecals = 1;
 #endif
 
-#ifdef RAGDOLLS
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 	jkPlayer_ragdolls = 1;
 	jkPlayer_debugRagdolls = 0;
 #endif
@@ -817,7 +817,7 @@ void jkPlayer_ParseLegacyExt()
 			jkPlayer_enable32Bit = 1;
 	}
 
-#ifdef RAGDOLLS
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 	if (stdConffile_ReadLine())
 	{
 		if (_sscanf(stdConffile_aLine, "ragdolls %f", &jkPlayer_ragdolls) != 1)
@@ -948,7 +948,7 @@ int jkPlayer_ReadConf(wchar_t *name)
 
         jkPlayer_setCrosshairOnLightsaber = stdJSON_GetBool(ext_fpath, "setCrosshairOnLightsaber", jkPlayer_setCrosshairOnLightsaber);
         jkPlayer_setCrosshairOnFist = stdJSON_GetBool(ext_fpath, "setCrosshairOnFist", jkPlayer_setCrosshairOnFist);
-#ifdef RAGDOLLS
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 		jkPlayer_ragdolls = stdJSON_GetInt(ext_fpath, "ragdolls", jkPlayer_ragdolls);
 #endif
 #ifdef DYNAMIC_POV
