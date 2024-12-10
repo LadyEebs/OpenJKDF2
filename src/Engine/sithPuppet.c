@@ -1681,7 +1681,7 @@ void sithPuppet_Collide(sithThing* pThing, float deltaSeconds)
 	}
 }
 
-extern void sithPhysics_FindFloor(sithThing*, int); // fixme
+//extern void sithPhysics_FindFloor(sithThing*, int); // fixme
 
 void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds)
 {
@@ -1718,7 +1718,7 @@ void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds)
 	float velLen = rdVector_Normalize3Acc(&centerVel);
 	sithCollision_UpdateThingCollision(thing, &centerVel, velLen, 0);
 
-	sithPhysics_FindFloor(thing, 0);
+	//sithPhysics_FindFloor(thing, 0);
 }
 
 #endif
