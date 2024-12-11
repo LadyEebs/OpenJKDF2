@@ -403,7 +403,7 @@ void sithPuppet_Tick(sithThing *thing, float deltaSeconds)
         {
 		#ifdef PUPPET_PHYSICS
 			// corpses have physicalized animation
-			if(thing->type == SITH_THING_CORPSE && jkPlayer_ragdolls)
+			if((thing->animclass->flags & SITH_PUPPET_PHYSICS) && (thing->type == SITH_THING_CORPSE) && jkPlayer_ragdolls)
 			{
 			//	rdPuppet_ResetTrack(thing->rdthing.puppet, 0);
 			//	rdPuppet_ResetTrack(thing->rdthing.puppet, 1);

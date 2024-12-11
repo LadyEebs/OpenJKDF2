@@ -140,6 +140,13 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 		}
 		else
 #endif
+#ifdef PUPPET_PHYSICS
+		if (!_strcmp(stdConffile_entry.args[0].key, "flags"))
+		{
+			_sscanf(stdConffile_entry.args[0].value, "%x", &animclass->flags);
+		}
+		else
+#endif
         if ( !_strcmp(stdConffile_entry.args[0].key, "mode") )
         {
             mode = _atoi(stdConffile_entry.args[0].value);

@@ -1399,6 +1399,7 @@ typedef struct sithAnimclass
     char name[32];
     sithAnimclassMode modes[6];
 #ifdef ANIMCLASS_NAMES
+	uint32_t flags;
 	sithBodyPart bodypart[JOINTTYPE_NUM_JOINTS];
 	int* jointToBodypart;
 	int root;
