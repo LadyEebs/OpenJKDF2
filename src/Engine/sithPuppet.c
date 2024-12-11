@@ -1517,7 +1517,7 @@ void sithPuppet_UpdateJointPositions(sithSector* sector, sithThing* pThing, floa
 void sithPuppet_Constrain(sithSector* pSector, sithThing* pThing, float deltaSeconds)
 {
 	// do fewer iterations if we're not directly visible
-	int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 5 : 1;
+	int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 8 : 2;
 	for (int i = 0; i < iterations; ++i)
 	{
 		sithPuppet_ConstrainBody(pThing);
