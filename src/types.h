@@ -3247,7 +3247,6 @@ typedef struct sithPuppetPhysics
 {
 	sithThing* pParent;
 	sithPuppetJoint joints[JOINTTYPE_NUM_JOINTS];
-	int resting;
 } sithPuppetPhysics;
 
 struct sithPuppet

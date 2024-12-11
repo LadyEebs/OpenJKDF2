@@ -1545,9 +1545,6 @@ void sithPuppet_Constrain(sithSector* pSector, sithThing* pThing, float deltaSec
 // fixme
 void sithPuppet_UpdateJoints(sithThing* pThing, float deltaSeconds)
 {
-	rdVector3 totalVel;
-	rdVector_Zero3(&totalVel);
-
 	for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
 	{
 		int nodeIdx = sithPuppet_GetJointNodeIndex(pThing, i);
@@ -1578,20 +1575,11 @@ void sithPuppet_UpdateJoints(sithThing* pThing, float deltaSeconds)
 		sithPhysics_ThingTick(&pJoint->thing, deltaSeconds);
 		sithThing_TickPhysics(&pJoint->thing, deltaSeconds);
 		sithPhysics_FindFloor(&pJoint->thing, 0);
-
-		rdVector_Add3Acc(&totalVel, &pJoint->thing.physicsParams.vel);
 	}
-
-	rdVector_ClipPrecision3(&totalVel);
-	if(rdVector_Dot3(&totalVel, &totalVel) < 1e-5)
-		pThing->puppet->physics->resting = 1;
 }
 
 void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds)
 {
-	if(thing->puppet->physics->resting)
-		return;
-
 	sithPuppet_UpdateJoints(thing, deltaSeconds);
 	sithPuppet_Constrain(thing->sector, thing, deltaSeconds);
 	sithPuppet_UpdateJointMatrices(thing, 0);

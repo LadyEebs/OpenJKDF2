@@ -232,14 +232,6 @@ void sithPhysics_ThingApplyForce(sithThing *pThing, rdVector3 *forceVec)
 
         rdVector_MultAcc3(&pThing->physicsParams.vel, forceVec, invMass);
         pThing->physicsParams.physflags |= SITH_PF_HAS_FORCE;
-
-#ifdef PUPPET_PHYSICS
-		if (pThing->type == SITH_THING_CORPSE && pThing->prev_thing)
-		{
-			if (pThing->prev_thing->puppet && pThing->prev_thing->puppet->physics)
-				pThing->prev_thing->puppet->physics->resting = 0; // wake the puppet
-		}
-#endif
     }
 }
 
