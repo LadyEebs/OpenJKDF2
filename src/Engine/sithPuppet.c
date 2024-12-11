@@ -1435,12 +1435,12 @@ void sithPuppet_UpdateJointMatrices(sithThing* pThing, int init)
 	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_RTHIGH, JOINTTYPE_RCALF, JOINTTYPE_HIP, init);
 
 	// orient the calves with respect to the thighs and hip
-	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RCALF, JOINTTYPE_RFOOT, JOINTTYPE_RTHIGH, JOINTTYPE_HIP, init);
-	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_LCALF, JOINTTYPE_LFOOT, JOINTTYPE_LTHIGH, JOINTTYPE_HIP, init);
+	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RCALF, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, JOINTTYPE_HIP, init);
+	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_LCALF, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, JOINTTYPE_HIP, init);
 
 	// orient the forearms with respect to the shoulders and torso
-	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RHAND, JOINTTYPE_RSHOULDER, JOINTTYPE_TORSO, init);
-	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LHAND, JOINTTYPE_LSHOULDER, JOINTTYPE_TORSO, init);
+	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER, JOINTTYPE_TORSO, init);
+	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER, JOINTTYPE_TORSO, init);
 
 	// orient the feet with respect to the calves and hip
 	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_LFOOT, JOINTTYPE_LFOOT, JOINTTYPE_LCALF, JOINTTYPE_HIP, init);
