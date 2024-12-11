@@ -1098,12 +1098,11 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel)
 	sithPuppetPhysics* result = (sithPuppetPhysics*)pSithHS->alloc(sizeof(sithPuppetPhysics));
 	if(!result)
 		return;
+	_memset(result, 0, sizeof(sithPuppetPhysics));
 
 	pThing->puppet->physics = result;
 
 	result->pParent = pThing;
-	_memset(result->joints, 0, sizeof(result->joints));
-	result->lastTimeStep = sithTime_deltaSeconds;
 
 	if (pThing->rdthing.paHiearchyNodeMatrixOverrides)
 		memset(pThing->rdthing.paHiearchyNodeMatrixOverrides, NULL, sizeof(rdMatrix34*) * pThing->rdthing.model3->numHierarchyNodes);
@@ -1204,9 +1203,9 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel)
 		//rdVector3 angVel;
 		//rdVector3 acceleration;
 		//rdVector3 field_1F8;
-		//pJoint->thing.physicsParams.airDrag *= 0.1f;
-		//pJoint->thing.physicsParams.surfaceDrag *= 0.1f;
-		//pJoint->thing.physicsParams.staticDrag *= 0.1f;
+		//pJoint->thing.physicsParams.airDrag *= pThing->animclass->bodypart[i].mass;
+		//pJoint->thing.physicsParams.surfaceDrag *= pThing->animclass->bodypart[i].mass;
+		//pJoint->thing.physicsParams.staticDrag *= pThing->animclass->bodypart[i].mass;
 		//float maxRotVel;
 		//float maxVel;
 		//float orientSpeed;
@@ -1497,8 +1496,6 @@ void sithPuppet_UpdateJointPositions(sithSector* sector, sithThing* pThing, floa
 		//	sithPhysics_ThingTick(&pJoint->thing, deltaSeconds);
 		//	sithThing_TickPhysics(&pJoint->thing, deltaSeconds);
 		//	sithPhysics_FindFloor(&pJoint->thing, 0);
-		//
-		//	rdVector_Copy3(&pJoint->pos, &pJoint->thing.position);
 
 			rdVector3 vel;
 			rdVector_Sub3(&vel, &pJoint->nextPosAcc, &pJoint->thing.position);
@@ -1531,7 +1528,8 @@ void sithPuppet_Constrain(sithSector* pSector, sithThing* pThing, float deltaSec
 // fixme
 void sithPuppet_UpdateJoints(sithThing* pThing, float deltaSeconds)
 {
-	int anyCollision = 0; // did any joint collide?
+	rdVector3 totalVel;
+	rdVector_Zero3(&totalVel);
 
 	for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
 	{
@@ -1563,38 +1561,21 @@ void sithPuppet_UpdateJoints(sithThing* pThing, float deltaSeconds)
 		sithPhysics_ThingTick(&pJoint->thing, deltaSeconds);
 		sithThing_TickPhysics(&pJoint->thing, deltaSeconds);
 		sithPhysics_FindFloor(&pJoint->thing, 0);
+
+		rdVector_Add3Acc(&totalVel, &pJoint->thing.physicsParams.vel);
 	}
 
-	// todo
-	//if (anyCollision)
-	//	pThing->puppet->physics->lastCollideMs = sithTime_curMs;
-	//
-	//// if anything collide, set a timer for expiration
-	//if (anyCollision)
-	//{
-	//	// only set a new timer if one wasn't already set
-	//	pThing->puppet->physics->expireMs = !pThing->puppet->physics->expireMs ? sithTime_curMs + 1500 : pThing->puppet->physics->expireMs;
-	//}
-	//// otherwise we're free-floating, let the sim run indefinitely until it settles
-	//else if (sithTime_curMs < pThing->puppet->physics->expireMs)
-	//{
-	//	pThing->puppet->physics->expireMs = 0;
-	//}
+	rdVector_ClipPrecision3(&totalVel);
+	if(rdVector_Dot3(&totalVel, &totalVel) < 1e-5)
+		pThing->puppet->physics->resting = 1;
 }
 
 void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds)
 {
-	// only run while expireMs is 0 or hasn't expired yet
-	if (thing->puppet->physics->expireMs && thing->puppet->physics->expireMs < sithTime_curMs)
-	{
-		thing->puppet->physics->lastCollideMs = sithTime_curMs;
+	if(thing->puppet->physics->resting)
 		return;
-	}
 
 	sithPuppet_UpdateJoints(thing, deltaSeconds);
-
-	thing->puppet->physics->lastTimeStep = deltaSeconds;
-
 	sithPuppet_Constrain(thing->sector, thing, deltaSeconds);
 	sithPuppet_UpdateJointMatrices(thing, 0);
 	sithPuppet_ApplyJointMatrices(thing);

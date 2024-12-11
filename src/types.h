@@ -3247,10 +3247,7 @@ typedef struct sithPuppetPhysics
 {
 	sithThing* pParent;
 	sithPuppetJoint joints[JOINTTYPE_NUM_JOINTS];
-	float lastTimeStep;
-	int collisions;
-	int expireMs;
-	int lastCollideMs;
+	int resting;
 } sithPuppetPhysics;
 
 struct sithPuppet
