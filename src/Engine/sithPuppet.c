@@ -1350,7 +1350,7 @@ void sithPuppet_ConstrainBody(sithThing* pThing)
 	// leg constraints
 	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_LTHIGH, -1);
 	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RCALF, JOINTTYPE_LCALF, 0.8f); // prevent calfs getting too close together
-	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RFOOT, JOINTTYPE_LFOOT, 0.7f); // prevent feet getting too close together
+	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RFOOT, JOINTTYPE_LFOOT, 0.5f); // prevent feet getting too close together
 	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_LCALF, JOINTTYPE_RFOOT, 0.75f); // prevent calf getting too close to other foot
 	sithPuppet_ConstrainJoints(pThing, JOINTTYPE_RCALF, JOINTTYPE_LFOOT, 0.75f); // prevent calf getting too close to other foot
 
@@ -1434,9 +1434,9 @@ void sithPuppet_UpdateJointMatrices(sithThing* pThing, int init)
 	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_LTHIGH, JOINTTYPE_LTHIGH, JOINTTYPE_LCALF, JOINTTYPE_HIP, init);
 	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_RTHIGH, JOINTTYPE_RCALF, JOINTTYPE_HIP, init);
 
-	// orient the calves with respect to the thighs and hip
-	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RCALF, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, JOINTTYPE_HIP, init);
-	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_LCALF, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, JOINTTYPE_HIP, init);
+	// orient the calves with respect to the thighs
+	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RCALF, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, JOINTTYPE_LTHIGH, init);
+	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_LCALF, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, JOINTTYPE_RTHIGH, init);
 
 	// orient the forearms with respect to the shoulders and torso
 	sithPuppet_UpdateJointMatrix(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER, JOINTTYPE_TORSO, init);
