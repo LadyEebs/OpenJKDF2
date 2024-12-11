@@ -2781,6 +2781,24 @@ int sithRender_RenderThing(sithThing *pThing)
         }
         pThing->explosionParams.typeflags &= ~SITHEXPLOSION_FLAG_FLASH_BLINDS_THINGS;
     }
+
+	// position debug
+#if 0
+		rdSprite debugSprite;
+		rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, "sabergreen0.mat", 0.05f, 0.05f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &rdroid_zeroVector3);
+
+		rdThing debug;
+		rdThing_NewEntry(&debug, pThing);
+		rdThing_SetSprite3(&debug, &debugSprite);
+		rdMatrix34 mat;
+		rdMatrix_BuildTranslate34(&mat, &pThing->position);
+
+		rdSprite_Draw(&debug, &mat);
+
+		rdSprite_FreeEntry(&debugSprite);
+		rdThing_FreeEntry(&debug);
+#endif
+
     return ret;
 }
 

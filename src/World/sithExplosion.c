@@ -104,10 +104,6 @@ void sithExplosion_UpdateForce(sithThing *explosion)
                     {
                         rdVector_Scale3(&a2, &i->hitNorm, -(a1a * force));
                         sithPhysics_ThingApplyForce(v4, &a2);
-#ifdef PUPPET_PHYSICS
-						if (v4->puppet && v4->type == SITH_THING_CORPSE)
-							sithPuppet_ApplyForce(v4, &a2);
-#endif
                     }
 #ifdef RAGDOLLS
 					else if ( force != 0.0 && v4->moveType == SITH_MT_RAGDOLL && v4->rdthing.pRagdoll && v4->physicsParams.mass != 0)

@@ -109,9 +109,10 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 	int namedBodypart = 0;
 #ifdef PUPPET_PHYSICS
 	float mass = 1.0f / JOINTTYPE_NUM_JOINTS;
-	float bounce = 1.0f;
+	float buoyancy = 1.0f;
 	float health = 1000.0f;
 	float damage = 1.0f;
+	animclass->root = -1;
 #endif
 #endif
 
@@ -182,9 +183,9 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 						mass = _atof(stdConffile_entry.args[3].key);
 
 					if (stdConffile_entry.numArgs <= 4)
-						bounce = 1.0;
+						buoyancy = 1.0;
 					else
-						bounce = _atof(stdConffile_entry.args[4].key);
+						buoyancy = _atof(stdConffile_entry.args[4].key);
 
 					if (stdConffile_entry.numArgs <= 5)
 						health = 1000.0f;
@@ -203,7 +204,7 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 					joint_idx = _atoi(stdConffile_entry.args[0].value);
 					flags = 0;
 					mass = 1.0f;
-					bounce = 1.0f;
+					buoyancy = 1.0f;
 					health = 1000.0f;
 					damage = 1.0f;
 				}
@@ -211,11 +212,13 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 				{
 					animclass->bodypart[bodypart_idx].jointIdx = joint_idx;
 #ifdef PUPPET_PHYSICS
-					animclass->bodypart[bodypart_idx].flags = flags & ~JOINTFLAGS_COLLIDED;
+					animclass->bodypart[bodypart_idx].flags = flags;
 					animclass->bodypart[bodypart_idx].mass = mass;
-					animclass->bodypart[bodypart_idx].bounce = bounce;
+					animclass->bodypart[bodypart_idx].buoyancy = buoyancy;
 					animclass->bodypart[bodypart_idx].health = health;
 					animclass->bodypart[bodypart_idx].damage = damage;
+					if(flags & JOINTFLAGS_ROOT)
+						animclass->root = bodypart_idx;
 #endif
 				}
 #else

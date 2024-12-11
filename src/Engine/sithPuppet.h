@@ -52,14 +52,10 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel);
 void sithPuppet_StopPhysics(sithThing* pThing);
 void sithPuppet_ConstrainJoints(sithThing* pThing, int jointA, int jointB, float minDistance);
 void sithPuppet_ConstrainBody(sithThing* pThing);
-int sithPuppet_CollideJoint(sithSector* sector, sithThing* pThing, rdVector3* pos, rdVector3* dir, float radius, rdVector3* hitNormOut);
 void sithPuppet_UpdateJointPositions(sithSector* sector, sithThing* pThing, float deltaSeconds);
 void sithPuppet_Constrain(sithSector* pSector, sithThing* pThing, float deltaSeconds);
 void sithPuppet_UpdateJointMatrices(sithThing* pThing, int init);
-void sithPuppet_ApplyJointForce(sithThing* pThing, int joint, const rdVector3* forceVec);
-void sithPuppet_ApplyForce(sithThing* pThing, const rdVector3* forceVec);
 void sithPuppet_UpdateJoints(sithThing* pThing, float deltaSeconds);
-void sithPuppet_Collide(sithThing* pThing, float deltaSeconds);
 void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds);
 #endif
 

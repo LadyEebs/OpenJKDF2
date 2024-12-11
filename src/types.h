@@ -1387,7 +1387,7 @@ typedef struct sithBodyPart
 #ifdef PUPPET_PHYSICS
 	uint32_t flags;
 	float mass;
-	float bounce;
+	float buoyancy;
 	float health;
 	float damage;
 #endif
@@ -1401,6 +1401,7 @@ typedef struct sithAnimclass
 #ifdef ANIMCLASS_NAMES
 	sithBodyPart bodypart[JOINTTYPE_NUM_JOINTS];
 	int* jointToBodypart;
+	int root;
 #else
 	int bodypart_to_joint[JOINTTYPE_NUM_JOINTS];
 #endif
@@ -3234,25 +3235,17 @@ typedef struct sithThing
 
 typedef struct sithPuppetJoint
 {
-	sithThing thing;         // physicalized thing representation
-	rdVector3 pos;           // current position
-	rdVector3 lastPos;       // last position
-	rdVector3 nextPosAcc;    // accumulated position
-	rdVector3 forces;        // accumulated forces
+	sithThing  thing;         // physicalized thing representation
+	rdVector3  nextPosAcc;    // accumulated constraint target
 	rdMatrix34 refMat;       // reference transform
 	rdMatrix34 tmpMat;       // updated transform
-	rdMatrix34 lookOrient;   // final transform
-	uint32_t  flags;         // flags
-	float     nextPosWeight; // weight of accumulated position for normalization
-	float     radius;
+	float      nextPosWeight; // weight of accumulated position for normalization
 } sithPuppetJoint;
 
 typedef struct sithPuppetPhysics
 {
 	sithThing* pParent;
 	sithPuppetJoint joints[JOINTTYPE_NUM_JOINTS];
-	rdVector3 center;
-	float radius;
 	float lastTimeStep;
 	int collisions;
 	int expireMs;
