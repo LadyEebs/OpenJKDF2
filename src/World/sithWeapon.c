@@ -790,7 +790,7 @@ int sithWeapon_Collide(sithThing *physicsThing, sithThing *collidedThing, sithCo
 			{
 				float force = physicsThing->weaponParams.damage;//force;
 				rdVector3 tmp2;
-				rdVector_Scale3(&tmp2, &physicsThing->physicsParams.vel, force);
+				rdVector_Scale3(&tmp2, &physicsThing->lookOrientation.lvec, force);
 				sithPhysics_ThingApplyForce(collidedThing, &tmp2);
 			}
 #endif
