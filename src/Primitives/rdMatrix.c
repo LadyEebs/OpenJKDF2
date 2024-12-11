@@ -941,7 +941,10 @@ int rdMatrix_ExtractAxisAngle34(rdMatrix34* m, rdVector3* axis, float* angle)
 		axis->z = m->rvec.y - m->lvec.x;
 		float r = rdVector_Dot3(axis, axis);
 		if (r <= 1e-6f)
+		{
+			*angle = 0;
 			return 0;
+		}
 
 		rdVector_InvScale3Acc(axis, stdMath_Sqrt(r));
 		*angle = 90.0f - stdMath_ArcSin3((trace - 1.0f) / 2.0f);
