@@ -1458,7 +1458,24 @@ void sithPuppet_ApplyJointMatrices(sithThing* thing)
 		sithPuppetJoint* pJoint = &thing->puppet->physics->joints[i];
 		rdMatrix_Multiply34(&pJoint->thing.lookOrientation, &pJoint->tmpMat, &pJoint->refMat);
 	//	rdMatrix_Copy34(&pJoint->lookOrient, &pJoint->thing.lookOrientation);
-		rdVector_Copy3(&pJoint->thing.lookOrientation.scale, &pJoint->thing.position);
+		rdVector_Zero3(&pJoint->thing.lookOrientation.scale);
+
+		//if(thing->rdthing.model3->hierarchyNodes[nodeIdx].parent)
+		//{
+		//	rdMatrix34 invMat;
+		//	rdMatrix_InvertOrtho34(&invMat, &pJoint->thing.lookOrientation);
+		//
+		//	rdVector3 pivot;
+		//	rdMatrix_TransformPoint34(&pivot, &thing->rdthing.model3->hierarchyNodes[nodeIdx].parent->pivot, &invMat);
+		//	rdVector_Neg3Acc(&pivot);
+		//
+		//	rdVector_Copy3(&pJoint->thing.lookOrientation.scale, &pJoint->thing.position);
+		//	rdMatrix_PreTranslate34(&pJoint->thing.lookOrientation, &pivot);
+		//}
+		//else
+		{
+			rdVector_Copy3(&pJoint->thing.lookOrientation.scale, &pJoint->thing.position);
+		}
 
 		thing->rdthing.paHiearchyNodeMatrixOverrides[nodeIdx] = &pJoint->thing.lookOrientation;
 	}
