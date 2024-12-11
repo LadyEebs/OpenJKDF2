@@ -1793,10 +1793,10 @@ void sithCogFunctionThing_GetJointDamage(sithCog* ctx)
 		|| idx >= JOINTTYPE_NUM_JOINTS
 		|| idx < 0)
 	{
-		sithCogExec_PushInt(ctx, 0);
+		sithCogExec_PushFlex(ctx, 0);
 		return;
 	}
-	sithCogExec_PushInt(ctx, pThing->actorParams.locationDamage[idx]);
+	sithCogExec_PushFlex(ctx, pThing->actorParams.locationDamage[idx]);
 }
 
 void sithCogFunctionThing_DismemberJoint(sithCog* ctx)
