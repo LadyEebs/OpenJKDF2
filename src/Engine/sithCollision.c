@@ -47,6 +47,16 @@ int sithCollision_Startup()
     sithCollision_RegisterHitHandler(SITH_THING_ACTOR, (void*)sithActor_sub_4ED1D0);
     sithCollision_RegisterHitHandler(SITH_THING_WEAPON, sithWeapon_HitDebug);
 
+#ifdef PUPPET_PHYSICS
+	sithCollision_RegisterCollisionHandler(SITH_THING_CORPSE, SITH_THING_PLAYER, sithCollision_DebrisDebrisCollide, 0);
+	sithCollision_RegisterCollisionHandler(SITH_THING_CORPSE, SITH_THING_CORPSE, sithCollision_DebrisDebrisCollide, 0);
+	sithCollision_RegisterCollisionHandler(SITH_THING_CORPSE, SITH_THING_ACTOR, sithCollision_DebrisDebrisCollide, 0);
+	sithCollision_RegisterCollisionHandler(SITH_THING_CORPSE, SITH_THING_WEAPON, sithCollision_DebrisDebrisCollide, 0);
+	sithCollision_RegisterCollisionHandler(SITH_THING_PLAYER, SITH_THING_CORPSE, sithCollision_DebrisDebrisCollide, 0);
+	sithCollision_RegisterCollisionHandler(SITH_THING_ACTOR, SITH_THING_CORPSE, sithCollision_DebrisDebrisCollide, 0);
+	sithCollision_RegisterCollisionHandler(SITH_THING_WEAPON, SITH_THING_CORPSE, sithWeapon_Collide, 0);
+#endif
+
 #ifdef RAGDOLLS
 	sithCollision_RegisterCollisionHandler(SITH_THING_CORPSE, SITH_THING_PLAYER, sithCorpse_Collide, 0);
 	sithCollision_RegisterCollisionHandler(SITH_THING_CORPSE, SITH_THING_ACTOR, sithCorpse_Collide, 0);
@@ -273,6 +283,10 @@ float sithCollision_UpdateSectorThingCollision(sithSector *pSector, sithThing *s
                     goto LABEL_41;
                 if ( v8 != v7 )
                 {
+			#ifdef PUPPET_PHYSICS
+					int jointIdx = (v8->thingIdx >> 16);
+					if(jointIdx < 0 || v8->prev_thing != v7)
+			#endif
                     if ( sithCollision_collisionHandlers[12 * v8->type + v7->type].handler )
                     {
 					#ifdef RAGDOLLS
@@ -957,6 +971,7 @@ int sithCollision_DefaultHitHandler(sithThing *thing, sithSurface *surface, sith
         surface->surfaceInfo.lastTouchedMs = sithTime_curMsAbsolute;
         sithCog_SendMessageFromSurface(surface, v3, SITH_MESSAGE_TOUCHED);
     }
+
     if ( a1a > 0.15000001 )
     {
         if ( a1a > 1.0 )
@@ -1043,14 +1058,27 @@ int sithCollision_DebrisDebrisCollide(sithThing *thing1, sithThing *thing2, sith
         if ( (v5->physicsParams.physflags & SITH_PF_SURFACEBOUNCE) == 0 )
             v6 = v6 * 0.5;
         
-        // (2*mass^2) / (2*mass)
-        senderb = (v5->physicsParams.mass * v4->physicsParams.mass + v5->physicsParams.mass * v4->physicsParams.mass)
-                / (v5->physicsParams.mass + v4->physicsParams.mass);
+		// (2*mass^2) / (2*mass)
+		senderb = (v5->physicsParams.mass * v4->physicsParams.mass + v5->physicsParams.mass * v4->physicsParams.mass)
+				/ (v5->physicsParams.mass + v4->physicsParams.mass);
 
-        rdVector_Scale3(&forceVec, &a2, v6 * senderb);
-        sithPhysics_ThingApplyForce(v4, &forceVec);
-        rdVector_Neg3Acc(&forceVec);
-        sithPhysics_ThingApplyForce(v5, &forceVec);
+		rdVector_Scale3(&forceVec, &a2, v6 * senderb);
+	#ifdef PUPPET_PHYSICS
+		if (v5->type != SITH_THING_CORPSE)
+	#endif
+			sithPhysics_ThingApplyForce(v4, &forceVec);
+		rdVector_Neg3Acc(&forceVec);
+#ifdef PUPPET_PHYSICS
+		if (v4->type != SITH_THING_CORPSE)
+#endif
+			sithPhysics_ThingApplyForce(v5, &forceVec);
+
+#ifdef PUPPET_PHYSICS
+		// don't block if one of the colliders is a corpse
+		if (v4->type == SITH_THING_PLAYER && v5->type == SITH_THING_CORPSE)
+			return 0;
+#endif
+
         return sithCollision_CollideHurt(v4, &a2, a3->distance, 0);
     }
     sender = 0.0f;
@@ -1062,6 +1090,11 @@ int sithCollision_DebrisDebrisCollide(sithThing *thing1, sithThing *thing2, sith
         return 1;
     if ( sender > 1.0 )
         sender = 1.0;
+#ifdef PUPPET_PHYSICS
+	if (v5->type == SITH_THING_CORPSE && v5->prev_thing)
+		sithSoundClass_PlayThingSoundclass(v5->prev_thing, SITH_SC_CORPSEHIT, sender);
+	else
+#endif
     if ( (v5->thingflags & SITH_TF_METAL) != 0 )
         sithSoundClass_PlayThingSoundclass(v4, SITH_SC_HITMETAL, sender);
     else

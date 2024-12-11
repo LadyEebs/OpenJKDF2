@@ -48,8 +48,8 @@ void sithPuppet_advanceidk(sithThing *pThing, float a2);
 int sithPuppet_FindHitLoc(sithThing* pReceiverThing, rdVector3* pPos);
 
 #ifdef PUPPET_PHYSICS
-void sithPuppet_Physicalize(sithThing* pThing, rdVector3* pInitialVel);
-void sithPuppet_Unphysicalize(sithThing* pThing);
+void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel);
+void sithPuppet_StopPhysics(sithThing* pThing);
 void sithPuppet_ConstrainJoints(sithThing* pThing, int jointA, int jointB, float minDistance);
 void sithPuppet_ConstrainBody(sithThing* pThing);
 int sithPuppet_CollideJoint(sithSector* sector, sithThing* pThing, rdVector3* pos, rdVector3* dir, float radius, rdVector3* hitNormOut);

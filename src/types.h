@@ -1388,6 +1388,8 @@ typedef struct sithBodyPart
 	uint32_t flags;
 	float mass;
 	float bounce;
+	float health;
+	float damage;
 #endif
 } sithBodyPart;
 #endif
@@ -3245,6 +3247,18 @@ typedef struct sithPuppetJoint
 	float     radius;
 } sithPuppetJoint;
 
+typedef struct sithPuppetPhysics
+{
+	sithThing* pParent;
+	sithPuppetJoint joints[JOINTTYPE_NUM_JOINTS];
+	rdVector3 center;
+	float radius;
+	float lastTimeStep;
+	int collisions;
+	int expireMs;
+	int lastCollideMs;
+} sithPuppetPhysics;
+
 struct sithPuppet
 {
 	int field_0;
@@ -3256,17 +3270,7 @@ struct sithPuppet
 	int field_18;
 	int currentTrack;
 	int animStartedMs;
-	
-	// todo: consider moving this to another struct
-	sithThing* pParent;
-	sithPuppetJoint joints[JOINTTYPE_NUM_JOINTS];
-	rdVector3 center;
-	float radius;
-	int physicalized;
-	float lastTimeStep;
-	int collisions;
-	int expireMs;
-	int lastCollideMs;
+	sithPuppetPhysics* physics;
 };
 
 #endif

@@ -1782,6 +1782,25 @@ void sithCogFunctionThing_JointForPosition(sithCog* ctx)
 	sithCogExec_PushInt(ctx, joint);
 }
 
+void sithCogFunctionThing_GetJointHealth(sithCog* ctx)
+{
+	uint32_t idx = sithCogExec_PopInt(ctx);
+	sithThing* pThing = sithCogExec_PopThing(ctx);
+	if (!pThing
+		|| pThing->type != SITH_THING_ACTOR
+		|| !pThing->rdthing.model3
+		|| !pThing->animclass
+		|| idx >= JOINTTYPE_NUM_JOINTS
+		|| idx < 0)
+	{
+		sithCogExec_PushFlex(ctx, 1000.0f);
+		return;
+	}
+
+	float jointHealth = pThing->actorParams.maxHealth * pThing->animclass->bodypart[idx].health;
+	sithCogExec_PushFlex(ctx, jointHealth);
+}
+
 void sithCogFunctionThing_GetJointDamage(sithCog* ctx)
 {
 	uint32_t idx = sithCogExec_PopInt(ctx);
@@ -1797,6 +1816,23 @@ void sithCogFunctionThing_GetJointDamage(sithCog* ctx)
 		return;
 	}
 	sithCogExec_PushFlex(ctx, pThing->actorParams.locationDamage[idx]);
+}
+
+void sithCogFunctionThing_GetJointDamageModifier(sithCog* ctx)
+{
+	uint32_t idx = sithCogExec_PopInt(ctx);
+	sithThing* pThing = sithCogExec_PopThing(ctx);
+	if (!pThing
+		|| pThing->type != SITH_THING_ACTOR
+		|| !pThing->rdthing.model3
+		|| !pThing->animclass
+		|| idx >= JOINTTYPE_NUM_JOINTS
+		|| idx < 0)
+	{
+		sithCogExec_PushFlex(ctx, 1.0f);
+		return;
+	}
+	sithCogExec_PushFlex(ctx, pThing->animclass->bodypart[idx].damage);
 }
 
 void sithCogFunctionThing_DismemberJoint(sithCog* ctx)
@@ -1841,11 +1877,14 @@ void sithCogFunctionThing_DismemberJoint(sithCog* ctx)
 				int moveType = pThing->moveType;
 				int flags = pThing->thingflags;
 				sithCog* cog = pThing->class_cog;
+				sithAnimclass* animClass = pThing->animclass;
 				pThing->type = SITH_THING_CORPSE;
 				pThing->controlType = SITH_THING_CORPSE;
-				pThing->moveType = SITH_MT_NONE;
+				pThing->moveType = SITH_MT_PHYSICS;
+				pThing->collide = SITH_COLLIDE_NONE;
 				pThing->class_cog = NULL;//sithCog_LoadCogscript("00_bloodtrail.cog");// NULL;
 				//pThing->pTemplate = pBloodTemplate;
+				//pThing->animclass = NULL;
 
 				// spawn the thing at the position of the root joint
 				if (rdthing->frameTrue != rdroid_frameTrue)
@@ -1866,7 +1905,7 @@ void sithCogFunctionThing_DismemberJoint(sithCog* ctx)
 					sithThing_DetachThing(pLimb);
 				//	pLimb->moveType = SITH_MT_PHYSICS;
 
-				//	pLimb->collideSize = pLimb->moveSize = rdthing->model3->geosets[0].meshes[pNode->meshIdx].radius;// * 0.75;
+					pLimb->collideSize = pLimb->moveSize = rdthing->model3->geosets[0].meshes[pNode->meshIdx].radius;// * 0.75;
 					//pLimb->lifeLeftMs = 30000.0f;
 					pLimb->lifeLeftMs = jkPlayer_bKeepCorpses ? -1 : 20000;
 
@@ -1892,12 +1931,13 @@ void sithCogFunctionThing_DismemberJoint(sithCog* ctx)
 					pLimb->rdthing.rootJoint = jointIdx;
 
 					//sithPuppet_PlayMode(pLimb, SITH_ANIM_DEATH, sithPuppet_DefaultCallback);
-					//memcpy(&pLimb->rdthing.hierarchyNodeMatrices, &rdthing->hierarchyNodeMatrices, sizeof(rdMatrix34) * rdthing->model3->numHierarchyNodes);
+					memcpy(pLimb->rdthing.hierarchyNodeMatrices, rdthing->hierarchyNodeMatrices, sizeof(rdMatrix34) * rdthing->model3->numHierarchyNodes);
+					memcpy(pLimb->rdthing.paHierarchyNodeMatricesPrev, rdthing->paHierarchyNodeMatricesPrev, sizeof(rdMatrix34) * rdthing->model3->numHierarchyNodes);
 
 
 				//	rdVector3 kickVec = { 0.0f, 0.7f, 1.4f };
 				//	rdVector_Copy3(&pLimb->physicsParams.vel, &kickVec);
-					rdPuppet_BuildJointMatrices(&pLimb->rdthing, &pLimb->lookOrientation);
+				//	rdPuppet_BuildJointMatrices(&pLimb->rdthing, &pLimb->lookOrientation);
 
 #ifdef RAGDOLLS
 					//if(rdthing->model3->pSkel)
@@ -1916,6 +1956,7 @@ void sithCogFunctionThing_DismemberJoint(sithCog* ctx)
 				pThing->moveType = moveType;
 				pThing->class_cog = cog;
 				pThing->thingflags = flags;
+				pThing->animclass = animClass;
 
 				sithCogExec_PushInt(ctx, pLimb ? pLimb->thingIdx : -1);
 				return;
@@ -2017,36 +2058,6 @@ void sithCogFunctionThing_GetActorWeaponMots(sithCog *ctx)
         return;
     }
 }
-
-#ifdef PUPPET_PHYSICS
-void sithCogFunctionThing_SetJointFlags(sithCog* ctx)
-{
-	int flags = sithCogExec_PopInt(ctx);
-	int idx = sithCogExec_PopInt(ctx);
-	sithThing* pThing = sithCogExec_PopThing(ctx);
-	if (pThing && pThing->puppet)
-		pThing->puppet->joints[idx].flags |= flags;
-}
-
-void sithCogFunctionThing_ClearJointFlags(sithCog* ctx)
-{
-	int flags = sithCogExec_PopInt(ctx);
-	int idx = sithCogExec_PopInt(ctx);
-	sithThing* pThing = sithCogExec_PopThing(ctx);
-	if (pThing && pThing->puppet)
-		pThing->puppet->joints[idx].flags &= ~flags;
-}
-
-void sithCogFunctionThing_GetJointFlags(sithCog* ctx)
-{
-	int idx = sithCogExec_PopInt(ctx);
-	sithThing* pThing = sithCogExec_PopThing(ctx);
-	if (pThing && pThing->puppet)
-		sithCogExec_PushInt(ctx, pThing->puppet->joints[idx].flags);
-	else
-		sithCogExec_PushInt(ctx, -1);
-}
-#endif
 
 void sithCogFunctionThing_GetPhysicsFlags(sithCog *ctx)
 {
@@ -3032,7 +3043,9 @@ void sithCogFunctionThing_Startup(void* ctx)
 #endif
 #ifdef REGIONAL_DAMAGE
 	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_JointForPosition, "jointforposition");
+	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_GetJointHealth, "getjointhealth");
 	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_GetJointDamage, "getjointdamage");
+	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_GetJointDamageModifier, "getjointdamagemodifier");
 	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_DismemberJoint, "dismemberjoint");
 #endif
     sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_SetActorWeapon, "setactorweapon");
@@ -3043,11 +3056,6 @@ void sithCogFunctionThing_Startup(void* ctx)
     else {
         sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_GetActorWeapon, "getactorweapon");
     }
-#ifdef PUPPET_PHYSICS
-	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_SetJointFlags, "setjointflags");
-	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_ClearJointFlags, "clearjointflags");
-	sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_GetJointFlags, "getjointflags");
-#endif
     sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_GetPhysicsFlags, "getphysicsflags");
     sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_SetPhysicsFlags, "setphysicsflags");
     sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_ClearPhysicsFlags, "clearphysicsflags");

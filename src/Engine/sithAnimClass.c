@@ -110,6 +110,8 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 #ifdef PUPPET_PHYSICS
 	float mass = 1.0f / JOINTTYPE_NUM_JOINTS;
 	float bounce = 1.0f;
+	float health = 1000.0f;
+	float damage = 1.0f;
 #endif
 #endif
 
@@ -174,15 +176,25 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 					else
 						_sscanf(stdConffile_entry.args[2].value, "%x", &flags);
 
-					if(stdConffile_entry.numArgs <= 3)
+					if (stdConffile_entry.numArgs <= 3)
 						mass = 1.0;
 					else
 						mass = _atof(stdConffile_entry.args[3].key);
 
-					if(stdConffile_entry.numArgs <= 4)
+					if (stdConffile_entry.numArgs <= 4)
 						bounce = 1.0;
 					else
 						bounce = _atof(stdConffile_entry.args[4].key);
+
+					if (stdConffile_entry.numArgs <= 5)
+						health = 1000.0f;
+					else
+						health = _atof(stdConffile_entry.args[5].key);
+					
+					if (stdConffile_entry.numArgs <= 6)
+						damage = 1.0;
+					else
+						damage = _atof(stdConffile_entry.args[6].key);
 #endif
 				}
 				else // old syntax
@@ -192,6 +204,8 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 					flags = 0;
 					mass = 1.0f;
 					bounce = 1.0f;
+					health = 1000.0f;
+					damage = 1.0f;
 				}
 				if (bodypart_idx < JOINTTYPE_NUM_JOINTS && bodypart_idx >= 0) // Added: check for negative
 				{
@@ -200,6 +214,8 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 					animclass->bodypart[bodypart_idx].flags = flags & ~JOINTFLAGS_COLLIDED;
 					animclass->bodypart[bodypart_idx].mass = mass;
 					animclass->bodypart[bodypart_idx].bounce = bounce;
+					animclass->bodypart[bodypart_idx].health = health;
+					animclass->bodypart[bodypart_idx].damage = damage;
 #endif
 				}
 #else

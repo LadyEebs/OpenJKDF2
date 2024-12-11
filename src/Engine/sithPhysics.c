@@ -172,6 +172,14 @@ void sithPhysics_ThingTick(sithThing *pThing, float deltaSecs)
         rdVector_Zero3(&pThing->physicsParams.acceleration);
     }
 
+#ifdef PUPPET_PHYSICS
+	if (pThing->puppet && pThing->puppet->physics)
+	{
+		// let the animation system take over
+		return;
+	}
+	else
+#endif
     if (pThing->attach_flags & (SITH_ATTACH_THINGSURFACE | SITH_ATTACH_WORLDSURFACE))
     {
         sithPhysics_ThingPhysAttached(pThing, deltaSecs);
@@ -1327,9 +1335,10 @@ void sithPhysics_UpdateRagdollParticles(rdRagdoll* pRagdoll, float deltaSeconds)
 		
 		rdVector3 vel;
 		rdVector_Sub3(&vel, &pParticle->pos, &pParticle->lastPos);
+		rdVector_Scale3Acc(&vel, 1.0f / deltaSeconds);
 
 		// apply forces
-		rdVector_MultAcc3(&vel, &pParticle->forces, deltaSeconds);
+		rdVector_Add3Acc(&vel, &pParticle->forces);
 
 		// friction
 		rdVector_Scale3Acc(&vel, timestepRatio * powf(pParticle->collided ? 0.8f : 0.998f, deltaSeconds * 1000.0f));
@@ -1348,7 +1357,7 @@ void sithPhysics_UpdateRagdollParticles(rdRagdoll* pRagdoll, float deltaSeconds)
 		sithThing_EnterSector(&pParticle->thing, pRagdoll->pThing->parentSithThing->sector, 1, 0);
 
 		// add the vel
-		rdVector_Add3Acc(&pParticle->pos, &pParticle->thing.physicsParams.vel);
+		rdVector_MultAcc3(&pParticle->pos, &pParticle->thing.physicsParams.vel, deltaSeconds);
 	}
 }
 

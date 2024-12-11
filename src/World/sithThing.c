@@ -351,6 +351,11 @@ void sithThing_TickPhysics(sithThing *pThing, float deltaSecs)
         rdVector_Zero3(&pThing->field_268);
     }
 
+#ifdef PUPPET_PHYSICS
+	//if (pThing->type == SITH_THING_CORPSE)
+		//v2 |= RAYCAST_4;
+#endif
+
     if (pThing->attach_flags && pThing->attach_flags & SITH_ATTACH_WORLDSURFACE)
     {
         v5 = pThing->attachedSurface;

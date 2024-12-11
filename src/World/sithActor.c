@@ -358,7 +358,7 @@ void sithActor_SpawnDeadBodyMaybe(sithThing *thing, sithThing *a3, int a4, int j
 							rdKeyframe* key = mode->keyframe[anim].keyframe;
 							if (key)
 							{
-								deathMs = ((float)key->numFrames / key->fps) * 1000.0f * 0.5f;
+								deathMs = ((float)key->numFrames / key->fps) * 1000.0f * 0.25f;
 							}
 						}
 						thing->lifeLeftMs = deathMs;
@@ -621,7 +621,7 @@ void sithActor_Remove(sithThing *thing)
     thing->lifeLeftMs = jkPlayer_bKeepCorpses ? -1 : 20000; // Added
     sithPhysics_FindFloor(thing, 0);
 #ifdef PUPPET_PHYSICS
-	sithPuppet_Physicalize(thing, &thing->physicsParams.vel);
+//	thing->collide = SITH_COLLIDE_NONE;
 #endif
 #ifdef RAGDOLLS
 	if(thing->rdthing.model3 && thing->rdthing.model3->pSkel)
