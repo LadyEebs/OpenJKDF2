@@ -1119,11 +1119,13 @@ void main(void)
 
 	vec3 ao = vec3(shadows.w * 0.8 + 0.2); // remap so we don't overdarken
 	
+#ifndef ALPHA_BLEND
 	if((aoFlags & 0x2) == 0x2)
 	{
 		float ssao = upsample_ssao(gl_FragCoord.xy, f_depth);
 		ao *= ssao;
 	}
+#endif
 
 	// fake multi bounce
 	vec3 albedo = vertex_color.xyz * diffuseColor.xyz;
