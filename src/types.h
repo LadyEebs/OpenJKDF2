@@ -3234,6 +3234,20 @@ typedef struct sithThing
 
 #ifdef PUPPET_PHYSICS
 
+typedef struct sithPuppetConstraint
+{
+	int jointA;
+	int jointB;
+	float minDist;
+} sithPuppetConstraint;
+
+// each joint has another associated joint to form a bone used to determine orientation
+typedef struct sithPuppetBone
+{
+	int otherJoint; // the other joint for this bone
+	int reversed;   // if the bone points up (0) or down (1)
+} sithPuppetBone;
+
 typedef struct sithPuppetJoint
 {
 	sithThing  thing;         // physicalized thing representation

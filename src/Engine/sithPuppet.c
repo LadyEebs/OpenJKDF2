@@ -104,13 +104,6 @@ static const char* sithPuppet_jointNames[] =
 
 #ifdef PUPPET_PHYSICS
 
-typedef struct sithPuppetConstraint
-{
-	int jointA;
-	int jointB;
-	float minDist;
-} sithPuppetConstraint;
-
 static const sithPuppetConstraint sithPuppet_constraints[] =
 {
 	// head constraints
@@ -187,13 +180,6 @@ static const sithPuppetConstraint sithPuppet_constraints[] =
 	{ JOINTTYPE_PRIMARYWEAP,   JOINTTYPE_RHAND, -1 },
 	{ JOINTTYPE_SECONDARYWEAP, JOINTTYPE_LHAND, -1 },
 };
-
-// each joint has another associated joint to form a bone used to determine orientation
-typedef struct sithPuppetBone
-{
-	int otherJoint; // the other joint for this bone
-	int reversed;   // if the bone points up (0) or down (1)
-} sithPuppetBone;
 
 static const sithPuppetBone sithPuppet_jointBones[] =
 {
