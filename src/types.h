@@ -3246,11 +3246,13 @@ typedef struct sithPuppetConstraint
 // each joint has another associated set of joints forming a reference frame used to determine orientation
 typedef struct sithPuppetJointFrame
 {
-	int   upJoint;    // joint above (or below if reversed)
-	int   leftJoint;  // joint to the left
-	int   rightJoint; // joint to the right
-	int   reversed;   // if the up joint points up (0) or down (1)
-	float maxTwist;   // maximum twist angle allowed
+	int   targetJoint; // joint above (or below if reversed) for orienting the mesh
+	int   leftJoint;   // joint to the left for yaw constraint
+	int   rightJoint;  // joint to the right for yaw constraint
+	int   pitchJoint;  // joint used with targetJoint to constrain pitch
+	int   reversed;    // if the up joint points up (0) or down (1)
+	float maxYaw;      // maximum yaw change allowed
+	float maxPitch;    // maximum yaw change allowed
 } sithPuppetJointFrame;
 
 typedef struct sithPuppetJoint
@@ -3263,6 +3265,7 @@ typedef struct sithPuppetJoint
 typedef struct sithPuppetPhysics
 {
 	sithPuppetJoint joints[JOINTTYPE_NUM_JOINTS];
+	uint64_t        constrainedJoints; // bitmask for any joints that were constrained this frame
 } sithPuppetPhysics;
 
 struct sithPuppet
