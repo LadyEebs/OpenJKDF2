@@ -3243,12 +3243,15 @@ typedef struct sithPuppetConstraint
 	float minDist;
 } sithPuppetConstraint;
 
-// each joint has another associated joint to form a bone used to determine orientation
-typedef struct sithPuppetBone
+// each joint has another associated set of joints forming a reference frame used to determine orientation
+typedef struct sithPuppetJointFrame
 {
-	int otherJoint; // the other joint for this bone
-	int reversed;   // if the bone points up (0) or down (1)
-} sithPuppetBone;
+	int   upJoint;    // joint above (or below if reversed)
+	int   leftJoint;  // joint to the left
+	int   rightJoint; // joint to the right
+	int   reversed;   // if the up joint points up (0) or down (1)
+	float maxTwist;   // maximum twist angle allowed
+} sithPuppetJointFrame;
 
 typedef struct sithPuppetJoint
 {

@@ -182,30 +182,30 @@ static const sithPuppetConstraint sithPuppet_constraints[] =
 	{ JOINTTYPE_SECONDARYWEAP, JOINTTYPE_LHAND, -1 },
 };
 
-static const sithPuppetBone sithPuppet_jointBones[] =
+static const sithPuppetJointFrame sithPuppet_jointFrames[] =
 {
-	{ JOINTTYPE_NECK,             1 },	// JOINTTYPE_HEAD
-	{ JOINTTYPE_HEAD,             0 },	// JOINTTYPE_NECK
-	{ JOINTTYPE_NECK,             0 },	// JOINTTYPE_TORSO
-	{ -1,                         0 },	// JOINTTYPE_PRIMARYWEAP
-	{ -1,                         0 },	// JOINTTYPE_SECONDARYWEAP
-	{ -1,                         0 },	// JOINTTYPE_PRIMARYWEAPJOINT
-	{ -1,                         0 },	// JOINTTYPE_SECONDARYWEAPJOINT
-	{ -1,                         0 },	// JOINTTYPE_TURRETPITCH
-	{ -1,                         0 },	// JOINTTYPE_TURRETYAW
-	{ JOINTTYPE_TORSO,            0 },	// JOINTTYPE_HIP
-	{ JOINTTYPE_RFOREARM,         1 },	// JOINTTYPE_RSHOULDER
-	{ JOINTTYPE_LFOREARM,         1 },	// JOINTTYPE_LSHOULDER
-	{ JOINTTYPE_RSHOULDER,        0 },	// JOINTTYPE_RFOREARM
-	{ JOINTTYPE_LSHOULDER,        0 },	// JOINTTYPE_LFOREARM
-	{ JOINTTYPE_RFOREARM,         0 },	// JOINTTYPE_RHAND
-	{ JOINTTYPE_LFOREARM,         0 },	// JOINTTYPE_LHAND
-	{ JOINTTYPE_RCALF,            1 },	// JOINTTYPE_RTHIGH
-	{ JOINTTYPE_LCALF,            1 },	// JOINTTYPE_LTHIGH
-	{ JOINTTYPE_RTHIGH,           0 },	// JOINTTYPE_RCALF
-	{ JOINTTYPE_LTHIGH,           0 },	// JOINTTYPE_LCALF
-	{ JOINTTYPE_RCALF,            0 },	// JOINTTYPE_RFOOT
-	{ JOINTTYPE_LCALF,            0 },	// JOINTTYPE_LFOOT
+	{ JOINTTYPE_NECK,      JOINTTYPE_LSHOULDER, JOINTTYPE_RSHOULDER, 1, 70.0f },	// JOINTTYPE_HEAD
+	{ JOINTTYPE_HEAD,      JOINTTYPE_LSHOULDER, JOINTTYPE_RSHOULDER, 0, 60.0f },	// JOINTTYPE_NECK
+	{ JOINTTYPE_NECK,      JOINTTYPE_LSHOULDER, JOINTTYPE_RSHOULDER, 0, 20.0f },	// JOINTTYPE_TORSO
+	{ -1,                                   -1,                  -1, 0,  0.0f },	// JOINTTYPE_PRIMARYWEAP
+	{ -1,                                   -1,                  -1, 0,  0.0f },	// JOINTTYPE_SECONDARYWEAP
+	{ -1,                                   -1,                  -1, 0,  0.0f },	// JOINTTYPE_PRIMARYWEAPJOINT
+	{ -1,                                   -1,                  -1, 0,  0.0f },	// JOINTTYPE_SECONDARYWEAPJOINT
+	{ -1,                                   -1,                  -1, 0,  0.0f },	// JOINTTYPE_TURRETPITCH
+	{ -1,                                   -1,                  -1, 0,  0.0f },	// JOINTTYPE_TURRETYAW
+	{ JOINTTYPE_TORSO,        JOINTTYPE_LTHIGH,    JOINTTYPE_RTHIGH, 0, 20.0f },	// JOINTTYPE_HIP
+	{ JOINTTYPE_RFOREARM,                   -1,                  -1, 1,  0.0f },	// JOINTTYPE_RSHOULDER
+	{ JOINTTYPE_LFOREARM,                   -1,                  -1, 1,  0.0f },	// JOINTTYPE_LSHOULDER
+	{ JOINTTYPE_RSHOULDER,                  -1,                  -1, 0,  0.0f },	// JOINTTYPE_RFOREARM
+	{ JOINTTYPE_LSHOULDER,                  -1,                  -1, 0,  0.0f },	// JOINTTYPE_LFOREARM
+	{ JOINTTYPE_RFOREARM,                   -1,                  -1, 0,  0.0f },	// JOINTTYPE_RHAND
+	{ JOINTTYPE_LFOREARM,                   -1,                  -1, 0,  0.0f },	// JOINTTYPE_LHAND
+	{ JOINTTYPE_RCALF,                      -1,                  -1, 1,  0.0f },	// JOINTTYPE_RTHIGH
+	{ JOINTTYPE_LCALF,                      -1,                  -1, 1,  0.0f },	// JOINTTYPE_LTHIGH
+	{ JOINTTYPE_RTHIGH,                     -1,                  -1, 0,  0.0f },	// JOINTTYPE_RCALF
+	{ JOINTTYPE_LTHIGH,                     -1,                  -1, 0,  0.0f },	// JOINTTYPE_LCALF
+	{ JOINTTYPE_RCALF,                      -1,                  -1, 0,  0.0f },	// JOINTTYPE_RFOOT
+	{ JOINTTYPE_LCALF,                      -1,                  -1, 0,  0.0f },	// JOINTTYPE_LFOOT
 };
 #endif
 
@@ -1381,25 +1381,48 @@ static void sithPuppet_BuildJointMatrices(sithThing* thing)
 		sithPuppetJoint* pJoint = &thing->puppet->physics->joints[jointIdx];
 		rdHierarchyNode* pNode = &thing->rdthing.model3->hierarchyNodes[nodeIdx];
 
-		sithPuppetBone* pBone = &sithPuppet_jointBones[jointIdx];
-		if(pBone->otherJoint < 0)
+		sithPuppetJointFrame* pFrame = &sithPuppet_jointFrames[jointIdx];
+		if(pFrame->upJoint < 0)
 		{
 			rdVector_Copy3(&pJoint->thing.lookOrientation.scale, &pJoint->thing.position);
 			thing->rdthing.paHiearchyNodeMatrixOverrides[nodeIdx] = &pJoint->thing.lookOrientation;
 			continue;
 		}
 		
-		sithPuppetJoint* pOtherJoint = &thing->puppet->physics->joints[pBone->otherJoint];
+		sithPuppetJoint* pUpJoint = &thing->puppet->physics->joints[pFrame->upJoint];
 		rdMatrix34* pMat = &pJoint->thing.lookOrientation;
 
-		// calculate the 
-		rdVector_Sub3(&pMat->uvec, &pOtherJoint->thing.position, &pJoint->thing.position);
+		// calculate the up vector
+		rdVector_Sub3(&pMat->uvec, &pUpJoint->thing.position, &pJoint->thing.position);
 		rdVector_Normalize3Acc(&pMat->uvec);
-		if(pBone->reversed)
+		if(pFrame->reversed)
 			rdVector_Neg3Acc(&pMat->uvec);
 
+		// calculate the adjusted right vector
 		rdVector_Cross3(&pMat->rvec, &pMat->lvec, &pMat->uvec);
 		rdVector_Normalize3Acc(&pMat->rvec);
+
+		// if we have a reference left and right joint, we have constraint
+		if (pFrame->leftJoint >= 0 && pFrame->rightJoint >= 0)
+		{
+			sithPuppetJoint* pLeftJoint = &thing->puppet->physics->joints[pFrame->leftJoint];
+			sithPuppetJoint* pRightJoint = &thing->puppet->physics->joints[pFrame->rightJoint];
+
+			rdVector3 referenceRight;
+			rdVector_Sub3(&referenceRight, &pRightJoint->thing.position, &pLeftJoint->thing.position);
+			rdVector_Normalize3Acc(&referenceRight);
+
+			float dot = rdVector_Dot3(&pMat->rvec, &referenceRight);
+			float angle = 90.0f - stdMath_ArcSin3(dot);
+			if (angle > pFrame->maxTwist)
+			{
+				float t = (angle - pFrame->maxTwist) / angle;
+
+				rdVector3 lerped;
+				rdVector_Lerp3(&lerped, &pMat->rvec, &referenceRight, t);
+				rdVector_Normalize3(&pMat->rvec, &lerped);
+			}
+		}
 		
 		rdVector_Cross3(&pMat->lvec, &pMat->uvec, &pMat->rvec);
 
