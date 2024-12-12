@@ -104,6 +104,8 @@ static inline uint8_t stdMath_ClampU8(uint8_t val, uint8_t valMin, uint8_t valMa
     return val;
 }
 
+int stdMath_FindLSB64(uint64_t value);
+
 extern const float aSinTable[4096];
 extern const float aTanTable[4096];
 

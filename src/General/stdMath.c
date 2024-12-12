@@ -920,3 +920,14 @@ float stdMath_ClampValue(float val, float valAbsMax)
 
     return val;
 }
+
+int stdMath_FindLSB64(uint64_t value)
+{
+#if defined(_MSC_VER) && !defined(WIN64_MINGW)
+	int i;
+	int r = _BitScanForward64(&i, value);
+	return (r == 0) ? -1 : i;
+#else
+	return ffsll(value) - 1;
+#endif
+}
