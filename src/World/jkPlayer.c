@@ -1467,7 +1467,7 @@ void jkPlayer_renderWeaponMesh(sithThing* thing)
 		return;
 
 #ifdef ANIMCLASS_NAMES
-	int primary_mesh = thing->animclass->bodypart[JOINTTYPE_PRIMARYWEAP].jointIdx;
+	int primary_mesh = thing->animclass->bodypart[JOINTTYPE_PRIMARYWEAP].nodeIdx;
 #else
 	int primary_mesh = thing->animclass->bodypart_to_joint[JOINTTYPE_PRIMARYWEAP];
 #endif
@@ -1525,8 +1525,8 @@ void jkPlayer_renderSaberBlade(sithThing* thing)
 		return;
 
 #ifdef ANIMCLASS_NAMES
-	int primary_mesh = thing->animclass->bodypart[JOINTTYPE_PRIMARYWEAP].jointIdx;
-	int secondary_mesh = thing->animclass->bodypart[JOINTTYPE_SECONDARYWEAP].jointIdx;
+	int primary_mesh = thing->animclass->bodypart[JOINTTYPE_PRIMARYWEAP].nodeIdx;
+	int secondary_mesh = thing->animclass->bodypart[JOINTTYPE_SECONDARYWEAP].nodeIdx;
 #else
 	int primary_mesh = thing->animclass->bodypart_to_joint[JOINTTYPE_PRIMARYWEAP];
 	int secondary_mesh = thing->animclass->bodypart_to_joint[JOINTTYPE_SECONDARYWEAP];
@@ -1549,7 +1549,7 @@ void jkPlayer_renderSaberBlade(sithThing* thing)
 		if (primary_mesh != secondary_mesh)
 		{
 #ifdef ANIMCLASS_NAMES
-			thing->animclass->bodypart[JOINTTYPE_SECONDARYWEAP].jointIdx = secondary_mesh;
+			thing->animclass->bodypart[JOINTTYPE_SECONDARYWEAP].nodeIdx = secondary_mesh;
 #else
 			thing->animclass->bodypart_to_joint[JOINTTYPE_SECONDARYWEAP] = secondary_mesh;
 #endif
@@ -1630,8 +1630,8 @@ void jkPlayer_renderSaberWeaponMesh(sithThing *thing)
         return;
 
 #ifdef ANIMCLASS_NAMES
-	int primary_mesh = thing->animclass->bodypart[JOINTTYPE_PRIMARYWEAP].jointIdx;
-	int secondary_mesh = thing->animclass->bodypart[JOINTTYPE_SECONDARYWEAP].jointIdx;
+	int primary_mesh = thing->animclass->bodypart[JOINTTYPE_PRIMARYWEAP].nodeIdx;
+	int secondary_mesh = thing->animclass->bodypart[JOINTTYPE_SECONDARYWEAP].nodeIdx;
 #else
 	int primary_mesh = thing->animclass->bodypart_to_joint[JOINTTYPE_PRIMARYWEAP];
 	int secondary_mesh = thing->animclass->bodypart_to_joint[JOINTTYPE_SECONDARYWEAP];
@@ -1653,7 +1653,7 @@ void jkPlayer_renderSaberWeaponMesh(sithThing *thing)
         if (primary_mesh != secondary_mesh)
 		{
 #ifdef ANIMCLASS_NAMES
-			thing->animclass->bodypart[JOINTTYPE_SECONDARYWEAP].jointIdx = secondary_mesh;
+			thing->animclass->bodypart[JOINTTYPE_SECONDARYWEAP].nodeIdx = secondary_mesh;
 #else
 			thing->animclass->bodypart_to_joint[JOINTTYPE_SECONDARYWEAP] = secondary_mesh;
 #endif

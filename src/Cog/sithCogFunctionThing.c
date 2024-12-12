@@ -1696,7 +1696,7 @@ void sithCogFunctionThing_AmputateJoint(sithCog *ctx)
             if (animclass && idx < JOINTTYPE_NUM_JOINTS && idx >= 0)
             {
 #ifdef ANIMCLASS_NAMES
-				int jointIdx = animclass->bodypart[idx].jointIdx;
+				int jointIdx = animclass->bodypart[idx].nodeIdx;
 #else
 				int jointIdx = animclass->bodypart_to_joint[idx];
 #endif
@@ -1725,7 +1725,7 @@ void sithCogFunctionThing_IsJointAmputated(sithCog* ctx)
 		if (animclass && idx < JOINTTYPE_NUM_JOINTS && idx >= 0)
 		{
 #ifdef ANIMCLASS_NAMES
-			int jointIdx = animclass->bodypart[idx].jointIdx;
+			int jointIdx = animclass->bodypart[idx].nodeIdx;
 #else
 			int jointIdx = animclass->bodypart_to_joint[idx];
 #endif
@@ -1750,7 +1750,7 @@ void sithCogFunctionThing_SetRootJoint(sithCog* ctx)
 		if (animclass && idx < JOINTTYPE_NUM_JOINTS && idx >= 0)
 		{
 #ifdef ANIMCLASS_NAMES
-			int jointIdx = animclass->bodypart[idx].jointIdx;
+			int jointIdx = animclass->bodypart[idx].nodeIdx;
 #else
 			int jointIdx = animclass->bodypart_to_joint[idx];
 #endif
@@ -1850,7 +1850,7 @@ void sithCogFunctionThing_DismemberJoint(sithCog* ctx)
 	rdThing* rdthing = &pThing->rdthing;
 	sithAnimclass* animclass = pThing->animclass;
 #ifdef ANIMCLASS_NAMES
-	int jointIdx = animclass->bodypart[idx].jointIdx;
+	int jointIdx = animclass->bodypart[idx].nodeIdx;
 #else
 	int jointIdx = animclass->bodypart_to_joint[idx];
 #endif
@@ -2812,7 +2812,7 @@ void sithCogFunctionThing_SetThingJointAngle(sithCog *ctx)
       && (pThing->rdthing.type == RD_THINGTYPE_MODEL)) 
       && ((prVar1 = pThing->rdthing.hierarchyNodes2, prVar1 != NULL &&
 	#ifdef ANIMCLASS_NAMES
-	  (arg1 = pThing->animclass->bodypart[arg1].jointIdx,
+	  (arg1 = pThing->animclass->bodypart[arg1].nodeIdx,
 	#else
       (arg1 = pThing->animclass->bodypart_to_joint[arg1],
 	#endif
@@ -2835,7 +2835,7 @@ void sithCogFunctionThing_GetThingJointAngle(sithCog *ctx)
         if (((pThing->animclass && pThing->rdthing.type == RD_THINGTYPE_MODEL) &&
             (prVar1 = (pThing->rdthing).hierarchyNodes2, prVar1 != NULL)) &&
 #ifdef ANIMCLASS_NAMES
-			(arg1 = pThing->animclass->bodypart[arg1].jointIdx,
+			(arg1 = pThing->animclass->bodypart[arg1].nodeIdx,
 #else
            (arg1 = pThing->animclass->bodypart_to_joint[arg1],
 #endif

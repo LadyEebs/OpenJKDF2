@@ -1383,7 +1383,7 @@ typedef struct sithAnimclassMode
 #ifdef ANIMCLASS_NAMES
 typedef struct sithBodyPart
 {
-	int jointIdx;
+	int nodeIdx;
 #ifdef PUPPET_PHYSICS
 	uint32_t flags;
 	float mass;
@@ -1400,6 +1400,8 @@ typedef struct sithAnimclass
     sithAnimclassMode modes[6];
 #ifdef ANIMCLASS_NAMES
 	uint32_t flags;
+	uint64_t jointBits;
+	uint64_t physicsJointBits;
 	sithBodyPart bodypart[JOINTTYPE_NUM_JOINTS];
 	int* jointToBodypart;
 	int root;

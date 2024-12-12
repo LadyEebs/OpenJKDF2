@@ -217,15 +217,22 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 				}
 				if (bodypart_idx < JOINTTYPE_NUM_JOINTS && bodypart_idx >= 0) // Added: check for negative
 				{
-					animclass->bodypart[bodypart_idx].jointIdx = joint_idx;
+					animclass->bodypart[bodypart_idx].nodeIdx = joint_idx;
 #ifdef PUPPET_PHYSICS
-					animclass->bodypart[bodypart_idx].flags = flags;
-					animclass->bodypart[bodypart_idx].mass = mass;
-					animclass->bodypart[bodypart_idx].buoyancy = buoyancy;
-					animclass->bodypart[bodypart_idx].health = health;
-					animclass->bodypart[bodypart_idx].damage = damage;
-					if(flags & JOINTFLAGS_ROOT)
-						animclass->root = bodypart_idx;
+					if(joint_idx >= 0)
+					{
+						animclass->jointBits |= (1ull << bodypart_idx);
+						if (flags & JOINTFLAGS_PHYSICS)
+							animclass->physicsJointBits |= (1ull << bodypart_idx);
+
+						animclass->bodypart[bodypart_idx].flags = flags;
+						animclass->bodypart[bodypart_idx].mass = mass;
+						animclass->bodypart[bodypart_idx].buoyancy = buoyancy;
+						animclass->bodypart[bodypart_idx].health = health;
+						animclass->bodypart[bodypart_idx].damage = damage;
+						if (flags & JOINTFLAGS_ROOT)
+							animclass->root = bodypart_idx;
+					}
 #endif
 				}
 #else

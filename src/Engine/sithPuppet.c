@@ -18,6 +18,7 @@
 #include "Primitives/rdQuat.h"
 
 #include "sithPhysics.h"
+#include "General/stdMath.h"
 
 #include <math.h>
 
@@ -1101,17 +1102,22 @@ int sithPuppet_FindHitLoc(sithThing* pReceiverThing, rdVector3* pPos)
 		//rdHierarchyNode* pFoundNode = NULL;
 		int foundJoint = -1;
 		float dist = 10000.0f;
-		for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
+
+		uint64_t jointBits = pReceiverThing->animclass->jointBits;
+		while (jointBits != 0)
 		{
+			int jointIdx = stdMath_FindLSB64(jointBits);
+			jointBits ^= 1ull << jointIdx;
+
 #ifdef ANIMCLASS_NAMES
-			int jointIdx = pReceiverThing->animclass->bodypart[i].jointIdx;
+			int nodeIdx = pReceiverThing->animclass->bodypart[jointIdx].nodeIdx;
 #else
-			int jointIdx = pReceiverThing->animclass->bodypart_to_joint[i];
+			int nodeIdx = pReceiverThing->animclass->bodypart_to_joint[jointIdx];
 #endif
-			if(jointIdx < 0 || jointIdx >= pReceiverThing->rdthing.model3->numHierarchyNodes)
+			if(nodeIdx < 0 || nodeIdx >= pReceiverThing->rdthing.model3->numHierarchyNodes)
 				continue;
 		
-			rdHierarchyNode* pNode = &pReceiverThing->rdthing.model3->hierarchyNodes[jointIdx];
+			rdHierarchyNode* pNode = &pReceiverThing->rdthing.model3->hierarchyNodes[nodeIdx];
 			int meshIdx = pNode->meshIdx;
 			if (meshIdx == 0xffffffff)
 				continue;
@@ -1128,7 +1134,7 @@ int sithPuppet_FindHitLoc(sithThing* pReceiverThing, rdVector3* pPos)
 			if (distToCenter < dist)
 			{
 				dist = distToCenter;
-				foundJoint = i;
+				foundJoint = jointIdx;
 				//pFoundNode = pNode;
 			}
 		}
@@ -1147,7 +1153,7 @@ int sithPuppet_GetPhysicsJointNodeIndex(sithThing* pThing, int idx)
 {
 	sithBodyPart* pBodypart = &pThing->animclass->bodypart[idx];
 	if(pBodypart->flags & JOINTFLAGS_PHYSICS)
-		return pBodypart->jointIdx;
+		return pBodypart->nodeIdx;
 	return -1;
 }
 
@@ -1172,14 +1178,16 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel)
 	rdVector3 thingVel;
 	rdVector_Scale3(&thingVel, pInitialVel, sithTime_deltaSeconds);
 
-	for (int i = 0; i < JOINTTYPE_NUM_JOINTS; i++)
+	uint64_t jointBits = pThing->animclass->jointBits;
+	while (jointBits != 0)
 	{
-		int nodeIdx = pThing->animclass->bodypart[i].jointIdx;
-		if(nodeIdx < 0)
-			continue;
+		int jointIdx = stdMath_FindLSB64(jointBits);
+		jointBits ^= 1ull << jointIdx;
+
+		int nodeIdx = pThing->animclass->bodypart[jointIdx].nodeIdx;
 
 		rdHierarchyNode* pNode = &pThing->rdthing.model3->hierarchyNodes[nodeIdx];
-		sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[i];
+		sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
 
 		// clear next position accumulator
 		rdVector_Zero3(&pJoint->nextPosAcc);
@@ -1190,7 +1198,7 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel)
 		pJoint->thing.rdthing.curGeoMode = 0;
 		pJoint->thing.rdthing.desiredGeoMode = 0;
 		pJoint->thing.thingflags = SITH_TF_INVISIBLE;
-		pJoint->thing.thingIdx = pThing->thingIdx | (i << 16);
+		pJoint->thing.thingIdx = pThing->thingIdx | (jointIdx << 16);
 		pJoint->thing.signature = -1;
 		pJoint->thing.thing_id = -1;
 		pJoint->thing.type = SITH_THING_CORPSE;
@@ -1208,10 +1216,10 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel)
 		if (pThing->physicsParams.physflags & SITH_PF_NOTHRUST)
 			pJoint->thing.physicsParams.physflags |= SITH_PF_NOTHRUST;
 
-		if (pThing->animclass->bodypart[i].flags & JOINTFLAGS_BOUNCE)
+		if (pThing->animclass->bodypart[jointIdx].flags & JOINTFLAGS_BOUNCE)
 			pJoint->thing.physicsParams.physflags |= SITH_PF_SURFACEBOUNCE;
 
-		if (pThing->animclass->bodypart[i].flags & JOINTFLAGS_PHYSICS)
+		if (pThing->animclass->bodypart[jointIdx].flags & JOINTFLAGS_PHYSICS)
 			pJoint->thing.collide = SITH_COLLIDE_SPHERE;
 		else
 			pJoint->thing.collide = SITH_COLLIDE_NONE;
@@ -1272,8 +1280,8 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel)
 		//float field_74;
 		//float field_78;
 
-		pJoint->thing.physicsParams.mass *= pThing->animclass->bodypart[i].mass;
-		pJoint->thing.physicsParams.buoyancy *= pThing->animclass->bodypart[i].buoyancy;
+		pJoint->thing.physicsParams.mass *= pThing->animclass->bodypart[jointIdx].mass;
+		pJoint->thing.physicsParams.buoyancy *= pThing->animclass->bodypart[jointIdx].buoyancy;
 		pJoint->thing.physicsParams.height = 0;
 		rdMatrix_Copy34(&pJoint->thing.lookOrientation, &pThing->rdthing.hierarchyNodeMatrices[nodeIdx]);
 		rdVector_Zero3(&pJoint->thing.lookOrientation.scale);
@@ -1286,9 +1294,13 @@ void sithPuppet_StopPhysics(sithThing* pThing)
 {
 	if (pThing->puppet && pThing->puppet->physics)
 	{
-		for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
+		uint64_t jointBits = pThing->animclass->jointBits;
+		while (jointBits != 0)
 		{
-			sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[i];
+			int jointIdx = stdMath_FindLSB64(jointBits);
+			jointBits ^= 1ull << jointIdx;
+
+			sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
 			sithThing_LeaveSector(&pJoint->thing);
 		}
 		pSithHS->free(pThing->puppet->physics);
@@ -1352,11 +1364,13 @@ void sithPuppet_ApplyConstraints(sithThing* pThing)
 
 static void sithPuppet_BuildJointMatrices(sithThing* thing)
 {
-	rdModel3* pModel = thing->rdthing.model3;
-	
-	for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
+	uint64_t jointBits = thing->animclass->physicsJointBits;
+	while (jointBits != 0)
 	{
-		int nodeIdx = sithPuppet_GetPhysicsJointNodeIndex(thing, i);
+		int jointIdx = stdMath_FindLSB64(jointBits);
+		jointBits ^= 1ull << jointIdx;
+
+		int nodeIdx = sithPuppet_GetPhysicsJointNodeIndex(thing, jointIdx);
 		if (nodeIdx < thing->rdthing.rootJoint || thing->rdthing.amputatedJoints[nodeIdx])
 		{
 			// make sure this is cleared
@@ -1364,10 +1378,10 @@ static void sithPuppet_BuildJointMatrices(sithThing* thing)
 			continue;
 		}
 
-		sithPuppetJoint* pJoint = &thing->puppet->physics->joints[i];
+		sithPuppetJoint* pJoint = &thing->puppet->physics->joints[jointIdx];
 		rdHierarchyNode* pNode = &thing->rdthing.model3->hierarchyNodes[nodeIdx];
 
-		sithPuppetBone* pBone = &sithPuppet_jointBones[i];
+		sithPuppetBone* pBone = &sithPuppet_jointBones[jointIdx];
 		if(pBone->otherJoint < 0)
 		{
 			rdVector_Copy3(&pJoint->thing.lookOrientation.scale, &pJoint->thing.position);
@@ -1397,13 +1411,17 @@ static void sithPuppet_BuildJointMatrices(sithThing* thing)
 
 void sithPuppet_UpdateJointPositions(sithSector* sector, sithThing* pThing, float deltaSeconds)
 {
-	for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
+	uint64_t jointBits = pThing->animclass->physicsJointBits;
+	while (jointBits != 0)
 	{
-		int nodeIdx = sithPuppet_GetPhysicsJointNodeIndex(pThing, i);
+		int jointIdx = stdMath_FindLSB64(jointBits);
+		jointBits ^= 1ull << jointIdx;
+
+		int nodeIdx = pThing->animclass->bodypart[jointIdx].nodeIdx;
 		if (nodeIdx < 0)
 			continue;
 
-		sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[i];
+		sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
 		if (pJoint->nextPosWeight > 0.0)
 		{
 			// normalize the new position accumulator
@@ -1449,14 +1467,18 @@ void sithPuppet_ApplyIterativeCorrections(sithSector* pSector, sithThing* pThing
 
 void sithPuppet_UpdateJoints(sithThing* pThing, float deltaSeconds)
 {
-	for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
+	uint64_t jointBits = pThing->animclass->physicsJointBits;
+	while (jointBits != 0)
 	{
-		//int nodeIdx = pThing->animclass->bodypart[i].jointIdx;
-		int nodeIdx = sithPuppet_GetPhysicsJointNodeIndex(pThing, i);
+		int jointIdx = stdMath_FindLSB64(jointBits);
+		jointBits ^= 1ull << jointIdx;
+
+		int nodeIdx = pThing->animclass->bodypart[jointIdx].nodeIdx;
+		//int nodeIdx = sithPuppet_GetPhysicsJointNodeIndex(pThing, jointIdx);
 		if (nodeIdx < 0)
 			continue;
 
-		sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[i];
+		sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
 
 		// if the node is amputated or lower than the root joint, don't collide (but update the position for sector traversal)
 		if (nodeIdx < pThing->rdthing.rootJoint || pThing->rdthing.amputatedJoints[nodeIdx])

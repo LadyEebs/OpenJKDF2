@@ -467,13 +467,13 @@ void jkSaber_UpdateLength(sithThing *thing)
     }
 
 #ifdef ANIMCLASS_NAMES
-	if (thing->animclass->bodypart[JOINTTYPE_PRIMARYWEAP].jointIdx >= 0)
+	if (thing->animclass->bodypart[JOINTTYPE_PRIMARYWEAP].nodeIdx >= 0)
 	{
-		jkSaber_UpdateCollision(thing, thing->animclass->bodypart[JOINTTYPE_PRIMARYWEAP].jointIdx, 0); // MOTS added: last arg
+		jkSaber_UpdateCollision(thing, thing->animclass->bodypart[JOINTTYPE_PRIMARYWEAP].nodeIdx, 0); // MOTS added: last arg
 		if (thing->jkFlags & JKFLAG_DUALSABERS)
 		{
-			if (thing->animclass->bodypart[JOINTTYPE_SECONDARYWEAP].jointIdx >= 0)
-				jkSaber_UpdateCollision(thing, thing->animclass->bodypart[JOINTTYPE_SECONDARYWEAP].jointIdx, 1); // MOTS added: last arg
+			if (thing->animclass->bodypart[JOINTTYPE_SECONDARYWEAP].nodeIdx >= 0)
+				jkSaber_UpdateCollision(thing, thing->animclass->bodypart[JOINTTYPE_SECONDARYWEAP].nodeIdx, 1); // MOTS added: last arg
 		}
 	}
 #else

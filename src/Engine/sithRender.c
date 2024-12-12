@@ -2438,7 +2438,7 @@ void sithRender_RenderThings()
 						if (animclass)
 						{
 						#ifdef ANIMCLASS_NAMES
-							int jointIdx = animclass->bodypart[JOINTTYPE_TORSO].jointIdx; // torso
+							int jointIdx = animclass->bodypart[JOINTTYPE_TORSO].nodeIdx; // torso
 						#else
 							int jointIdx = animclass->bodypart_to_joint[JOINTTYPE_TORSO]; // torso
 						#endif

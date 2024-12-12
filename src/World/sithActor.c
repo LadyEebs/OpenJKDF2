@@ -469,10 +469,10 @@ void sithActor_MoveJointsForEyePYR(sithThing *actor, const rdVector3 *eyePYR)
     {
 		v7 = actor->rdthing.model3->numHierarchyNodes;
 #ifdef ANIMCLASS_NAMES
-		torsoIdx = pAnimClass->bodypart[JOINTTYPE_TORSO].jointIdx;
-		primaryWeapJointIdx = pAnimClass->bodypart[JOINTTYPE_PRIMARYWEAPJOINT].jointIdx;
-		neckIdx = pAnimClass->bodypart[JOINTTYPE_NECK].jointIdx;
-		v9 = pAnimClass->bodypart[JOINTTYPE_SECONDARYWEAPJOINT].jointIdx;
+		torsoIdx = pAnimClass->bodypart[JOINTTYPE_TORSO].nodeIdx;
+		primaryWeapJointIdx = pAnimClass->bodypart[JOINTTYPE_PRIMARYWEAPJOINT].nodeIdx;
+		neckIdx = pAnimClass->bodypart[JOINTTYPE_NECK].nodeIdx;
+		v9 = pAnimClass->bodypart[JOINTTYPE_SECONDARYWEAPJOINT].nodeIdx;
 #else
         torsoIdx = pAnimClass->bodypart_to_joint[JOINTTYPE_TORSO];
         primaryWeapJointIdx = pAnimClass->bodypart_to_joint[JOINTTYPE_PRIMARYWEAPJOINT];
@@ -544,8 +544,8 @@ void sithActor_RotateTurretToEyePYR(sithThing* pThing)
     if (pAnimClass)
     {
 	#ifdef ANIMCLASS_NAMES
-		int pitch_idx = pAnimClass->bodypart[JOINTTYPE_TURRETPITCH].jointIdx;
-		int yaw_idx = pAnimClass->bodypart[JOINTTYPE_TURRETYAW].jointIdx;
+		int pitch_idx = pAnimClass->bodypart[JOINTTYPE_TURRETPITCH].nodeIdx;
+		int yaw_idx = pAnimClass->bodypart[JOINTTYPE_TURRETYAW].nodeIdx;
 	#else
         int pitch_idx = pAnimClass->bodypart_to_joint[JOINTTYPE_TURRETPITCH];
         int yaw_idx = pAnimClass->bodypart_to_joint[JOINTTYPE_TURRETYAW];
