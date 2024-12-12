@@ -1468,7 +1468,7 @@ void sithPuppet_UpdateJointPositions(sithSector* sector, sithThing* pThing, floa
 			{					
 				rdVector3 v1;
 				float arg4a = rdVector_Normalize3(&v1, &vel);
-				sithCollision_UpdateThingCollision(&pJoint->thing, &v1, arg4a, 0);
+				sithCollision_UpdateThingCollision(&pJoint->thing, &v1, arg4a, RAYCAST_4);
 				//sithThing_TickPhysics(&pJoint->thing, deltaSeconds);
 			}
 		}
