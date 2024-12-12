@@ -1436,17 +1436,18 @@ void sithPuppet_UpdateJointPositions(sithSector* sector, sithThing* pThing, floa
 		//	sithThing_TickPhysics(&pJoint->thing, deltaSeconds);
 		//	sithPhysics_FindFloor(&pJoint->thing, 0);
 
-			rdVector_Copy3(&pJoint->thing.position, &pJoint->nextPosAcc);
-			//rdVector3 vel;
-			//rdVector_Sub3(&vel, &pJoint->nextPosAcc, &pJoint->thing.position);
-			//rdVector_ClipPrecision3(&vel);
-			//if (!rdVector_IsZero3(&vel))
-			//{					
-			//	rdVector3 v1;
-			//	float arg4a = rdVector_Normalize3(&v1, &vel);
-			//	sithCollision_UpdateThingCollision(&pJoint->thing, &v1, arg4a, 0);
-			//	//sithThing_TickPhysics(&pJoint->thing, deltaSeconds);
-			//}
+		//	rdVector_Copy3(&pJoint->thing.position, &pJoint->nextPosAcc);
+			
+			rdVector3 vel;
+			rdVector_Sub3(&vel, &pJoint->nextPosAcc, &pJoint->thing.position);
+			rdVector_ClipPrecision3(&vel);
+			if (!rdVector_IsZero3(&vel))
+			{					
+				rdVector3 v1;
+				float arg4a = rdVector_Normalize3(&v1, &vel);
+				sithCollision_UpdateThingCollision(&pJoint->thing, &v1, arg4a, 0);
+				//sithThing_TickPhysics(&pJoint->thing, deltaSeconds);
+			}
 		}
 
 		rdVector_Zero3(&pJoint->nextPosAcc);
