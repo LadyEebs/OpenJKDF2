@@ -3238,14 +3238,11 @@ typedef struct sithPuppetJoint
 {
 	sithThing  thing;         // physicalized thing representation
 	rdVector3  nextPosAcc;    // accumulated constraint target
-	rdMatrix34 refMat;       // reference transform
-	rdMatrix34 tmpMat;       // updated transform
 	float      nextPosWeight; // weight of accumulated position for normalization
 } sithPuppetJoint;
 
 typedef struct sithPuppetPhysics
 {
-	sithThing* pParent;
 	sithPuppetJoint joints[JOINTTYPE_NUM_JOINTS];
 } sithPuppetPhysics;
 
