@@ -1083,7 +1083,7 @@ int sithPuppet_GetJointNodeIndex(sithThing* pThing, int idx)
 {
 	sithBodyPart* pBodypart = &pThing->animclass->bodypart[idx];
 	if(pBodypart->flags & JOINTFLAGS_PHYSICS)
-		return pThing->animclass->bodypart[idx].jointIdx;
+		return pBodypart->jointIdx;
 	return -1;
 }
 
@@ -1156,8 +1156,13 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel)
 		pJoint->thing.thingIdx = pThing->thingIdx | (i << 16);
 		pJoint->thing.signature = -1;
 		pJoint->thing.thing_id = -1;
-		pJoint->thing.type = SITH_THING_CORPSE;
-		pJoint->thing.collide = SITH_COLLIDE_SPHERE;
+		pJoint->thing.type = SITH_THING_CORPSE
+		;
+		if (pThing->animclass->bodypart[i].flags & JOINTFLAGS_PHYSICS)
+			pJoint->thing.collide = SITH_COLLIDE_SPHERE;
+		else
+			pJoint->thing.collide = SITH_COLLIDE_NONE;
+
 		if (pNode->meshIdx != -1)
 			pJoint->thing.collideSize = pJoint->thing.moveSize = pThing->rdthing.model3->geosets[0].meshes[pNode->meshIdx].radius * 0.25f;
 		else
@@ -1642,16 +1647,17 @@ void sithPuppet_UpdateJointPositions(sithSector* sector, sithThing* pThing, floa
 		//	sithThing_TickPhysics(&pJoint->thing, deltaSeconds);
 		//	sithPhysics_FindFloor(&pJoint->thing, 0);
 
-			rdVector3 vel;
-			rdVector_Sub3(&vel, &pJoint->nextPosAcc, &pJoint->thing.position);
-			rdVector_ClipPrecision3(&vel);
-			if (!rdVector_IsZero3(&vel))
-			{					
-				rdVector3 v1;
-				float arg4a = rdVector_Normalize3(&v1, &vel);
-				sithCollision_UpdateThingCollision(&pJoint->thing, &v1, arg4a, 0);
-				//sithThing_TickPhysics(&pJoint->thing, deltaSeconds);
-			}
+			rdVector_Copy3(&pJoint->thing.position, &pJoint->nextPosAcc);
+			//rdVector3 vel;
+			//rdVector_Sub3(&vel, &pJoint->nextPosAcc, &pJoint->thing.position);
+			//rdVector_ClipPrecision3(&vel);
+			//if (!rdVector_IsZero3(&vel))
+			//{					
+			//	rdVector3 v1;
+			//	float arg4a = rdVector_Normalize3(&v1, &vel);
+			//	sithCollision_UpdateThingCollision(&pJoint->thing, &v1, arg4a, 0);
+			//	//sithThing_TickPhysics(&pJoint->thing, deltaSeconds);
+			//}
 		}
 
 		rdVector_Zero3(&pJoint->nextPosAcc);
@@ -1662,7 +1668,7 @@ void sithPuppet_UpdateJointPositions(sithSector* sector, sithThing* pThing, floa
 void sithPuppet_Constrain(sithSector* pSector, sithThing* pThing, float deltaSeconds)
 {
 	// do fewer iterations if we're not directly visible
-	int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 8 : 2;
+	int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 5 : 1;
 	for (int i = 0; i < iterations; ++i)
 	{
 		sithPuppet_ConstrainBody(pThing);
@@ -1675,11 +1681,19 @@ void sithPuppet_UpdateJoints(sithThing* pThing, float deltaSeconds)
 {
 	for (int i = 0; i < JOINTTYPE_NUM_JOINTS; ++i)
 	{
+		//int nodeIdx = pThing->animclass->bodypart[i].jointIdx;
 		int nodeIdx = sithPuppet_GetJointNodeIndex(pThing, i);
 		if (nodeIdx < 0)//pThing->rdthing.rootJoint || pThing->rdthing.amputatedJoints[nodeIdx]) // don't update physics if amupated (let it simply be constrained)
 			continue;
 
 		sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[i];
+		
+		// if this isn't physicalized then copy the joint position the hierarchy
+		//if (!(pThing->animclass->bodypart[i].flags & JOINTFLAGS_PHYSICS))
+		//{
+		//	rdVector_Copy3(&pJoint->thing.position, &pThing->rdthing.hierarchyNodeMatrices[nodeIdx].scale);
+		//	continue;
+		//}
 
 		// if the node is amputated or lower than the root joint, don't collide (but update the position for sector traversal)
 		if (nodeIdx < pThing->rdthing.rootJoint || pThing->rdthing.amputatedJoints[nodeIdx])
