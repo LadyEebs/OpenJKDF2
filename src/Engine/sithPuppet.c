@@ -1431,7 +1431,7 @@ static void sithPuppet_BuildJointMatrices(sithThing* thing)
 			rdVector_Neg3Acc(&pMat->uvec);
 
 		// if we have a pitch joint, we have a pitch constraint
-		if (pFrame->pitchJoint >= 0) // causes skew atm
+		if (pFrame->pitchJoint >= 0)
 		{
 			sithPuppetJoint* pPitchJoint = &thing->puppet->physics->joints[pFrame->pitchJoint];
 			
