@@ -46,7 +46,7 @@ void sithPlayerActions_Activate(sithThing *thing)
                 sithDSSThing_SendPlayKeyMode(thing, SITH_ANIM_ACTIVATE, thing->rdthing.puppet->tracks[v5].field_130, -1, 255);
             a6 = thing->moveSize - -0.1;
 
-			int searchFlags = /*SITH_THING_ACTOR*/RAYCAST_2;
+			int searchFlags = /*SITH_THING_ACTOR*/SITH_RAYCAST_IGNORE_ADJOINS;
 		#ifdef RAGDOLLS
 			searchFlags |= SITH_RAYCAST_IGNORE_CORPSES;
 		#endif

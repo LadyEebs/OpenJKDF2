@@ -635,7 +635,7 @@ sithThing* sithWeapon_FireProjectile_0(sithThing *sender, sithThing *projectileT
         {
             v18 = rdVector_Normalize3(&a5a, &v9->physicsParams.vel) * 3.0;
             a6 = v18 >= 5.0 ? 5.0 : (float)v18;
-            sithCollision_SearchRadiusForThings(v9->sector, v9, &v9->position, &a5a, a6, 0.0, RAYCAST_2);
+            sithCollision_SearchRadiusForThings(v9->sector, v9, &v9->position, &a5a, a6, 0.0, SITH_RAYCAST_IGNORE_ADJOINS);
             v19 = sithCollision_NextSearchResult();
             sithCollision_SearchClose();
             if (v19 && v19->hitType & SITHCOLLISION_THING)

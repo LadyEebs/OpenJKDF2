@@ -434,7 +434,7 @@ enum SithCollideType
 enum SithRaycastType
 {
     SITH_RAYCAST_IGNORE_THINGS = 0x1, // don't collide with things/don't update thing collision
-    RAYCAST_2 = 0x2,  // actor?
+    SITH_RAYCAST_IGNORE_ADJOINS = 0x2, // don't collide with adjoins/don't move things through adjoins
     RAYCAST_4 = 0x4,  // path thing? seems to disable surface collision (maybe it only checks adjoins)?
     RAYCAST_8 = 0x8,  // only things with SITH_TF_80 (what is the intension of that flag? doesn't seem used)
     SITH_RAYCAST_IGNORE_FLOOR = 0x10, // only collide with non-standable things and non-wall flagged surfaces

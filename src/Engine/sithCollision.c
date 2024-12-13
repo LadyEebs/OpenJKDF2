@@ -501,7 +501,7 @@ LABEL_30:
             }
 
             // Falling?
-            if ( (unk3Flags & RAYCAST_2) == 0 && sithIntersect_sub_5090B0(vec1, vec2, a4, 0.0, &v12->surfaceInfo, sithWorld_pCurrentWorld->vertices, &v48, unk3Flags) )
+            if ( (unk3Flags & SITH_RAYCAST_IGNORE_ADJOINS) == 0 && sithIntersect_sub_5090B0(vec1, vec2, a4, 0.0, &v12->surfaceInfo, sithWorld_pCurrentWorld->vertices, &v48, unk3Flags) )
             {
                 v24 = sithCollision_searchStackIdx;
                 if ( (unk3Flags & RAYCAST_4) && (unk3Flags & SITH_RAYCAST_IGNORE_THINGS) != 0 )
@@ -1206,9 +1206,9 @@ int sithCollision_HasLos(sithThing *thing1, sithThing *thing2, int flag)
     float a6; // [esp+2Ch] [ebp+Ch]
 
     v12 = 1;
-    searchFlags = SITH_RAYCAST_ONLY_COG_THINGS | RAYCAST_100 | RAYCAST_20 | RAYCAST_2;
+    searchFlags = SITH_RAYCAST_ONLY_COG_THINGS | RAYCAST_100 | RAYCAST_20 | SITH_RAYCAST_IGNORE_ADJOINS;
     if ( flag )
-        searchFlags = SITH_RAYCAST_ONLY_COG_THINGS | RAYCAST_20 | RAYCAST_2;
+        searchFlags = SITH_RAYCAST_ONLY_COG_THINGS | RAYCAST_20 | SITH_RAYCAST_IGNORE_ADJOINS;
     rdVector_Sub3(&a1a, &thing2->position, &thing1->position);
     a6 = rdVector_Normalize3Acc(&a1a);
     sithCollision_SearchRadiusForThings(thing1->sector, 0, &thing1->position, &a1a, a6, 0.0, searchFlags);

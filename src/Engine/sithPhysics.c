@@ -104,7 +104,7 @@ LABEL_8:
 
         if ( v8 > 0.0 )
         {
-            sithCollision_SearchRadiusForThings(pThing->sector, 0, &pThing->position, &direction, v8, 0.0, searchFlags | SITH_RAYCAST_ONLY_COG_THINGS | RAYCAST_800 | RAYCAST_2);
+            sithCollision_SearchRadiusForThings(pThing->sector, 0, &pThing->position, &direction, v8, 0.0, searchFlags | SITH_RAYCAST_ONLY_COG_THINGS | RAYCAST_800 | SITH_RAYCAST_IGNORE_ADJOINS);
             while ( 1 )
             {
                 for ( i = sithCollision_NextSearchResult(); i; i = sithCollision_NextSearchResult() )
@@ -148,7 +148,7 @@ LABEL_8:
                 if ( pThing->moveSize == 0.0 )
                     break;
                 range = pThing->moveSize;
-                sithCollision_SearchRadiusForThings(pThing->sector, 0, &pThing->position, &direction, v8, range, searchFlags | SITH_RAYCAST_ONLY_COG_THINGS | RAYCAST_800 | RAYCAST_2);
+                sithCollision_SearchRadiusForThings(pThing->sector, 0, &pThing->position, &direction, v8, range, searchFlags | SITH_RAYCAST_ONLY_COG_THINGS | RAYCAST_800 | SITH_RAYCAST_IGNORE_ADJOINS);
             }
         }
         if ( pThing->attach_flags )
