@@ -253,3 +253,12 @@ void rdQuat_Slerp(rdQuat* out, const rdQuat* qa, const rdQuat* qb, const float c
 	out->z = qa->z * k1 + q2.z * k2;
 	out->w = qa->w * k1 + q2.w * k2;
 }
+
+void rdQuat_Normalize3Acc(rdQuat* q)
+{
+	float length = sqrtf(q->w * q->w + q->x * q->x + q->y * q->y + q->z * q->z);
+	q->w /= length;
+	q->x /= length;
+	q->y /= length;
+	q->z /= length;
+}
