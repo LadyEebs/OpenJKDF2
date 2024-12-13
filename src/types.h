@@ -3119,6 +3119,14 @@ typedef struct sithThingTrackParams
     rdVector3 orientation;
 } sithThingTrackParams;
 
+#ifdef PUPPET_PHYSICS
+typedef struct sithThingBallSocketJoint
+{
+	sithThing* thing;
+	rdVector3  anchor;
+} sithThingBallSocketJoint;
+#endif
+
 typedef struct sithThing
 {
     uint32_t thingflags;
@@ -3156,7 +3164,10 @@ typedef struct sithThing
 #else
     };
 #endif
-
+#ifdef PUPPET_PHYSICS
+	int numBallSocketJoints;
+	sithThingBallSocketJoint ballSocketJoints[4];
+#endif
 
     sithSector* sector;
     sithThing* nextThing;

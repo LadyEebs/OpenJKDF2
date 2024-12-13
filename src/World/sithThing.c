@@ -352,8 +352,8 @@ void sithThing_TickPhysics(sithThing *pThing, float deltaSecs)
     }
 
 #ifdef PUPPET_PHYSICS
-	//if (pThing->type == SITH_THING_CORPSE)
-		//v2 |= RAYCAST_4;
+	if (pThing->type == SITH_THING_CORPSE)
+		v2 |= RAYCAST_800;//SITH_RAYCAST_IGNORE_CORPSES | RAYCAST_4;//SITH_RAYCAST_IGNORE_THINGS | RAYCAST_400;//SITH_RAYCAST_IGNORE_CORPSES | RAYCAST_400;
 #endif
 
     if (pThing->attach_flags && pThing->attach_flags & SITH_ATTACH_WORLDSURFACE)
@@ -1417,6 +1417,10 @@ void sithThing_AttachThing(sithThing *parent, sithThing *child)
     rdMatrix_TransformVector34Acc_0(&parent->field_4C, &a2, &child->lookOrientation);
     if ( (child->thingflags & SITH_TF_CAPTURED) != 0 && (parent->thingflags & (SITH_TF_DISABLED|SITH_TF_INVULN)) == 0 )
         sithCog_SendMessageFromThing(child, parent, SITH_MESSAGE_ENTERED);
+
+#ifdef PUPPET_PHYSICS
+	//parent->attach_distance = rdVector_Len3(&parent->field_4C);
+#endif
 }
 
 int sithThing_DetachThing(sithThing* pThing)

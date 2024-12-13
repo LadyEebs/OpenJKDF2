@@ -274,7 +274,7 @@ float sithCollision_UpdateSectorThingCollision(sithSector *pSector, sithThing *s
               && v7->collide
               && (v7->thingflags & (SITH_TF_DISABLED|SITH_TF_WILLBEREMOVED)) == 0
               && ((flags & SITH_RAYCAST_ONLY_COG_THINGS) == 0 || v7->type == SITH_THING_COG)
-			#ifdef RAGDOLLS
+			#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 			  && ((flags & SITH_RAYCAST_IGNORE_CORPSES) == 0 || v7->type != SITH_THING_CORPSE)
 			#endif
 			)
@@ -661,6 +661,39 @@ void sithCollision_sub_4E7670(sithThing *thing, rdMatrix34 *orient)
     }
 }
 
+#include "primitives/rdQuat.h"
+void sithCollision_ConstrainThings(sithThing* thing1, sithThing* thing2, float distance)
+{
+	rdVector3 delta;
+	rdVector_Sub3(&delta, &thing1->position, &thing2->position);
+	rdVector_ClipPrecision3(&delta);
+
+	float deltaLen = rdVector_Normalize3Acc(&delta);
+	float diff = (deltaLen - distance);
+	if(diff < 0.0)
+	{
+		rdVector_Neg3Acc(&delta);
+		diff = -diff;
+	}
+
+	if (fabs(diff) > 0.00001f)
+	{
+		sithCollision_UpdateThingCollision(thing2, &delta, diff, 0);
+	}
+
+	// compute the difference in mass, used to adjust the positions
+	//float invMassA = 1.0f / (thing1->physicsParams.mass);
+	//float invMassB = 1.0f / (thing2->physicsParams.mass);
+	//float diff = (deltaLen - distance) / (invMassA + invMassB);
+	//if (fabs(diff) > 0.00001f)
+	//{
+	//	sithCollision_UpdateThingCollision(thing2, &delta, diff * invMassB, 0); 
+	//
+	//	rdVector_Neg3Acc(&delta);
+	//	sithCollision_UpdateThingCollision(thing1, &delta, diff * invMassA, SITH_RAYCAST_NO_CONSTRAINT_UPDATE);
+	//}
+}
+
 float sithCollision_UpdateThingCollision(sithThing *pThing, rdVector3 *a2, float a6, int flags)
 {
     sithThing *v5; // ebp
@@ -721,19 +754,145 @@ float sithCollision_UpdateThingCollision(sithThing *pThing, rdVector3 *a2, float
     {
         flags |= RAYCAST_800;
     }
+
+	direction = *a2;
+#if 0//def PUPPET_PHYSICS
+	static int iter = 0;
+	if (iter < 5 && !(flags & SITH_RAYCAST_NO_CONSTRAINT_UPDATE))
+	{
+		for (int k = 0; k < v5->numConstraints; ++k)
+		{
+			sithThingConstraint* constraint = &v5->constraints[k];
+		//	sithCollision_ConstrainThings(v5, constraint->thing, constraint->distance);
+
+			rdVector3 delta;
+			rdVector_Sub3(&delta, &v5->position, &constraint->thing->position);
+			rdVector_ClipPrecision3(&delta);
+
+			float deltaLen = rdVector_Normalize3Acc(&delta);
+			float diff = (deltaLen - constraint->distance);
+			if (diff < 0)
+			{
+				rdVector_Neg3Acc(&delta);
+				diff = -diff;
+			};
+
+			if (fabs(diff) > 0.00001f)
+			{
+				++iter;
+				sithCollision_UpdateThingCollision(constraint->thing, &delta, diff, SITH_RAYCAST_NO_CONSTRAINT_UPDATE);
+				--iter;
+			}
+
+			// compute the difference in mass, used to adjust the positions
+			//float invMassA = 1.0f / (v5->physicsParams.mass);
+			//float invMassB = 1.0f / (constraint->thing->physicsParams.mass);
+			//float diff = (deltaLen - constraint->distance) / (invMassA + invMassB);
+			//if (fabs(diff) > 0.00001f)
+			//{
+			//	iter;
+			//	rdVector3 d;
+			//	rdVector_Scale3(&d, &delta, -diff * invMassA);
+			//	
+			//	rdVector_Sub3Acc(&direction, &d);
+			//
+			//	++iter;
+			//	sithCollision_UpdateThingCollision(constraint->thing, &delta, diff * invMassB, 0);
+			//	--iter;
+			//}
+
+
+
+			//if (constraint->useAxis)
+			//{
+			//	rdVector3 baseDir;
+			//	rdMatrix_TransformVector34(&baseDir, &constraint->axis1, &constraint->thing->lookOrientation);
+			//
+			//	float dot = rdVector_Dot3(&direction, &baseDir);
+			//	float angle = 90.0f - stdMath_ArcSin3(dot);
+			//	if (angle > 10.0f)
+			//	{
+			//		rdVector3 rotationAxis;
+			//		rdVector_Cross3(&rotationAxis, &direction, &baseDir);
+			//		rdVector_Normalize3Acc(&rotationAxis);
+			//	
+			//		float correctionAngle = angle - 10.0f;
+			//
+			//		rdQuat quat;
+			//		rdQuat_BuildFrom34(&quat, &constraint->thing->lookOrientation);
+			//
+			//		rdQuat correctionQuat;
+			//		rdQuat_BuildFromAxisAngle(&correctionQuat, &rotationAxis, -correctionAngle);
+			//		rdQuat_Normalize3Acc(&correctionQuat); 
+			//	
+			//		rdQuat newRotation;
+			//		rdQuat_Mul(&newRotation, &correctionQuat, &quat);
+			//	
+			//	
+			//		rdQuat_ToMatrix(&constraint->thing->lookOrientation, &newRotation);
+			//
+			//		//rdMatrix34 correctionMatrix;
+			//		//rdVector_Cross3(&correctionMatrix.rvec, &direction, &rotationAxis);
+			//		//rdVector_Normalize3Acc(&correctionMatrix.rvec);
+			//		//
+			//		//rdVector3 newUp;
+			//		//rdVector_Cross3(&newUp, &correctionMatrix.rvec, &direction);
+			//		//
+			//		//rdMatrix_PostMultiply34(&v5->lookOrientation, &correctionMatrix);
+			//	}
+			//}
+
+			//if(constraint->useAxis)
+			//{
+			//	rdVector3 worldHingeAxisA, worldHingeAxisB;
+			//	rdMatrix_TransformVector34(&worldHingeAxisA, &constraint->axis1, &constraint->thing->lookOrientation);
+			//	rdMatrix_TransformVector34(&worldHingeAxisB, &constraint->axis2, &v5->lookOrientation);
+			//
+			//	rdVector3 axisCorrection;
+			//	rdVector_Cross3(&axisCorrection, &worldHingeAxisB, &worldHingeAxisA);
+			//	float axisCorrectionLength = rdVector_Len3(&axisCorrection);
+			//	if (axisCorrectionLength > 0.0f)
+			//	{
+			//		rdVector_Normalize3Acc(&axisCorrection);
+			//		rdVector3 angularCorrection;
+			//		rdVector_Scale3(&angularCorrection, &axisCorrection, axisCorrectionLength * 0.5f);
+			//
+			//		rdVector3 tmp1;
+			//		rdVector_Scale3(&tmp1, &angularCorrection, 1.0f / constraint->thing->physicsParams.mass);
+			//		rdVector_Sub3Acc(&constraint->thing->physicsParams.angVel, &tmp1);
+			//
+			//		rdVector3 tmp2;
+			//		rdVector_Scale3(&tmp2, &angularCorrection, 1.0f / v5->physicsParams.mass);
+			//		rdVector_Add3Acc(&v5->physicsParams.angVel, &tmp2);
+			//
+			//	//	rdMatrix34 m1;
+			//	//	rdMatrix_BuildFromAxisAngle34(&m1, &axisCorrection, axisCorrectionLength * 0.5f * 180.0 / 3.141592);
+			//	//	rdMatrix_PreMultiply34(&constraint->thing->lookOrientation, &m1);
+			//	//
+			//	//
+			//	//	rdMatrix34 m2;
+			//	//	rdMatrix_BuildFromAxisAngle34(&m2, &axisCorrection, -axisCorrectionLength * 0.5f * 180.0 / 3.141592);
+			//	//	rdMatrix_PreMultiply34(&v5->lookOrientation, &m2);
+			//
+			//	}
+			//}
+		}
+	}
+#endif
+
     v10 = pThing->attachedParentMaybe;
-    for ( direction = *a2; v10; v10 = v10->childThing )
+    for ( ; v10; v10 = v10->childThing )
     {
         if (v10->attach_flags & SITH_ATTACH_NO_MOVE)
             continue;
 
-        v11 = sithCollision_UpdateThingCollision(v10, a2, a6, 64);
+        v11 = sithCollision_UpdateThingCollision(v10, &direction, a6, 64);
         if ( v11 >= a6 ) continue;
         
         if ( (v10->attach_flags & SITH_ATTACH_THINGSURFACE) != 0 )
         {
             rdMatrix_TransformVector34(&out, &v10->attachedSufaceInfo->face.normal, &v5->lookOrientation);
-            v12 = stdMath_ClipPrecision(rdVector_Dot3(a2, &out));
+            v12 = stdMath_ClipPrecision(rdVector_Dot3(&direction, &out));
             if ( v12 <= 0.0 ) {
                 continue;
             }
@@ -801,6 +960,8 @@ LABEL_78:
                 }
                 if ( (v19->hitType & SITHCOLLISION_THING) != 0 )
                 {
+				//	printf("thing kinda hitting thing\n");
+
                     // Added: noclip
                     if (!(g_debugmodeFlags & DEBUGFLAG_NOCLIP) || pThing != sithPlayer_pLocalPlayerThing)
                     {
@@ -824,15 +985,19 @@ LABEL_78:
                 }
                 else if ( (v19->hitType & SITHCOLLISION_ADJOINCROSS) != 0 )
                 {
+				//	printf("thing crossing adjoin %d\n", v19->surface->adjoin->surface->index);
+
                     v37 = v19->surface;
                     rdVector_Copy3(&v72, &v5->position);
                     if ( (v37->surfaceFlags & SITH_SURFACE_COG_LINKED) != 0 )
                         sithCog_SendMessageFromSurface(v37, v5, 8);
                     sithThing_MoveToSector(v5, v19->surface->adjoin->sector, 0);
-                    v36 = _memcmp(&v72, &v5->position, sizeof(rdVector3)) != 0;
+                 //   v36 = _memcmp(&v72, &v5->position, sizeof(rdVector3)) != 0;
                 }
                 else
                 {
+				//	printf("thing kinda hitting random shit\n");
+
                     // Added: noclip
                     if (!(g_debugmodeFlags & DEBUGFLAG_NOCLIP) || pThing != sithPlayer_pLocalPlayerThing)
                     {
@@ -902,8 +1067,17 @@ LABEL_81:
         // Added: noclip
         if (!(g_debugmodeFlags & DEBUGFLAG_NOCLIP) || pThing != sithPlayer_pLocalPlayerThing)
         {
+#ifdef PUPPET_PHYSICS
+			if (v5->type != SITH_THING_CORPSE)
+			{
+				// don't correct for limbs, as they'll be constrained to another thing
+				rdVector_Copy3(&v5->position, &posCopy);
+				rdVector_Copy3(&direction, &out);
+			}
+#else
             rdVector_Copy3(&v5->position, &posCopy);
             rdVector_Copy3(&direction, &out);
+#endif
             sithThing_MoveToSector(v5, sectTmp, 0);
             if ( v5->lifeLeftMs )
                 sithThing_Destroy(v5);
@@ -931,11 +1105,77 @@ LABEL_81:
     for ( i = v5->attachedParentMaybe; i; i = i->childThing )
     {
         if (!(i->attach_flags & SITH_ATTACH_NO_MOVE)) continue;
-        rdMatrix_TransformVector34(&i->position, &i->field_4C, &v5->lookOrientation);
-        rdVector_Add3Acc(&i->position, &v5->position);
+
+		//// calculate the distance between the 2 joints
+		//rdVector3 delta;
+		//rdVector_Sub3(&delta, &v5->position, &i->position);
+		//float deltaLen = rdVector_Len3(&delta);
+		//
+		//// compute the difference in mass, used to adjust the positions
+		//float invMassA = 1.0f / (v5->physicsParams.mass);
+		//float invMassB = 1.0f / (i->physicsParams.mass);
+		//float diff = (deltaLen - i->attach_distance) / (deltaLen * (invMassA + invMassB));
+		//
+		////if (!(pBodyPartA->flags & JOINTFLAGS_PINNED))
+		//{
+		//	rdVector3 deltaA;
+		//	rdVector_Scale3(&deltaA, &delta, (double)diff * invMassA);
+		//
+		//	//rdVector_Add3Acc(&v5->position, &deltaA);
+		//}
+		//
+		////if (!(pBodyPartB->flags & JOINTFLAGS_PINNED))
+		//{
+		//	rdVector3 deltaB;
+		//	rdVector_Scale3(&deltaB, &delta, (double)diff * invMassB);
+		//
+		//	rdVector_Sub3Acc(&i->position, &deltaB);
+		//}
+
+		rdMatrix_TransformVector34(&i->position, &i->field_4C, &v5->lookOrientation);
+		rdVector_Add3Acc(&i->position, &v5->position);
+
+
         if ( i->sector != v5->sector )
             sithThing_MoveToSector(i, v5->sector, 0);
     }
+
+#if 0//def PUPPET_PHYSICS
+	if(v5->parentConstraint)
+	{
+		sithCollision_ConstrainThings(v5, v5->parentConstraint, v5->parentConstraintDist);
+	}
+#endif
+
+#if 0//def PUPPET_PHYSICS
+	static int iter = 0;
+	if (iter < 2 && !(flags & SITH_RAYCAST_NO_CONSTRAINT_UPDATE))
+	{
+		for (int k = 0; k < v5->numConstraints; ++k)
+		{
+			sithThingConstraint* constraint = &v5->constraints[k];
+
+			rdVector3 delta;
+			rdVector_Sub3(&delta, &v5->position, &constraint->thing->position);
+			rdVector_ClipPrecision3(&delta);
+
+			float deltaLen = rdVector_Normalize3Acc(&delta);
+			float diff = (deltaLen - constraint->distance);
+			if(diff <0)
+			{
+			rdVector_Neg3Acc(&delta);
+			diff = -diff;
+			};
+			if (fabs(diff) > 0.00001f)
+			{
+				++iter;
+				sithCollision_UpdateThingCollision(constraint->thing, &delta, diff, 0);
+				--iter;
+			}
+		}
+	}
+#endif
+
     if ( v5->moveType == SITH_MT_PHYSICS )
     {
         if ( v64 == 0.0 )
@@ -943,6 +1183,9 @@ LABEL_81:
         if (!(flags & RAYCAST_40))
         {
             if ( (v5->attach_flags) != 0 && !(v5->attach_flags & SITH_ATTACH_NO_MOVE)
+		#ifdef PUPPET_PHYSICS
+				&& !(v5->attach_flags& SITH_ATTACH_CONSTRAIN)
+		#endif
               || (v5->physicsParams.physflags & SITH_PF_FLOORSTICK) != 0
               && (v5->physicsParams.vel.z < -2.0 || v5->physicsParams.vel.z <= 0.2) )
             {
@@ -950,6 +1193,91 @@ LABEL_81:
             }
         }
     }
+
+#if 0//def PUPPET_PHYSICS
+	if(!(flags & SITH_RAYCAST_NO_CONSTRAINT_UPDATE) && v5->moveType == SITH_MT_PHYSICS)// && v5->numConstraints > 0)
+	{
+		static int iter = 0;
+		if(iter > 5)
+			return v64;
+
+		for (int k = 0; k < v5->numBallSocketJoints; ++k)
+		{
+			sithThingBallSocketJoint* pJoint = &v5->ballSocketJoints[k];
+
+			rdVector3 worldAnchor;
+			rdMatrix_TransformPoint34(&worldAnchor, &pJoint->anchor, &v5->lookOrientation);
+
+			rdVector3 distanceA;
+			rdVector_Sub3(&distanceA, &worldAnchor, &v5->position);
+			float lengthA = rdVector_Len3(&distanceA);
+			
+			rdVector3 distanceB;
+			rdVector_Sub3(&distanceB, &worldAnchor, &pJoint->thing->position);
+			float lengthB = rdVector_Len3(&distanceB);
+			
+			if (lengthA > 0.0f || lengthB > 0.0f)
+			{
+				float invMassA = (1.0f / v5->physicsParams.mass);
+				float invMassB = (1.0f / pJoint->thing->physicsParams.mass);
+
+				float totalInvMass = invMassA + invMassB;
+				if (totalInvMass != 0)
+				{
+					float factorA = invMassA / totalInvMass;
+					float factorB = invMassB / totalInvMass;
+					
+					++iter;
+					//sithCollision_UpdateThingCollision(v5, &delta, diff, 0);
+					sithCollision_UpdateThingCollision(pJoint->thing, &distanceB, factorB, 0);
+					--iter;
+
+					//rdVector3 correctionA, correctionB;
+					//rdVector_Scale3(&correctionA, &distanceA, factorA);
+					//rdVector_Sub3Acc(&v5->position, &correctionA);
+					//
+					//rdVector_Scale3(&correctionB, &distanceB, factorB);
+					//rdVector_Sub3Acc(&pJoint->thing->position, &correctionB);
+				}
+			}
+		}
+
+		/*for (int k = 0; k < v5->numConstraints; ++k)
+		{
+			sithThingConstraint* constraint = &v5->constraints[k];
+	
+			rdVector3 delta;
+			rdVector_Sub3(&delta, &constraint->thing->position, &v5->position);
+			rdVector_ClipPrecision3(&delta);
+
+			float deltaLen = rdVector_Normalize3Acc(&delta);
+
+			if (constraint->minDistance >= 0 && deltaLen > constraint->minDistance)
+				continue;
+
+			//float diff = (deltaLen - constraint->distance);
+			//if (fabs(diff) > 0.001f)
+			//{
+			//	++iter;
+			//	sithCollision_UpdateThingCollision(v5, &delta, diff, 0);
+			//	--iter;
+			//}
+
+			// compute the difference in mass, used to adjust the positions
+			float invMassA = 0.0001f;// 1.0f / (constraint->thing->physicsParams.mass);
+			float invMassB = 1.0- 0.0001f;//1.0f / (v5->physicsParams.mass);
+			float diff = (deltaLen - constraint->distance) / (invMassA + invMassB);
+			if(fabs(diff) > 0.001f)
+			{
+				++iter;
+				sithCollision_UpdateThingCollision(constraint->thing, &delta,  -diff * invMassA, 0);
+				sithCollision_UpdateThingCollision(v5, &delta, diff * invMassB, 0);
+				--iter;
+			}
+		}*/
+	}
+#endif
+
     return v64;
 }
 
@@ -1064,19 +1392,19 @@ int sithCollision_DebrisDebrisCollide(sithThing *thing1, sithThing *thing2, sith
 
 		rdVector_Scale3(&forceVec, &a2, v6 * senderb);
 	#ifdef PUPPET_PHYSICS
-		if (v5->type != SITH_THING_CORPSE)
+		//if (v5->type != SITH_THING_CORPSE)
 	#endif
 			sithPhysics_ThingApplyForce(v4, &forceVec);
 		rdVector_Neg3Acc(&forceVec);
 #ifdef PUPPET_PHYSICS
-		if (v4->type != SITH_THING_CORPSE)
+		//if (v4->type != SITH_THING_CORPSE)
 #endif
 			sithPhysics_ThingApplyForce(v5, &forceVec);
 
 #ifdef PUPPET_PHYSICS
 		// don't block if one of the colliders is a corpse
-		if (v4->type == SITH_THING_PLAYER && v5->type == SITH_THING_CORPSE)
-			return 0;
+		//if (v4->type == SITH_THING_PLAYER && v5->type == SITH_THING_CORPSE)
+			//return 0;
 #endif
 
         return sithCollision_CollideHurt(v4, &a2, a3->distance, 0);

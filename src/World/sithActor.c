@@ -621,7 +621,8 @@ void sithActor_Remove(sithThing *thing)
     thing->lifeLeftMs = jkPlayer_bKeepCorpses ? -1 : 20000; // Added
     sithPhysics_FindFloor(thing, 0);
 #ifdef PUPPET_PHYSICS
-//	thing->collide = SITH_COLLIDE_NONE;
+	thing->collide = SITH_COLLIDE_NONE;
+//	thing->physicsParams.physflags |= SITH_PF_8000000;
 #endif
 #ifdef RAGDOLLS
 	if(thing->rdthing.model3 && thing->rdthing.model3->pSkel)

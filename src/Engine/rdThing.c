@@ -291,6 +291,9 @@ void rdThing_AccumulateMatrices(rdThing *thing, rdHierarchyNode *node, rdMatrix3
 ////		rdMatrix_PostTranslate34(&thing->hierarchyNodeMatrices[node->idx], &negPivot);
 
 		rdMatrix_Copy34(&thing->hierarchyNodeMatrices[node->idx], thing->paHiearchyNodeMatrixOverrides[node->idx]);
+	
+		//rdMatrix_Copy34(&matrix, thing->paHiearchyNodeMatrixOverrides[node->idx]);
+		//rdMatrix_Multiply34(&thing->hierarchyNodeMatrices[node->idx], acc, &matrix);
 	}
 	else
 #endif
