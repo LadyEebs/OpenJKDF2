@@ -25,6 +25,6 @@ void rdQuat_ConjugateAcc(rdQuat* q);
 void rdQuat_ToMatrix(rdMatrix34* out, const rdQuat* q);
 void rdQuat_Slerp(rdQuat* out, const rdQuat* qa, const rdQuat* qb, const float c);
 
-void rdQuat_Normalize3Acc(rdQuat* q);
+void rdQuat_NormalizeAcc(rdQuat* q);
 
 #endif // _RDQUAT_H
