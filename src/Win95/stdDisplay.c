@@ -469,10 +469,10 @@ int stdDisplay_VBufferFill(stdVBuffer *vbuf, int fillColor, rdRect *rect)
     uint8_t* dstPixels = vbuf->sdlSurface->pixels;
     uint32_t dstStride = vbuf->format.width_in_bytes;
     uint32_t max_idx = dstStride * vbuf->format.height;
-    for (int i = 0; i < rect->width; i++)
+	for (int j = 0; j < rect->height; j++)
     {
-        for (int j = 0; j < rect->height; j++)
-        {
+		for (int i = 0; i < rect->width; i++)
+		{
             uint32_t idx = (i + dstRect.x) + ((j + dstRect.y)*dstStride);
             if (idx > max_idx)
                 continue;
