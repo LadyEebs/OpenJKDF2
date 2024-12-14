@@ -309,6 +309,9 @@ float sithCollision_UpdateSectorThingCollision(sithSector *pSector, sithThing *s
 							&& (!v8->rdthing.pRagdoll || v8->prev_thing == 0 || v7->prev_thing == 0 || v8->prev_thing != v7->prev_thing || v8->child_signature != v7->child_signature)
 							&& (!v7->rdthing.pRagdoll || v7->prev_thing == 0 || v8->prev_thing == 0 || v7->prev_thing != v8->prev_thing || v7->child_signature != v8->child_signature)
 #endif
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
+							&& ((flags & SITH_RAYCAST_IGNORE_CORPSES) == 0 || v8->type != SITH_THING_CORPSE)
+#endif
 						)
                         {
                             if ( (v8->attach_flags & (SITH_ATTACH_THINGSURFACE | SITH_ATTACH_THING)) == 0 || v8->attachedThing != v7 || (v8->attach_flags & SITH_ATTACH_NO_MOVE) == 0 && (flags & RAYCAST_40) == 0 )
@@ -673,11 +676,11 @@ void sithCollision_ApplyDistanceConstraint(sithConstraint* pConstraint, sithThin
 	float diff = -offset / (constraintMass);
 	rdVector_Neg3Acc(&offsetDir);
 
-	//sithCollision_UpdateThingCollision(pTargetThing, &offsetDir, diff * invMassA, 0x20000);
-	rdVector_MultAcc3(&pTargetThing->position, &offsetDir, diff * invMassA);
+	sithCollision_UpdateThingCollision(pTargetThing, &offsetDir, diff * invMassA, 0x20000);
+	//rdVector_MultAcc3(&pTargetThing->position, &offsetDir, diff * invMassA);
 
 	rdVector_Neg3Acc(&offsetDir);
-	sithCollision_UpdateThingCollision(pConstraint->thingA, &offsetDir, offset, 0);//diff * invMassB, 0);
+	sithCollision_UpdateThingCollision(pConstraint->thingA, &offsetDir, diff * invMassB, 0);
 	//rdVector_MultAcc3(&pThing->position, &offsetDir, diff * invMassB);
 
 //	// how much of their relative force is affecting the constraint
@@ -1186,28 +1189,31 @@ LABEL_78:
 
 
 #ifdef PUPPET_PHYSICS
-			if (!(flags & 0x20000) && v5->constraints)
-			{
-				sithConstraint* constraint = v5->constraints;
-				while (constraint)
-				{
-					switch(constraint->type)
-					{
-					case SITH_CONSTRAINT_DISTANCE:
-						sithCollision_ApplyDistanceConstraint(constraint, v5, sithTime_deltaSeconds);
-						break;
-					case SITH_CONSTRAINT_CONE:
-						sithCollision_ConeConstrain(constraint, v5, sithTime_deltaSeconds);
-						break;
-					case SITH_CONSTRAINT_LOOK:
-						sithCollision_ApplyLookConstraint(constraint, v5);
-						break;				
-					default:
-						break;
-					}
-					constraint = constraint->next;
-				}
-			}
+			//if (!(flags & 0x20000) && v5->constraints)
+			//{
+			//	for (int k = 0; k < 5; ++k)
+			//	{
+			//		sithConstraint* constraint = v5->constraints;
+			//		while (constraint)
+			//		{
+			//			switch(constraint->type)
+			//			{
+			//			case SITH_CONSTRAINT_DISTANCE:
+			//				sithCollision_ApplyDistanceConstraint(constraint, v5, sithTime_deltaSeconds);
+			//				break;
+			//			case SITH_CONSTRAINT_CONE:
+			//				sithCollision_ConeConstrain(constraint, v5, sithTime_deltaSeconds);
+			//				break;
+			//			case SITH_CONSTRAINT_LOOK:
+			//				sithCollision_ApplyLookConstraint(constraint, v5);
+			//				break;				
+			//			default:
+			//				break;
+			//			}
+			//			constraint = constraint->next;
+			//		}
+			//	}
+			//}
 #endif
 
             sithCollision_bDebugCollide = 0; // Added

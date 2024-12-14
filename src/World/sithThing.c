@@ -45,6 +45,10 @@
 #include "World/sithPolyline.h"
 #endif
 
+#ifdef PUPPET_PHYSICS
+#include "Modules/sith/Engine/sithConstraint.h"
+#endif
+
 #define NUM_THING_PARAMS (THINGPARAM_NUM_PARAMS-1)
 #define NUM_THING_TYPES (13)
 
@@ -299,38 +303,14 @@ void sithThing_TickAll(float deltaSeconds, int deltaMs)
             }
             sithThing_TickPhysics(pThingIter, deltaSeconds);
 
+#ifdef PUPPET_PHYSICS
+			//sithConstraint_SolveConstraints(pThingIter, deltaSeconds);
+#endif
+
 #ifdef RAGDOLLS
 			if (pThingIter->moveType != SITH_MT_RAGDOLL || !jkPlayer_ragdolls)
 #endif
             sithPuppet_Tick(pThingIter, deltaSeconds);
-
-#ifdef PUPPET_PHYSICS
-			//if (pThingIter->constraints)
-			//{
-			//	for (int k = 0; k < 5; ++k)
-			//	{
-			//		sithConstraint* constraint = pThingIter->constraints;
-			//		while (constraint)
-			//		{
-			//			switch (constraint->type)
-			//			{
-			//			case SITH_CONSTRAINT_DISTANCE:
-			//				sithCollision_ApplyDistanceConstraint(pThingIter, constraint, sithTime_deltaSeconds);
-			//				break;
-			//			case SITH_CONSTRAINT_CONE:
-			//				sithCollision_ConeConstrain(pThingIter, constraint, sithTime_deltaSeconds);
-			//				break;
-			//			case SITH_CONSTRAINT_LOOK:
-			//				sithCollision_ApplyLookConstraint(pThingIter, constraint);
-			//				break;
-			//			default:
-			//				break;
-			//			}
-			//			constraint = constraint->next;
-			//		}
-			//	}
-			//}
-#endif
 
             continue;
         }

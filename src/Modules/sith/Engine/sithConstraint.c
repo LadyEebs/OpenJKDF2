@@ -1,36 +1,8 @@
 #include "sithConstraint.h"
 #include "Engine/sithCollision.h"
+#include "Engine/sithPhysics.h"
 
 #include "General/stdMath.h"
-
-void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
-{
-	if (pThing->constraints)
-	{
-		for (int k = 0; k < 5; ++k)
-		{
-			sithConstraint* constraint = pThing->constraints;
-			while (constraint)
-			{
-				switch (constraint->type)
-				{
-				case SITH_CONSTRAINT_DISTANCE:
-					sithCollision_ApplyDistanceConstraint(pThing, constraint, sithTime_deltaSeconds);
-					break;
-				case SITH_CONSTRAINT_CONE:
-					sithCollision_ConeConstrain(pThing, constraint, sithTime_deltaSeconds);
-					break;
-				case SITH_CONSTRAINT_LOOK:
-					sithCollision_ApplyLookConstraint(pThing, constraint);
-					break;
-				default:
-					break;
-				}
-				constraint = constraint->next;
-			}
-		}
-	}
-}
 
 void sithConstraint_AddDistanceConstraint(sithThing* pThing, sithThing* pThingA, sithThing* pThingB, const rdVector3* pAnchor)
 {
@@ -42,7 +14,7 @@ void sithConstraint_AddDistanceConstraint(sithThing* pThing, sithThing* pThingA,
 	constraint->thingA = pThingA;
 	constraint->thingB = pThingB;
 	constraint->distanceParams.constraintAnchor = *pAnchor;
-	constraint->distanceParams.constraintDistance = rdVector_Len3(&constraint->distanceParams.constraintAnchor);
+	constraint->distanceParams.constraintDistance = 0.0001f;//rdVector_Len3(&constraint->distanceParams.constraintAnchor);
 
 	constraint->next = pThing->constraints;
 	pThing->constraints = constraint;
@@ -96,7 +68,40 @@ void sithConstraint_SolveDistanceConstraint(sithConstraint* pConstraint, float d
 	rdVector_Sub3(&relativePos, &anchor, &pConstraint->thingA->position);
 
 	float currentDistance = rdVector_Len3(&relativePos);
-	float offset = -currentDistance;// pConstraint->distanceParams.constraintDistance - currentDistance;
+	
+	//float offset = 0.0 - currentDistance;
+	//if (stdMath_Fabs(offset) > 0.0f)
+	//{
+	//	rdVector3 offsetDir;
+	//	rdVector_Normalize3(&offsetDir, &relativePos);
+	//
+	//	rdVector3 relativeVelocity;
+	//	rdVector_Sub3(&relativeVelocity, &pConstraint->thingB->physicsParams.vel, &pConstraint->thingA->physicsParams.vel);
+	//
+	//	float invMassA = 1.0f / pConstraint->thingA->physicsParams.mass;
+	//	float invMassB = 1.0f / pConstraint->thingB->physicsParams.mass;
+	//	float constraintMass = invMassA + invMassB;
+	//	if (constraintMass > 0.0f)
+	//	{
+	//		float velocityDot = rdVector_Dot3(&relativeVelocity, &offsetDir);
+	//		
+	//		const float biasFactor = 0.01f;
+	//		float bias = -(biasFactor / deltaSeconds) * offset;
+	//		
+	//		float lambda = -(velocityDot + bias) / constraintMass;
+	//		rdVector3 aImpulse;
+	//		rdVector_Scale3(&aImpulse, &offsetDir, lambda);
+	//		
+	//		rdVector3 bImpulse;
+	//		rdVector_Scale3(&bImpulse, &offsetDir, -lambda);
+	//		
+	//		sithPhysics_ThingApplyForce(pConstraint->thingB, &aImpulse);
+	//		sithPhysics_ThingApplyForce(pConstraint->thingA, &bImpulse);
+	//	}
+	//}
+
+
+	float offset = pConstraint->distanceParams.constraintDistance - currentDistance;
 	if (stdMath_Fabs(offset) <= 0.0001f)
 		return;
 
@@ -115,11 +120,11 @@ void sithConstraint_SolveDistanceConstraint(sithConstraint* pConstraint, float d
 	float diff = -offset / (constraintMass);
 	rdVector_Neg3Acc(&offsetDir);
 
-	sithCollision_UpdateThingCollision(pConstraint->thingB, &offsetDir, diff * invMassA, 0);
+	sithCollision_UpdateThingCollision(pConstraint->thingB, &offsetDir, diff * invMassB, 0);
 	//rdVector_MultAcc3(&pTargetThing->position, &offsetDir, diff * invMassA);
 
 	rdVector_Neg3Acc(&offsetDir);
-	sithCollision_UpdateThingCollision(pConstraint->thingA, &offsetDir, diff * invMassB, 0);
+	sithCollision_UpdateThingCollision(pConstraint->thingA, &offsetDir, diff * invMassA, 0);
 	//rdVector_MultAcc3(&pThing->position, &offsetDir, diff * invMassB);
 
 //	// how much of their relative force is affecting the constraint
@@ -129,14 +134,15 @@ void sithConstraint_SolveDistanceConstraint(sithConstraint* pConstraint, float d
 //	float bias = -(biasFactor / deltaSeconds) * offset;
 //	
 //	float lambda = -(velocityDot + bias) / constraintMass;
-//	rdVector3 aImpulse;
-//	rdVector_Scale3(&aImpulse, &offsetDir, lambda);
+//
+//	rdVector3 impulseB;
+//	rdVector_Scale3(&impulseB, &offsetDir, lambda);
 //	
-//	rdVector3 bImpulse;
-//	rdVector_Scale3(&bImpulse, &offsetDir, -lambda);
+//	rdVector3 impulseA;
+//	rdVector_Scale3(&impulseA, &offsetDir, -lambda);
 //	
-//	sithPhysics_ThingApplyForce(pTargetThing, &aImpulse);
-//	sithPhysics_ThingApplyForce(pConstraint->constraintThing, &bImpulse);
+//	sithPhysics_ThingApplyForce(pConstraint->thingB, &impulseB);
+//	sithPhysics_ThingApplyForce(pConstraint->thingA, &impulseA);
 }
 
 void sithConstraint_SolveConeConstrain(sithConstraint* pConstraint, float deltaSeconds)
@@ -163,7 +169,6 @@ void sithConstraint_SolveConeConstrain(sithConstraint* pConstraint, float deltaS
 	rdMatrix_Multiply34(&pConstraint->thingA->lookOrientation, &pConstraint->thingB->lookOrientation, &constrainedRotation);
 }
 
-
 void sithConstraint_SolveLookConstraint(sithConstraint* pConstraint)
 {
 	rdMatrix34* pMat = &pConstraint->thingA->lookOrientation;
@@ -178,4 +183,33 @@ void sithConstraint_SolveLookConstraint(sithConstraint* pConstraint)
 
 	rdVector_Cross3(&pMat->lvec, &pMat->uvec, &pMat->rvec);
 	rdVector_Normalize3Acc(&pMat->lvec);
+}
+
+void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
+{
+	if (pThing->constraints)
+	{
+		for (int k = 0; k < 10; ++k)
+		{
+			sithConstraint* constraint = pThing->constraints;
+			while (constraint)
+			{
+				switch (constraint->type)
+				{
+				case SITH_CONSTRAINT_DISTANCE:
+					sithConstraint_SolveDistanceConstraint(constraint, sithTime_deltaSeconds);
+					break;
+				case SITH_CONSTRAINT_CONE:
+					sithConstraint_SolveConeConstrain(constraint, sithTime_deltaSeconds);
+					break;
+				case SITH_CONSTRAINT_LOOK:
+					sithConstraint_SolveLookConstraint(constraint);
+					break;
+				default:
+					break;
+				}
+				constraint = constraint->next;
+			}
+		}
+	}
 }
