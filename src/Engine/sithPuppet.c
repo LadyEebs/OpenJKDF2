@@ -1829,6 +1829,12 @@ void sithPuppet_ApplyDistanceConstraints(sithThing* pThing, int jointIdx, int ta
 	
 	rdVector3 bImpulse;
 	rdVector_Scale3(&bImpulse, &offsetDir, -lambda);
+
+	rdVector3 dampingForce;
+	rdVector_Scale3(&dampingForce, &aImpulse, dampingFactor);
+
+	rdVector_Sub3Acc(&aImpulse, &dampingForce);
+	rdVector_Sub3Acc(&bImpulse, &dampingForce);
 	
 	sithPhysics_ThingApplyForce(pTargetJoint, &aImpulse);
 	sithPhysics_ThingApplyForce(pJoint, &bImpulse);
