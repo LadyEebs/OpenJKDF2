@@ -73,4 +73,8 @@ static sithSector* (*sithCollision_GetSectorLookAt)(sithSector *sector, rdVector
 //static int (*sithCollision_CollideHurt)(sithThing *a1, rdVector3 *a2, float a3, int a4) = (void*)sithCollision_CollideHurt_ADDR;
 
 
+void sithCollision_ApplyDistanceConstraint(sithConstraint* pConstraint, sithThing* pTargetThing, float deltaSeconds);
+void sithCollision_ConeConstrain(sithConstraint* pConstraint, sithThing* pTargetThing, float deltaSeconds);
+void sithCollision_ApplyLookConstraint(sithConstraint* pConstraint, sithThing* pTargetThing);
+
 #endif // _SITHUNK3_H

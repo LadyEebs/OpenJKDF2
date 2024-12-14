@@ -237,6 +237,33 @@ static const int sithPuppet_jointParent[] =
 	JOINTTYPE_LCALF,   	// JOINTTYPE_LFOOT
 };
 
+static const int sithPuppet_jointChild[] =
+{
+	-1,    	            // JOINTTYPE_HEAD
+	JOINTTYPE_HEAD,     // JOINTTYPE_NECK
+	JOINTTYPE_HIP,//JOINTTYPE_NECK,    	// JOINTTYPE_TORSO
+	-1,                	// JOINTTYPE_PRIMARYWEAP
+	-1,                	// JOINTTYPE_SECONDARYWEAP
+	-1,                	// JOINTTYPE_PRIMARYWEAPJOINT
+	-1,                	// JOINTTYPE_SECONDARYWEAPJOINT
+	-1,                	// JOINTTYPE_TURRETPITCH
+	-1,                	// JOINTTYPE_TURRETYAW
+	JOINTTYPE_TORSO,   	// JOINTTYPE_HIP
+	JOINTTYPE_RFOREARM,	// JOINTTYPE_RSHOULDER
+	JOINTTYPE_LFOREARM,	// JOINTTYPE_LSHOULDER
+	JOINTTYPE_RHAND,    // JOINTTYPE_RFOREARM
+	JOINTTYPE_LHAND,    // JOINTTYPE_LFOREARM
+	-1,	                // JOINTTYPE_RHAND
+	-1,	                // JOINTTYPE_LHAND
+	JOINTTYPE_RCALF,   	// JOINTTYPE_RTHIGH
+	JOINTTYPE_LCALF,   	// JOINTTYPE_LTHIGH
+	JOINTTYPE_RFOOT,  	// JOINTTYPE_RCALF
+	JOINTTYPE_LFOOT,  	// JOINTTYPE_LCALF
+	-1,   	// JOINTTYPE_RFOOT
+	-1,   	// JOINTTYPE_LFOOT
+};
+
+
 #endif
 
 #endif
@@ -1179,6 +1206,92 @@ int sithPuppet_FindHitLoc(sithThing* pReceiverThing, rdVector3* pPos)
 
 #ifdef PUPPET_PHYSICS
 
+void sithPuppet_AddDistanceConstraint(sithThing* pThing, int joint, int target, int flip)
+{
+	sithThing* targetThing = &pThing->puppet->physics->joints[target].thing;
+	sithThing* jointThing = &pThing->puppet->physics->joints[joint].thing;
+
+	sithConstraint* constraint = (sithConstraint*)malloc(sizeof(sithConstraint));
+	if(!constraint)
+		return;
+
+	constraint->type = SITH_CONSTRAINT_DISTANCE;
+	constraint->thingA = jointThing;
+	
+	rdHierarchyNode* pNode = &pThing->rdthing.model3->hierarchyNodes[pThing->animclass->bodypart[joint].nodeIdx];
+
+	rdVector3* pBasePosA = &pThing->rdthing.model3->paBasePoseMatrices[pThing->animclass->bodypart[target].nodeIdx].scale;
+	rdVector3* pBasePosB = &pThing->rdthing.model3->paBasePoseMatrices[pThing->animclass->bodypart[joint].nodeIdx].scale;
+
+	// invert the matrix so we can get a local position for the constraint
+	rdMatrix34 inv;
+	rdMatrix_InvertOrtho34(&inv, &pThing->rdthing.model3->paBasePoseMatrices[pThing->animclass->bodypart[target].nodeIdx]);
+
+	// derive the anchor from the base pose and the inverse target matrix
+	rdMatrix_TransformPoint34(&constraint->distanceParams.constraintAnchor, pBasePosB, &inv);
+//	rdVector_Copy3(&constraint->distanceParams.constraintAnchor, &pNode->pos);
+	constraint->distanceParams.constraintDistance = rdVector_Len3(&constraint->distanceParams.constraintAnchor);
+	
+	// link it
+	constraint->next = targetThing->constraints;
+	targetThing->constraints = constraint;
+
+	//distanceConstraints->constraintAnchor = pThing->rdthing.model3->hierarchyNodes[pThing->animclass->bodypart[child].nodeIdx].pos;
+
+
+//	jointThing->constraintThing = &pThing->puppet->physics->joints[child].thing;
+//
+//	//rdVector3* pBasePosA = &pThing->rdthing.model3->paBasePoseMatrices[pThing->animclass->bodypart[joint].nodeIdx].scale;
+//	//rdVector3* pBasePosB = &pThing->rdthing.model3->paBasePoseMatrices[pThing->animclass->bodypart[child].nodeIdx].scale;
+//	//rdVector_Sub3(&jointThing->constraintAnchor, pBasePosB, pBasePosA);
+//	jointThing->constraintAnchor = pThing->rdthing.model3->hierarchyNodes[pThing->animclass->bodypart[child].nodeIdx].pos;
+//	jointThing->constraintDistance = rdVector_Len3(&jointThing->constraintAnchor);
+//	jointThing->constraintFlipUp = flip;
+}
+
+void sithPuppet_AddConeConstraint(sithThing* pThing, int joint, int target, float maxSwingAngle, float maxTwistAngle)
+{
+	sithThing* targetThing = &pThing->puppet->physics->joints[target].thing;
+	sithThing* jointThing = &pThing->puppet->physics->joints[joint].thing;
+
+	sithConstraint* constraint = (sithConstraint*)malloc(sizeof(sithConstraint));
+	if (!constraint)
+		return;
+
+	constraint->type = SITH_CONSTRAINT_CONE;
+	constraint->thingA = jointThing;
+
+	constraint->coneParams.maxSwingAngle = maxSwingAngle;
+	constraint->coneParams.maxTwistAngle = maxTwistAngle;
+
+	// link it
+	constraint->next = targetThing->constraints;
+	targetThing->constraints = constraint;
+}
+
+
+void sithPuppet_AddLookConstraint(sithThing* pThing, int joint, int target, int flipUp)
+{
+	sithThing* targetThing = &pThing->puppet->physics->joints[target].thing;
+	sithThing* jointThing = &pThing->puppet->physics->joints[joint].thing;
+
+	sithConstraint* constraint = (sithConstraint*)malloc(sizeof(sithConstraint));
+	if (!constraint)
+		return;
+
+	constraint->type = SITH_CONSTRAINT_LOOK;
+	constraint->thingA = jointThing;
+
+	rdHierarchyNode* pNode = &pThing->rdthing.model3->hierarchyNodes[pThing->animclass->bodypart[joint].nodeIdx];
+	rdMatrix_Copy34(&constraint->lookParams.referenceMat, &pNode->posRotMatrix);
+	constraint->lookParams.flipUp = flipUp;
+
+	// link it
+	constraint->next = targetThing->constraints;
+	targetThing->constraints = constraint;
+}
+
+
 void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel)
 {
 	if (!pThing->animclass || pThing->rdthing.type != RD_THINGTYPE_MODEL || !pThing->rdthing.model3 || !pThing->puppet || !pThing->rdthing.puppet || (g_debugmodeFlags & DEBUGFLAG_NO_PUPPETS))
@@ -1235,7 +1348,7 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel)
 		pJoint->thing.physicsParams.buoyancy *= pBodyPart->buoyancy;
 		pJoint->thing.physicsParams.height = 0;
 
-		pJoint->thing.physicsParams.physflags = SITH_PF_FEELBLASTFORCE | SITH_PF_FLOORSTICK;// | SITH_PF_ANGTHRUST;
+		pJoint->thing.physicsParams.physflags = SITH_PF_FEELBLASTFORCE | SITH_PF_FLOORSTICK | SITH_PF_ANGTHRUST;
 
 		if (pThing->physicsParams.physflags & SITH_PF_USEGRAVITY)		
 			pJoint->thing.physicsParams.physflags |= SITH_PF_USEGRAVITY;
@@ -1261,6 +1374,10 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel)
 
 		pJoint->thing.collideSize = 0.01f;
 
+		//pJoint->thing.physicsParams.surfaceDrag /= pBodyPart->mass;
+		//pJoint->thing.physicsParams.staticDrag /= pBodyPart->mass;
+		//pJoint->thing.physicsParams.airDrag /= pBodyPart->mass;
+
 		// initialize the position velocity using the animation frames
 		rdVector_Copy3(&pJoint->thing.position, &pThing->rdthing.hierarchyNodeMatrices[pBodyPart->nodeIdx].scale);
 		
@@ -1269,6 +1386,48 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel)
 
 		rdVector_Sub3(&pJoint->thing.physicsParams.vel, &pJoint->thing.position, &lastPos);
 		rdVector_Scale3Acc(&pJoint->thing.physicsParams.vel, 1.0f / sithTime_deltaSeconds);
+
+		rdMatrix34 rot1;
+		rdMatrix_Copy34(&rot1, &pThing->rdthing.hierarchyNodeMatrices[pBodyPart->nodeIdx]);
+		rdVector_Zero3(&rot1.scale);
+
+		rdMatrix34 rot2;
+		rdMatrix_Copy34(&rot2, &pThing->rdthing.paHierarchyNodeMatricesPrev[pBodyPart->nodeIdx]);
+		rdVector_Zero3(&rot2.scale);
+
+		// same for angular velocity
+		rdMatrix34 rot1Transpose;
+		rdMatrix_InvertOrtho34(&rot1Transpose, &rot1);
+		
+		rdMatrix34 relativeRotation;
+		rdMatrix_Multiply34(&relativeRotation, &rot1Transpose, &rot2);
+		
+		rdQuat q;
+		rdQuat_BuildFrom34(&q, &relativeRotation);
+		
+	//	rdVector3 angularVelocity;
+//
+	//	float angle = 2.0f * acosf(q.w);
+	//	float s = sqrtf(1.0f - q.w * q.w);
+	//	if (s < 0.001f)
+	//	{
+	//		angularVelocity.x = q.x * angle / sithTime_deltaSeconds;
+	//		angularVelocity.y = q.y * angle / sithTime_deltaSeconds;
+	//		angularVelocity.z = q.z * angle / sithTime_deltaSeconds;
+	//	}
+	//	else
+	//	{
+	//		angularVelocity.x = q.x / s * angle / sithTime_deltaSeconds;
+	//		angularVelocity.y = q.y / s * angle / sithTime_deltaSeconds;
+	//		angularVelocity.z = q.z / s * angle / sithTime_deltaSeconds;
+	//	}
+	//rdVector3 axis;
+	//float angle;
+	//rdQuat_ExtractAxisAngle(&q, &axis, &angle); 
+	//rdVector3 angularVelocity = {axis.x * angle, axis.y * angle, axis.z * angle};
+	//
+	//
+	//	rdVector_Copy3(&pJoint->thing.physicsParams.angVel, &angularVelocity);
 
 	//	rdVector_Add3Acc(&pJoint->thing.physicsParams.vel, &thingVel);
 
@@ -1279,6 +1438,35 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel)
 		// enter the things sector to start physics
 		sithThing_EnterSector(&pJoint->thing, pThing->sector, 1, 0);
 	}
+
+	sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_HEAD, JOINTTYPE_NECK, 0);
+	sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_NECK, JOINTTYPE_TORSO, 0);
+	sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_TORSO, JOINTTYPE_HIP, 0);
+
+	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_TORSO, JOINTTYPE_HIP, 5.0f, 20.0f);
+	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_NECK, JOINTTYPE_TORSO, 4.0f, 20.0f);
+
+	sithPuppet_AddLookConstraint(pThing, JOINTTYPE_HIP, JOINTTYPE_TORSO, 1);
+	sithPuppet_AddLookConstraint(pThing, JOINTTYPE_HEAD, JOINTTYPE_NECK, 1);
+
+//	//	sithPuppet_FixupPositions(pSector, pThing, deltaSeconds);
+//
+//		sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_TORSO, JOINTTYPE_HIP, 5.0f, 20.0f, deltaSeconds);
+//		sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_NECK, JOINTTYPE_TORSO, 4.0f, 20.0f, deltaSeconds);
+//		
+//		
+//		sithPuppet_ApplyLookConstraint(pThing, JOINTTYPE_HIP, JOINTTYPE_TORSO, 0, deltaSeconds);
+//		sithPuppet_ApplyLookConstraint(pThing, JOINTTYPE_HEAD, JOINTTYPE_NECK, 1, deltaSeconds);
+
+
+//	sithPuppet_AddConstraint(pThing, JOINTTYPE_HIP, JOINTTYPE_TORSO, 1);
+//	sithPuppet_AddConstraint(pThing, JOINTTYPE_TORSO, JOINTTYPE_NECK, 1);
+//	sithPuppet_AddConstraint(pThing, JOINTTYPE_NECK, JOINTTYPE_HEAD, 1);
+
+	//pThing->puppet->physics->joints[JOINTTYPE_HIP].thing.constraintThing = &pThing->puppet->physics->joints[JOINTTYPE_TORSO].thing;
+	//pThing->puppet->physics->joints[JOINTTYPE_TORSO].thing.constraintThing = &pThing->puppet->physics->joints[JOINTTYPE_NECK].thing;
+	//pThing->puppet->physics->joints[JOINTTYPE_NECK].thing.constraintThing = &pThing->puppet->physics->joints[JOINTTYPE_HEAD].thing;
+
 }
 
 void sithPuppet_StopPhysics(sithThing* pThing)
@@ -1294,6 +1482,8 @@ void sithPuppet_StopPhysics(sithThing* pThing)
 			sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
 			sithThing_LeaveSector(&pJoint->thing);
 
+			sithThing_FreeEverything(&pJoint->thing);
+
 			// probably not needed as we're not using any rendering but just in case...
 			rdThing_FreeEntry(&pJoint->thing.rdthing);
 		}
@@ -1302,11 +1492,800 @@ void sithPuppet_StopPhysics(sithThing* pThing)
 	}
 }
 
-void sithPuppet_ApplyConstraints(sithThing* pThing)
+void sithPuppet_DoConstraints(sithThing* pThing, int jointIdx, float deltaSeconds)
+{
+	sithBodyPart* pBodyPart = &pThing->animclass->bodypart[jointIdx];
+	sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
+	rdHierarchyNode* pNode = &pThing->rdthing.model3->hierarchyNodes[pBodyPart->nodeIdx];
+	sithThing* physB = &pJoint->thing;
+
+	rdVector_Zero3(&physB->lookOrientation.scale);
+
+	int parentIdx = sithPuppet_jointParent[jointIdx];
+	int hasParentJoint = parentIdx < 0 ? 0 : pThing->animclass->jointBits & (1ull << parentIdx);
+	if (hasParentJoint)
+	{
+		sithBodyPart* pParentBodyPart = &pThing->animclass->bodypart[parentIdx];
+		sithPuppetJoint* pParentJoint = &pThing->puppet->physics->joints[parentIdx];
+		rdHierarchyNode* pParentNode = &pThing->rdthing.model3->hierarchyNodes[pParentBodyPart->nodeIdx];
+		sithThing* physA = &pParentJoint->thing;
+
+		// distance constraint
+
+		// todo: precompute the constraint distance
+		rdVector3* pBasePosA = &pThing->rdthing.model3->paBasePoseMatrices[pBodyPart->nodeIdx].scale;
+		rdVector3* pBasePosB = &pThing->rdthing.model3->paBasePoseMatrices[pParentBodyPart->nodeIdx].scale;
+		float distance = rdVector_Dist3(pBasePosB, pBasePosA);
+
+		rdVector_Copy3(&physA->lookOrientation.scale, &physA->position);
+
+		rdMatrix34 inv;
+		rdMatrix_InvertOrtho34(&inv, &pThing->rdthing.model3->paBasePoseMatrices[pParentBodyPart->nodeIdx]);
+
+		rdVector3 anchor;
+		rdMatrix_TransformPoint34(&anchor, pBasePosB, &inv);
+		rdMatrix_TransformPoint34Acc(&anchor, &physA->lookOrientation);
+		//rdVector_Add3Acc(&anchor, &physA->position);
+		rdVector_Zero3(&physA->lookOrientation.scale);
+
+		rdVector3 relativePos;
+		rdVector_Sub3(&relativePos, &anchor, &pJoint->thing.position);
+
+		float currentDistance = rdVector_Len3(&relativePos);
+		float offset = distance - currentDistance;
+		if (stdMath_Fabs(offset) > 0.0f)
+		{
+			rdVector3 offsetDir;
+			rdVector_Normalize3(&offsetDir, &relativePos);
+
+			rdVector3 relativeVelocity;
+			rdVector_Sub3(&relativeVelocity, &physA->physicsParams.vel, &physB->physicsParams.vel);
+
+			float invMassA = 1.0f / physA->physicsParams.mass;
+			float invMassB = 1.0f / physB->physicsParams.mass;
+			float constraintMass = invMassA + invMassB;
+			if (constraintMass > 0.0f)
+			{
+				float diff = offset / (constraintMass);
+				
+				//if (!(pBodyPartA->flags & JOINTFLAGS_PINNED))
+				{
+					rdVector3 deltaA;
+					rdVector_Scale3(&deltaA, &offsetDir, (double)diff * invMassA);
+				
+					rdVector3 offsetA;
+					rdVector_Add3(&offsetA, &physA->position, &deltaA);
+					rdVector_Add3Acc(&pParentJoint->nextPosAcc, &offsetA);
+					pParentJoint->nextPosWeight++;
+					pThing->puppet->physics->constrainedJoints |= 1ull << parentIdx;
+				}
+				
+				//if (!(pBodyPartB->flags & JOINTFLAGS_PINNED))
+				{
+					rdVector3 deltaB;
+					rdVector_Scale3(&deltaB, &offsetDir, (double)diff * invMassB);
+				
+					rdVector3 offsetB;
+					rdVector_Sub3(&offsetB, &physB->position, &deltaB);
+					rdVector_Add3Acc(&pJoint->nextPosAcc, &offsetB);
+					pJoint->nextPosWeight++;
+					pThing->puppet->physics->constrainedJoints |= 1ull << jointIdx;
+				}
+
+				// how much of their relative force is affecting the constraint
+				//float velocityDot = rdVector_Dot3(&relativeVelocity, &offsetDir);
+				//
+				//const float biasFactor = 0.05f;
+				//float bias = -(biasFactor / deltaSeconds) * offset;
+				//
+				//float lambda = -(velocityDot + bias) / constraintMass;
+				//rdVector3 aImpulse;
+				//rdVector_Scale3(&aImpulse, &offsetDir, lambda);
+				//
+				//rdVector3 bImpulse;
+				//rdVector_Scale3(&bImpulse, &offsetDir, -lambda);
+				//
+				//sithPhysics_ThingApplyForce(physA, &aImpulse);
+				//sithPhysics_ThingApplyForce(physB, &bImpulse);
+			}
+		}
+
+		// the base pose local up vector is the cone axis
+		// transform it to world space relative to the parent
+		rdVector3 coneAxis;
+		rdMatrix_TransformVector34(&coneAxis, &pNode->posRotMatrix.uvec, &physA->lookOrientation);
+		//rdVector_Normalize3(&coneAxis, &pNode->pos);
+		//rdMatrix_TransformVector34Acc(&coneAxis, &physA->lookOrientation);
+
+		////rdVector_Set3(&coneAxis, 0.0f, 0.0f, 1.0f);
+
+		rdVector3 childForward;
+		rdVector_Copy3(&childForward, &physB->lookOrientation.uvec);
+
+
+		float dotProd = rdVector_Dot3(&coneAxis, &childForward);
+		float currentAngle = 90.0f - stdMath_ArcSin3(dotProd);
+
+		float maxConeAngle = 5.0f;
+		if (currentAngle > maxConeAngle)
+		{
+			float correctionAngle = currentAngle - maxConeAngle;
+
+			rdVector3 correctionAxis;
+			rdVector_Cross3(&correctionAxis, &coneAxis, &childForward);
+			rdVector_Normalize3Acc(&correctionAxis);
+
+			rdMatrix34 rotMat;
+			rdMatrix_BuildFromVectorAngle34(&rotMat, &correctionAxis, -correctionAngle);
+
+			rdVector3 pyr;
+			rdMatrix_ExtractAngles34(&rotMat, &pyr);
+
+			//rdQuat correctionQuat;
+			//rdQuat_BuildFromAxisAngle(&correctionQuat, &axis, -correctionAngle);
+			//rdQuat_NormalizeAcc(&correctionQuat);
+			//
+			//rdVector3 pyr;
+			//rdQuat_ExtractAngles(&correctionQuat, &pyr);
+			rdVector_MultAcc3(&physB->physicsParams.angVel, &pyr, 1.0f / deltaSeconds);
+
+			//rdVector3 angVelCorrection;
+			//rdVector_Scale3(&angVelCorrection, &axis, correctionAngle / deltaSeconds);
+			//rdVector_Add3Acc(&physB->physicsParams.angVel, &angVelCorrection);
+
+		//	rdMatrix34 rotMat;
+		//	rdMatrix_BuildFromAxisAngle34(&rotMat, &axis, -correctionAngle);
+		//
+		////	rdMatrix_Multiply34(&physB->lookOrientation, &physA->lookOrientation, &rotMat);
+		//	rdMatrix_PostMultiply34(&physB->lookOrientation, &rotMat);
+
+			//rdQuat correctionQuat;
+			//rdQuat_BuildFromAxisAngle(&correctionQuat, &axis, -correctionAngle);
+			//rdQuat_NormalizeAcc(&correctionQuat);
+			//
+			//rdQuat childRot;
+			//rdQuat_BuildFrom34(&childRot, &physB->lookOrientation);
+			//
+			//rdQuat newRotation;
+			//rdQuat_Mul(&newRotation, &correctionQuat, &childRot);
+			//rdQuat_ToMatrix(&physB->lookOrientation, &newRotation);
+		}
+
+		// make sure the up vector remains pointing away
+		//rdVector3 expectedUpVector;
+		//rdVector_Cross3(&expectedUpVector, &physA->lookOrientation.rvec, &physA->lookOrientation.lvec);
+		//
+		//if (rdVector_Dot3(&expectedUpVector, &physB->lookOrientation.uvec) < 0.0f)
+		//{
+		//	// The up vector is inverted, apply a correction
+		//	rdVector_Scale3Acc(&parent->transform.m[1], -1.0f);
+		//	rdVector_Cross3(&parent->transform.m[0], &parent->transform.m[2], &parent->transform.m[1]);
+		//	rdVector_Normalize3Acc(&parent->transform.m[0]);
+		//}
+	}
+}
+
+
+void sithPuppet_ApplyDistanceConstraints(sithThing* pThing, int jointIdx, int targetJointIdx, float deltaSeconds)
+{
+	int hasTargetJoint = targetJointIdx < 0 ? 0 : pThing->animclass->jointBits & (1ull << targetJointIdx);
+	if (!hasTargetJoint)
+		return;
+
+	sithBodyPart* pBodyPart = &pThing->animclass->bodypart[jointIdx];
+	sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
+	rdHierarchyNode* pNode = &pThing->rdthing.model3->hierarchyNodes[pBodyPart->nodeIdx];
+	sithThing* pJointThing = &pJoint->thing;
+
+	sithBodyPart* pTargetBodyPart = &pThing->animclass->bodypart[targetJointIdx];
+	sithPuppetJoint* pTargetJoint = &pThing->puppet->physics->joints[targetJointIdx];
+	rdHierarchyNode* pTargetNode = &pThing->rdthing.model3->hierarchyNodes[pTargetBodyPart->nodeIdx];
+	sithThing* pTargetThing = &pTargetJoint->thing;
+
+	// todo: precompute the constraint distance
+	rdVector3* pBasePosA = &pThing->rdthing.model3->paBasePoseMatrices[pTargetBodyPart->nodeIdx].scale;
+	rdVector3* pBasePosB = &pThing->rdthing.model3->paBasePoseMatrices[pBodyPart->nodeIdx].scale;
+	//float distance = rdVector_Dist3(pBasePosB, pBasePosA);
+
+
+	// invert the target matrix so we can get a local position for the joint
+	rdMatrix34 inv;
+	rdMatrix_InvertOrtho34(&inv, &pThing->rdthing.model3->paBasePoseMatrices[pTargetBodyPart->nodeIdx]);
+	
+	// derive the anchor from the base pose and the inverse target matrix
+	rdVector3 anchor;
+	rdMatrix_TransformPoint34(&anchor, pBasePosB, &inv);
+	//rdVector_Copy3(&anchor, &pNode->pos);
+	float distance = 0.0f;//rdVector_Len3(&anchor) / 1.8;
+
+	// move to the target things actual world matrix
+	rdVector_Copy3(&pTargetThing->lookOrientation.scale, &pTargetThing->position);
+	rdMatrix_TransformPoint34Acc(&anchor, &pTargetThing->lookOrientation);
+	//rdVector_Add3Acc(&anchor , &pTargetThing->position);
+	rdVector_Zero3(&pTargetThing->lookOrientation.scale);
+
+	rdVector3 relativePos;
+	rdVector_Sub3(&relativePos, &anchor, &pJoint->thing.position);
+
+	float currentDistance = rdVector_Len3(&relativePos);
+	float offset = distance - currentDistance;
+	if (stdMath_Fabs(offset) <= 0.0f)
+		return;
+
+	rdVector3 offsetDir;
+	rdVector_Normalize3(&offsetDir, &relativePos);
+
+	rdVector3 relativeVelocity;
+	rdVector_Sub3(&relativeVelocity, &pTargetThing->physicsParams.vel, &pJointThing->physicsParams.vel);
+
+	float invMassA = 1.0f / pTargetThing->physicsParams.mass;
+	float invMassB = 1.0f / pJointThing->physicsParams.mass;
+	float constraintMass = invMassA + invMassB;
+	if (constraintMass <= 0.0f)
+		return;
+
+	float diff = -offset / (constraintMass);
+	rdVector_Neg3Acc(&offsetDir);
+	
+	//sithCollision_UpdateThingCollision(pTargetThing, &offsetDir, diff * invMassA, 0);
+	
+	rdVector_Neg3Acc(&offsetDir);
+	sithCollision_UpdateThingCollision(pJointThing, &offsetDir, diff * invMassB, 0);
+
+
+//	//if (!(pBodyPartA->flags & JOINTFLAGS_PINNED))
+//	{
+//		rdVector3 deltaA;
+//		rdVector_Scale3(&deltaA, &offsetDir, (double)diff * invMassA);
+//
+//		rdVector3 offsetA;
+//		rdVector_Add3(&offsetA, &pTargetThing->position, &deltaA);
+//		rdVector_Add3Acc(&pTargetJoint->nextPosAcc, &offsetA);
+//		pTargetJoint->nextPosWeight++;
+//		pThing->puppet->physics->constrainedJoints |= 1ull << targetJointIdx;
+//	}
+//
+//	//if (!(pBodyPartB->flags & JOINTFLAGS_PINNED))
+//	{
+//		rdVector3 deltaB;
+//		rdVector_Scale3(&deltaB, &offsetDir, (double)diff * invMassB);
+//
+//		rdVector3 offsetB;
+//		rdVector_Sub3(&offsetB, &pJointThing->position, &deltaB);
+//		rdVector_Add3Acc(&pJoint->nextPosAcc, &offsetB);
+//		pJoint->nextPosWeight++;
+//		pThing->puppet->physics->constrainedJoints |= 1ull << jointIdx;
+//	}
+
+	// how much of their relative force is affecting the constraint
+//	float velocityDot = rdVector_Dot3(&relativeVelocity, &offsetDir);
+//	
+//	const float biasFactor = 0.01f;
+//	float bias = -(biasFactor / deltaSeconds) * offset;
+//	
+//	float lambda = -(velocityDot + bias) / constraintMass;
+//	rdVector3 aImpulse;
+//	rdVector_Scale3(&aImpulse, &offsetDir, lambda);
+//	
+//	rdVector3 bImpulse;
+//	rdVector_Scale3(&bImpulse, &offsetDir, -lambda);
+//	
+//	sithPhysics_ThingApplyForce(pTargetJoint, &aImpulse);
+//	sithPhysics_ThingApplyForce(pJoint, &bImpulse);
+}
+
+
+void sithPuppet_ApplyConeConstraint(sithThing* pThing, int jointIdx, int referenceJointIdx, float maxSwingAngle, float maxTwistAngle, float deltaSeconds)
+{
+	int hasReferenceJoint = referenceJointIdx < 0 ? 0 : pThing->animclass->jointBits & (1ull << referenceJointIdx);
+	if(!hasReferenceJoint)
+		return;
+
+	sithBodyPart* pBodyPart = &pThing->animclass->bodypart[jointIdx];
+	sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
+	rdHierarchyNode* pNode = &pThing->rdthing.model3->hierarchyNodes[pBodyPart->nodeIdx];
+	sithThing* pJointThing = &pJoint->thing;
+
+	sithBodyPart* pReferenceBodyPart = &pThing->animclass->bodypart[referenceJointIdx];
+	sithPuppetJoint* pReferenceJoint = &pThing->puppet->physics->joints[referenceJointIdx];
+	rdHierarchyNode* pReferenceNode = &pThing->rdthing.model3->hierarchyNodes[pReferenceBodyPart->nodeIdx];
+	sithThing* pReferenceThing = &pReferenceJoint->thing;
+
+	// the base pose local up vector is the cone axis
+	// transform it to world space relative to the parent
+	//rdVector3* refAxis = &(&pReferenceThing->lookOrientation.rvec)[axis];
+
+	rdMatrix34 parentRotTranspose, relativeRotation;
+	rdMatrix_InvertOrtho34(&parentRotTranspose, &pReferenceThing->lookOrientation);
+	rdMatrix_Multiply34(&relativeRotation, &parentRotTranspose, &pJointThing->lookOrientation);
+
+	rdVector3 angles;
+	rdMatrix_ExtractAngles34(&relativeRotation, &angles);
+
+	rdVector3 constrainedAngles = angles;
+	if (fabsf(constrainedAngles.x) > maxSwingAngle)
+		constrainedAngles.x = maxSwingAngle * (constrainedAngles.x > 0 ? 1 : -1);
+
+	if (fabsf(constrainedAngles.y) > maxTwistAngle)
+		constrainedAngles.y = maxTwistAngle * (constrainedAngles.y > 0 ? 1 : -1);
+
+	if (fabsf(constrainedAngles.z) > maxSwingAngle)
+		constrainedAngles.z = maxSwingAngle * (constrainedAngles.z > 0 ? 1 : -1);
+
+	rdMatrix34 constrainedRotation;
+	rdMatrix_BuildRotate34(&constrainedRotation, &constrainedAngles);
+	rdMatrix_Multiply34(&pJointThing->lookOrientation, &pReferenceThing->lookOrientation, &constrainedRotation);
+
+	//rdVector3 angleDifferences;
+	//rdVector_Sub3(&angleDifferences, &constrainedAngles, &angles);
+	
+	//rdVector_MultAcc3(&pJointThing->physicsParams.angVel, &angleDifferences, 1.0f / deltaSeconds);
+
+//	rdVector_MultAcc3(&pJointThing->physicsParams.angVel, &angles, 1.0f / deltaSeconds);
+
+	/*rdVector3 coneAxis;
+	rdVector_Copy3(&coneAxis, refAxis);
+
+	rdVector3 childForward;
+	rdVector_Copy3(&childForward, &pJointThing->lookOrientation.uvec);
+
+	rdVector_Normalize3Acc(&coneAxis);
+	rdVector_Normalize3Acc(&childForward);
+
+	float dotProd = rdVector_Dot3(&coneAxis, &childForward);
+	float currentAngle = acosf(dotProd);
+	maxConeAngle /= 180.0 / M_PI;
+	if (currentAngle > maxConeAngle)
+	{
+		float correctionAngle = currentAngle - maxConeAngle;
+
+		rdVector3 correctionAxis;
+		rdVector_Cross3(&correctionAxis, &childForward, &coneAxis);
+		rdVector_Normalize3Acc(&correctionAxis);
+
+		rdMatrix34 rotMat;
+		rdMatrix_BuildFromAxisAngle34(&rotMat, &correctionAxis, -correctionAngle * (180.0 / M_PI));
+
+		rdVector3 tmp;
+		rdVector_Sub3(&tmp, &pJointThing->position, &pReferenceThing->position);
+		rdVector_Copy3(&pJointThing->lookOrientation.scale, &tmp);
+
+		rdMatrix_PreMultiply34(&pJointThing->lookOrientation, &rotMat);
+
+		rdVector3 a1a;
+		rdVector_Sub3(&a1a, &pJointThing->lookOrientation.scale, &tmp);
+		if (!rdVector_IsZero3(&a1a))
+			sithCollision_UpdateThingCollision(pJointThing, &a1a, rdVector_Normalize3Acc(&a1a), 0);
+
+		rdVector_Zero3(&pJointThing->lookOrientation.scale);
+	}*/
+}
+
+
+void sithPuppet_ApplyLookConstraint(sithThing* pThing, int jointIdx, int targetJointIdx, int invertDir, float deltaSeconds)
+{
+	int hasTargetJoint = targetJointIdx < 0 ? 0 : pThing->animclass->jointBits & (1ull << targetJointIdx);
+	if(!hasTargetJoint)
+		return;
+
+	sithPuppetJoint* pTargetJoint = &pThing->puppet->physics->joints[targetJointIdx];
+	sithPuppetJoint* pJoint       = &pThing->puppet->physics->joints[jointIdx];
+	rdHierarchyNode* pNode        = &pThing->rdthing.model3->hierarchyNodes[pThing->animclass->bodypart[jointIdx].nodeIdx];
+
+	rdMatrix34 refMat;
+	rdMatrix_Multiply34(&refMat, &pNode->posRotMatrix, &pTargetJoint->thing.lookOrientation);
+
+	rdMatrix34* pMat = &pJoint->thing.lookOrientation;
+	rdVector_Sub3(&pMat->uvec, &pTargetJoint->thing.position, &pJoint->thing.position);
+	rdVector_Normalize3Acc(&pMat->uvec);
+
+	if (invertDir)
+		rdVector_Neg3Acc(&pMat->uvec);
+
+	rdVector_Cross3(&pMat->rvec, &refMat.lvec, &pMat->uvec);
+	rdVector_Normalize3Acc(&pMat->rvec);
+
+	rdVector_Cross3(&pMat->lvec, &pMat->uvec, &pMat->rvec);
+	rdVector_Normalize3Acc(&pMat->lvec);
+}
+
+
+void sithConstraint_ApplyDistanceConstraint(sithConstraint* pConstraint, sithThing* pTargetThing, float deltaSeconds)
+{
+	rdVector_Copy3(&pTargetThing->lookOrientation.scale, &pTargetThing->position);
+
+	rdVector3 anchor;
+	rdMatrix_TransformPoint34(&anchor, &pConstraint->distanceParams.constraintAnchor, &pTargetThing->lookOrientation);
+
+	rdVector_Zero3(&pTargetThing->lookOrientation.scale);
+
+	rdVector3 relativePos;
+	rdVector_Sub3(&relativePos, &anchor, &pConstraint->thingA->position);
+
+	float currentDistance = rdVector_Len3(&relativePos);
+	float offset = -currentDistance;// pConstraint->distanceParams.constraintDistance - currentDistance;
+	if (stdMath_Fabs(offset) <= 0.0001f)
+		return;
+
+	rdVector3 offsetDir;
+	rdVector_Normalize3(&offsetDir, &relativePos);
+
+	rdVector3 relativeVelocity;
+	rdVector_Sub3(&relativeVelocity, &pTargetThing->physicsParams.vel, &pConstraint->thingA->physicsParams.vel);
+
+	float invMassA = 1.0f / pTargetThing->physicsParams.mass;
+	float invMassB = 1.0f / pConstraint->thingA->physicsParams.mass;
+	float constraintMass = invMassA + invMassB;
+	if (constraintMass <= 0.0f)
+		return;
+
+	float diff = -offset / (constraintMass);
+	rdVector_Neg3Acc(&offsetDir);
+
+	//sithCollision_UpdateThingCollision(pTargetThing, &offsetDir, diff * invMassA, 0);
+	//rdVector_MultAcc3(&pTargetThing->position, &offsetDir, diff * invMassA);
+
+	rdVector_Neg3Acc(&offsetDir);
+	sithCollision_UpdateThingCollision(pConstraint->thingA, &offsetDir, -offset, 0);// diff * invMassB, 0);
+	//rdVector_MultAcc3(&pThing->position, &offsetDir, diff * invMassB);
+
+//	// how much of their relative force is affecting the constraint
+//	float velocityDot = rdVector_Dot3(&relativeVelocity, &offsetDir);
+//	
+//	const float biasFactor = 0.01f;
+//	float bias = -(biasFactor / deltaSeconds) * offset;
+//	
+//	float lambda = -(velocityDot + bias) / constraintMass;
+//	rdVector3 aImpulse;
+//	rdVector_Scale3(&aImpulse, &offsetDir, lambda);
+//	
+//	rdVector3 bImpulse;
+//	rdVector_Scale3(&bImpulse, &offsetDir, -lambda);
+//	
+//	sithPhysics_ThingApplyForce(pTargetThing, &aImpulse);
+//	sithPhysics_ThingApplyForce(pConstraint->constraintThing, &bImpulse);
+}
+
+void sithConstraint_ConeConstrain(sithConstraint* pConstraint, sithThing* pReference, float deltaSeconds)
+{
+	rdMatrix34 parentRotTranspose, relativeRotation;
+	rdMatrix_InvertOrtho34(&parentRotTranspose, &pReference->lookOrientation);
+	rdMatrix_Multiply34(&relativeRotation, &parentRotTranspose, &pConstraint->thingA->lookOrientation);
+
+	rdVector3 angles;
+	rdMatrix_ExtractAngles34(&relativeRotation, &angles);
+
+	rdVector3 constrainedAngles = angles;
+	if (fabsf(constrainedAngles.x) > pConstraint->coneParams.maxSwingAngle)
+		constrainedAngles.x = pConstraint->coneParams.maxSwingAngle * (constrainedAngles.x > 0 ? 1 : -1);
+
+	if (fabsf(constrainedAngles.y) > pConstraint->coneParams.maxTwistAngle)
+		constrainedAngles.y = pConstraint->coneParams.maxTwistAngle * (constrainedAngles.y > 0 ? 1 : -1);
+
+	if (fabsf(constrainedAngles.z) > pConstraint->coneParams.maxSwingAngle)
+		constrainedAngles.z = pConstraint->coneParams.maxSwingAngle * (constrainedAngles.z > 0 ? 1 : -1);
+
+	rdMatrix34 constrainedRotation;
+	rdMatrix_BuildRotate34(&constrainedRotation, &constrainedAngles);
+	rdMatrix_Multiply34(&pConstraint->thingA->lookOrientation, &pReference->lookOrientation, &constrainedRotation);
+}
+
+
+void sithConstraint_ApplyLookConstraint(sithConstraint* pConstraint, sithThing* pReferenceThing)
+{
+	rdMatrix34 refMat;
+	rdMatrix_Multiply34(&refMat, &pConstraint->lookParams.referenceMat, &pReferenceThing->lookOrientation);
+
+	rdMatrix34* pMat = &pConstraint->thingA->lookOrientation;
+	rdVector_Sub3(&pMat->uvec, &pReferenceThing->position, &pConstraint->thingA->position);
+	rdVector_Normalize3Acc(&pMat->uvec);
+
+	if (pConstraint->lookParams.flipUp)
+		rdVector_Neg3Acc(&pMat->uvec);
+
+	rdVector_Cross3(&pMat->rvec, &refMat.lvec, &pMat->uvec);
+	rdVector_Normalize3Acc(&pMat->rvec);
+
+	rdVector_Cross3(&pMat->lvec, &pMat->uvec, &pMat->rvec);
+	rdVector_Normalize3Acc(&pMat->lvec);
+}
+
+void sithPuppet_ApplyConstraints(sithThing* pThing, float deltaSeconds)
 {
 	// clear the constraint bitmask
 	pThing->puppet->physics->constrainedJoints = 0;
 
+	//uint64_t jointBits = pThing->animclass->jointBits;
+	//while (jointBits != 0)
+	//{
+	//	int jointIdx = stdMath_FindLSB64(jointBits);
+	//	jointBits ^= 1ull << jointIdx;
+	//
+	//	sithBodyPart* pBodyPart = &pThing->animclass->bodypart[jointIdx];
+	//	sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
+	//	rdHierarchyNode* pNode = &pThing->rdthing.model3->hierarchyNodes[pBodyPart->nodeIdx];
+	//	sithThing* physB = &pJoint->thing;
+	//	
+	//	sithConstraint* constraint = physB->constraints;
+	//	while (constraint)
+	//	{
+	//		switch (constraint->type)
+	//		{
+	//		case SITH_CONSTRAINT_DISTANCE:
+	//			sithConstraint_ApplyDistanceConstraint(constraint, physB, sithTime_deltaSeconds);
+	//			break;
+	//		case SITH_CONSTRAINT_CONE:
+	//			sithConstraint_ConeConstrain(constraint, physB, sithTime_deltaSeconds);
+	//			break;
+	//		case SITH_CONSTRAINT_LOOK:
+	//			sithConstraint_ApplyLookConstraint(constraint, physB);
+	//			break;
+	//		default:
+	//			break;
+	//		}
+	//		constraint = constraint->next;
+	//	}
+	//}
+
+#if 0
+	//sithPuppet_DoConstraints(pThing, JOINTTYPE_HEAD, deltaSeconds);
+	//sithPuppet_DoConstraints(pThing, JOINTTYPE_NECK, deltaSeconds);
+	//
+	//
+	//sithPuppet_DoConstraints(pThing, JOINTTYPE_TORSO, deltaSeconds);
+	//sithPuppet_DoConstraints(pThing, JOINTTYPE_HIP, deltaSeconds);
+
+	sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_TORSO, JOINTTYPE_HIP, deltaSeconds);
+	sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_NECK, JOINTTYPE_TORSO, deltaSeconds);
+	sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_HEAD, JOINTTYPE_NECK, deltaSeconds);
+
+
+	sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_TORSO, JOINTTYPE_HIP, 10.0f, 20.0f, deltaSeconds);
+	sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_NECK, JOINTTYPE_TORSO, 5.0f, 5.0f, deltaSeconds);
+	sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_HEAD, JOINTTYPE_NECK, 10.0f, 10.0f, deltaSeconds);
+
+
+	sithPuppet_ApplyLookConstraint(pThing, JOINTTYPE_HIP, JOINTTYPE_TORSO, 0, deltaSeconds);
+
+	//sithPuppet_ApplyLookConstraint(pThing, JOINTTYPE_TORSO, JOINTTYPE_HIP, 1, deltaSeconds);
+	//
+	//sithPuppet_ApplyLookConstraint(pThing, JOINTTYPE_HIP, JOINTTYPE_TORSO, 0, deltaSeconds);
+	//sithPuppet_ApplyLookConstraint(pThing, JOINTTYPE_TORSO, JOINTTYPE_HIP, 1, deltaSeconds);
+	//sithPuppet_ApplyLookConstraint(pThing, JOINTTYPE_TORSO, JOINTTYPE_NECK, 0, deltaSeconds);
+	//
+	//sithPuppet_ApplyLookConstraint(pThing, JOINTTYPE_NECK, JOINTTYPE_HEAD, 0, deltaSeconds);
+	//sithPuppet_ApplyLookConstraint(pThing, JOINTTYPE_HEAD, JOINTTYPE_NECK, 1, deltaSeconds);
+	//sithPuppet_ApplyLookConstraint(pThing, JOINTTYPE_TORSO, JOINTTYPE_HIP, 1, deltaSeconds);
+
+
+	return;
+	uint64_t jointBits = pThing->animclass->jointBits;
+	while (jointBits != 0)
+	{
+		int jointIdx = stdMath_FindLSB64(jointBits);
+		jointBits ^= 1ull << jointIdx;
+
+		sithBodyPart* pBodyPart = &pThing->animclass->bodypart[jointIdx];
+		sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
+		rdHierarchyNode* pNode = &pThing->rdthing.model3->hierarchyNodes[pBodyPart->nodeIdx];
+		sithThing* physB = &pJoint->thing;
+
+		rdVector_Zero3(&physB->lookOrientation.scale);
+
+		int parentIdx = sithPuppet_jointParent[jointIdx];
+		int hasParentJoint = parentIdx < 0 ? 0 : pThing->animclass->jointBits & (1ull << parentIdx);
+		if (hasParentJoint)
+		{
+			sithBodyPart* pParentBodyPart = &pThing->animclass->bodypart[parentIdx];
+			sithPuppetJoint* pParentJoint = &pThing->puppet->physics->joints[parentIdx];
+			rdHierarchyNode* pParentNode = &pThing->rdthing.model3->hierarchyNodes[pParentBodyPart->nodeIdx];
+			sithThing* physA = &pParentJoint->thing;
+
+			// distance constraint
+
+			// todo: precompute the constraint distance
+			rdVector3* pBasePosA = &pThing->rdthing.model3->paBasePoseMatrices[pBodyPart->nodeIdx].scale;
+			rdVector3* pBasePosB = &pThing->rdthing.model3->paBasePoseMatrices[pParentBodyPart->nodeIdx].scale;
+			float distance = rdVector_Dist3(pBasePosB, pBasePosA);
+
+			rdVector_Copy3(&physA->lookOrientation.scale, &physA->position);
+
+			rdMatrix34 inv;
+			rdMatrix_InvertOrtho34(&inv, &pThing->rdthing.model3->paBasePoseMatrices[pParentBodyPart->nodeIdx]);
+
+			rdVector3 anchor;
+			rdMatrix_TransformPoint34(&anchor, pBasePosA, &inv);
+			rdMatrix_TransformPoint34Acc(&anchor, &physA->lookOrientation);
+			//rdVector_Add3Acc(&anchor, &physA->position);
+			rdVector_Zero3(&physA->lookOrientation.scale);
+
+			rdVector3 relativePos;
+			rdVector_Sub3(&relativePos, &anchor, &pJoint->thing.position);
+
+			float currentDistance = rdVector_Len3(&relativePos);
+			float offset = distance - currentDistance;
+			if (stdMath_Fabs(offset) > 0.0f)
+			{
+				rdVector3 offsetDir;
+				rdVector_Normalize3(&offsetDir, &relativePos);
+
+				rdVector3 relativeVelocity;
+				rdVector_Sub3(&relativeVelocity, &physA->physicsParams.vel, &physB->physicsParams.vel);
+
+				float invMassA = 1.0f / physA->physicsParams.mass;
+				float invMassB = 1.0f / physB->physicsParams.mass;
+				float constraintMass = invMassA + invMassB;
+				if (constraintMass > 0.0f)
+				{
+				//	float diff = offset / (constraintMass);
+				//
+				//	//if (!(pBodyPartA->flags & JOINTFLAGS_PINNED))
+				//	{
+				//		rdVector3 deltaA;
+				//		rdVector_Scale3(&deltaA, &offsetDir, (double)diff * invMassA);
+				//
+				//		rdVector3 offsetA;
+				//		rdVector_Add3(&offsetA, &physA->position, &deltaA);
+				//		rdVector_Add3Acc(&pParentJoint->nextPosAcc, &offsetA);
+				//		pParentJoint->nextPosWeight++;
+				//		pThing->puppet->physics->constrainedJoints |= 1ull << parentIdx;
+				//	}
+				//
+				//	//if (!(pBodyPartB->flags & JOINTFLAGS_PINNED))
+				//	{
+				//		rdVector3 deltaB;
+				//		rdVector_Scale3(&deltaB, &offsetDir, (double)diff * invMassB);
+				//
+				//		rdVector3 offsetB;
+				//		rdVector_Sub3(&offsetB, &physB->position, &deltaB);
+				//		rdVector_Add3Acc(&pJoint->nextPosAcc, &offsetB);
+				//		pJoint->nextPosWeight++;
+				//		pThing->puppet->physics->constrainedJoints |= 1ull << jointIdx;
+				//	}
+
+					// how much of their relative force is affecting the constraint
+					float velocityDot = rdVector_Dot3(&relativeVelocity, &offsetDir);
+					
+					const float biasFactor = 0.01f;
+					float bias = -(biasFactor / deltaSeconds) * offset;
+					
+					float lambda = -(velocityDot + bias) / constraintMass;
+					rdVector3 aImpulse;
+					rdVector_Scale3(&aImpulse, &offsetDir, lambda);
+					
+					rdVector3 bImpulse;
+					rdVector_Scale3(&bImpulse, &offsetDir, -lambda);
+					
+					sithPhysics_ThingApplyForce(physA, &aImpulse);
+					sithPhysics_ThingApplyForce(physB, &bImpulse);
+				}
+			}
+
+			// the base pose local up vector is the cone axis
+			// transform it to world space relative to the parent
+			rdVector3 coneAxis;
+			rdMatrix_TransformVector34(&coneAxis, &pNode->posRotMatrix.uvec, &physA->lookOrientation);
+			//rdVector_Normalize3(&coneAxis, &pNode->pos);
+			//rdMatrix_TransformVector34Acc(&coneAxis, &physA->lookOrientation);
+
+			////rdVector_Set3(&coneAxis, 0.0f, 0.0f, 1.0f);
+
+			rdVector3 childForward;
+			rdVector_Copy3(&childForward, &physB->lookOrientation.uvec);
+
+
+			float dotProd = rdVector_Dot3(&coneAxis, &childForward);
+			float currentAngle = 90.0f - stdMath_ArcSin3(dotProd);
+
+			float maxConeAngle = 5.0f;
+			if (currentAngle > maxConeAngle)
+			{
+				float correctionAngle = currentAngle - maxConeAngle;
+				
+				rdVector3 correctionAxis;
+				rdVector_Cross3(&correctionAxis, &coneAxis, &childForward);
+				rdVector_Normalize3Acc(&correctionAxis);
+
+				rdMatrix34 rotMat;
+				rdMatrix_BuildFromVectorAngle34(&rotMat, &correctionAxis, -correctionAngle);
+				
+				rdVector3 pyr;
+				rdMatrix_ExtractAngles34(&rotMat, &pyr);
+
+				//rdQuat correctionQuat;
+				//rdQuat_BuildFromAxisAngle(&correctionQuat, &axis, -correctionAngle);
+				//rdQuat_NormalizeAcc(&correctionQuat);
+				//
+				//rdVector3 pyr;
+				//rdQuat_ExtractAngles(&correctionQuat, &pyr);
+			//	rdVector_MultAcc3(&physB->physicsParams.angVel, &pyr, 1.0f / deltaSeconds);
+
+				//rdVector3 angVelCorrection;
+				//rdVector_Scale3(&angVelCorrection, &axis, correctionAngle / deltaSeconds);
+				//rdVector_Add3Acc(&physB->physicsParams.angVel, &angVelCorrection);
+
+			//	rdMatrix34 rotMat;
+			//	rdMatrix_BuildFromAxisAngle34(&rotMat, &axis, -correctionAngle);
+			//
+			////	rdMatrix_Multiply34(&physB->lookOrientation, &physA->lookOrientation, &rotMat);
+			//	rdMatrix_PostMultiply34(&physB->lookOrientation, &rotMat);
+
+				//rdQuat correctionQuat;
+				//rdQuat_BuildFromAxisAngle(&correctionQuat, &axis, -correctionAngle);
+				//rdQuat_NormalizeAcc(&correctionQuat);
+				//
+				//rdQuat childRot;
+				//rdQuat_BuildFrom34(&childRot, &physB->lookOrientation);
+				//
+				//rdQuat newRotation;
+				//rdQuat_Mul(&newRotation, &correctionQuat, &childRot);
+				//rdQuat_ToMatrix(&physB->lookOrientation, &newRotation);
+			}
+
+			// make sure the up vector remains pointing away
+			//rdVector3 expectedUpVector;
+			//rdVector_Cross3(&expectedUpVector, &physA->lookOrientation.rvec, &physA->lookOrientation.lvec);
+			//
+			//if (rdVector_Dot3(&expectedUpVector, &physB->lookOrientation.uvec) < 0.0f)
+			//{
+			//	// The up vector is inverted, apply a correction
+			//	rdVector_Scale3Acc(&parent->transform.m[1], -1.0f);
+			//	rdVector_Cross3(&parent->transform.m[0], &parent->transform.m[2], &parent->transform.m[1]);
+			//	rdVector_Normalize3Acc(&parent->transform.m[0]);
+			//}
+		}
+
+		int childIdx = sithPuppet_jointChild[jointIdx];
+		int hasChildJoint = childIdx < 0 ? 0 : pThing->animclass->jointBits & (1ull << childIdx);
+		if (0)//hasChildJoint)
+		{
+			sithBodyPart* pChildBodyPart = &pThing->animclass->bodypart[childIdx];
+			sithPuppetJoint* pChildJoint = &pThing->puppet->physics->joints[childIdx];
+			rdHierarchyNode* pChildNode = &pThing->rdthing.model3->hierarchyNodes[pChildBodyPart->nodeIdx];
+			sithThing* physA = &pChildJoint->thing;
+
+			// lookat
+		//	rdVector3 direction;
+		//	rdVector_Sub3(&direction, &physA->position, &physB->position);
+		//	rdVector_Normalize3Acc(&direction);
+		//
+		//	if(jointIdx > JOINTTYPE_HIP) // some joints have inverse relationship
+		//		rdVector_Neg3Acc(&direction);
+		//	
+		//	rdMatrix34 transform;
+		//	rdMatrix_BuildFromLook34(&physB->lookOrientation, &direction);
+		//
+		//	
+		//	rdVector3 r = {-90.0f, 0.0f, 0.0f};
+		//	rdMatrix34 rot;
+		//	rdMatrix_PostRotate34(&physB->lookOrientation, &r);
+
+			//rdMatrix_LookAt(&physB->lookOrientation, &direction, &physA->lookOrientation.uvec, 0.0f);
+
+			rdMatrix34* pMat = &pJoint->thing.lookOrientation;
+			
+			// calculate the up vector
+			rdVector_Sub3(&pMat->uvec, &pChildJoint->thing.position, &pJoint->thing.position);
+			rdVector_Normalize3Acc(&pMat->uvec);
+			
+			if (jointIdx > JOINTTYPE_HIP) // some joints have inverse relationship
+				rdVector_Neg3Acc(&pMat->uvec);
+			
+			rdVector_Cross3(&pMat->rvec, &pMat->lvec, &pMat->uvec);
+			rdVector_Normalize3Acc(&pMat->rvec);
+			
+			rdVector_Cross3(&pMat->lvec, &pMat->uvec, &pMat->rvec);
+			rdVector_Normalize3Acc(&pMat->lvec); 
+			
+			// ensure the vectors form an orthonormal set
+			//rdVector_Cross3(&pMat->uvec, &pMat->rvec, &pMat->lvec);
+			//rdVector_Normalize3Acc(&pMat->uvec);
+		}
+	}
+
+#endif
+
+#if 0
 	for (int i = 0; i < ARRAYSIZE(sithPuppet_constraints); ++i)
 	{
 		sithPuppetConstraint* pConstraint = &sithPuppet_constraints[i];
@@ -1319,14 +2298,66 @@ void sithPuppet_ApplyConstraints(sithThing* pThing)
 		sithBodyPart* pBodyPartA = &pThing->animclass->bodypart[pConstraint->jointA];
 		sithBodyPart* pBodyPartB = &pThing->animclass->bodypart[pConstraint->jointB];
 		
+		sithPuppetJoint* pJointA = &pThing->puppet->physics->joints[pConstraint->jointA];
+		sithPuppetJoint* pJointB = &pThing->puppet->physics->joints[pConstraint->jointB];
+
+		rdHierarchyNode* pNodeA = &pThing->rdthing.model3->hierarchyNodes[pBodyPartA->nodeIdx];
+		rdHierarchyNode* pNodeB = &pThing->rdthing.model3->hierarchyNodes[pBodyPartB->nodeIdx];
+
 		// todo: precompute the constraint distance
 		rdVector3* pBasePosA = &pThing->rdthing.model3->paBasePoseMatrices[pBodyPartA->nodeIdx].scale;
 		rdVector3* pBasePosB = &pThing->rdthing.model3->paBasePoseMatrices[pBodyPartB->nodeIdx].scale;
-		float distance = rdVector_Dist3(pBasePosB, pBasePosA) * 0.95f;
-	
-		sithPuppetJoint* pJointA = &pThing->puppet->physics->joints[pConstraint->jointA];
-		sithPuppetJoint* pJointB = &pThing->puppet->physics->joints[pConstraint->jointB];
-	
+		float distance = rdVector_Dist3(pBasePosB, pBasePosA);// * 0.95f;
+
+	#if 0
+		rdVector3 relativePos;
+		rdVector_Sub3(&relativePos, &pJointA->thing.position, &pJointB->thing.position);
+
+		float currentDistance = rdVector_Len3(&relativePos);
+		if (pConstraint->minDist >= 0 && currentDistance > distance * pConstraint->minDist)
+			continue;
+
+		float offset = distance - currentDistance;
+		if (stdMath_Fabs(offset) > 0.0f)
+		{
+			rdVector3 offsetDir;
+			rdVector_Normalize3(&offsetDir, &relativePos);
+			
+			sithThing* physA = &pJointA->thing;
+			sithThing* physB = &pJointB->thing;
+			
+			rdVector3 relativeVelocity;
+			rdVector_Sub3(&relativeVelocity, &physA->physicsParams.vel, &physB->physicsParams.vel);
+
+			float invMassA = 1.0f / physA->physicsParams.mass;
+			float invMassB = 1.0f / physB->physicsParams.mass;
+			float constraintMass = invMassA + invMassB;
+			if (constraintMass > 0.0f)
+			{
+				// how much of their relative force is affecting the constraint
+				float velocityDot = rdVector_Dot3(&relativeVelocity, &offsetDir);
+				
+				const float biasFactor = 0.01f;
+				float bias = -(biasFactor / deltaSeconds) * offset;
+			
+				float lambda = -(velocityDot + bias) / constraintMass;
+
+				const float dampingFactor = 0.2f;
+				//lambda *= 1.0f - dampingFactor;
+
+				rdVector3 aImpulse;
+				rdVector_Scale3(&aImpulse, &offsetDir, lambda);
+				
+				rdVector3 bImpulse;
+				rdVector_Scale3(&bImpulse, &offsetDir, -lambda);
+				
+				sithPhysics_ThingApplyForce(physA, &aImpulse);
+				sithPhysics_ThingApplyForce(physB, &bImpulse);
+			}
+		}
+	#endif
+
+	#if 1
 		// calculate the distance between the 2 joints
 		rdVector3 delta;
 		rdVector_Sub3(&delta, &pJointB->thing.position, &pJointA->thing.position);
@@ -1372,7 +2403,9 @@ void sithPuppet_ApplyConstraints(sithThing* pThing)
 			pJointB->nextPosWeight++;	
 			pThing->puppet->physics->constrainedJoints |= 1ull << pConstraint->jointB;
 		}
+	#endif
 	}
+#endif
 }
 
 static void sithPuppet_ConstrainAxis(rdVector3* vec, const rdVector3* reference, float maxAngle)
@@ -1420,9 +2453,16 @@ static void sithPuppet_BuildJointMatrices(sithThing* thing)
 			thing->rdthing.paHiearchyNodeMatrixOverrides[pBodyPart->nodeIdx] = &pJoint->thing.lookOrientation;
 			continue;
 		}
+
+	//rdVector_Copy3(&pJoint->thing.lookOrientation.scale, &pJoint->thing.position);
+	//thing->rdthing.paHiearchyNodeMatrixOverrides[pBodyPart->nodeIdx] = &pJoint->thing.lookOrientation;
+	//continue;
 		
 		sithPuppetJoint* pTargetJoint = &thing->puppet->physics->joints[pFrame->targetJoint];
 		rdMatrix34* pMat = &pJoint->thing.lookOrientation;
+
+		rdMatrix34 refMat;
+		rdMatrix_Multiply34(&refMat, &pNode->posRotMatrix, &pTargetJoint->thing.lookOrientation);
 
 		// calculate the up vector
 		rdVector_Sub3(&pMat->uvec, &pTargetJoint->thing.position, &pJoint->thing.position);
@@ -1431,44 +2471,44 @@ static void sithPuppet_BuildJointMatrices(sithThing* thing)
 			rdVector_Neg3Acc(&pMat->uvec);
 
 		// if we have a pitch joint, we have a pitch constraint
-		if (pFrame->pitchJoint >= 0)
-		{
-			sithPuppetJoint* pPitchJoint = &thing->puppet->physics->joints[pFrame->pitchJoint];
-			
-			rdVector3 referenceUp;
-			rdVector_Sub3(&referenceUp, &pTargetJoint->thing.position, &pPitchJoint->thing.position);
-			rdVector_Normalize3Acc(&referenceUp);
-			if (pFrame->reversed)
-				rdVector_Neg3Acc(&referenceUp);
-			sithPuppet_ConstrainAxis(&pMat->uvec, &referenceUp, pFrame->maxPitch);
-		}
+		//if (pFrame->pitchJoint >= 0)
+		//{
+		//	sithPuppetJoint* pPitchJoint = &thing->puppet->physics->joints[pFrame->pitchJoint];
+		//	
+		//	rdVector3 referenceUp;
+		//	rdVector_Sub3(&referenceUp, &pTargetJoint->thing.position, &pPitchJoint->thing.position);
+		//	rdVector_Normalize3Acc(&referenceUp);
+		//	if (pFrame->reversed)
+		//		rdVector_Neg3Acc(&referenceUp);
+		//	sithPuppet_ConstrainAxis(&pMat->uvec, &referenceUp, pFrame->maxPitch);
+		//}
 
 		// calculate the adjusted right vector
-		rdVector_Cross3(&pMat->rvec, &pMat->lvec, &pMat->uvec);
+		rdVector_Cross3(&pMat->rvec, &refMat.lvec, &pMat->uvec);
 		rdVector_Normalize3Acc(&pMat->rvec);
 
 		// if we have a left and right joint, we have yaw constraint
-		if (pFrame->leftJoint >= 0 && pFrame->rightJoint >= 0)
-		{
-			sithPuppetJoint* pLeftJoint = &thing->puppet->physics->joints[pFrame->leftJoint];
-			sithPuppetJoint* pRightJoint = &thing->puppet->physics->joints[pFrame->rightJoint];
-		
-			rdVector3 referenceRight;
-			rdVector_Sub3(&referenceRight, &pRightJoint->thing.position, &pLeftJoint->thing.position);
-			rdVector_Normalize3Acc(&referenceRight);
-			sithPuppet_ConstrainAxis(&pMat->rvec, &referenceRight, pFrame->maxYaw);
-		}
+		//if (pFrame->leftJoint >= 0 && pFrame->rightJoint >= 0)
+		//{
+		//	sithPuppetJoint* pLeftJoint = &thing->puppet->physics->joints[pFrame->leftJoint];
+		//	sithPuppetJoint* pRightJoint = &thing->puppet->physics->joints[pFrame->rightJoint];
+		//
+		//	rdVector3 referenceRight;
+		//	rdVector_Sub3(&referenceRight, &pRightJoint->thing.position, &pLeftJoint->thing.position);
+		//	rdVector_Normalize3Acc(&referenceRight);
+		//	sithPuppet_ConstrainAxis(&pMat->rvec, &referenceRight, pFrame->maxYaw);
+		//}
 		
 		rdVector_Cross3(&pMat->lvec, &pMat->uvec, &pMat->rvec);
 
 		// at this point we may have violated orthogonality, so recompute some stuff
-		rdVector_Cross3(&pMat->uvec, &pMat->rvec, &pMat->lvec);
-		rdVector_Normalize3Acc(&pMat->uvec);
-
-		rdVector_Cross3(&pMat->rvec, &pMat->lvec, &pMat->uvec);
-		rdVector_Normalize3Acc(&pMat->rvec);
-		
-		rdVector_Cross3(&pMat->lvec, &pMat->uvec, &pMat->rvec);
+		//rdVector_Cross3(&pMat->uvec, &pMat->rvec, &pMat->lvec);
+		//rdVector_Normalize3Acc(&pMat->uvec);
+		//
+		//rdVector_Cross3(&pMat->rvec, &pMat->lvec, &pMat->uvec);
+		//rdVector_Normalize3Acc(&pMat->rvec);
+		//
+		//rdVector_Cross3(&pMat->lvec, &pMat->uvec, &pMat->rvec);
 
 		rdVector_Copy3(&pJoint->thing.lookOrientation.scale, &pJoint->thing.position);
 
@@ -1509,11 +2549,25 @@ void sithPuppet_FixupPositions(sithSector* sector, sithThing* pThing, float delt
 void sithPuppet_ApplyIterativeCorrections(sithSector* pSector, sithThing* pThing, float deltaSeconds)
 {
 	// do fewer iterations if we're not directly visible
-	int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 5 : 1;
+	int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 10 : 1;
 	for (int i = 0; i < iterations; ++i)
 	{
-		sithPuppet_ApplyConstraints(pThing);
-		sithPuppet_FixupPositions(pSector, pThing, deltaSeconds);
+		sithPuppet_ApplyConstraints(pThing, deltaSeconds);
+
+//		sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_HEAD, JOINTTYPE_NECK, deltaSeconds);
+//		sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_NECK, JOINTTYPE_TORSO, deltaSeconds);
+//		sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_TORSO, JOINTTYPE_HIP, deltaSeconds);
+//
+//	//	sithPuppet_FixupPositions(pSector, pThing, deltaSeconds);
+//
+//		sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_TORSO, JOINTTYPE_HIP, 5.0f, 20.0f, deltaSeconds);
+//		sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_NECK, JOINTTYPE_TORSO, 4.0f, 20.0f, deltaSeconds);
+//		
+//		
+//		sithPuppet_ApplyLookConstraint(pThing, JOINTTYPE_HIP, JOINTTYPE_TORSO, 0, deltaSeconds);
+//		sithPuppet_ApplyLookConstraint(pThing, JOINTTYPE_HEAD, JOINTTYPE_NECK, 1, deltaSeconds);
+
+
 	}
 }
 
@@ -1539,6 +2593,8 @@ void sithPuppet_UpdateJoints(sithThing* pThing, float deltaSeconds)
 		// would it make sense to split this so we're not diving head first into collision code?
 		sithPhysics_ThingTick(&pJoint->thing, deltaSeconds);
 		sithThing_TickPhysics(&pJoint->thing, deltaSeconds);
+
+		rdVector_Zero3(&pJoint->thing.lookOrientation.scale);
 
 		// reset collision
 		pJoint->thing.collide = collide;

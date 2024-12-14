@@ -198,6 +198,25 @@ void sithThing_SetHandler(sithThing_handler_t handler)
         sithThing_handler = handler;
 }
 
+
+
+#ifdef PUPPET_PHYSICS
+void sithThing_FreeConstraints(sithThing* thing)
+{
+	if (thing->constraints)
+	{
+		sithConstraint* constraint = thing->constraints;
+		while (constraint)
+		{
+			sithConstraint* next = constraint->next;
+			pSithHS->free(constraint);
+			constraint = next;
+		}
+		thing->constraints = 0;
+	}
+}
+#endif
+
 // MOTS altered?
 void sithThing_TickAll(float deltaSeconds, int deltaMs)
 {
@@ -284,6 +303,35 @@ void sithThing_TickAll(float deltaSeconds, int deltaMs)
 			if (pThingIter->moveType != SITH_MT_RAGDOLL || !jkPlayer_ragdolls)
 #endif
             sithPuppet_Tick(pThingIter, deltaSeconds);
+
+#ifdef PUPPET_PHYSICS
+			//if (pThingIter->constraints)
+			//{
+			//	for (int k = 0; k < 5; ++k)
+			//	{
+			//		sithConstraint* constraint = pThingIter->constraints;
+			//		while (constraint)
+			//		{
+			//			switch (constraint->type)
+			//			{
+			//			case SITH_CONSTRAINT_DISTANCE:
+			//				sithCollision_ApplyDistanceConstraint(pThingIter, constraint, sithTime_deltaSeconds);
+			//				break;
+			//			case SITH_CONSTRAINT_CONE:
+			//				sithCollision_ConeConstrain(pThingIter, constraint, sithTime_deltaSeconds);
+			//				break;
+			//			case SITH_CONSTRAINT_LOOK:
+			//				sithCollision_ApplyLookConstraint(pThingIter, constraint);
+			//				break;
+			//			default:
+			//				break;
+			//			}
+			//			constraint = constraint->next;
+			//		}
+			//	}
+			//}
+#endif
+
             continue;
         }
 
@@ -307,7 +355,10 @@ void sithThing_TickAll(float deltaSeconds, int deltaMs)
 
         if ( pThingIter->animclass )
             sithPuppet_FreeEntry(pThingIter);
-
+#ifdef PUPPET_PHYSICS
+		if (pThingIter->constraints)
+			sithThing_FreeConstraints(pThingIter);
+#endif
         rdThing_FreeEntry(&pThingIter->rdthing);
         sithSoundMixer_FreeThing(pThingIter);
 
@@ -352,8 +403,8 @@ void sithThing_TickPhysics(sithThing *pThing, float deltaSecs)
     }
 
 #ifdef PUPPET_PHYSICS
-	if (pThing->type == SITH_THING_CORPSE)
-		v2 |= RAYCAST_800; // todo: not sure if this is needed
+	//if (pThing->type == SITH_THING_CORPSE)
+		//v2 |= RAYCAST_800 | SITH_RAYCAST_IGNORE_THINGS; // todo: not sure if this is needed
 #endif
 
     if (pThing->attach_flags && pThing->attach_flags & SITH_ATTACH_WORLDSURFACE)
@@ -559,6 +610,10 @@ void sithThing_freestuff(sithWorld *pWorld)
             sithParticle_FreeEntry(pThingIter);
         if ( pThingIter->animclass )
             sithPuppet_FreeEntry(pThingIter);
+		#ifdef PUPPET_PHYSICS
+		if ( pThingIter->constraints)
+			sithThing_FreeConstraints(pThingIter);
+		#endif
         rdThing_FreeEntry(&pThingIter->rdthing);
         sithSoundMixer_FreeThing(pThingIter);
         v3 = sithWorld_pCurrentWorld;
@@ -655,6 +710,10 @@ void sithThing_FreeEverythingNet(sithThing* pThing)
         sithParticle_FreeEntry(pThing);
     if ( pThing->animclass )
         sithPuppet_FreeEntry(pThing);
+#ifdef PUPPET_PHYSICS
+	if (pThing->constraints)
+		sithThing_FreeConstraints(pThing);
+#endif
     rdThing_FreeEntry(&pThing->rdthing);
     sithSoundMixer_FreeThing(pThing);
     pThing->type = SITH_THING_FREE;
@@ -695,6 +754,10 @@ void sithThing_FreeEverything(sithThing* pThing)
         sithParticle_FreeEntry(pThing);
     if ( pThing->animclass )
         sithPuppet_FreeEntry(pThing);
+#ifdef PUPPET_PHYSICS
+	if (pThing->constraints)
+		sithThing_FreeConstraints(pThing);
+#endif
     rdThing_FreeEntry(&pThing->rdthing);
     sithSoundMixer_FreeThing(pThing);
     pThing->type = SITH_THING_FREE;

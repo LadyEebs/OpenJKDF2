@@ -89,12 +89,26 @@ void rdQuat_BuildFromVectors(rdQuat* out, const rdVector3* v1, const rdVector3* 
 
 void rdQuat_ExtractAxisAngle(rdQuat* q, rdVector3* axis, float* angle)
 {
-	*angle = 2.0f * acosf(q->w);
+	*angle = 2.0f * (90.0f - stdMath_ArcSin3(q->w));
 
-	float omega = *angle / sinf(*angle * 0.5f);
+	float s, c;
+	stdMath_SinCos(*angle * 0.5f, &s, &c);
+
+	float omega = *angle / s;
 	axis->x = q->x * omega;
 	axis->y = q->y * omega;
 	axis->z = q->z * omega;
+}
+
+void rdQuat_ExtractAngles(rdQuat* q, rdVector3* angles)
+{
+	angles->y = stdMath_ArcTan3(2.0f * (q->w * q->y + q->x * q->z), 1.0f - 2.0f * (q->y * q->y + q->x * q->x)); // Yaw
+	angles->x = stdMath_ArcSin3(2.0f * (q->w * q->x - q->z * q->y)); // Pitch
+	angles->z = stdMath_ArcTan3(2.0f * (q->w * q->z + q->x * q->y), 1.0f - 2.0f * (q->z * q->z + q->x * q->x)); // Roll
+
+	//angles->x = stdMath_ArcTan3(2.0f * (q->w * q->x + q->y * q->z), 1.0f - 2.0f * (q->x * q->x + q->y * q->y));
+	//angles->y = stdMath_ArcTan3(2.0f * (q->w * q->z + q->x * q->y), 1.0f - 2.0f * (q->y * q->y + q->z * q->z));
+	//angles->z = stdMath_ArcSin3(2.0f * (q->w * q->y - q->z * q->x));
 }
 
 void rdQuat_Mul(rdQuat* out, rdQuat* qa, rdQuat* qb)

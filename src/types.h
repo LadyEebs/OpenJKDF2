@@ -3119,6 +3119,47 @@ typedef struct sithThingTrackParams
     rdVector3 orientation;
 } sithThingTrackParams;
 
+#ifdef PUPPET_PHYSICS
+enum SITH_CONSTRAINT_TYPE
+{
+	SITH_CONSTRAINT_DISTANCE,
+	SITH_CONSTRAINT_CONE,
+	SITH_CONSTRAINT_LOOK,
+};
+
+typedef struct sithConstraint_DistanceParams
+{
+	rdVector3 constraintAnchor;
+	float constraintDistance;
+} sithConstraint_DistanceParams;
+
+typedef struct sithConstraint_ConeParams
+{
+	float maxSwingAngle;
+	float maxTwistAngle;
+} sithConstraint_ConeParams;
+
+typedef struct sithConstraint_LookParams
+{
+	rdMatrix34 referenceMat;
+	int flipUp;
+} sithConstraint_LookParams;
+
+typedef struct sithConstraint
+{
+	int type;
+	sithThing* thingA;
+	sithThing* thingB;
+	union
+	{
+		sithConstraint_DistanceParams distanceParams;
+		sithConstraint_ConeParams coneParams;
+		sithConstraint_LookParams lookParams;
+	};
+	struct sithConstraint* next;
+} sithConstraint;
+#endif
+
 typedef struct sithThing
 {
     uint32_t thingflags;
@@ -3140,7 +3181,9 @@ typedef struct sithThing
 #ifdef JKM_PARAMS
     float treeSize;
 #endif // JKM_TYPES
-
+#ifdef PUPPET_PHYSICS
+	sithConstraint* constraints;
+#endif
     // TODO split these into a struct
     uint32_t attach_flags;
     rdVector3 field_38;

@@ -11,6 +11,7 @@ void rdQuat_BuildFrom34(rdQuat* out, const rdMatrix34* matrix);
 void rdQuat_BuildFromVectors(rdQuat* out, const rdVector3* v1, const rdVector3* v2);
 
 void rdQuat_ExtractAxisAngle(rdQuat* q, rdVector3* axis, float* angle);
+void rdQuat_ExtractAngles(rdQuat* q, rdVector3* angles);
 
 void rdQuat_Mul(rdQuat* out, rdQuat* qa, rdQuat* qb);
 void rdQuat_MulAcc(rdQuat* qa, rdQuat* qb);
