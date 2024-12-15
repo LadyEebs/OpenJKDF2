@@ -1587,8 +1587,8 @@ int sithCollision_DebrisDebrisCollide(sithThing *thing1, sithThing *thing2, sith
 
 		rdVector_Scale3(&forceVec, &a2, v6 * senderb);
 
-		rdVector3 impulse;
-		rdVector_Copy3(&impulse, &forceVec);
+		//rdVector3 impulse;
+		//rdVector_Copy3(&impulse, &forceVec);
 
 	#ifdef PUPPET_PHYSICS
 		if (v5->type != SITH_THING_CORPSE)
@@ -1602,8 +1602,9 @@ int sithCollision_DebrisDebrisCollide(sithThing *thing1, sithThing *thing2, sith
 
 #ifdef PUPPET_PHYSICS
 		// don't block if one of the colliders is a corpse
-		if (v4->type == SITH_THING_PLAYER && v5->type == SITH_THING_CORPSE)
-			return 0;
+		if ((v4->type == SITH_THING_PLAYER && v5->type == SITH_THING_CORPSE)
+			|| (v5->type == SITH_THING_PLAYER && v4->type == SITH_THING_CORPSE))
+		return 0;
 
 		//rdVector3 r;
 		//rdVector_Sub3(&r, &v5->position, &v4->position);

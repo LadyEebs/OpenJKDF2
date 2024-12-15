@@ -54,6 +54,7 @@ int rdThing_NewEntry(rdThing *thing, sithThing *parent)
 #endif
 #if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 	thing->paHierarchyNodeMatricesPrev = 0;
+	thing->paHierarchyNodeVelocities = 0;
 #endif
 #ifdef RAGDOLLS
 	thing->pRagdoll = 0;
@@ -97,6 +98,11 @@ void rdThing_FreeEntry(rdThing *thing)
 		{
 			rdroid_pHS->free(thing->paHierarchyNodeMatricesPrev);
 			thing->paHierarchyNodeMatricesPrev = 0;
+		}
+		if(thing->paHierarchyNodeVelocities)
+		{
+			rdroid_pHS->free(thing->paHierarchyNodeVelocities);
+			thing->paHierarchyNodeVelocities = 0;
 		}
 #endif
 #ifdef RAGDOLLS
@@ -158,6 +164,12 @@ int rdThing_SetModel3(rdThing *thing, rdModel3 *model)
 	if (!thing->paHierarchyNodeMatricesPrev)
 		return 0;
 	_memset(thing->paHierarchyNodeMatricesPrev, 0, sizeof(rdMatrix34) * model->numHierarchyNodes);
+
+	thing->paHierarchyNodeVelocities = (rdVector3*)rdroid_pHS->alloc(sizeof(rdVector3) * model->numHierarchyNodes);
+	if (!thing->paHierarchyNodeVelocities)
+		return 0;
+	_memset(thing->paHierarchyNodeVelocities, 0, sizeof(rdVector3) * model->numHierarchyNodes);
+
 #endif
 #ifdef PUPPET_PHYSICS
 	thing->paHiearchyNodeMatrixOverrides = (rdMatrix34**)rdroid_pHS->alloc(sizeof(rdMatrix34*) * model->numHierarchyNodes);

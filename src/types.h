@@ -2555,6 +2555,10 @@ typedef struct rdThing
 #if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 	rdMatrix34* paHierarchyNodeMatricesPrev;
 #endif
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
+	rdVector3* paHierarchyNodeVelocities;
+#endif
+
 } rdThing;
 
 typedef struct rdPuppetTrack
@@ -3301,7 +3305,7 @@ typedef struct sithPuppetJoint
 	sithThing  thing;         // physicalized thing representation
 	rdVector3  nextPosAcc;    // accumulated constraint target
 	float      nextPosWeight; // weight of accumulated position for normalization
-
+	int isInit;
 	rdMatrix34 localMat;
 } sithPuppetJoint;
 
@@ -3309,6 +3313,7 @@ typedef struct sithPuppetPhysics
 {
 	sithPuppetJoint joints[JOINTTYPE_NUM_JOINTS];
 	uint64_t        constrainedJoints; // bitmask for any joints that were constrained this frame
+	float*          constraintDistances;
 } sithPuppetPhysics;
 
 struct sithPuppet

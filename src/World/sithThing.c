@@ -384,7 +384,7 @@ void sithThing_TickPhysics(sithThing *pThing, float deltaSecs)
 
 #ifdef PUPPET_PHYSICS
 	//if (pThing->type == SITH_THING_CORPSE)
-		//v2 |= RAYCAST_800 | SITH_RAYCAST_IGNORE_THINGS; // todo: not sure if this is needed
+		//v2 |= SITH_RAYCAST_IGNORE_THINGS; // todo: not sure if this is needed
 #endif
 
     if (pThing->attach_flags && pThing->attach_flags & SITH_ATTACH_WORLDSURFACE)
