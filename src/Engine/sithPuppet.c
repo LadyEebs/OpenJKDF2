@@ -2408,7 +2408,7 @@ void sithPuppet_ApplyConstraints(sithThing* pThing, float deltaSeconds)
 
 #endif
 
-#if 0
+#if 1
 	for (int i = 0; i < ARRAYSIZE(sithPuppet_constraints); ++i)
 	{
 		sithPuppetConstraint* pConstraint = &sithPuppet_constraints[i];
