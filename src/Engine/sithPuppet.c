@@ -151,16 +151,16 @@ static const sithPuppetConstraint sithPuppet_constraints[] =
 	{ JOINTTYPE_RHAND,     JOINTTYPE_RFOREARM,    -1 },
 	{ JOINTTYPE_RSHOULDER,   JOINTTYPE_RTHIGH, 0.85f },
 	{ JOINTTYPE_RSHOULDER,   JOINTTYPE_LTHIGH, 0.85f },
-	{ JOINTTYPE_RFOREARM,      JOINTTYPE_HEAD, 0.25f }, // prevent forearm getting too close to other hand
 	{ JOINTTYPE_RFOREARM,       JOINTTYPE_HIP, 0.25f }, // prevent forearm getting too close to other hand
+	{ JOINTTYPE_RHAND,     JOINTTYPE_RSHOULDER, 0.7f }, // prevent hand from getting too close to shoulder
 
 	// left arm
 	{ JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER,    -1 },
 	{ JOINTTYPE_LHAND,     JOINTTYPE_LFOREARM,    -1 },
 	{ JOINTTYPE_LSHOULDER,   JOINTTYPE_RTHIGH, 0.85f },
 	{ JOINTTYPE_LSHOULDER,   JOINTTYPE_LTHIGH, 0.85f },
-	{ JOINTTYPE_LFOREARM,      JOINTTYPE_HEAD, 0.25f }, // prevent forearm getting too close to other hand
 	{ JOINTTYPE_LFOREARM,       JOINTTYPE_HIP, 0.25f }, // prevent forearm getting too close to other hand
+	{ JOINTTYPE_LHAND,     JOINTTYPE_LSHOULDER, 0.7f }, // prevent hand from getting too close to shoulder
 
 	// leg constraints
 	{ JOINTTYPE_RTHIGH,  JOINTTYPE_LTHIGH,    -1 },
@@ -176,12 +176,12 @@ static const sithPuppetConstraint sithPuppet_constraints[] =
 	// right leg
 	{ JOINTTYPE_RCALF, JOINTTYPE_RTHIGH,    -1 },
 	{ JOINTTYPE_RFOOT,  JOINTTYPE_RCALF,    -1 },
-	{ JOINTTYPE_RTHIGH, JOINTTYPE_RCALF,  0.5f }, // prevent forearm getting too close to other hand
+	{ JOINTTYPE_RFOOT, JOINTTYPE_RTHIGH,  0.5f }, // prevent foot getting too close to thigh
 
 	// left arm
 	{ JOINTTYPE_LCALF, JOINTTYPE_LTHIGH,    -1 },
 	{ JOINTTYPE_LFOOT,  JOINTTYPE_LCALF,    -1 },
-	{ JOINTTYPE_LTHIGH, JOINTTYPE_LCALF,  0.5f }, // prevent forearm getting too close to other hand
+	{ JOINTTYPE_LFOOT, JOINTTYPE_LTHIGH,  0.5f }, // prevent foot getting too close to thigh
 
 	// weapon
 	{ JOINTTYPE_PRIMARYWEAP,   JOINTTYPE_RHAND, -1 },
@@ -2651,6 +2651,7 @@ static void sithPuppet_BuildJointMatrices(sithThing* thing)
 
 		rdVector3 negNodePivot = { pNode->pivot.x, pNode->pivot.y, pNode->pivot.z };
 		rdMatrix_TransformVector34Acc(&negNodePivot, &thing->rdthing.hierarchyNodeMatrices[pNode->parent->idx]);
+		//rdVector_Add3Acc(&pos, &negNodePivot);
 
 		rdVector3 negParentPivot = { -pNode->parent->pivot.x, -pNode->parent->pivot.y, -pNode->pivot.z };
 		rdMatrix_TransformVector34Acc(&negParentPivot, &thing->rdthing.hierarchyNodeMatrices[pNode->parent->idx]);
@@ -2658,6 +2659,10 @@ static void sithPuppet_BuildJointMatrices(sithThing* thing)
 
 		// calculate the up vector
 		rdVector_Sub3(&pMat->uvec, &pTargetJoint->thing.position, &pos );//&pJoint->thing.position);
+
+		rdVector_Add3Acc(&pMat->uvec, &negNodePivot);
+		rdVector_Add3Acc(&pMat->uvec, &negParentPivot);
+
 		rdVector_Normalize3Acc(&pMat->uvec);
 		if(pFrame->reversed)
 			rdVector_Neg3Acc(&pMat->uvec);
@@ -2669,6 +2674,9 @@ static void sithPuppet_BuildJointMatrices(sithThing* thing)
 			
 			rdVector3 referenceUp;
 			rdVector_Sub3(&referenceUp, &pTargetJoint->thing.position, &pPitchJoint->thing.position);
+			rdVector_Add3Acc(&referenceUp, &negNodePivot);
+			rdVector_Add3Acc(&referenceUp, &negParentPivot);
+
 			rdVector_Normalize3Acc(&referenceUp);
 			if (pFrame->reversed)
 				rdVector_Neg3Acc(&referenceUp);
@@ -2689,6 +2697,9 @@ static void sithPuppet_BuildJointMatrices(sithThing* thing)
 		
 			rdVector3 referenceRight;
 			rdVector_Sub3(&referenceRight, &pRightJoint->thing.position, &pLeftJoint->thing.position);
+			rdVector_Add3Acc(&referenceRight, &negNodePivot);
+			rdVector_Add3Acc(&referenceRight, &negParentPivot);
+
 			rdVector_Normalize3Acc(&referenceRight);
 			rdVector_Copy3(&pMat->rvec, &referenceRight);
 			//sithPuppet_ConstrainAxis(&pMat->rvec, &referenceRight, pFrame->maxYaw);
@@ -2718,9 +2729,8 @@ static void sithPuppet_BuildJointMatrices(sithThing* thing)
 
 		rdVector_Copy3(&pJoint->thing.lookOrientation.scale, &pos);// &pJoint->thing.position);
 
-		rdMatrix_PostTranslate34(&pJoint->thing.lookOrientation, &negNodePivot);
-
-		rdMatrix_PostTranslate34(&pJoint->thing.lookOrientation, &negParentPivot);
+		rdMatrix_PreTranslate34(&pJoint->thing.lookOrientation, &negNodePivot);
+		rdMatrix_PreTranslate34(&pJoint->thing.lookOrientation, &negParentPivot);
 
 		sithBodyPart* pTargetBodyPart = &thing->animclass->bodypart[pFrame->targetJoint];
 		rdHierarchyNode* pTargetNode = &thing->rdthing.model3->hierarchyNodes[pTargetBodyPart->nodeIdx];
