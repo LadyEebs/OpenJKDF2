@@ -229,8 +229,8 @@ void sithPhysics_ThingApplyForce(sithThing *pThing, rdVector3 *forceVec)
     {
         float invMass = 1.0 / pThing->physicsParams.mass;
 
-        //if ( forceVec->z * invMass > 0.5 ) // TODO verify
-            //sithThing_DetachThing(pThing);
+		if ( forceVec->z * invMass > 0.5 ) // TODO verify
+            sithThing_DetachThing(pThing);
 
         rdVector_MultAcc3(&pThing->physicsParams.vel, forceVec, invMass);
         pThing->physicsParams.physflags |= SITH_PF_HAS_FORCE;
