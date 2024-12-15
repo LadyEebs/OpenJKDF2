@@ -2641,8 +2641,137 @@ static void sithPuppet_BuildJointMatrices(sithThing* thing)
 	//thing->rdthing.paHiearchyNodeMatrixOverrides[pBodyPart->nodeIdx] = &pJoint->localMat;
 	//continue;
 		
+
 		sithPuppetJoint* pTargetJoint = &thing->puppet->physics->joints[pFrame->targetJoint];
 		rdMatrix34* pMat = &pJoint->thing.lookOrientation;
+	#if 0
+		rdMatrix34 invParentMat;
+		rdMatrix_InvertOrtho34(&invParentMat, &thing->rdthing.hierarchyNodeMatrices[pNode->parent->idx]);
+	//	rdMatrix_PostTranslate34(&invParentMat, &pNode->parent->pivot);
+
+		rdVector3 localPos;
+		rdMatrix_TransformPoint34(&localPos, &pJoint->thing.position, &invParentMat);
+	//	rdVector_Add3Acc(&localPos, &pNode->parent->pivot);
+	//	rdVector_Sub3Acc(&localPos, &pNode->pivot);
+	//
+	//	rdMatrix_LookAt(&pJoint->thing.lookOrientation, &localPos, &pNode->pos, 0.0);
+
+		//rdVector_Copy3(&pJoint->thing.lookOrientation.scale, &localPos);
+
+		rdMatrix34 parentNoTrns;
+		rdMatrix_Copy34(&parentNoTrns, &invParentMat);
+		rdVector_Zero3(&parentNoTrns.scale);
+		
+		rdMatrix34 jointMat;
+		rdMatrix_Copy34(&jointMat, &pJoint->thing.lookOrientation);
+		rdVector_Zero3(&jointMat.scale);
+	
+		rdMatrix34 relativeRotation;
+		rdMatrix_Multiply34(&relativeRotation, &jointMat, &parentNoTrns);
+
+		rdVector3 angles;
+		rdMatrix_ExtractAngles34(&relativeRotation, &angles);
+		rdVector_Sub3Acc(&angles, &pNode->rot);
+	
+		rdMatrix_BuildRotate34(&pJoint->thing.lookOrientation, &angles);
+		rdMatrix_PostTranslate34(&pJoint->thing.lookOrientation, &localPos);
+
+	//	rdMatrix_Copy34(&pJoint->thing.lookOrientation, &pNode->posRotMatrix);
+	//	rdMatrix_PostRotate34(&pJoint->thing.lookOrientation, &angles);
+	//	rdMatrix_PostTranslate34(&pJoint->thing.lookOrientation, &relativeRotation.scale);
+
+	//	rdMatrix34 localMat;
+	//	rdMatrix_BuildLookAt34(&localMat, &pNode->pos, &localPos, &pNode->posRotMatrix.uvec);
+	//
+	//	rdMatrix_Copy34(&pJoint->thing.lookOrientation, &localMat);
+
+		//rdMatrix_TransformVector34Acc(&diff, &pNode->posRotMatrix);
+		
+		//rdVector3 angles;
+		//rdMatrix_ExtractAngles34(&diff, &angles);
+
+	#elif 0
+		rdMatrix34 invParentMat;
+		rdMatrix_InvertOrtho34(&invParentMat, &thing->rdthing.hierarchyNodeMatrices[pNode->parent->idx]);
+
+		// move our position into the local coordinate frame
+		rdVector3 localPos;
+		rdMatrix_TransformPoint34(&localPos, &pJoint->thing.position, &invParentMat);
+		//rdVector_Copy3(&pMat->scale, &localPos);
+
+
+		// move the target position into the local coordinate frame
+		rdVector3 localTargetPos;
+		rdMatrix_TransformPoint34(&localTargetPos, &pTargetJoint->thing.position, &invParentMat);
+
+		// calculate the up local vector
+		rdVector_Sub3(&pMat->uvec, &localTargetPos, &localPos);
+		rdVector_Normalize3Acc(&pMat->uvec);
+		if (pFrame->reversed)
+			rdVector_Neg3Acc(&pMat->uvec);
+
+		if (pFrame->pitchJoint >= 0)
+		{
+			sithPuppetJoint* pPitchJoint = &thing->puppet->physics->joints[pFrame->pitchJoint];
+
+			rdVector3 localPitchPos;
+			rdMatrix_TransformPoint34(&localPitchPos, &pPitchJoint->thing.position, &invParentMat);
+
+			rdVector3 referenceUp;
+			rdVector_Sub3(&referenceUp, &localTargetPos, &localPitchPos);
+			rdVector_Normalize3Acc(&referenceUp);
+			if (pFrame->reversed)
+				rdVector_Neg3Acc(&referenceUp);
+
+			rdVector_Copy3(&pMat->uvec, &referenceUp);
+			//sithPuppet_ConstrainAxis(&pMat->uvec, &referenceUp, pFrame->maxPitch);
+		}
+
+		// calculate the local right vector
+		rdVector_Cross3(&pMat->rvec, &pNode->posRotMatrix.lvec, &pMat->uvec);
+		rdVector_Normalize3Acc(&pMat->rvec);
+
+		// if we have a left and right joint, we have yaw constraint
+		if (pFrame->leftJoint >= 0 && pFrame->rightJoint >= 0)
+		{
+			sithPuppetJoint* pLeftJoint = &thing->puppet->physics->joints[pFrame->leftJoint];
+			sithPuppetJoint* pRightJoint = &thing->puppet->physics->joints[pFrame->rightJoint];
+
+			rdVector3 localLeftPos, localRightPos;
+			rdMatrix_TransformPoint34(&localLeftPos, &pLeftJoint->thing.position, &invParentMat);
+			rdMatrix_TransformPoint34(&localRightPos, &pRightJoint->thing.position, &invParentMat);
+
+			rdVector3 referenceRight;
+			rdVector_Sub3(&referenceRight, &localRightPos, &localLeftPos);
+			rdVector_Normalize3Acc(&referenceRight);
+
+			rdVector_Copy3(&pMat->rvec, &referenceRight);
+			//sithPuppet_ConstrainAxis(&pMat->rvec, &referenceRight, pFrame->maxYaw);
+		}
+
+		// calculate the local look vector
+		rdVector_Cross3(&pMat->lvec, &pMat->uvec, &pMat->rvec);
+
+		// at this point we may have violated orthogonality, so recompute some stuff
+		rdVector_Cross3(&pMat->uvec, &pMat->rvec, &pMat->lvec);
+		rdVector_Normalize3Acc(&pMat->uvec);
+
+		rdVector_Cross3(&pMat->rvec, &pMat->lvec, &pMat->uvec);
+		rdVector_Normalize3Acc(&pMat->rvec);
+
+		rdVector_Cross3(&pMat->lvec, &pMat->uvec, &pMat->rvec);
+
+		// move to the local position
+		//rdVector_Copy3(&pMat->scale, &localPos);
+				// handle the pivot
+		rdVector_Sub3Acc(&localPos, &pNode->pivot);
+		rdVector_Add3Acc(&localPos, &pNode->parent->pivot);
+
+		rdVector_Copy3(&pMat->scale, &localPos);
+
+		// now we have a local rotation matrix
+
+	#else
 
 		rdMatrix34 refMat;
 		rdMatrix_Multiply34(&refMat, &pNode->posRotMatrix, &pTargetJoint->thing.lookOrientation);
@@ -2751,6 +2880,7 @@ static void sithPuppet_BuildJointMatrices(sithThing* thing)
 
 
 		rdMatrix_Copy34(&targetMat, &thing->rdthing.hierarchyNodeMatrices[pNode->parent->idx]);
+	#endif
 
 		rdMatrix34 tempMatrix;
 		rdMatrix_Identity34(&tempMatrix);
