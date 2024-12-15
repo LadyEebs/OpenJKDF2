@@ -11,7 +11,7 @@ void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pThingA, sit
 void sithConstraint_AddLookConstraint(sithThing* pThing, sithThing* pThingA, sithThing* pThingB, const rdMatrix34* pRefMat, int flipUp);
 
 void sithConstraint_SolveDistanceConstraint(sithConstraint* pConstraint, float deltaSeconds);
-void sithConstraint_SolveConeConstrain(sithConstraint* pConstraint, float deltaSeconds);
+void sithConstraint_SolveAngleConstrain(sithConstraint* pConstraint, float deltaSeconds);
 void sithConstraint_SolveLookConstraint(sithConstraint* pConstraint);
 
 #endif

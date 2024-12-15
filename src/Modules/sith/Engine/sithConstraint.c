@@ -14,7 +14,7 @@ void sithConstraint_AddDistanceConstraint(sithThing* pThing, sithThing* pThingA,
 	constraint->thingA = pThingA;
 	constraint->thingB = pThingB;
 	constraint->distanceParams.constraintAnchor = *pAnchor;
-	constraint->distanceParams.constraintDistance = 0.0001f;//rdVector_Len3(&constraint->distanceParams.constraintAnchor);
+	constraint->distanceParams.constraintDistance = 0.0f;//rdVector_Len3(&constraint->distanceParams.constraintAnchor);
 
 	constraint->next = pThing->constraints;
 	pThing->constraints = constraint;
@@ -106,8 +106,11 @@ void sithConstraint_SolveDistanceConstraint(sithConstraint* pConstraint, float d
 	//rdVector_Sub3Acc(&aImpulse, &dampingForce);
 	//rdVector_Sub3Acc(&bImpulse, &dampingForce);
 
-	sithPhysics_ThingApplyForce(pConstraint->thingB, &aImpulse);
-	sithPhysics_ThingApplyForce(pConstraint->thingA, &bImpulse);
+	rdVector_MultAcc3(&pConstraint->thingB->physicsParams.vel, &aImpulse, invMassB);
+	rdVector_MultAcc3(&pConstraint->thingA->physicsParams.vel, &bImpulse, invMassA);
+
+	//sithPhysics_ThingApplyForce(pConstraint->thingB, &aImpulse);
+	//sithPhysics_ThingApplyForce(pConstraint->thingA, &bImpulse);
 }
 
 void sithConstraint_SolveAngleConstrain(sithConstraint* pConstraint, float deltaSeconds)
@@ -126,7 +129,8 @@ void sithConstraint_SolveAngleConstrain(sithConstraint* pConstraint, float delta
 
 	rdVector3 angleDifferences;
 	rdVector_Sub3(&angleDifferences, &constrainedAngles, &angles);
-	rdVector_MultAcc3(&pConstraint->thingA->physicsParams.angVel, &angleDifferences, 1.0f / deltaSeconds);
+	//rdVector_MultAcc3(&pConstraint->thingA->physicsParams.angVel, &angleDifferences, 1.0f / deltaSeconds);
+	rdVector_Add3Acc(&pConstraint->thingA->physicsParams.angVel, &angleDifferences);
 
 //	rdMatrix34 constrainedRotation;
 //	rdMatrix_BuildRotate34(&constrainedRotation, &constrainedAngles);

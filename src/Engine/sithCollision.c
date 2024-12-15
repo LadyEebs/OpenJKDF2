@@ -956,31 +956,32 @@ LABEL_78:
 
 
 #ifdef PUPPET_PHYSICS
-			//if (!(flags & 0x20000) && v5->constraints)
-			//{
-			//	for (int k = 0; k < 5; ++k)
-			//	{
-			//		sithConstraint* constraint = v5->constraints;
-			//		while (constraint)
-			//		{
-			//			switch(constraint->type)
-			//			{
-			//			case SITH_CONSTRAINT_DISTANCE:
-			//				sithCollision_ApplyDistanceConstraint(constraint, v5, sithTime_deltaSeconds);
-			//				break;
-			//			case SITH_CONSTRAINT_CONE:
-			//				sithCollision_ConeConstrain(constraint, v5, sithTime_deltaSeconds);
-			//				break;
-			//			case SITH_CONSTRAINT_LOOK:
-			//				sithCollision_ApplyLookConstraint(constraint, v5);
-			//				break;				
-			//			default:
-			//				break;
-			//			}
-			//			constraint = constraint->next;
-			//		}
-			//	}
-			//}
+			if (!(flags & 0x20000) && v5->constraints)
+			{
+				//sithConstraint_SolveConstraints(v5, sithTime_deltaSeconds);
+				//for (int k = 0; k < 5; ++k)
+				//{
+				//	sithConstraint* constraint = v5->constraints;
+				//	while (constraint)
+				//	{
+				//		switch(constraint->type)
+				//		{
+				//		case SITH_CONSTRAINT_DISTANCE:
+				//			sithCollision_ApplyDistanceConstraint(constraint, v5, sithTime_deltaSeconds);
+				//			break;
+				//		case SITH_CONSTRAINT_ANGLES:
+				//			sithConstraint_SolveAngleConstraint(constraint, v5, sithTime_deltaSeconds);
+				//			break;
+				//		case SITH_CONSTRAINT_LOOK:
+				//			sithCollision_ApplyLookConstraint(constraint, v5);
+				//			break;				
+				//		default:
+				//			break;
+				//		}
+				//		constraint = constraint->next;
+				//	}
+				//}
+			}
 #endif
 
             sithCollision_bDebugCollide = 0; // Added
