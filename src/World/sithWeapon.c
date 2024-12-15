@@ -161,8 +161,8 @@ void sithWeapon_sub_4D35E0(sithThing *weapon)
                 {
 					float force = weapon->weaponParams.force;
 #ifdef REGIONAL_DAMAGE
-					//if (joint == JOINTTYPE_HEAD) // boost head shot to makes for a nice backflip effect
-						//force *= 100.0f;
+					if (damageReceiver->type == SITH_THING_ACTOR && joint == JOINTTYPE_HEAD) // boost headshots for a knockback effect
+						force += weapon->weaponParams.damage * 50.0f;
 #endif
                     rdVector_Scale3(&tmp2, &weaponPos_, force);
                     sithPhysics_ThingApplyForce(damageReceiver, &tmp2);
@@ -364,8 +364,8 @@ void sithWeapon_sub_4D3920(sithThing *weapon)
                 {
 					float force = weapon->weaponParams.force;
 #ifdef REGIONAL_DAMAGE
-					//if (joint == JOINTTYPE_HEAD) // boost head shot to makes for a nice backflip effect
-						//force *= 100.0f;
+					if (receiveThing->type == SITH_THING_ACTOR && joint == JOINTTYPE_HEAD) // boost headshots for a knockback effect
+						force += weapon->weaponParams.damage * 50.0f;
 #endif
                     tmp2.x = force * lookOrient.x;
                     tmp2.y = force * lookOrient.y;
@@ -788,9 +788,9 @@ int sithWeapon_Collide(sithThing *physicsThing, sithThing *collidedThing, sithCo
 #ifdef PUPPET_PHYSICS
 			if (collidedThing->moveType == SITH_MT_PHYSICS && collidedThing->type == SITH_THING_CORPSE)
 			{
-				float force = physicsThing->weaponParams.damage;//force;
+				float force = physicsThing->weaponParams.damage;
 				rdVector3 tmp2;
-				rdVector_Scale3(&tmp2, &physicsThing->lookOrientation.lvec, force);
+				rdVector_Scale3(&tmp2, &physicsThing->physicsParams.vel, force);
 				sithPhysics_ThingApplyForce(collidedThing, &tmp2);
 			}
 #endif
@@ -852,6 +852,10 @@ int sithWeapon_Collide(sithThing *physicsThing, sithThing *collidedThing, sithCo
 			if (collidedThing->moveType == SITH_MT_PHYSICS && !MOTS_ONLY_FLAG(collidedThing->type == SITH_THING_COG))
 			{
 				float force = physicsThing->weaponParams.force;
+#ifdef REGIONAL_DAMAGE
+				if (collidedThing->type == SITH_THING_ACTOR && joint == JOINTTYPE_HEAD) // boost headshots for a knockback effect
+					force += 50.0f * physicsThing->weaponParams.damage;
+#endif
 				rdVector3 tmp2;
 				rdVector_Scale3(&tmp2, &physicsThing->lookOrientation.lvec, force);
 				sithPhysics_ThingApplyForce(collidedThing, &tmp2);
