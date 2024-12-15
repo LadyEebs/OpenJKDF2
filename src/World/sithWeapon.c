@@ -849,7 +849,7 @@ int sithWeapon_Collide(sithThing *physicsThing, sithThing *collidedThing, sithCo
 #endif
             sithThing_Damage(collidedThing, physicsThing, physicsThing->weaponParams.damage, physicsThing->weaponParams.damageClass, joint);
 #ifdef PUPPET_PHYSICS
-			if (collidedThing->moveType == SITH_MT_PHYSICS && MOTS_ONLY_FLAG(collidedThing->type != SITH_THING_COG))
+			if (collidedThing->moveType == SITH_MT_PHYSICS && !MOTS_ONLY_FLAG(collidedThing->type == SITH_THING_COG))
 			{
 				float force = physicsThing->weaponParams.force;
 				rdVector3 tmp2;
