@@ -288,8 +288,8 @@ float sithCollision_UpdateSectorThingCollision(sithSector *pSector, sithThing *s
                 if ( v8 != v7 )
                 {
 			#ifdef PUPPET_PHYSICS
-					int jointIdx = (v8->thingIdx >> 16);
-					if(jointIdx < 0 || v8->prev_thing != v7)
+					//int jointIdx = (v8->thingIdx >> 16);
+					//if(jointIdx < 0 || v8->prev_thing != v7)
 			#endif
                     if ( sithCollision_collisionHandlers[12 * v8->type + v7->type].handler )
                     {
@@ -783,7 +783,7 @@ float sithCollision_UpdateThingCollision(sithThing *pThing, rdVector3 *a2, float
 
 #ifdef PUPPET_PHYSICS
 	//if (pThing->type == SITH_THING_CORPSE)
-		//flags |= SITH_RAYCAST_IGNORE_CORPSES; // todo: not sure if this is needed
+		//flags |= SITH_RAYCAST_IGNORE_CORPSES; // don't collide with other corpses
 #endif
 	direction = *a2;
 
@@ -1591,12 +1591,12 @@ int sithCollision_DebrisDebrisCollide(sithThing *thing1, sithThing *thing2, sith
 		//rdVector_Copy3(&impulse, &forceVec);
 
 	#ifdef PUPPET_PHYSICS
-		if (v5->type != SITH_THING_CORPSE)
+		//if (v5->type != SITH_THING_CORPSE)
 	#endif
 			sithPhysics_ThingApplyForce(v4, &forceVec);
 		rdVector_Neg3Acc(&forceVec);
 #ifdef PUPPET_PHYSICS
-		if (v4->type != SITH_THING_CORPSE)
+		//if (v4->type != SITH_THING_CORPSE)
 #endif
 			sithPhysics_ThingApplyForce(v5, &forceVec);
 
