@@ -126,14 +126,14 @@ static const sithPuppetConstraint sithPuppet_constraints[] =
 	{ JOINTTYPE_TORSO, JOINTTYPE_LSHOULDER,   -1 },
 	{ JOINTTYPE_TORSO,    JOINTTYPE_RTHIGH, 0.8f },
 	{ JOINTTYPE_TORSO,    JOINTTYPE_LTHIGH, 0.8f },
-	{ JOINTTYPE_TORSO,     JOINTTYPE_LFOOT, 0.8f }, // prevent torso getting too close to foot
-	{ JOINTTYPE_TORSO,     JOINTTYPE_RFOOT, 0.8f }, // prevent torso getting too close to foot
+	{ JOINTTYPE_TORSO,     JOINTTYPE_LFOOT, 0.9f }, // prevent torso getting too close to foot
+	{ JOINTTYPE_TORSO,     JOINTTYPE_RFOOT, 0.9f }, // prevent torso getting too close to foot
 	{ JOINTTYPE_TORSO,     JOINTTYPE_LCALF, 0.9f }, // prevent calf getting too close to torso
 	{ JOINTTYPE_TORSO,     JOINTTYPE_RCALF, 0.9f }, // prevent calf getting too close to torso
 
 	// hip constraints
-	{ JOINTTYPE_HIP, JOINTTYPE_RSHOULDER,  0.8f },
-	{ JOINTTYPE_HIP, JOINTTYPE_LSHOULDER,  0.8f },
+	{ JOINTTYPE_HIP, JOINTTYPE_RSHOULDER,  0.9f },
+	{ JOINTTYPE_HIP, JOINTTYPE_LSHOULDER,  0.9f },
 	{ JOINTTYPE_HIP,    JOINTTYPE_RTHIGH,   -1 },
 	{ JOINTTYPE_HIP,    JOINTTYPE_LTHIGH,   -1 },
 	{ JOINTTYPE_HIP,     JOINTTYPE_LCALF, 0.9f }, // prevent calf getting too close to hip
@@ -174,12 +174,14 @@ static const sithPuppetConstraint sithPuppet_constraints[] =
 	{ JOINTTYPE_RCALF, JOINTTYPE_LFOREARM, 0.75f }, // prevent calf getting too close to other arm
 
 	// right leg
-	{ JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, -1 },
-	{ JOINTTYPE_RFOOT,  JOINTTYPE_RCALF, -1 },
+	{ JOINTTYPE_RCALF, JOINTTYPE_RTHIGH,    -1 },
+	{ JOINTTYPE_RFOOT,  JOINTTYPE_RCALF,    -1 },
+	{ JOINTTYPE_RTHIGH, JOINTTYPE_RCALF,  0.5f }, // prevent forearm getting too close to other hand
 
 	// left arm
-	{ JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, -1 },
-	{ JOINTTYPE_LFOOT,  JOINTTYPE_LCALF, -1 },
+	{ JOINTTYPE_LCALF, JOINTTYPE_LTHIGH,    -1 },
+	{ JOINTTYPE_LFOOT,  JOINTTYPE_LCALF,    -1 },
+	{ JOINTTYPE_LTHIGH, JOINTTYPE_LCALF,  0.5f }, // prevent forearm getting too close to other hand
 
 	// weapon
 	{ JOINTTYPE_PRIMARYWEAP,   JOINTTYPE_RHAND, -1 },
@@ -206,8 +208,8 @@ static const sithPuppetJointFrame sithPuppet_jointFrames[] =
 	{ JOINTTYPE_LFOREARM,                   -1,                  -1,              -1, 0,  0.0f,  0.0f },	// JOINTTYPE_LHAND
 	{ JOINTTYPE_RCALF,                      -1,                  -1,              -1, 1,  0.0f,  0.0f },	// JOINTTYPE_RTHIGH
 	{ JOINTTYPE_LCALF,                      -1,                  -1,              -1, 1,  0.0f,  0.0f },	// JOINTTYPE_LTHIGH
-	{ JOINTTYPE_RTHIGH,                     -1,                  -1,              -1, 0,  0.0f,  0.0f },	// JOINTTYPE_RCALF
-	{ JOINTTYPE_LTHIGH,                     -1,                  -1,              -1, 0,  0.0f,  0.0f },	// JOINTTYPE_LCALF
+	{ JOINTTYPE_RTHIGH,                     -1,                  -1, JOINTTYPE_RFOOT, 0,  0.0f,  0.0f },	// JOINTTYPE_RCALF
+	{ JOINTTYPE_LTHIGH,                     -1,                  -1, JOINTTYPE_LFOOT, 0,  0.0f,  0.0f },	// JOINTTYPE_LCALF
 	{ JOINTTYPE_RCALF,                      -1,                  -1,              -1, 0,  0.0f,  0.0f },	// JOINTTYPE_RFOOT
 	{ JOINTTYPE_LCALF,                      -1,                  -1,              -1, 0,  0.0f,  0.0f },	// JOINTTYPE_LFOOT
 };
@@ -2646,18 +2648,13 @@ static void sithPuppet_BuildJointMatrices(sithThing* thing)
 		rdMatrix_Multiply34(&refMat, &pNode->posRotMatrix, &pTargetJoint->thing.lookOrientation);
 
 		rdVector3 pos = pJoint->thing.position;
-//		rdVector3 negNodePivot = { pNode->pivot.x, pNode->pivot.y, pNode->pivot.z };
-//		rdMatrix_TransformVector34Acc(&negNodePivot, &thing->rdthing.hierarchyNodeMatrices[pNode->parent->idx]);
-//		rdVector_Add3Acc(&pos, &negNodePivot);
 
-	//	rdVector3 negParentPivot = { pNode->parent->pivot.x, pNode->parent->pivot.y, pNode->pivot.z };
-	//	rdMatrix_TransformVector34Acc(&negParentPivot, &thing->rdthing.hierarchyNodeMatrices[pNode->parent->idx]);
-	//	rdVector_Sub3Acc(&pos, &negParentPivot);
+		rdVector3 negNodePivot = { pNode->pivot.x, pNode->pivot.y, pNode->pivot.z };
+		rdMatrix_TransformVector34Acc(&negNodePivot, &thing->rdthing.hierarchyNodeMatrices[pNode->parent->idx]);
 
-
-		rdVector3 negParentPivot = { pNode->parent->pivot.x, pNode->parent->pivot.y, pNode->pivot.z };
+		rdVector3 negParentPivot = { -pNode->parent->pivot.x, -pNode->parent->pivot.y, -pNode->pivot.z };
 		rdMatrix_TransformVector34Acc(&negParentPivot, &thing->rdthing.hierarchyNodeMatrices[pNode->parent->idx]);
-		rdVector_Sub3Acc(&pos, &negParentPivot);
+		//rdVector_Add3Acc(&pos, &negParentPivot);
 
 		// calculate the up vector
 		rdVector_Sub3(&pMat->uvec, &pTargetJoint->thing.position, &pos );//&pJoint->thing.position);
@@ -2711,9 +2708,7 @@ static void sithPuppet_BuildJointMatrices(sithThing* thing)
 		rdVector_Zero3(&pJoint->thing.lookOrientation.scale);
 		
 		
-		rdVector3 negNodePivot = { pNode->pivot.x, pNode->pivot.y, pNode->pivot.z };
-		rdMatrix_TransformVector34Acc(&negNodePivot, &thing->rdthing.hierarchyNodeMatrices[pNode->parent->idx]);
-		rdVector_Add3Acc(&pos, &negNodePivot);
+		//rdVector_Add3Acc(&pos, &negNodePivot);
 
 
 //	rdVector3 negParentPivot = { pNode->parent->pivot.x, pNode->parent->pivot.y, pNode->pivot.z };
@@ -2723,7 +2718,9 @@ static void sithPuppet_BuildJointMatrices(sithThing* thing)
 
 		rdVector_Copy3(&pJoint->thing.lookOrientation.scale, &pos);// &pJoint->thing.position);
 
+		rdMatrix_PostTranslate34(&pJoint->thing.lookOrientation, &negNodePivot);
 
+		rdMatrix_PostTranslate34(&pJoint->thing.lookOrientation, &negParentPivot);
 
 		sithBodyPart* pTargetBodyPart = &thing->animclass->bodypart[pFrame->targetJoint];
 		rdHierarchyNode* pTargetNode = &thing->rdthing.model3->hierarchyNodes[pTargetBodyPart->nodeIdx];
