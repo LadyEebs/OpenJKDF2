@@ -1394,12 +1394,13 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 		pJoint->thing.physicsParams.buoyancy *= pBodyPart->buoyancy;
 		pJoint->thing.physicsParams.height = 0;
 
-		pJoint->thing.physicsParams.physflags = SITH_PF_FEELBLASTFORCE | SITH_PF_ANGTHRUST;
+		pJoint->thing.physicsParams.physflags = SITH_PF_FEELBLASTFORCE;// | SITH_PF_ANGTHRUST;
 
 		//pJoint->thing.physicsParams.physflags |= SITH_PF_SURFACEALIGN;
 		
-		pJoint->thing.physicsParams.physflags |= SITH_PF_FLOORSTICK | SITH_PF_WALLSTICK;
-	//	pJoint->thing.physicsParams.physflags |= SITH_PF_DONTROTATEVEL;
+		pJoint->thing.physicsParams.physflags |= SITH_PF_FLOORSTICK;
+		pJoint->thing.physicsParams.physflags |= SITH_PF_DONTROTATEVEL;
+		
 		//SITH_PF_USEGRAVITY = 0x1,
 		//	SITH_PF_USESTHRUST = 0x2,
 		//	SITH_PF_4 = 0x4,
@@ -1453,7 +1454,8 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 	//		pJoint->thing.collideSize = pJoint->thing.moveSize = 0.02f;
 
 		rdMesh* mesh = &pThing->rdthing.model3->geosets[0].meshes[pNode->meshIdx];
-		float minDist = 10000.0;
+		float minDist = 10000.0f;
+		float maxDist = 0.0f;
 		for (int j = 0; j < mesh->numVertices; j++)
 		{
 			rdVector3* vtx = &mesh->vertices[j];
@@ -1462,8 +1464,13 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 			{
 				minDist = dist;
 			}
+			if (dist > maxDist)
+			{
+				maxDist = dist;
+			}
 		}
-		pJoint->thing.collideSize = pJoint->thing.moveSize = minDist * 0.6;// - (minDist * 0.1f);
+		pJoint->thing.moveSize = minDist;// * 0.6;
+		pJoint->thing.collideSize = minDist * 0.6;// - (minDist * 0.1f);
 
 		//pJoint->thing.collideSize = 0.01f;
 
@@ -2991,12 +2998,12 @@ void sithPuppet_UpdateJoints(sithThing* pThing, float deltaSeconds)
 		rdVector_Zero3(&pJoint->thing.physicsParams.velocityMaybe);
 		rdVector_Zero3(&pJoint->thing.physicsParams.addedVelocity);
 
-		if (rdVector_Len3(&pJoint->thing.physicsParams.vel) > 10.0)
-			printf("velocity has become unwieldyly (%f) for joint %d on iteration %d\n",
-				rdVector_Len3(&pJoint->thing.physicsParams.vel),
-				jointIdx,
-				pJoint->isInit);
-		pJoint->isInit++;
+		//if (rdVector_Len3(&pJoint->thing.physicsParams.vel) > 10.0)
+		//	printf("velocity has become unwieldyly (%f) for joint %d on iteration %d\n",
+		//		rdVector_Len3(&pJoint->thing.physicsParams.vel),
+		//		jointIdx,
+		//		pJoint->isInit);
+		//pJoint->isInit++;
 
 		// would it make sense to split this so we're not diving head first into collision code?
 		sithPhysics_ThingTick(&pJoint->thing, deltaSeconds);
