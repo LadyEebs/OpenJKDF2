@@ -1221,12 +1221,12 @@ void sithPuppet_AddDistanceConstraint(sithThing* pThing, int joint, int target, 
 
 	rdHierarchyNode* pNode = &pThing->rdthing.model3->hierarchyNodes[pThing->animclass->bodypart[joint].nodeIdx];
 
-	rdVector3* pBasePosA = &pThing->rdthing.model3->paBasePoseMatrices[pThing->animclass->bodypart[target].nodeIdx].scale;
-	rdVector3* pBasePosB = &pThing->rdthing.model3->paBasePoseMatrices[pThing->animclass->bodypart[joint].nodeIdx].scale;
+	rdVector3* pBasePosA = &pThing->rdthing.hierarchyNodeMatrices[pThing->animclass->bodypart[target].nodeIdx].scale;
+	rdVector3* pBasePosB = &pThing->rdthing.hierarchyNodeMatrices[pThing->animclass->bodypart[joint].nodeIdx].scale;
 
 	// invert the matrix so we can get a local position for the constraint
 	rdMatrix34 inv;
-	rdMatrix_InvertOrtho34(&inv, &pThing->rdthing.model3->paBasePoseMatrices[pThing->animclass->bodypart[target].nodeIdx]);
+	rdMatrix_InvertOrtho34(&inv, &pThing->rdthing.hierarchyNodeMatrices[pThing->animclass->bodypart[target].nodeIdx]);
 
 	// derive the anchor from the base pose and the inverse target matrix
 	rdVector3 anchor;
@@ -1394,12 +1394,12 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 		pJoint->thing.physicsParams.buoyancy *= pBodyPart->buoyancy;
 		pJoint->thing.physicsParams.height = 0;
 
-		pJoint->thing.physicsParams.physflags = SITH_PF_FEELBLASTFORCE;// | SITH_PF_ANGTHRUST;
+		pJoint->thing.physicsParams.physflags = SITH_PF_FEELBLASTFORCE | SITH_PF_ANGTHRUST;
 
 		//pJoint->thing.physicsParams.physflags |= SITH_PF_SURFACEALIGN;
 		
 		pJoint->thing.physicsParams.physflags |= SITH_PF_FLOORSTICK;
-		pJoint->thing.physicsParams.physflags |= SITH_PF_DONTROTATEVEL;
+		//pJoint->thing.physicsParams.physflags |= SITH_PF_DONTROTATEVEL;
 		
 		//SITH_PF_USEGRAVITY = 0x1,
 		//	SITH_PF_USESTHRUST = 0x2,
@@ -1469,10 +1469,12 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 				maxDist = dist;
 			}
 		}
-		pJoint->thing.moveSize = minDist;// * 0.6;
+		pJoint->thing.moveSize = minDist * 0.6;
 		pJoint->thing.collideSize = minDist * 0.6;// - (minDist * 0.1f);
 
 		//pJoint->thing.collideSize = 0.01f;
+
+		pJoint->thing.physicsParams.maxRotVel = 10000.0f;
 
 		//rdThing_SetModel3(&pJoint->thing.rdthing, pThing->rdthing.model3);
 		//pJoint->thing.rdthing.rootJoint = pNode->idx;
@@ -1962,8 +1964,20 @@ void sithPuppet_ApplyDistanceConstraints(sithThing* pThing, int jointIdx, int ta
 	//rdVector_Sub3Acc(&aImpulse, &dampingForce);
 	//rdVector_Sub3Acc(&bImpulse, &dampingForce);
 	
-	sithPhysics_ThingApplyForce(pTargetJoint, &aImpulse);
-	sithPhysics_ThingApplyForce(pJoint, &bImpulse);
+	//if (forceVec->z * invMass > 0.5) // TODO verify
+		//sithThing_DetachThing(pThing);
+	//rdVector_MultAcc3(&pTargetThing->physicsParams.vel, &aImpulse, invMassA);
+	//pTargetThing->physicsParams.physflags |= SITH_PF_HAS_FORCE;
+
+	//rdVector_MultAcc3(&pJointThing->physicsParams.vel, &bImpulse, invMassB);
+	//pJointThing->physicsParams.physflags |= SITH_PF_HAS_FORCE;
+
+	sithPhysics_ThingApplyForce(pTargetThing, &aImpulse);
+	sithPhysics_ThingApplyForce(pJointThing, &bImpulse);
+
+	sithPhysics_ApplyDrag(&pTargetThing->physicsParams.vel, 1.0f, 0.0f, deltaSeconds);
+	sithPhysics_ApplyDrag(&pJointThing->physicsParams.vel, 1.0f, 0.0f, deltaSeconds);
+
 }
 
 
@@ -2025,7 +2039,10 @@ void sithPuppet_ApplyConeConstraint(sithThing* pThing,
 	rdVector3 angleDifferences;
 	rdVector_Sub3(&angleDifferences, &constrainedAngles, &angles);
 	
-	rdVector_MultAcc3(&pJointThing->physicsParams.angVel, &angleDifferences, 1.0f / deltaSeconds);
+	//rdVector_MultAcc3(&pJointThing->physicsParams.angVel, &angleDifferences, 1.0f / deltaSeconds);
+	rdVector_Add3Acc(&pJointThing->physicsParams.angVel, &angleDifferences);
+
+	sithPhysics_ApplyDrag(&pJointThing->physicsParams.angVel, 1.0f, 0.0, deltaSeconds);
 
 //	rdVector_MultAcc3(&pJointThing->physicsParams.angVel, &angles, 1.0f / deltaSeconds);
 
@@ -2391,7 +2408,7 @@ void sithPuppet_ApplyConstraints(sithThing* pThing, float deltaSeconds)
 
 #endif
 
-#if 1
+#if 0
 	for (int i = 0; i < ARRAYSIZE(sithPuppet_constraints); ++i)
 	{
 		sithPuppetConstraint* pConstraint = &sithPuppet_constraints[i];
@@ -2612,7 +2629,8 @@ static void sithPuppet_BuildJointMatrices(sithThing* thing)
 		}
 
 	//rdVector_Copy3(&pJoint->thing.lookOrientation.scale, &pJoint->thing.position);
-	//thing->rdthing.paHiearchyNodeMatrixOverrides[pBodyPart->nodeIdx] = &pJoint->thing.lookOrientation;
+	//rdMatrix_Copy34(&pJoint->localMat, &pJoint->thing.lookOrientation);
+	//thing->rdthing.paHiearchyNodeMatrixOverrides[pBodyPart->nodeIdx] = &pJoint->localMat;
 	//continue;
 		
 		sithPuppetJoint* pTargetJoint = &thing->puppet->physics->joints[pFrame->targetJoint];
@@ -3019,47 +3037,66 @@ void sithPuppet_UpdateJoints(sithThing* pThing, float deltaSeconds)
 	}
 }
 
+void sithPuppet_ClearVelocities(sithThing* pThing)
+{
+	uint64_t jointBits = pThing->animclass->physicsJointBits;
+	while (jointBits != 0)
+	{
+		int jointIdx = stdMath_FindLSB64(jointBits);
+		jointBits ^= 1ull << jointIdx;
+		sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
+		//rdVector_Zero3(&pJoint->thing.physicsParams.vel);
+		//rdVector_Zero3(&pJoint->thing.physicsParams.angVel);
+	}
+}
+
 void sithPuppet_ApplyIterativeCorrections(sithSector* pSector, sithThing* pThing, float deltaSeconds)
 {
+	sithPuppet_ClearVelocities(pThing);
+	
 	int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 10 : 1;
-//	for (int i = 0; i < iterations; ++i)
-//	{
-//		sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_HEAD, JOINTTYPE_NECK, deltaSeconds);
-//		sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_NECK, JOINTTYPE_TORSO, deltaSeconds);
-//		sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_TORSO, JOINTTYPE_HIP, deltaSeconds);
-//
-//		sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_RSHOULDER, JOINTTYPE_TORSO, deltaSeconds);
-//		sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_LSHOULDER, JOINTTYPE_TORSO, deltaSeconds);
-//		sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER, deltaSeconds);
-//		sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER, deltaSeconds);
-//		sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_RHAND, JOINTTYPE_RFOREARM, deltaSeconds);
-//		sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_LHAND, JOINTTYPE_LFOREARM, deltaSeconds);
-//
-//		sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_HIP, deltaSeconds);
-//		sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_LTHIGH, JOINTTYPE_HIP, deltaSeconds);
-//		sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, deltaSeconds);
-//		sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, deltaSeconds);
-//		sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_RFOOT, JOINTTYPE_RCALF, deltaSeconds);
-//		sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_LFOOT, JOINTTYPE_LCALF, deltaSeconds);
-//
-//		sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_TORSO, JOINTTYPE_HIP, 15.0f, -60.0f, 5.0f, -5.0f, 10.0f, -10.0f, deltaSeconds);
-//		sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_NECK, JOINTTYPE_TORSO, 5.0f, -40.0f, 5.0f, -5.0f, 35.0f, -35.0f, deltaSeconds);
-//
-//		sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_HIP, 60.0f, -5.0f, 5.0f, -5.0f, 5.0f, -5.0f, deltaSeconds);
-//		sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_LTHIGH, JOINTTYPE_HIP, 60.0f, -5.0f, 5.0f, -5.0f, 5.0f, -5.0f, deltaSeconds);
-//
-//		sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, 0.0f, -100.0f, 5.0f, -5.0f, 10.0f, -10.0f, deltaSeconds);
-//		sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, 0.0f, -100.0f, 5.0f, -5.0f, 10.0f, -10.0f, deltaSeconds);
-//
-//		sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_RSHOULDER, JOINTTYPE_TORSO, 90.0f, -35.0f, 10.0f, -10.0f, 0.0f, -90.0f, deltaSeconds);
-//		sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_LSHOULDER, JOINTTYPE_TORSO, 90.0f, -35.0f, 10.0f, -10.0f, 90.0f, 0.0f, deltaSeconds);
-//
-//		sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER, 120.0f, 0.0f, 5.0f, -5.0f, 5.0f, -5.0f, deltaSeconds);
-//		sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER, 120.0f, 0.0f, 5.0f, -5.0f, 5.0f, -5.0f, deltaSeconds);
-//		
-//		sithPuppet_ApplyLookConstraint(pThing, JOINTTYPE_HIP, JOINTTYPE_TORSO, 0, deltaSeconds);
-//		sithPuppet_ApplyLookConstraint(pThing, JOINTTYPE_HEAD, JOINTTYPE_NECK, 1, deltaSeconds);
-//	}
+	//for (int i = 0; i < iterations; ++i)
+	//{
+	//	sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_HEAD, JOINTTYPE_NECK, deltaSeconds);
+	//	sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_NECK, JOINTTYPE_TORSO, deltaSeconds);
+	//	sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_TORSO, JOINTTYPE_HIP, deltaSeconds);
+	//
+	//	sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_RSHOULDER, JOINTTYPE_TORSO, deltaSeconds);
+	//	sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_LSHOULDER, JOINTTYPE_TORSO, deltaSeconds);
+	//	sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER, deltaSeconds);
+	//	sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER, deltaSeconds);
+	//	sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_RHAND, JOINTTYPE_RFOREARM, deltaSeconds);
+	//	sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_LHAND, JOINTTYPE_LFOREARM, deltaSeconds);
+	//
+	//	sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_HIP, deltaSeconds);
+	//	sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_LTHIGH, JOINTTYPE_HIP, deltaSeconds);
+	//	sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, deltaSeconds);
+	//	sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, deltaSeconds);
+	//	sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_RFOOT, JOINTTYPE_RCALF, deltaSeconds);
+	//	sithPuppet_ApplyDistanceConstraints(pThing, JOINTTYPE_LFOOT, JOINTTYPE_LCALF, deltaSeconds);
+	//
+	//	sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_TORSO, JOINTTYPE_HIP, 15.0f, -60.0f, 5.0f, -5.0f, 10.0f, -10.0f, deltaSeconds);
+	//	sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_NECK, JOINTTYPE_TORSO, 5.0f, -40.0f, 5.0f, -5.0f, 35.0f, -35.0f, deltaSeconds);
+	//
+	//	sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_HIP, 60.0f, -5.0f, 5.0f, -5.0f, 5.0f, -5.0f, deltaSeconds);
+	//	sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_LTHIGH, JOINTTYPE_HIP, 60.0f, -5.0f, 5.0f, -5.0f, 5.0f, -5.0f, deltaSeconds);
+	//
+	//	sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, 0.0f, -100.0f, 5.0f, -5.0f, 10.0f, -10.0f, deltaSeconds);
+	//	sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, 0.0f, -100.0f, 5.0f, -5.0f, 10.0f, -10.0f, deltaSeconds);
+	//
+	//	sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_RSHOULDER, JOINTTYPE_TORSO, 90.0f, -35.0f, 10.0f, -10.0f, 0.0f, -90.0f, deltaSeconds);
+	//	sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_LSHOULDER, JOINTTYPE_TORSO, 90.0f, -35.0f, 10.0f, -10.0f, 90.0f, 0.0f, deltaSeconds);
+	//
+	//	sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER, 120.0f, 0.0f, 5.0f, -5.0f, 5.0f, -5.0f, deltaSeconds);
+	//	sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER, 120.0f, 0.0f, 5.0f, -5.0f, 5.0f, -5.0f, deltaSeconds);
+	//	
+	//	sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_RHAND, JOINTTYPE_RFOREARM, 5.0f, -5.0f, 25.0f, -25.0f, 35.0f, -5.0f, deltaSeconds);
+	//	sithPuppet_ApplyConeConstraint(pThing, JOINTTYPE_LHAND, JOINTTYPE_LFOREARM, 5.0f, -5.0f, 25.0f, -25.0f, 5.0f, -35.0f, deltaSeconds);
+	//
+	//
+	//	sithPuppet_ApplyLookConstraint(pThing, JOINTTYPE_HIP, JOINTTYPE_TORSO, 0, deltaSeconds);
+	//	sithPuppet_ApplyLookConstraint(pThing, JOINTTYPE_HEAD, JOINTTYPE_NECK, 1, deltaSeconds);
+	//}
 
 	// do fewer iterations if we're not directly visible
 	for (int i = 0; i < iterations; ++i)

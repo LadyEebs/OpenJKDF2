@@ -783,7 +783,7 @@ float sithCollision_UpdateThingCollision(sithThing *pThing, rdVector3 *a2, float
 
 #ifdef PUPPET_PHYSICS
 	//if (pThing->type == SITH_THING_CORPSE)
-		//flags |= SITH_RAYCAST_IGNORE_CORPSES; // don't collide with other corpses
+		//flags |= SITH_RAYCAST_IGNORE_CORPSES; // todo: not sure if this is needed
 #endif
 	direction = *a2;
 
@@ -1603,8 +1603,13 @@ int sithCollision_DebrisDebrisCollide(sithThing *thing1, sithThing *thing2, sith
 #ifdef PUPPET_PHYSICS
 		// don't block if one of the colliders is a corpse
 		if ((v4->type == SITH_THING_PLAYER && v5->type == SITH_THING_CORPSE)
-			|| (v5->type == SITH_THING_PLAYER && v4->type == SITH_THING_CORPSE))
-		return 0;
+			|| (v5->type == SITH_THING_PLAYER && v4->type == SITH_THING_CORPSE)
+		)
+			return 0;
+
+		// if both bodies are corpses don't block
+		//if(v4->type == SITH_THING_CORPSE && v5->type == SITH_THING_CORPSE)
+			//return 0;
 
 		//rdVector3 r;
 		//rdVector_Sub3(&r, &v5->position, &v4->position);
