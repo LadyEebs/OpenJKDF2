@@ -21,18 +21,18 @@ void sithConstraint_AddDistanceConstraint(sithThing* pThing, sithThing* pThingA,
 }
 
 
-void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pThingA, sithThing* pThingB, float maxSwingAngle, float maxTwistAngle)
+void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pThingA, sithThing* pThingB, const rdVector3* pMinAngles, const rdVector3* pMaxAngles)
 {
 	sithConstraint* constraint = (sithConstraint*)malloc(sizeof(sithConstraint));
 	if (!constraint)
 		return;
 
-	constraint->type = SITH_CONSTRAINT_CONE;
+	constraint->type = SITH_CONSTRAINT_ANGLES;
 	constraint->thingA = pThingA;
 	constraint->thingB = pThingB;
 
-	constraint->coneParams.maxSwingAngle = maxSwingAngle;
-	constraint->coneParams.maxTwistAngle = maxTwistAngle;
+	constraint->angleParams.minAngles = *pMinAngles;
+	constraint->angleParams.maxAngles = *pMaxAngles;
 
 	constraint->next = pThing->constraints;
 	pThing->constraints = constraint;
@@ -68,39 +68,6 @@ void sithConstraint_SolveDistanceConstraint(sithConstraint* pConstraint, float d
 	rdVector_Sub3(&relativePos, &anchor, &pConstraint->thingA->position);
 
 	float currentDistance = rdVector_Len3(&relativePos);
-	
-	//float offset = 0.0 - currentDistance;
-	//if (stdMath_Fabs(offset) > 0.0f)
-	//{
-	//	rdVector3 offsetDir;
-	//	rdVector_Normalize3(&offsetDir, &relativePos);
-	//
-	//	rdVector3 relativeVelocity;
-	//	rdVector_Sub3(&relativeVelocity, &pConstraint->thingB->physicsParams.vel, &pConstraint->thingA->physicsParams.vel);
-	//
-	//	float invMassA = 1.0f / pConstraint->thingA->physicsParams.mass;
-	//	float invMassB = 1.0f / pConstraint->thingB->physicsParams.mass;
-	//	float constraintMass = invMassA + invMassB;
-	//	if (constraintMass > 0.0f)
-	//	{
-	//		float velocityDot = rdVector_Dot3(&relativeVelocity, &offsetDir);
-	//		
-	//		const float biasFactor = 0.01f;
-	//		float bias = -(biasFactor / deltaSeconds) * offset;
-	//		
-	//		float lambda = -(velocityDot + bias) / constraintMass;
-	//		rdVector3 aImpulse;
-	//		rdVector_Scale3(&aImpulse, &offsetDir, lambda);
-	//		
-	//		rdVector3 bImpulse;
-	//		rdVector_Scale3(&bImpulse, &offsetDir, -lambda);
-	//		
-	//		sithPhysics_ThingApplyForce(pConstraint->thingB, &aImpulse);
-	//		sithPhysics_ThingApplyForce(pConstraint->thingA, &bImpulse);
-	//	}
-	//}
-
-
 	float offset = pConstraint->distanceParams.constraintDistance - currentDistance;
 	if (stdMath_Fabs(offset) <= 0.0001f)
 		return;
@@ -108,44 +75,42 @@ void sithConstraint_SolveDistanceConstraint(sithConstraint* pConstraint, float d
 	rdVector3 offsetDir;
 	rdVector_Normalize3(&offsetDir, &relativePos);
 
-	rdVector3 relativeVelocity;
-	rdVector_Sub3(&relativeVelocity, &pConstraint->thingB->physicsParams.vel, &pConstraint->thingA->physicsParams.vel);
-
 	float invMassA = 1.0f / pConstraint->thingB->physicsParams.mass;
 	float invMassB = 1.0f / pConstraint->thingA->physicsParams.mass;
 	float constraintMass = invMassA + invMassB;
 	if (constraintMass <= 0.0f)
 		return;
 
-	float diff = -offset / (constraintMass);
-	rdVector_Neg3Acc(&offsetDir);
+	rdVector3 relativeVelocity;
+	rdVector_Sub3(&relativeVelocity, &pConstraint->thingB->physicsParams.vel, &pConstraint->thingA->physicsParams.vel);
 
-	sithCollision_UpdateThingCollision(pConstraint->thingB, &offsetDir, diff * invMassB, 0);
-	//rdVector_MultAcc3(&pTargetThing->position, &offsetDir, diff * invMassA);
+	// how much of their relative force is affecting the constraint
+	float velocityDot = rdVector_Dot3(&relativeVelocity, &offsetDir);
 
-	rdVector_Neg3Acc(&offsetDir);
-	sithCollision_UpdateThingCollision(pConstraint->thingA, &offsetDir, diff * invMassA, 0);
-	//rdVector_MultAcc3(&pThing->position, &offsetDir, diff * invMassB);
+	const float biasFactor = 0.03f;
+	float bias = -(biasFactor / deltaSeconds) * offset;
 
-//	// how much of their relative force is affecting the constraint
-//	float velocityDot = rdVector_Dot3(&relativeVelocity, &offsetDir);
-//	
-//	const float biasFactor = 0.01f;
-//	float bias = -(biasFactor / deltaSeconds) * offset;
-//	
-//	float lambda = -(velocityDot + bias) / constraintMass;
-//
-//	rdVector3 impulseB;
-//	rdVector_Scale3(&impulseB, &offsetDir, lambda);
-//	
-//	rdVector3 impulseA;
-//	rdVector_Scale3(&impulseA, &offsetDir, -lambda);
-//	
-//	sithPhysics_ThingApplyForce(pConstraint->thingB, &impulseB);
-//	sithPhysics_ThingApplyForce(pConstraint->thingA, &impulseA);
+	float lambda = -(velocityDot + bias) / constraintMass;
+
+	const float dampingFactor = 0.2f;
+
+	rdVector3 aImpulse;
+	rdVector_Scale3(&aImpulse, &offsetDir, lambda);
+
+	rdVector3 bImpulse;
+	rdVector_Scale3(&bImpulse, &offsetDir, -lambda);
+
+	//rdVector3 dampingForce;
+	//rdVector_Scale3(&dampingForce, &aImpulse, dampingFactor);
+
+	//rdVector_Sub3Acc(&aImpulse, &dampingForce);
+	//rdVector_Sub3Acc(&bImpulse, &dampingForce);
+
+	sithPhysics_ThingApplyForce(pConstraint->thingB, &aImpulse);
+	sithPhysics_ThingApplyForce(pConstraint->thingA, &bImpulse);
 }
 
-void sithConstraint_SolveConeConstrain(sithConstraint* pConstraint, float deltaSeconds)
+void sithConstraint_SolveAngleConstrain(sithConstraint* pConstraint, float deltaSeconds)
 {
 	rdMatrix34 parentRotTranspose, relativeRotation;
 	rdMatrix_InvertOrtho34(&parentRotTranspose, &pConstraint->thingB->lookOrientation);
@@ -154,19 +119,18 @@ void sithConstraint_SolveConeConstrain(sithConstraint* pConstraint, float deltaS
 	rdVector3 angles;
 	rdMatrix_ExtractAngles34(&relativeRotation, &angles);
 
-	rdVector3 constrainedAngles = angles;
-	if (stdMath_Fabs(constrainedAngles.x) > pConstraint->coneParams.maxSwingAngle)
-		constrainedAngles.x = pConstraint->coneParams.maxSwingAngle * (constrainedAngles.x > 0 ? 1 : -1);
+	rdVector3 constrainedAngles;
+	constrainedAngles.x = stdMath_Clamp(angles.x, pConstraint->angleParams.minAngles.x, pConstraint->angleParams.maxAngles.x);
+	constrainedAngles.y = stdMath_Clamp(angles.y, pConstraint->angleParams.minAngles.y, pConstraint->angleParams.maxAngles.y);
+	constrainedAngles.z = stdMath_Clamp(angles.z, pConstraint->angleParams.minAngles.z, pConstraint->angleParams.maxAngles.z);
 
-	if (stdMath_Fabs(constrainedAngles.y) > pConstraint->coneParams.maxTwistAngle)
-		constrainedAngles.y = pConstraint->coneParams.maxTwistAngle * (constrainedAngles.y > 0 ? 1 : -1);
+	rdVector3 angleDifferences;
+	rdVector_Sub3(&angleDifferences, &constrainedAngles, &angles);
+	rdVector_MultAcc3(&pConstraint->thingA->physicsParams.angVel, &angleDifferences, 1.0f / deltaSeconds);
 
-	if (stdMath_Fabs(constrainedAngles.z) > pConstraint->coneParams.maxSwingAngle)
-		constrainedAngles.z = pConstraint->coneParams.maxSwingAngle * (constrainedAngles.z > 0 ? 1 : -1);
-
-	rdMatrix34 constrainedRotation;
-	rdMatrix_BuildRotate34(&constrainedRotation, &constrainedAngles);
-	rdMatrix_Multiply34(&pConstraint->thingA->lookOrientation, &pConstraint->thingB->lookOrientation, &constrainedRotation);
+//	rdMatrix34 constrainedRotation;
+//	rdMatrix_BuildRotate34(&constrainedRotation, &constrainedAngles);
+//	rdMatrix_Multiply34(&pConstraint->thingA->lookOrientation, &pConstraint->thingB->lookOrientation, &constrainedRotation);
 }
 
 void sithConstraint_SolveLookConstraint(sithConstraint* pConstraint)
@@ -189,6 +153,8 @@ void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
 {
 	if (pThing->constraints)
 	{
+		rdVector3 oldPos = pThing->position;
+
 		for (int k = 0; k < 10; ++k)
 		{
 			sithConstraint* constraint = pThing->constraints;
@@ -199,8 +165,8 @@ void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
 				case SITH_CONSTRAINT_DISTANCE:
 					sithConstraint_SolveDistanceConstraint(constraint, sithTime_deltaSeconds);
 					break;
-				case SITH_CONSTRAINT_CONE:
-					sithConstraint_SolveConeConstrain(constraint, sithTime_deltaSeconds);
+				case SITH_CONSTRAINT_ANGLES:
+					sithConstraint_SolveAngleConstrain(constraint, sithTime_deltaSeconds);
 					break;
 				case SITH_CONSTRAINT_LOOK:
 					sithConstraint_SolveLookConstraint(constraint);
@@ -211,5 +177,29 @@ void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
 				constraint = constraint->next;
 			}
 		}
+
+		//uint64_t jointBits = pThing->animclass->physicsJointBits;
+		//while (jointBits != 0)
+		//{
+		//	int jointIdx = stdMath_FindLSB64(jointBits);
+		//	jointBits ^= 1ull << jointIdx;
+		//
+		//	sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
+		//	
+		//	rdVector_Zero3(&pJoint->thing.physicsParams.velocityMaybe);
+		//	rdVector_Zero3(&pJoint->thing.physicsParams.addedVelocity);
+		//
+		//	// would it make sense to split this so we're not diving head first into collision code?
+		//	sithPhysics_ThingTick(&pJoint->thing, deltaSeconds);
+		//	sithThing_TickPhysics(&pJoint->thing, deltaSeconds);
+		//
+		//	rdVector_Zero3(&pJoint->thing.lookOrientation.scale);
+		//}
+
+	//rdVector3 delta;
+	//rdVector_Sub3(&delta, &pThing->position, &oldPos);
+	//float deltaLen = rdVector_Normalize3Acc(&delta);
+	//if (deltaLen > 0.0)
+	//	sithCollision_UpdateThingCollision(pThing, &delta, deltaLen, 0);
 	}
 }

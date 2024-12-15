@@ -19,6 +19,10 @@
 #include "Primitives/rdRagdoll.h"
 #endif
 
+#ifdef PUPPET_PHYSICS
+#include "Modules/sith/Engine/sithConstraint.h"
+#endif
+
 static int sithCollision_initted = 0;
 
 int sithCollision_bDebugCollide = 0;
@@ -641,243 +645,6 @@ void sithCollision_FallHurt(sithThing *thing, float vel)
 }
 
 
-#ifdef PUPPET_PHYSICS
-#include "Modules/sith/Engine/sithConstraint.h"
-
-void sithCollision_ApplyDistanceConstraint(sithConstraint* pConstraint, sithThing* pTargetThing, float deltaSeconds)
-{
-	rdVector_Copy3(&pTargetThing->lookOrientation.scale, &pTargetThing->position);
-
-	rdVector3 anchor;
-	rdMatrix_TransformPoint34(&anchor, &pConstraint->distanceParams.constraintAnchor, &pTargetThing->lookOrientation);
-
-	rdVector_Zero3(&pTargetThing->lookOrientation.scale);
-
-	rdVector3 relativePos;
-	rdVector_Sub3(&relativePos, &anchor, &pConstraint->thingA->position);
-
-	float currentDistance = rdVector_Len3(&relativePos);
-	float offset = pConstraint->distanceParams.constraintDistance - currentDistance;
-	if (stdMath_Fabs(offset) <= 0.0001f)
-		return;
-
-	rdVector3 offsetDir;
-	rdVector_Normalize3(&offsetDir, &relativePos);
-
-	rdVector3 relativeVelocity;
-	rdVector_Sub3(&relativeVelocity, &pTargetThing->physicsParams.vel, &pConstraint->thingA->physicsParams.vel);
-
-	float invMassA = 1.0f / pTargetThing->physicsParams.mass;
-	float invMassB = 1.0f / pConstraint->thingA->physicsParams.mass;
-	float constraintMass = invMassA + invMassB;
-	if (constraintMass <= 0.0f)
-		return;
-
-	float diff = -offset / (constraintMass);
-	rdVector_Neg3Acc(&offsetDir);
-
-	sithCollision_UpdateThingCollision(pTargetThing, &offsetDir, diff * invMassA, 0x20000);
-	//rdVector_MultAcc3(&pTargetThing->position, &offsetDir, diff * invMassA);
-
-	rdVector_Neg3Acc(&offsetDir);
-	sithCollision_UpdateThingCollision(pConstraint->thingA, &offsetDir, diff * invMassB, 0);
-	//rdVector_MultAcc3(&pThing->position, &offsetDir, diff * invMassB);
-
-//	// how much of their relative force is affecting the constraint
-//	float velocityDot = rdVector_Dot3(&relativeVelocity, &offsetDir);
-//	
-//	const float biasFactor = 0.01f;
-//	float bias = -(biasFactor / deltaSeconds) * offset;
-//	
-//	float lambda = -(velocityDot + bias) / constraintMass;
-//	rdVector3 aImpulse;
-//	rdVector_Scale3(&aImpulse, &offsetDir, lambda);
-//	
-//	rdVector3 bImpulse;
-//	rdVector_Scale3(&bImpulse, &offsetDir, -lambda);
-//	
-//	sithPhysics_ThingApplyForce(pTargetThing, &aImpulse);
-//	sithPhysics_ThingApplyForce(pConstraint->constraintThing, &bImpulse);
-}
-
-#include "primitives/rdQuat.h"
-
-void decomposeSwingTwist(const rdMatrix34* relativeRotation, const rdVector3* twistAxis, rdMatrix34* swing, rdMatrix34* twist)
-{
-	rdVector3 p = { relativeRotation->rvec.z, relativeRotation->lvec.z, relativeRotation->uvec.z };
-	float projection = twistAxis->x * p.x + twistAxis->y * p.y + twistAxis->z * p.z;
-	rdVector3 twistPart = { twistAxis->x * projection, twistAxis->y * projection, twistAxis->z * projection };
-	twist->rvec.x = twistAxis->x * twistAxis->x + (1 - twistAxis->x * twistAxis->x) * cosf(projection);
-	twist->rvec.y = twistAxis->x * twistAxis->y * (1 - cosf(projection)) - twistAxis->z * sinf(projection);
-	twist->rvec.z = twistAxis->x * twistAxis->z * (1 - cosf(projection)) + twistAxis->y * sinf(projection);
-	
-	twist->lvec.x = twistAxis->y * twistAxis->x * (1 - cosf(projection)) + twistAxis->z * sinf(projection);
-	twist->lvec.y = twistAxis->y * twistAxis->y + (1 - twistAxis->y * twistAxis->y) * cosf(projection);
-	twist->lvec.z = twistAxis->y * twistAxis->z * (1 - cosf(projection)) - twistAxis->x * sinf(projection);
-	
-	twist->uvec.x = twistAxis->z * twistAxis->x * (1 - cosf(projection)) - twistAxis->y * sinf(projection);
-	twist->uvec.y = twistAxis->z * twistAxis->y * (1 - cosf(projection)) + twistAxis->x * sinf(projection);
-	twist->uvec.z = twistAxis->z * twistAxis->z + (1 - twistAxis->z * twistAxis->z) * cosf(projection);
-	
-	twist->scale.x = twist->scale.y = twist->scale.z = 0;
-
-	rdMatrix34 twistInverse;
-	rdMatrix_InvertOrtho34(&twistInverse, twist);
-	rdMatrix_Multiply34(swing, &twistInverse, relativeRotation);
-}
-
-void sithCollision_ConeConstrain(sithConstraint* pConstraint, sithThing* pTargetThing, float deltaSeconds)
-{	
-	rdMatrix34 parentRotTranspose, relativeRotation;
-	rdMatrix_InvertOrtho34(&parentRotTranspose, &pTargetThing->lookOrientation);
-	rdMatrix_Multiply34(&relativeRotation, &parentRotTranspose, &pConstraint->thingA->lookOrientation);
-	/*
-	rdVector3 twistAxis = pReference->lookOrientation.uvec; 
-	rdMatrix34 swing, twist;
-	decomposeSwingTwist(&relativeRotation, &twistAxis, &swing, &twist);
-
-	rdVector3 swingAxis;
-	float swingAngle;
-	rdMatrix_ExtractAxisAngle34(&swing, &swingAxis, &swingAngle);
-	float maxSwingAngle = 90.0f;
-	if (swingAngle > maxSwingAngle)
-	{
-		rdMatrix_BuildFromVectorAngle34(&swing, &swingAxis, maxSwingAngle);
-	}
-	
-	rdVector3 twistAxisComputed;
-	float twistAngle;
-	rdMatrix_ExtractAxisAngle34(&twist, &twistAxisComputed, &twistAngle);
-	float maxTwistAngle = 5.0f;
-	if (twistAngle > maxTwistAngle)
-	{
-		rdMatrix_BuildFromVectorAngle34(&twist, &twistAxisComputed, maxTwistAngle);
-	}
-	
-	rdMatrix34 finalRotation;
-	rdMatrix_Multiply34(&finalRotation, &swing, &twist);
-	*/
-
-	rdVector3 angles;
-	rdMatrix_ExtractAngles34(&relativeRotation, &angles);
-	
-	
-	rdVector3 constrainedAngles = angles;
-	if (fabsf(constrainedAngles.x) > pConstraint->coneParams.maxSwingAngle)
-		constrainedAngles.x = pConstraint->coneParams.maxSwingAngle * (constrainedAngles.x > 0 ? 1 : -1);
-
-	if (fabsf(constrainedAngles.y) > pConstraint->coneParams.maxTwistAngle)
-		constrainedAngles.y = pConstraint->coneParams.maxTwistAngle * (constrainedAngles.y > 0 ? 1 : -1);
-
-	if (fabsf(constrainedAngles.z) > pConstraint->coneParams.maxSwingAngle)
-		constrainedAngles.z = pConstraint->coneParams.maxSwingAngle * (constrainedAngles.z > 0 ? 1 : -1);
-
-	rdMatrix34 constrainedRotation;
-	rdMatrix_BuildRotate34(&constrainedRotation, &constrainedAngles);
-	rdMatrix_Multiply34(&pConstraint->thingA->lookOrientation, &pTargetThing->lookOrientation, &constrainedRotation);
-
-	//sithCollision_UpdateThingCollision(pConstraint->constraintThing, )
-	
-	//rdVector3 angleDiff;
-	//rdVector_Sub3(&angleDiff, &constrainedAngles, &angles);
-	//rdVector_MultAcc3(&pConstraint->constraintThing->physicsParams.angVel, &angleDiff, 1.0f / sithTime_deltaSeconds);
-
-	
-//	rdMatrix34 constrainedRotation;
-//	rdMatrix_BuildRotate34(&constrainedRotation, &angles);
-//	
-//	rdMatrix_Multiply34(&pThing->lookOrientation, &pReference->lookOrientation, &constrainedRotation);
-	
-//	sithCollision_sub_4E7670(pThing, &constrainedRotation);
-
-	//rdVector3 correctedAngularVelocity;
-	//rdMatrix_TransformVector34(&correctedAngularVelocity, parentAngularVelocity, &finalRotation);
-
-
-//	// the base pose local up vector is the cone axis
-//	// transform it to world space relative to the parent
-//	rdVector3* refAxis = &pReference->lookOrientation.uvec;//&(&pReferenceThing->lookOrientation.rvec)[axis];
-//
-//	rdVector3 coneAxis;
-//	rdVector_Neg3(&coneAxis, refAxis);
-//
-//	rdVector3 childForward;
-//	rdVector_Neg3(&childForward, &pThing->lookOrientation.uvec);
-//
-//	rdVector_Normalize3Acc(&coneAxis);
-//	rdVector_Normalize3Acc(&childForward);
-//
-//	float dotProd = rdVector_Dot3(&coneAxis, &childForward);
-//	float currentAngle = 90.0f - stdMath_ArcSin3(dotProd);
-//	float maxConeAngle = 35.0f;
-//	if (currentAngle > maxConeAngle)
-//	{
-//		float correctionAngle = currentAngle - maxConeAngle;
-//
-//		rdVector3 correctionAxis;
-//		rdVector_Cross3(&correctionAxis, &coneAxis ,&childForward);//, &coneAxis);
-//		rdVector_Normalize3Acc(&correctionAxis);
-//
-//	//	rdQuat q;
-//	//	rdQuat_BuildFromAxisAngle(&q, &correctionAxis, -correctionAngle);
-//	//
-//	//	rdVector3 pyr;
-//	//	rdQuat_ExtractAngles(&q, &pyr);
-//
-//		rdMatrix34 rotMat;
-//		//rdMatrix_BuildRotate34(&rotMat, &pyr);
-//		rdMatrix_BuildFromVectorAngle34(&rotMat, &correctionAxis, -correctionAngle);
-//
-//		//rdMatrix_PostMultiply34(&pThing->lookOrientation, &rotMat);
-//
-//	//	sithCollision_sub_4E7670(pThing, &rotMat);
-//
-//		rdVector3 pyr;
-//		rdMatrix_ExtractAngles34(&rotMat, &pyr);
-//		rdVector_MultAcc3(&pThing->physicsParams.angVel, &pyr, 1.0f / sithTime_deltaSeconds);
-//
-//		//if (pThing->constraintThing)
-//		//{
-//		//	rdVector3 tmp;
-//		//	rdVector_Sub3(&tmp, &pThing->constraintThing->position, &pThing->position);
-//		//	rdVector_Copy3(&pThing->constraintThing->lookOrientation.scale, &tmp);
-//		//	sithCollision_ConeConstrain(pThing->constraintThing, pThing);
-//		//
-//		//	rdVector3 a1a;
-//		//	rdVector_Sub3(&a1a, &pThing->constraintThing->lookOrientation.scale, &tmp);
-//		//	if (!rdVector_IsZero3(&a1a))
-//		//	{
-//		//		sithCollision_UpdateThingCollision(pThing->constraintThing, &a1a, rdVector_Normalize3Acc(&a1a), 0);
-//		//	}
-//		//	rdVector_Zero3(&pThing->constraintThing->lookOrientation.scale);
-//		//}
-//
-//		//if(pThing->constraintThing)
-//			//sithCollision_ConeConstrain(pThing->constraintThing, pThing);
-//	}
-}
-
-
-void sithCollision_ApplyLookConstraint(sithConstraint* pConstraint, sithThing* pTargetThing)
-{
-	rdMatrix34 refMat;
-	rdMatrix_Multiply34(&refMat, &pConstraint->lookParams.referenceMat, &pTargetThing->lookOrientation);
-
-	rdMatrix34* pMat = &pConstraint->thingA->lookOrientation;
-	rdVector_Sub3(&pMat->uvec, &pTargetThing->position, &pConstraint->thingA->position);
-	rdVector_Normalize3Acc(&pMat->uvec);
-
-	if (pConstraint->lookParams.flipUp)
-		rdVector_Neg3Acc(&pMat->uvec);
-
-	rdVector_Cross3(&pMat->rvec, &refMat.lvec, &pMat->uvec);
-	rdVector_Normalize3Acc(&pMat->rvec);
-
-	rdVector_Cross3(&pMat->lvec, &pMat->uvec, &pMat->rvec);
-	rdVector_Normalize3Acc(&pMat->lvec);
-}
-#endif
-
 
 void sithCollision_sub_4E7670(sithThing *thing, rdMatrix34 *orient)
 {
@@ -1015,8 +782,8 @@ float sithCollision_UpdateThingCollision(sithThing *pThing, rdVector3 *a2, float
     }
 
 #ifdef PUPPET_PHYSICS
-	if (pThing->type == SITH_THING_CORPSE)
-		flags |= SITH_RAYCAST_IGNORE_CORPSES; // todo: not sure if this is needed
+	//if (pThing->type == SITH_THING_CORPSE)
+		//flags |= SITH_RAYCAST_IGNORE_CORPSES; // todo: not sure if this is needed
 #endif
 	direction = *a2;
 

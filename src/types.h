@@ -3123,7 +3123,7 @@ typedef struct sithThingTrackParams
 enum SITH_CONSTRAINT_TYPE
 {
 	SITH_CONSTRAINT_DISTANCE,
-	SITH_CONSTRAINT_CONE,
+	SITH_CONSTRAINT_ANGLES,
 	SITH_CONSTRAINT_LOOK,
 };
 
@@ -3135,9 +3135,9 @@ typedef struct sithConstraint_DistanceParams
 
 typedef struct sithConstraint_ConeParams
 {
-	float maxSwingAngle;
-	float maxTwistAngle;
-} sithConstraint_ConeParams;
+	rdVector3 maxAngles;
+	rdVector3 minAngles;
+} sithConstraint_AngleParams;
 
 typedef struct sithConstraint_LookParams
 {
@@ -3153,7 +3153,7 @@ typedef struct sithConstraint
 	union
 	{
 		sithConstraint_DistanceParams distanceParams;
-		sithConstraint_ConeParams coneParams;
+		sithConstraint_AngleParams angleParams;
 		sithConstraint_LookParams lookParams;
 	};
 	struct sithConstraint* next;
@@ -3301,6 +3301,8 @@ typedef struct sithPuppetJoint
 	sithThing  thing;         // physicalized thing representation
 	rdVector3  nextPosAcc;    // accumulated constraint target
 	float      nextPosWeight; // weight of accumulated position for normalization
+
+	rdMatrix34 localMat;
 } sithPuppetJoint;
 
 typedef struct sithPuppetPhysics

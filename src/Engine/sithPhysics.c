@@ -188,6 +188,8 @@ void sithPhysics_ThingTick(sithThing *pThing, float deltaSecs)
     {
         sithPhysics_ThingPhysUnderwater(pThing, deltaSecs);
     }
+	//else if(pThing->type == SITH_THING_CORPSE)
+	//	sithPhysics_ThingPhysPlayer(pThing, deltaSecs);
 #ifdef QOL_IMPROVEMENTS
     else if ( pThing->type == SITH_THING_PLAYER && (jkPlayer_bUseOldPlayerPhysics || sithNet_isMulti))
     {
