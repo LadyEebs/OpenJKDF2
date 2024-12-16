@@ -237,12 +237,14 @@ void sithPhysics_ThingApplyForce(sithThing *pThing, rdVector3 *forceVec)
     }
 }
 
-void sithPhysics_ThingSetLook(sithThing *pThing, const rdVector3 *look, float a3)
+void sithPhysics_ThingSetLook(sithThing *pThing, const rdVector3 *lookat, float a3)
 {
     double v4; // st7
     double v20; // st7
 
-    v4 = stdMath_ClipPrecision(1.0 - rdVector_Dot3(&pThing->lookOrientation.uvec, look));
+	// Added
+	rdVector3 look = *lookat;
+    v4 = stdMath_ClipPrecision(1.0 - rdVector_Dot3(&pThing->lookOrientation.uvec, &look));
     if ( v4 == 0.0 )
     {
         pThing->physicsParams.physflags |= SITH_PF_ATTACHED;
@@ -250,9 +252,9 @@ void sithPhysics_ThingSetLook(sithThing *pThing, const rdVector3 *look, float a3
     else if ( a3 == 0.0 )
     {
         // TODO: rdMatrix? Or are they just manually doing basis vectors?
-        pThing->lookOrientation.uvec.x = look->x;
-        pThing->lookOrientation.uvec.y = look->y;
-        pThing->lookOrientation.uvec.z = look->z;
+        pThing->lookOrientation.uvec.x = look.x;
+        pThing->lookOrientation.uvec.y = look.y;
+        pThing->lookOrientation.uvec.z = look.z;
         pThing->lookOrientation.rvec.x = (pThing->lookOrientation.lvec.y * pThing->lookOrientation.uvec.z) - (pThing->lookOrientation.lvec.z * pThing->lookOrientation.uvec.y);
         pThing->lookOrientation.rvec.y = (pThing->lookOrientation.lvec.z * pThing->lookOrientation.uvec.x) - (pThing->lookOrientation.lvec.x * pThing->lookOrientation.uvec.z);
         pThing->lookOrientation.rvec.z = (pThing->lookOrientation.lvec.x * pThing->lookOrientation.uvec.y) - (pThing->lookOrientation.lvec.y * pThing->lookOrientation.uvec.x);
@@ -268,9 +270,9 @@ void sithPhysics_ThingSetLook(sithThing *pThing, const rdVector3 *look, float a3
     {
         // TODO: rdMatrix? Or are they just manually doing basis vectors?
         v20 = a3 * 10.0;
-        pThing->lookOrientation.uvec.x = look->x * v20 + pThing->lookOrientation.uvec.x;
-        pThing->lookOrientation.uvec.y = look->z * v20 + pThing->lookOrientation.uvec.y;
-        pThing->lookOrientation.uvec.z = look->y * v20 + pThing->lookOrientation.uvec.z;
+        pThing->lookOrientation.uvec.x = look.x * v20 + pThing->lookOrientation.uvec.x;
+        pThing->lookOrientation.uvec.y = look.z * v20 + pThing->lookOrientation.uvec.y;
+        pThing->lookOrientation.uvec.z = look.y * v20 + pThing->lookOrientation.uvec.z;
         rdVector_Normalize3Acc(&pThing->lookOrientation.uvec);
         pThing->lookOrientation.lvec.x = (pThing->lookOrientation.rvec.z * pThing->lookOrientation.uvec.y) - (pThing->lookOrientation.rvec.y * pThing->lookOrientation.uvec.z);
         pThing->lookOrientation.lvec.y = (pThing->lookOrientation.rvec.x * pThing->lookOrientation.uvec.z) - pThing->lookOrientation.rvec.z * pThing->lookOrientation.uvec.x;
@@ -280,6 +282,12 @@ void sithPhysics_ThingSetLook(sithThing *pThing, const rdVector3 *look, float a3
         pThing->lookOrientation.rvec.y = (pThing->lookOrientation.lvec.z * pThing->lookOrientation.uvec.x) - (pThing->lookOrientation.lvec.x * pThing->lookOrientation.uvec.z);
         pThing->lookOrientation.rvec.z = (pThing->lookOrientation.lvec.x * pThing->lookOrientation.uvec.y) - (pThing->lookOrientation.lvec.y * pThing->lookOrientation.uvec.x);
     }
+
+#ifdef PUPPET_PHYSICS
+	// hack, rotate bodies
+	//if (pThing->type == SITH_THING_CORPSE && !rdVector_IsZero3(&pThing->actorParams.eyePYR))
+		//rdMatrix_PreRotate34(&pThing->lookOrientation, &pThing->actorParams.eyePYR);
+#endif
 }
 
 void sithPhysics_ApplyDrag(rdVector3 *vec, float drag, float mag, float deltaSecs)

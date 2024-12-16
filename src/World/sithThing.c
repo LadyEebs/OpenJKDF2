@@ -303,14 +303,14 @@ void sithThing_TickAll(float deltaSeconds, int deltaMs)
             }
             sithThing_TickPhysics(pThingIter, deltaSeconds);
 
-#ifdef PUPPET_PHYSICS
-			//sithConstraint_SolveConstraints(pThingIter, deltaSeconds);
-#endif
-
 #ifdef RAGDOLLS
 			if (pThingIter->moveType != SITH_MT_RAGDOLL || !jkPlayer_ragdolls)
 #endif
             sithPuppet_Tick(pThingIter, deltaSeconds);
+
+#ifdef PUPPET_PHYSICS
+			//sithConstraint_SolveConstraints(pThingIter, deltaSeconds);
+#endif
 
             continue;
         }
@@ -399,6 +399,9 @@ void sithThing_TickPhysics(sithThing *pThing, float deltaSecs)
     
     if (rdVector_IsZero3(&pThing->field_268))
     {
+		//if ( pThing->moveType == SITH_MT_PHYSICS)
+		//	sithConstraint_SolveConstraints(pThing, deltaSecs);
+
         if ( pThing->moveType == SITH_MT_PHYSICS && (pThing->attach_flags & (SITH_ATTACH_THINGSURFACE|SITH_ATTACH_THING)) != 0 && pThing->attachedThing->moveType == SITH_MT_PATH )
             sithPhysics_FindFloor(pThing, 0);
     }
