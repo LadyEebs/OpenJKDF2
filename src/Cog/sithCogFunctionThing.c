@@ -2210,7 +2210,10 @@ void sithCogFunctionThing_IsCrouching(sithCog *ctx)
 {
     sithThing* pThing = sithCogExec_PopThing(ctx);
     if ( !pThing || pThing->moveType != SITH_MT_PHYSICS )
+	{
         sithCogExec_PushInt(ctx, -1);
+		return;
+	}
 
     if (pThing->physicsParams.physflags & SITH_PF_CROUCHING)
         sithCogExec_PushInt(ctx, 1);
