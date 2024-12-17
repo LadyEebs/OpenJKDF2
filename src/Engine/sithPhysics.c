@@ -504,7 +504,7 @@ void sithPhysics_ThingPhysGeneral(sithThing *pThing, float deltaSeconds)
         rdMath_ClampVector(&pThing->physicsParams.angVel, 0.00001);
     }
 #ifdef PUPPET_PHYSICS
-	else //if (pThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+	else if (pThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
 	{
 		if (!rdVector_IsZero3(&pThing->physicsParams.angVel))
 		{
@@ -650,11 +650,11 @@ void sithPhysics_ThingPhysPlayer(sithThing *player, float deltaSeconds)
         rdMath_ClampVector(&player->physicsParams.angVel, 0.00001);
     }
 #ifdef PUPPET_PHYSICS
-	else// if (player->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+	else if (player->physicsParams.physflags & SITH_PF_ANGIMPULSE)
 	{
 		if (!rdVector_IsZero3(&player->physicsParams.angVel))
 		{
-			//sithPhysics_ApplyDrag(&player->physicsParams.angVel, player->physicsParams.airDrag - -0.2, 0.0, deltaSeconds);
+			sithPhysics_ApplyDrag(&player->physicsParams.angVel, player->physicsParams.airDrag - -0.2, 0.0, deltaSeconds);
 		}
 	}
 #endif
@@ -792,7 +792,7 @@ void sithPhysics_ThingPhysUnderwater(sithThing *pThing, float deltaSeconds)
         rdVector_ClipPrecision3(&pThing->physicsParams.angVel);
     }
 #ifdef PUPPET_PHYSICS
-	else //if(pThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+	else if(pThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
 	{
 		if (!rdVector_IsZero3(&pThing->physicsParams.angVel))
 		{
@@ -950,7 +950,7 @@ void sithPhysics_ThingPhysAttached(sithThing *pThing, float deltaSeconds)
         rdVector_ClipPrecision3(&pThing->physicsParams.angVel);
     }
 #ifdef PUPPET_PHYSICS
-	else// if (pThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+	else if (pThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
 	{
 		if (!rdVector_IsZero3(&pThing->physicsParams.angVel))
 		{
@@ -1090,7 +1090,7 @@ void sithPhysics_ThingPhysAttached(sithThing *pThing, float deltaSeconds)
                 rdVector_ClipPrecision3(&pThing->physicsParams.angVel);
             }
 #ifdef PUPPET_PHYSICS
-			else //if (pThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+			else if (pThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
 			{
 				if (!rdVector_IsZero3(&pThing->physicsParams.angVel))
 				{

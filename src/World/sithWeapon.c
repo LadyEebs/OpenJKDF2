@@ -167,7 +167,7 @@ void sithWeapon_sub_4D35E0(sithThing *weapon)
                     rdVector_Scale3(&tmp2, &weaponPos_, force);
                     sithPhysics_ThingApplyForce(damageReceiver, &tmp2);
 #ifdef PUPPET_PHYSICS
-					//if (damageReceiver->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+					if (damageReceiver->physicsParams.physflags & SITH_PF_ANGIMPULSE)
 						sithPhysics_ThingApplyRotForce(damageReceiver, &searchRes->hitNorm, rdVector_Len3(&tmp2));
 #endif
                 }
@@ -376,7 +376,7 @@ void sithWeapon_sub_4D3920(sithThing *weapon)
                     tmp2.z = force * lookOrient.z;
                     sithPhysics_ThingApplyForce(receiveThing, &tmp2);
 					#ifdef PUPPET_PHYSICS
-					//if (!(receiveThing->physicsParams.physflags & SITH_PF_ANGTHRUST))
+					if (receiveThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
 						sithPhysics_ThingApplyRotForce(receiveThing, &searchRes->hitNorm, rdVector_Len3(&tmp2));
 					#endif
                 }
@@ -800,7 +800,7 @@ int sithWeapon_Collide(sithThing *physicsThing, sithThing *collidedThing, sithCo
 				rdVector3 tmp2;
 				rdVector_Scale3(&tmp2, &physicsThing->lookOrientation.lvec, force);
 				sithPhysics_ThingApplyForce(collidedThing, &tmp2);
-				//if (collidedThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+				if (collidedThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
 					sithPhysics_ThingApplyRotForce(collidedThing, &physicsThing->lookOrientation.lvec, force);
 			}
 #endif
@@ -869,7 +869,7 @@ int sithWeapon_Collide(sithThing *physicsThing, sithThing *collidedThing, sithCo
 				rdVector3 tmp2;
 				rdVector_Scale3(&tmp2, &physicsThing->lookOrientation.lvec, force);
 				sithPhysics_ThingApplyForce(collidedThing, &tmp2);
-				//if(collidedThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+				if(collidedThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
 					sithPhysics_ThingApplyRotForce(collidedThing, &a4->hitNorm, rdVector_Len3(&tmp2));
 			}
 #endif

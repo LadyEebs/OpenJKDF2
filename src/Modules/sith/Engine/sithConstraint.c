@@ -132,7 +132,7 @@ static void sithConstraint_SolveDistanceConstraint(sithConstraint* pConstraint, 
 	float velocityDot = rdVector_Dot3(&relativeVelocity, &offsetDir);
 	velocityDot = stdMath_ClipPrecision(velocityDot);
 
-	const float biasFactor = 0.1f;
+	const float biasFactor = 0.03f;
 	float bias = -(biasFactor / deltaSeconds) * offset;
 	bias = stdMath_ClipPrecision(bias);
 
@@ -364,7 +364,7 @@ static void sithConstraint_SolveAngleConstraint(sithConstraint* pConstraint, flo
 	angleError.y = stdMath_NormalizeDeltaAngle(projectedAngles.y, relativeAngles.y);
 	angleError.z = stdMath_NormalizeDeltaAngle(projectedAngles.z, relativeAngles.z);
 
-	float bias = 0.2f;
+	float bias = 0.05f;
 	rdVector3 biasTerm;
 	rdVector_Scale3(&biasTerm, &angleError, bias / deltaSeconds);
 

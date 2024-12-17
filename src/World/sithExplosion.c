@@ -104,7 +104,7 @@ void sithExplosion_UpdateForce(sithThing *explosion)
                     {
                         rdVector_Scale3(&a2, &i->hitNorm, -(a1a * force));
                         sithPhysics_ThingApplyForce(v4, &a2);
-						//if(v4->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+						if(v4->physicsParams.physflags & SITH_PF_ANGIMPULSE)
 							sithPhysics_ThingApplyRotForce(v4, &i->hitNorm, -(a1a * force));
 
                     }

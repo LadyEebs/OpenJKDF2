@@ -1426,78 +1426,12 @@ int sithCollision_DefaultHitHandler(sithThing *thing, sithSurface *surface, sith
 
 #ifdef PUPPET_PHYSICS
 	// todo: should this be here? linear effects for surface collision aren't...
-	if (thing->type != SITH_THING_PLAYER && thing->type != SITH_THING_ACTOR && thing->physicsParams.mass != 0.0)
+	if (a1a >= 0.0f && thing->physicsParams.physflags & SITH_PF_ANGIMPULSE && thing->physicsParams.mass != 0.0)
 	{
-		rdVector3 relativeVelocity = thing->physicsParams.vel;
-
-		rdVector3 angularVelocityCrossR;
-		rdVector_Cross3(&angularVelocityCrossR, &a3->hitNorm, &thing->physicsParams.angVel);
-		rdVector_Add3Acc(&relativeVelocity, &angularVelocityCrossR);
-		if (a1a >= 0.0f)
-		{
-			float restitution = 0.8f;
-			float j = (1.0f + restitution) * a1a * thing->physicsParams.mass;
-			sithPhysics_ThingApplyRotForce(thing, &a3->hitNorm, j);
-		}
-
-		//rdVector3 axis;
-		//rdVector_Cross3(&axis, &thing->lookOrientation.lvec, &a3->hitNorm);
-		//rdVector_Normalize3Acc(&axis);
-		//
-		//float angle = 90.0f - stdMath_ArcSin3(rdVector_Dot3(&thing->lookOrientation.lvec, &a3->hitNorm));
-		//float maxAngle = 40.0f;
-		//if (angle > maxAngle)
-		//{
-		//	float correctionAngle = (angle - maxAngle) / (180.0f / M_PI);
-		//	float cosine = cosf(correctionAngle / (180.0f / M_PI));
-		//	float sine = sinf(correctionAngle); 
-		//	
-		//	rdMatrix34 rotationMatrix;
-		//	rotationMatrix.rvec.x = cosine + (1 - cosine) * axis.x * axis.x;
-		//	rotationMatrix.rvec.y = (1 - cosine) * axis.x * axis.y - sine * axis.z;
-		//	rotationMatrix.rvec.z = (1 - cosine) * axis.x * axis.z + sine * axis.y;
-		//	
-		//	rotationMatrix.lvec.x = (1 - cosine) * axis.y * axis.x + sine * axis.z;
-		//	rotationMatrix.lvec.y = cosine + (1 - cosine) * axis.y * axis.y;
-		//	rotationMatrix.lvec.z = (1 - cosine) * axis.y * axis.z - sine * axis.x;
-		//	
-		//	rotationMatrix.uvec.x = (1 - cosine) * axis.z * axis.x - sine * axis.y;
-		//	rotationMatrix.uvec.y = (1 - cosine) * axis.z * axis.y + sine * axis.x;
-		//	rotationMatrix.uvec.z = cosine + (1 - cosine) * axis.z * axis.z; 
-		//	
-		//	rdVector_Normalize3Acc(&rotationMatrix.lvec);
-		//	rdVector_Normalize3Acc(&rotationMatrix.rvec);
-		//	rdVector_Normalize3Acc(&rotationMatrix.uvec);
-		//
-		//	rdVector_Zero3(&rotationMatrix.scale);
-		//
-		//	//rdMatrix_PostMultiply34(&thing->lookOrientation, &rotationMatrix);
-		//}
+		float restitution = 0.8f;
+		float j = (1.0f + restitution) * a1a * thing->physicsParams.mass;
+		sithPhysics_ThingApplyRotForce(thing, &a3->hitNorm, j);
 	}
-
-	//if(thing->physicsParams.physflags & SITH_PF_ANGTHRUST)
-	//{
-	//	rdVector3 relativeVelocity = thing->physicsParams.vel;
-	//
-	//	rdVector3 angularVelocityCrossR;
-	//	rdVector_Cross3(&angularVelocityCrossR, &a3->hitNorm, &thing->physicsParams.angVel);
-	//	rdVector_Add3Acc(&relativeVelocity, &relativeVelocity, &angularVelocityCrossR);
-	//
-	//	float relativeVelocityDotNormal = rdVector_Dot3(&relativeVelocity, &surface->surfaceInfo.face.normal);
-	//	if (relativeVelocityDotNormal <= 0.0f)
-	//	{
-	//		float restitution = 0.5f;
-	//		float j = -(1.0f + restitution) * relativeVelocityDotNormal * thing->physicsParams.mass;
-	//	
-	//		rdVector3 impulse;
-	//		rdVector_Scale3(&impulse, &surface->surfaceInfo.face.normal, j);
-	//	
-	//		rdVector3 angularImpulse;
-	//		rdVector_Cross3(&angularImpulse, &impulse, &a3->hitNorm);
-	//		rdVector_Scale3(&angularImpulse, &angularImpulse, 1.0f / thing->physicsParams.mass);
-	//		rdVector_Add3Acc(&thing->physicsParams.angVel, &angularImpulse);
-	//	}
-	//}
 #endif
 
     if ( !sithCollision_CollideHurt(thing, &a3->hitNorm, a3->distance, surface->surfaceFlags & SITH_SURFACE_80) )
@@ -1615,28 +1549,20 @@ int sithCollision_DebrisDebrisCollide(sithThing *thing1, sithThing *thing2, sith
 			sithPhysics_ThingApplyForce(v5, &forceVec);
 
 #ifdef PUPPET_PHYSICS
-		rdVector3 contactNormal = a2;
-		//rdVector_Sub3(&contactNormal, &v5->position, &v4->position);
-		//rdVector_Normalize3Acc(&contactNormal);
-
-		rdVector3 relativeVelocity;
-		rdVector_Sub3(&relativeVelocity, &v5->physicsParams.vel, &v4->physicsParams.vel);
-		
-		float velAlongNormal = -v6;//rdVector_Dot3(&relativeVelocity, &contactNormal);
-		if (velAlongNormal <= 0)
+		if(v4->physicsParams.physflags & SITH_PF_ANGIMPULSE || v5->physicsParams.physflags & SITH_PF_ANGIMPULSE)
 		{
+			rdVector3 contactNormal = a2;
+			
 			float invMassA = 1.0f / v4->physicsParams.mass;
 			float invMassB = 1.0f / v5->physicsParams.mass;
 			float restitution = 0.5f;
-			float impulseMagnitude = -(1.0f + restitution) * velAlongNormal;
+			float impulseMagnitude = (1.0f + restitution) * v6;
 			impulseMagnitude /= invMassA + invMassB;
 
-			if(v4->type != SITH_THING_PLAYER && v4->type != SITH_THING_ACTOR)
+			if (v4->physicsParams.physflags & SITH_PF_ANGIMPULSE)
 				sithPhysics_ThingApplyRotForce(v4, &contactNormal, impulseMagnitude);
-
 			rdVector_Neg3Acc(&contactNormal);
-
-			if (v5->type != SITH_THING_PLAYER && v5->type != SITH_THING_ACTOR)
+			if (v5->physicsParams.physflags & SITH_PF_ANGIMPULSE)
 				sithPhysics_ThingApplyRotForce(v5, &contactNormal, impulseMagnitude);
 		}
 		
