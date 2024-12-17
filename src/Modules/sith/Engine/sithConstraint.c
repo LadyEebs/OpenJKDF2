@@ -132,7 +132,7 @@ static void sithConstraint_SolveDistanceConstraint(sithConstraint* pConstraint, 
 	float velocityDot = rdVector_Dot3(&relativeVelocity, &offsetDir);
 	velocityDot = stdMath_ClipPrecision(velocityDot);
 
-	const float biasFactor = 0.05f;
+	const float biasFactor = 0.1f;
 	float bias = -(biasFactor / deltaSeconds) * offset;
 	bias = stdMath_ClipPrecision(bias);
 
@@ -364,7 +364,7 @@ static void sithConstraint_SolveAngleConstraint(sithConstraint* pConstraint, flo
 	angleError.y = stdMath_NormalizeDeltaAngle(projectedAngles.y, relativeAngles.y);
 	angleError.z = stdMath_NormalizeDeltaAngle(projectedAngles.z, relativeAngles.z);
 
-	float bias = 0.03f;
+	float bias = 0.2f;
 	rdVector3 biasTerm;
 	rdVector_Scale3(&biasTerm, &angleError, bias / deltaSeconds);
 
@@ -375,6 +375,20 @@ static void sithConstraint_SolveAngleConstraint(sithConstraint* pConstraint, flo
 
 	rdVector_NormalizeAngleAcute3(&angularCorrection);
 
+	// Calculate the relative angular velocity
+	rdVector3 relativeAngVel;
+	relativeAngVel.x = stdMath_NormalizeDeltaAngle(pConstraint->targetThing->physicsParams.angVel.x, pConstraint->constrainedThing->physicsParams.angVel.x);
+	relativeAngVel.y = stdMath_NormalizeDeltaAngle(pConstraint->targetThing->physicsParams.angVel.y, pConstraint->constrainedThing->physicsParams.angVel.y);
+	relativeAngVel.z = stdMath_NormalizeDeltaAngle(pConstraint->targetThing->physicsParams.angVel.z, pConstraint->constrainedThing->physicsParams.angVel.z);
+	
+	float dampingFactor = 0.3;
+	rdVector3 dampingCorrection;
+	dampingCorrection.x = relativeAngVel.x * dampingFactor;
+	dampingCorrection.y = relativeAngVel.y * dampingFactor;
+	dampingCorrection.z = relativeAngVel.z * dampingFactor;
+	//rdVector_Sub3Acc(&angularCorrection, &dampingCorrection);
+
+
 	rdVector3 correctionParent;
 	rdVector_Scale3(&correctionParent, &angularCorrection, invMassA / constraintMass);
 	rdVector_Add3Acc(&pConstraint->targetThing->physicsParams.angVel, &correctionParent);
@@ -382,12 +396,6 @@ static void sithConstraint_SolveAngleConstraint(sithConstraint* pConstraint, flo
 	rdVector3 correctionChild;
 	rdVector_Scale3(&correctionChild, &angularCorrection, invMassB / constraintMass);
 	rdVector_Sub3Acc(&pConstraint->constrainedThing->physicsParams.angVel, &correctionChild);
-
-	// Calculate the relative angular velocity
-	//rdVector3 relativeAngVel;
-	//relativeAngVel.x = stdMath_NormalizeDeltaAngle(pConstraint->targetThing->physicsParams.angVel.x, pConstraint->constrainedThing->physicsParams.angVel.x);
-	//relativeAngVel.y = stdMath_NormalizeDeltaAngle(pConstraint->targetThing->physicsParams.angVel.y, pConstraint->constrainedThing->physicsParams.angVel.y);
-	//relativeAngVel.z = stdMath_NormalizeDeltaAngle(pConstraint->targetThing->physicsParams.angVel.z, pConstraint->constrainedThing->physicsParams.angVel.z);
 
 	// Apply the relative angular velocity correction to conserve angular momentum
 	//rdVector3 velCorrection;
