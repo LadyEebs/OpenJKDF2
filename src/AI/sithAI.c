@@ -826,31 +826,21 @@ LABEL_22:
 
 void sithAI_SetLookFrame(sithActor *actor, rdVector3 *lookPos)
 {
-    sithThingActorParams *v5; // edi
-    double v6; // st7
-    rdVector3 a2a; // [esp+Ch] [ebp-Ch] BYREF
-
     rdVector_Sub3(&actor->lookVector, lookPos, &actor->thing->position);
-    v5 = &actor->thing->actorParams;
+	sithThingActorParams* actorParams = &actor->thing->actorParams;
     if ( rdVector_Normalize3Acc(&actor->lookVector) != 0.0 )
     {
-        if ( (v5->typeflags & SITH_AF_CAN_ROTATE_HEAD) != 0 )
+        if ( (actorParams->typeflags & SITH_AF_CAN_ROTATE_HEAD) != 0 )
         {
-            v6 = stdMath_ArcSin3(actor->lookVector.z);
-            if ( v6 < v5->minHeadPitch )
+            float pitch = stdMath_ArcSin3(actor->lookVector.z);
+			pitch = stdMath_Clamp(pitch, actorParams->minHeadPitch, actorParams->maxHeadPitch);
+            if (pitch != actorParams->eyePYR.x )
             {
-                v6 = v5->minHeadPitch;
-            }
-            else if ( v6 > v5->maxHeadPitch )
-            {
-                v6 = v5->maxHeadPitch;
-            }
-            if ( v6 != v5->eyePYR.x )
-            {
-                a2a.x = v6;
-                a2a.y = v5->eyePYR.y;
-                a2a.z = v5->eyePYR.z;
-                sithActor_MoveJointsForEyePYR(actor->thing, &a2a);
+				rdVector3 eyePYR;
+				eyePYR.x = pitch;
+				eyePYR.y = actorParams->eyePYR.y;
+				eyePYR.z = actorParams->eyePYR.z;
+                sithActor_MoveJointsForEyePYR(actor->thing, &eyePYR);
             }
         }
         actor->lookVector.z = 0.0;
