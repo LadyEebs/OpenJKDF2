@@ -3683,11 +3683,11 @@ void sithPuppet_ApplyIterativeCorrections(sithSector* pSector, sithThing* pThing
 
 		//sithPhysics_ApplyDrag(&localAngles, 1.0f, 0.0f, deltaSeconds);
 
-		rdVector_Scale3Acc(&localAngles, 2.0f);
+		//rdVector_Scale3Acc(&localAngles, 2.0f);
 
 		rdVector_Add3Acc(&pJoint->thing.physicsParams.angVel, &localAngles);
 
-		sithPhysics_ThingTick(&pJoint->thing, deltaSeconds);
+		//sithPhysics_ThingTick(&pJoint->thing, deltaSeconds);
 		//pJoint->thing.lookOrientation.rvec = right;
 		//pJoint->thing.lookOrientation.uvec = up;
 		//pJoint->thing.lookOrientation.lvec = front;
