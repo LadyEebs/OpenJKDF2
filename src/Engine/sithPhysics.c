@@ -244,6 +244,11 @@ void sithPhysics_ThingSetLook(sithThing *pThing, const rdVector3 *lookat, float 
 
 	// Added
 	rdVector3 look = *lookat;
+#ifdef PUPPET_PHYSICS
+	// hack, rotate bodies
+	if (pThing->type == SITH_THING_CORPSE && !rdVector_IsZero3(&pThing->actorParams.eyePYR))
+		rdVector_Rotate3Acc(&look, &pThing->actorParams.eyePYR);
+#endif
     v4 = stdMath_ClipPrecision(1.0 - rdVector_Dot3(&pThing->lookOrientation.uvec, &look));
     if ( v4 == 0.0 )
     {

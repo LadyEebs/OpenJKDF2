@@ -3130,6 +3130,7 @@ enum SITH_CONSTRAINT_TYPE
 	SITH_CONSTRAINT_CONE,
 	SITH_CONSTRAINT_ANGLES,
 	SITH_CONSTRAINT_LOOK,
+	SITH_CONSTRAINT_TWIST,
 };
 
 typedef struct sithConstraint_DistanceParams
@@ -3158,6 +3159,12 @@ typedef struct sithConstraint_LookParams
 	int flipUp;
 } sithConstraint_LookParams;
 
+typedef struct sithConstraint_TwistParams
+{
+	rdVector3 twistAxis;
+	float maxTwistAngle;
+} sithConstraint_TwistParams;
+
 typedef struct sithConstraint
 {
 	int type;
@@ -3169,6 +3176,7 @@ typedef struct sithConstraint
 		sithConstraint_ConeParams coneParams;
 		sithConstraint_AngleParams angleParams;
 		sithConstraint_LookParams lookParams;
+		sithConstraint_TwistParams twistParams;
 	};
 	struct sithConstraint* next;
 } sithConstraint;

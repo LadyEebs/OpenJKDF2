@@ -10,10 +10,6 @@ void sithConstraint_AddDistanceConstraint(sithThing* pThing, sithThing* pConstra
 void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pAxis, float angle);
 void sithConstraint_AddAngleConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pMinAngles, const rdVector3* pMaxAngles);
 void sithConstraint_AddLookConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdMatrix34* pRefMat, int flipUp);
-
-void sithConstraint_SolveDistanceConstraint(sithConstraint* pConstraint, float deltaSeconds);
-void sithConstraint_SolveConeConstraint(sithConstraint* pConstraint, float deltaSeconds);
-void sithConstraint_SolveAngleConstrain(sithConstraint* pConstraint, float deltaSeconds);
-void sithConstraint_SolveLookConstraint(sithConstraint* pConstraint, float deltaSeconds);
+void sithConstraint_AddTwistConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pAxis, float angle);
 
 #endif
