@@ -157,7 +157,7 @@ void sithWeapon_sub_4D35E0(sithThing *weapon)
             if ( weapon->weaponParams.force != 0.0 )
             {
                 damageReceiver = searchRes->receiver;
-                if ( damageReceiver->moveType == SITH_MT_PHYSICS && MOTS_ONLY_FLAG(damageReceiver->type != SITH_THING_COG))
+                if ( damageReceiver->moveType == SITH_MT_PHYSICS && !MOTS_ONLY_FLAG(damageReceiver->type == SITH_THING_COG))
                 {
 					float force = weapon->weaponParams.force;
 #ifdef REGIONAL_DAMAGE
@@ -166,6 +166,10 @@ void sithWeapon_sub_4D35E0(sithThing *weapon)
 #endif
                     rdVector_Scale3(&tmp2, &weaponPos_, force);
                     sithPhysics_ThingApplyForce(damageReceiver, &tmp2);
+#ifdef PUPPET_PHYSICS
+					//if (damageReceiver->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+						sithPhysics_ThingApplyRotForce(damageReceiver, &searchRes->hitNorm, rdVector_Len3(&tmp2));
+#endif
                 }
 			#ifdef RAGDOLLS
 				else if (weapon->weaponParams.force != 0.0 && damageReceiver->moveType == SITH_MT_RAGDOLL && damageReceiver->rdthing.pRagdoll && damageReceiver->physicsParams.mass != 0.0)
@@ -371,6 +375,10 @@ void sithWeapon_sub_4D3920(sithThing *weapon)
                     tmp2.y = force * lookOrient.y;
                     tmp2.z = force * lookOrient.z;
                     sithPhysics_ThingApplyForce(receiveThing, &tmp2);
+					#ifdef PUPPET_PHYSICS
+					//if (!(receiveThing->physicsParams.physflags & SITH_PF_ANGTHRUST))
+						sithPhysics_ThingApplyRotForce(receiveThing, &searchRes->hitNorm, rdVector_Len3(&tmp2));
+					#endif
                 }
 #ifdef RAGDOLLS
 				else if (receiveThing->moveType == SITH_MT_RAGDOLL && receiveThing->rdthing.pRagdoll && receiveThing->physicsParams.mass != 0.0)
@@ -786,12 +794,14 @@ int sithWeapon_Collide(sithThing *physicsThing, sithThing *collidedThing, sithCo
 #endif
             sithThing_Damage(collidedThing, physicsThing, physicsThing->weaponParams.damage, physicsThing->weaponParams.damageClass, joint);
 #ifdef PUPPET_PHYSICS
-			if (collidedThing->moveType == SITH_MT_PHYSICS && collidedThing->type == SITH_THING_CORPSE)
+			if (collidedThing->moveType == SITH_MT_PHYSICS && collidedThing->type != SITH_THING_PLAYER)
 			{
 				float force = physicsThing->weaponParams.damage;
 				rdVector3 tmp2;
-				rdVector_Scale3(&tmp2, &physicsThing->physicsParams.vel, force);
+				rdVector_Scale3(&tmp2, &physicsThing->lookOrientation.lvec, force);
 				sithPhysics_ThingApplyForce(collidedThing, &tmp2);
+				//if (collidedThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+					sithPhysics_ThingApplyRotForce(collidedThing, &physicsThing->lookOrientation.lvec, force);
 			}
 #endif
 		}
@@ -859,6 +869,8 @@ int sithWeapon_Collide(sithThing *physicsThing, sithThing *collidedThing, sithCo
 				rdVector3 tmp2;
 				rdVector_Scale3(&tmp2, &physicsThing->lookOrientation.lvec, force);
 				sithPhysics_ThingApplyForce(collidedThing, &tmp2);
+				//if(collidedThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+					sithPhysics_ThingApplyRotForce(collidedThing, &a4->hitNorm, rdVector_Len3(&tmp2));
 			}
 #endif
         }

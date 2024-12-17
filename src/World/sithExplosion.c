@@ -104,6 +104,9 @@ void sithExplosion_UpdateForce(sithThing *explosion)
                     {
                         rdVector_Scale3(&a2, &i->hitNorm, -(a1a * force));
                         sithPhysics_ThingApplyForce(v4, &a2);
+						//if(v4->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+							sithPhysics_ThingApplyRotForce(v4, &i->hitNorm, -(a1a * force));
+
                     }
 #ifdef RAGDOLLS
 					else if ( force != 0.0 && v4->moveType == SITH_MT_RAGDOLL && v4->rdthing.pRagdoll && v4->physicsParams.mass != 0)

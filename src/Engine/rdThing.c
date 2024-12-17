@@ -99,10 +99,15 @@ void rdThing_FreeEntry(rdThing *thing)
 			rdroid_pHS->free(thing->paHierarchyNodeMatricesPrev);
 			thing->paHierarchyNodeMatricesPrev = 0;
 		}
-		if(thing->paHierarchyNodeVelocities)
+		if (thing->paHierarchyNodeVelocities)
 		{
 			rdroid_pHS->free(thing->paHierarchyNodeVelocities);
 			thing->paHierarchyNodeVelocities = 0;
+		}
+		if (thing->paHierarchyNodeAngularVelocities)
+		{
+			rdroid_pHS->free(thing->paHierarchyNodeAngularVelocities);
+			thing->paHierarchyNodeAngularVelocities = 0;
 		}
 #endif
 #ifdef RAGDOLLS
@@ -169,6 +174,12 @@ int rdThing_SetModel3(rdThing *thing, rdModel3 *model)
 	if (!thing->paHierarchyNodeVelocities)
 		return 0;
 	_memset(thing->paHierarchyNodeVelocities, 0, sizeof(rdVector3) * model->numHierarchyNodes);
+
+	thing->paHierarchyNodeAngularVelocities = (rdVector3*)rdroid_pHS->alloc(sizeof(rdVector3) * model->numHierarchyNodes);
+	if (!thing->paHierarchyNodeAngularVelocities)
+		return 0;
+	_memset(thing->paHierarchyNodeAngularVelocities, 0, sizeof(rdVector3) * model->numHierarchyNodes);
+
 
 #endif
 #ifdef PUPPET_PHYSICS

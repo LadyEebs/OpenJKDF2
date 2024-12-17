@@ -210,6 +210,7 @@ void rdPuppet_BuildJointMatrices(rdThing *thing, rdMatrix34 *matrix)
         {
 #ifdef PUPPET_PHYSICS
 			rdVector_Zero3(&thing->paHierarchyNodeVelocities[v80]);
+			rdVector_Zero3(&thing->paHierarchyNodeAngularVelocities[v80]);
 #endif
             v15 = &model->hierarchyNodes[v80];
             v16 = puppet->tracks;
@@ -364,7 +365,8 @@ void rdPuppet_BuildJointMatrices(rdThing *thing, rdMatrix34 *matrix)
 		#ifdef PUPPET_PHYSICS
 			// todo: how do we scale this with time correctly? deltaSeconds is too much...
 			rdVector_Neg3(&thing->paHierarchyNodeVelocities[v80], &a4);
-		#endif
+			rdVector_Neg3(&thing->paHierarchyNodeAngularVelocities[v80], &a3);
+#endif
 
 			// Added: if there's a root joint, nullify positions prior to it to avoid offsetting it
 			//if(thing->rootJoint != 0 && v80 < thing->rootJoint)

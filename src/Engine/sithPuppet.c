@@ -1487,22 +1487,24 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 
 		// angthrust isn't actually used (we never set the thrust)
 		// but this enables angular velocity drag and clamping
-		pJoint->thing.physicsParams.physflags |= SITH_PF_ANGTHRUST;
+		pJoint->thing.physicsParams.physflags |= SITH_PF_ANGIMPULSE;
+
 
 		if(jointIdx == JOINTTYPE_TORSO)
 		{
-			pJoint->thing.physicsParams.physflags |= SITH_PF_SURFACEALIGN;
+			//pJoint->thing.physicsParams.physflags |= SITH_PF_SURFACEALIGN;
 			pJoint->thing.actorParams.eyePYR.x = -90.0f;
 			//pJoint->thing.physicsParams.maxRotVel = 15.0f;
-			pJoint->thing.physicsParams.physflags |= SITH_PF_FLOORSTICK;
+			//pJoint->thing.physicsParams.physflags |= SITH_PF_FLOORSTICK;
 		}
 		//else
 			//pJoint->thing.physicsParams.maxRotVel = 10000.0;
 		
 		//if (jointIdx == JOINTTYPE_HIP)
 			//pJoint->thing.thingflags |= SITH_TF_STANDABLE;
-
-		//pJoint->thing.physicsParams.physflags |= SITH_PF_FLOORSTICK;
+		
+	//	pJoint->thing.physicsParams.physflags |= SITH_PF_SURFACEALIGN;
+		pJoint->thing.physicsParams.physflags |= SITH_PF_FLOORSTICK;
 		//pJoint->thing.physicsParams.physflags |= SITH_PF_DONTROTATEVEL;
 		
 		//SITH_PF_USEGRAVITY = 0x1,
@@ -1574,7 +1576,7 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 			}
 		}
 		pJoint->thing.moveSize = minDist;// * 0.6;
-		pJoint->thing.collideSize = minDist * 0.6;// - (minDist * 0.1f);
+		pJoint->thing.collideSize = minDist;// * 0.6;// - (minDist * 0.1f);
 
 		//pJoint->thing.collideSize = 0.01f;
 
@@ -1591,7 +1593,7 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 		//pJoint->thing.physicsParams.surfaceDrag *= 100.0f;
 		//pJoint->thing.physicsParams.staticDrag *= 100.0f;
 		//pJoint->thing.physicsParams.airDrag *= 100.0f;
-		pJoint->thing.physicsParams.staticDrag = fmax(pJoint->thing.physicsParams.staticDrag, 0.001f);
+		pJoint->thing.physicsParams.staticDrag = fmax(pJoint->thing.physicsParams.staticDrag, 0.01f);
 
 		// initialize the position velocity using the animation frames
 		rdVector_Copy3(&pJoint->thing.position, &pThing->rdthing.hierarchyNodeMatrices[pBodyPart->nodeIdx].scale);
@@ -1619,7 +1621,9 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 			//sithPhysics_ApplyDrag(&pJoint->thing.physicsParams.vel, 1.0f, 0.0f, deltaSeconds);
 			rdVector_Add3Acc(&pJoint->thing.physicsParams.vel, &thingVel);
 
-			printf("init velocity for joint %d is %f!\n", jointIdx, rdVector_Len3(&pJoint->thing.physicsParams.vel));
+		//	rdVector_Copy3(&pJoint->thing.physicsParams.angVel, &pThing->rdthing.paHierarchyNodeAngularVelocities[pNode->idx]);
+
+			//printf("init velocity for joint %d is %f!\n", jointIdx, rdVector_Len3(&pJoint->thing.physicsParams.vel));
 		}
 
 		rdMatrix34 rot1;
@@ -1806,20 +1810,20 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 		sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_HEAD, JOINTTYPE_TORSO, 5.0f, -40.0f, 5.0f, -5.0f, 35.0f, -35.0f);
 	}
 	
-//	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_HIP, 60.0f, -5.0f, 5.0f, -5.0f, 5.0f, -5.0f);
-//	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_LTHIGH, JOINTTYPE_HIP, 60.0f, -5.0f, 5.0f, -5.0f, 5.0f, -5.0f);
-//	
-//	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, 0.0f, -100.0f, 5.0f, -5.0f, 10.0f, -10.0f);
-//	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, 0.0f, -100.0f, 5.0f, -5.0f, 10.0f, -10.0f);
-//	
-//	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_RSHOULDER, JOINTTYPE_TORSO, 90.0f, -35.0f, 10.0f, -10.0f, 0.0f, -90.0f);
-//	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_LSHOULDER, JOINTTYPE_TORSO, 90.0f, -35.0f, 10.0f, -10.0f, 90.0f, 0.0f);
-//	
-//	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER, 120.0f, 0.0f, 5.0f, -5.0f, 5.0f, -5.0f);
-//	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER, 120.0f, 0.0f, 5.0f, -5.0f, 5.0f, -5.0f);
-//	
-//	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_RHAND, JOINTTYPE_RFOREARM, 5.0f, -5.0f, 25.0f, -25.0f, 35.0f, -5.0f);
-//	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_LHAND, JOINTTYPE_LFOREARM, 5.0f, -5.0f, 25.0f, -25.0f, 5.0f, -35.0f);
+	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_HIP, 60.0f, -15.0f, 10.0f, -10.0f, 10.0f, -10.0f);
+	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_LTHIGH, JOINTTYPE_HIP, 60.0f, -15.0f, 10.0f, -10.0f, 10.0f, -10.0f);
+	
+	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, 0.0f, -100.0f, 10.0f, -10.0f, 15.0f, -15.0f);
+	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, 0.0f, -100.0f, 10.0f, -10.0f, 15.0f, -15.0f);
+	
+	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_RSHOULDER, JOINTTYPE_TORSO, 90.0f, -35.0f, 10.0f, -10.0f, 0.0f, -160.0f);
+	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_LSHOULDER, JOINTTYPE_TORSO, 90.0f, -35.0f, 10.0f, -10.0f, 160.0f, 0.0f);
+	
+	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER, 120.0f, 0.0f, 5.0f, -5.0f, 5.0f, -5.0f);
+	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER, 120.0f, 0.0f, 5.0f, -5.0f, 5.0f, -5.0f);
+	
+	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_RHAND, JOINTTYPE_RFOREARM, 5.0f, -5.0f, 25.0f, -25.0f, 35.0f, -5.0f);
+	sithPuppet_AddAngleConstraint(pThing, JOINTTYPE_LHAND, JOINTTYPE_LFOREARM, 5.0f, -5.0f, 25.0f, -25.0f, 5.0f, -35.0f);
 	
 	
 //	sithPuppet_AddLookConstraint(pThing, JOINTTYPE_HIP, JOINTTYPE_TORSO, 0);
@@ -3416,6 +3420,15 @@ void sithPuppet_UpdateJoints(sithThing* pThing, float deltaSeconds)
 
 		// if the node is amputated or lower than the root joint, don't collide (but update the position for sector traversal)
 		int collide = pJoint->thing.collide;
+
+
+		// only collide joints when the torso is attached to a surface or things get weird
+		//if (pThing->puppet->physics->joints[JOINTTYPE_TORSO].thing.attach_flags)
+		//	pJoint->thing.collide = collide;
+		//else
+		//	pJoint->thing.collide = SITH_COLLIDE_NONE;
+
+
 		if (pBodyPart->nodeIdx < pThing->rdthing.rootJoint || pThing->rdthing.amputatedJoints[pBodyPart->nodeIdx])
 			pJoint->thing.collide = SITH_COLLIDE_NONE;
 
@@ -3438,7 +3451,7 @@ void sithPuppet_UpdateJoints(sithThing* pThing, float deltaSeconds)
 		sithThing_TickPhysics(&pJoint->thing, deltaSeconds);
 	//	rdVector_Zero3(&pJoint->thing.lookOrientation.scale);
 
-		rdVector_Zero3(&pJoint->thing.physicsParams.angVel);
+		//rdVector_Zero3(&pJoint->thing.physicsParams.angVel);
 
 		// reset collision
 		pJoint->thing.collide = collide;

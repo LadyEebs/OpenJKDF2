@@ -1249,7 +1249,11 @@ enum THING_PHYSFLAGS
     SITH_PF_1000000 = 0x1000000, // Jones: minecar
     SITH_PF_2000000 = 0x2000000, // Jones: raft
     SITH_PF_4000000 = 0x4000000, // Jones: jeep
+#ifdef PUPPET_PHYSICS
+	SITH_PF_ANGIMPULSE = 0x8000000,
+#else
     SITH_PF_8000000 = 0x8000000,
+#endif
 };
 
 enum THINGPARAM

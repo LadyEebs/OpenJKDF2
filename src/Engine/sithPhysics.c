@@ -218,6 +218,54 @@ void sithPhysics_ThingTick(sithThing *pThing, float deltaSecs)
     }
 }
 
+#ifdef PUPPET_PHYSICS
+void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactNormal, float impulseMagnitude)
+{   
+	// Added: noclip
+	if (pThing == sithPlayer_pLocalPlayerThing && (g_debugmodeFlags & DEBUGFLAG_NOCLIP))
+		return;
+
+	if (pThing->moveType != SITH_MT_PHYSICS || pThing->physicsParams.mass <= 0.0)
+		return;
+
+	rdVector3 contactPoint = pThing->position;
+	rdVector_MultAcc3(&contactPoint, contactNormal, -pThing->moveSize);
+	
+	rdVector3 impulse;
+	rdVector_Scale3(&impulse, contactNormal, impulseMagnitude);
+
+	rdVector3 leverArm;
+	rdVector_Sub3(&leverArm, &contactPoint, &pThing->position);
+	rdVector_ClipPrecision3(&leverArm);
+	if (rdVector_IsZero3(&leverArm))
+		return;
+
+	rdVector3 torque;
+	rdVector_Cross3(&torque, &leverArm, &impulse);
+
+	float adjustedMass = pThing->physicsParams.mass * 0.01f; // the mass to unit ratio is really high, so account for that here
+	float inertia = (2.0 / 5.0) * adjustedMass * pThing->moveSize * pThing->moveSize;
+
+	rdVector3 angAccel;
+	rdVector_Scale3(&angAccel, &torque, (180.0f / M_PI) / inertia);
+	rdVector_ClipPrecision3(&angAccel);
+	if (rdVector_IsZero3(&angAccel))
+		return;
+
+	rdMatrix34 invObjectOrientation;
+	rdMatrix_InvertOrtho34(&invObjectOrientation, &pThing->lookOrientation);
+	rdVector_Zero3(&invObjectOrientation.scale);
+
+	rdVector3 localAngAccel;
+	rdMatrix_TransformVector34(&localAngAccel, &angAccel, &invObjectOrientation);
+
+	if (pThing->attach_flags & (SITH_ATTACH_THINGSURFACE | SITH_ATTACH_WORLDSURFACE))
+		pThing->physicsParams.angVel.y += localAngAccel.y / sithTime_deltaSeconds;
+	else
+		rdVector_MultAcc3(&pThing->physicsParams.angVel, &localAngAccel, 1.0f / sithTime_deltaSeconds);
+}
+#endif
+
 void sithPhysics_ThingApplyForce(sithThing *pThing, rdVector3 *forceVec)
 {
     // Added: noclip
@@ -455,6 +503,15 @@ void sithPhysics_ThingPhysGeneral(sithThing *pThing, float deltaSeconds)
         rdMath_ClampVectorRange(&pThing->physicsParams.angVel, -pThing->physicsParams.maxRotVel, pThing->physicsParams.maxRotVel);
         rdMath_ClampVector(&pThing->physicsParams.angVel, 0.00001);
     }
+#ifdef PUPPET_PHYSICS
+	else //if (pThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+	{
+		if (!rdVector_IsZero3(&pThing->physicsParams.angVel))
+		{
+			sithPhysics_ApplyDrag(&pThing->physicsParams.angVel, pThing->physicsParams.airDrag - -0.2, 0.0, deltaSeconds);
+		}
+	}
+#endif
 
     if (rdVector_IsZero3(&pThing->physicsParams.angVel))
     {
@@ -592,6 +649,15 @@ void sithPhysics_ThingPhysPlayer(sithThing *player, float deltaSeconds)
         rdMath_ClampVectorRange(&player->physicsParams.angVel, -player->physicsParams.maxRotVel, player->physicsParams.maxRotVel);
         rdMath_ClampVector(&player->physicsParams.angVel, 0.00001);
     }
+#ifdef PUPPET_PHYSICS
+	else// if (player->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+	{
+		if (!rdVector_IsZero3(&player->physicsParams.angVel))
+		{
+			//sithPhysics_ApplyDrag(&player->physicsParams.angVel, player->physicsParams.airDrag - -0.2, 0.0, deltaSeconds);
+		}
+	}
+#endif
 
     if (rdVector_IsZero3(&player->physicsParams.angVel))
     {
@@ -725,6 +791,16 @@ void sithPhysics_ThingPhysUnderwater(sithThing *pThing, float deltaSeconds)
         rdVector_ClampValue3(&pThing->physicsParams.angVel, pThing->physicsParams.maxRotVel);
         rdVector_ClipPrecision3(&pThing->physicsParams.angVel);
     }
+#ifdef PUPPET_PHYSICS
+	else //if(pThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+	{
+		if (!rdVector_IsZero3(&pThing->physicsParams.angVel))
+		{
+			sithPhysics_ApplyDrag(&pThing->physicsParams.angVel, pThing->physicsParams.airDrag - -0.2, 0.0, deltaSeconds);
+		}
+	}
+#endif
+
     if ( rdVector_IsZero3(&pThing->physicsParams.angVel) )
     {
         rdVector_Zero3(&a3);
@@ -873,6 +949,16 @@ void sithPhysics_ThingPhysAttached(sithThing *pThing, float deltaSeconds)
         rdVector_ClampValue3(&pThing->physicsParams.angVel, pThing->physicsParams.maxRotVel);
         rdVector_ClipPrecision3(&pThing->physicsParams.angVel);
     }
+#ifdef PUPPET_PHYSICS
+	else// if (pThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+	{
+		if (!rdVector_IsZero3(&pThing->physicsParams.angVel))
+		{
+			sithPhysics_ApplyDrag(&pThing->physicsParams.angVel, pThing->physicsParams.airDrag - -0.2, 0.0, deltaSeconds);
+		}
+	}
+#endif
+
     if ( pThing->physicsParams.angVel.y != 0.0 )
     {
         rdVector_Scale3(&a3, &pThing->physicsParams.angVel, deltaSeconds);
@@ -1003,6 +1089,16 @@ void sithPhysics_ThingPhysAttached(sithThing *pThing, float deltaSeconds)
                 rdVector_ClampValue3(&pThing->physicsParams.angVel, pThing->physicsParams.maxRotVel);
                 rdVector_ClipPrecision3(&pThing->physicsParams.angVel);
             }
+#ifdef PUPPET_PHYSICS
+			else //if (pThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+			{
+				if (!rdVector_IsZero3(&pThing->physicsParams.angVel))
+				{
+					sithPhysics_ApplyDrag(&pThing->physicsParams.angVel, pThing->physicsParams.airDrag - -0.2, 0.0, deltaSeconds);
+				}
+			}
+#endif
+
             if ( rdVector_IsZero3(&pThing->physicsParams.angVel) )
             {
                 rdVector_Zero3(&a3);
