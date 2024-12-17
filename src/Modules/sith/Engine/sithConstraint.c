@@ -327,6 +327,84 @@ static void sithConstraint_SolveConeConstraint(sithConstraint* pConstraint, floa
 
 static void sithConstraint_SolveAngleConstraint(sithConstraint* pConstraint, float deltaSeconds)
 {
+	float invMassA = 1.0f / pConstraint->targetThing->physicsParams.mass;
+	float invMassB = 1.0f / pConstraint->constrainedThing->physicsParams.mass;
+	float constraintMass = invMassA + invMassB;
+	if (constraintMass <= 0.0f)
+		return;
+
+#if 1
+
+	rdVector_Zero3(&pConstraint->targetThing->lookOrientation.scale);
+	rdVector_Zero3(&pConstraint->constrainedThing->lookOrientation.scale);
+
+	rdMatrix34 invOrientTarget;
+	rdMatrix_InvertOrtho34(&invOrientTarget, &pConstraint->targetThing->lookOrientation);
+
+	rdMatrix34 relativeOrientation;
+	rdMatrix_Multiply34(&relativeOrientation, &invOrientTarget, &pConstraint->constrainedThing->lookOrientation);
+
+	rdVector3 relativeAngles;
+	rdMatrix_ExtractAngles34(&relativeOrientation, &relativeAngles);
+	//relativeAngles.y = -relativeAngles.y; // yaw is inverted for whatever reason
+	rdVector_NormalizeAngleAcute3(&relativeAngles);
+
+	rdVector3 projectedAngles;
+	projectedAngles.x = fmin(fmax(relativeAngles.x, pConstraint->angleParams.minAngles.x), pConstraint->angleParams.minAngles.x);
+	projectedAngles.y = fmin(fmax(relativeAngles.y, pConstraint->angleParams.minAngles.y), pConstraint->angleParams.minAngles.y);
+	projectedAngles.z = fmin(fmax(relativeAngles.z, pConstraint->angleParams.minAngles.z), pConstraint->angleParams.minAngles.z);
+
+	//rdVector3 angularCorrection;
+	//angularCorrection.x = stdMath_NormalizeDeltaAngle(projectedAngles.x, relativeAngles.x);
+	//angularCorrection.y = stdMath_NormalizeDeltaAngle(projectedAngles.y, relativeAngles.y);
+	//angularCorrection.z = stdMath_NormalizeDeltaAngle(projectedAngles.z, relativeAngles.z);
+
+	rdVector3 angleError;
+	angleError.x = stdMath_NormalizeDeltaAngle(projectedAngles.x, relativeAngles.x);
+	angleError.y = stdMath_NormalizeDeltaAngle(projectedAngles.y, relativeAngles.y);
+	angleError.z = stdMath_NormalizeDeltaAngle(projectedAngles.z, relativeAngles.z);
+
+	float bias = 0.03f;
+	rdVector3 biasTerm;
+	rdVector_Scale3(&biasTerm, &angleError, bias / deltaSeconds);
+
+	rdVector3 angularCorrection;
+	angularCorrection.x = (angleError.x + biasTerm.x) * constraintMass;
+	angularCorrection.y = (angleError.y + biasTerm.y) * constraintMass;
+	angularCorrection.z = (angleError.z + biasTerm.z) * constraintMass;
+
+	rdVector_NormalizeAngleAcute3(&angularCorrection);
+
+	rdVector3 correctionParent;
+	rdVector_Scale3(&correctionParent, &angularCorrection, invMassA / constraintMass);
+	rdVector_Add3Acc(&pConstraint->targetThing->physicsParams.angVel, &correctionParent);
+
+	rdVector3 correctionChild;
+	rdVector_Scale3(&correctionChild, &angularCorrection, invMassB / constraintMass);
+	rdVector_Sub3Acc(&pConstraint->constrainedThing->physicsParams.angVel, &correctionChild);
+
+	// Calculate the relative angular velocity
+	//rdVector3 relativeAngVel;
+	//relativeAngVel.x = stdMath_NormalizeDeltaAngle(pConstraint->targetThing->physicsParams.angVel.x, pConstraint->constrainedThing->physicsParams.angVel.x);
+	//relativeAngVel.y = stdMath_NormalizeDeltaAngle(pConstraint->targetThing->physicsParams.angVel.y, pConstraint->constrainedThing->physicsParams.angVel.y);
+	//relativeAngVel.z = stdMath_NormalizeDeltaAngle(pConstraint->targetThing->physicsParams.angVel.z, pConstraint->constrainedThing->physicsParams.angVel.z);
+
+	// Apply the relative angular velocity correction to conserve angular momentum
+	//rdVector3 velCorrection;
+	//rdVector_Scale3(&velCorrection, &relativeAngVel, -1.0f);
+	//
+	//if (!isnan(velCorrection.x) && !isnan(velCorrection.y) && !isnan(velCorrection.z))
+	//{
+	//	rdVector3 velCorrectionParent = velCorrection;
+	//	//rdVector_Scale3Acc(&velCorrectionParent, 1.0f / inertiaA);
+	//	rdVector_Add3Acc(&pConstraint->targetThing->physicsParams.angVel, &velCorrectionParent);
+	//
+	//	rdVector3 velCorrectionChild = velCorrection;
+	//	//rdVector_Scale3Acc(&velCorrectionChild, -1.0f / inertiaB);
+	//	rdVector_Add3Acc(&pConstraint->constrainedThing->physicsParams.angVel, &velCorrectionChild);
+	//}
+
+#else
 	rdMatrix34 parentRotTranspose, relativeRotation;
 	rdMatrix_InvertOrtho34(&parentRotTranspose, &pConstraint->targetThing->lookOrientation);
 	rdMatrix_Multiply34(&relativeRotation, &parentRotTranspose, &pConstraint->constrainedThing->lookOrientation);
@@ -353,7 +431,6 @@ static void sithConstraint_SolveAngleConstraint(sithConstraint* pConstraint, flo
 	rdVector3 diffA;
 	rdVector_Scale3(&diffA, &angleDifferences, invMassB / constraintMass);
 	rdVector_Add3Acc(&pConstraint->constrainedThing->physicsParams.angVel, &angleDifferences);
-
 //	rdVector3 diffB;
 //	rdVector_Scale3(&diffA, &angleDifferences, -invMassA / constraintMass);
 //	rdVector_Add3Acc(&pConstraint->targetThing->physicsParams.angVel, &diffB);
@@ -361,6 +438,7 @@ static void sithConstraint_SolveAngleConstraint(sithConstraint* pConstraint, flo
 //	rdMatrix34 constrainedRotation;
 //	rdMatrix_BuildRotate34(&constrainedRotation, &constrainedAngles);
 //	rdMatrix_Multiply34(&pConstraint->thingA->lookOrientation, &pConstraint->thingB->lookOrientation, &constrainedRotation);
+#endif
 }
 
 static void sithConstraint_SolveLookConstraint(sithConstraint* pConstraint, float deltaSeconds)
