@@ -398,7 +398,20 @@ static void sithConstraint_SolveAngleConstraint(sithConstraint* pConstraint, flo
 	rdVector_NormalizeDeltaAngle3(&angleError, &projectedAngles, &relativeAngles);
 	//rdVector_Sub3(&angleError, &relativeAngles, &projectedAngles);
 
-	float bias = 0.1f;
+		// Calculate the relative angular velocity
+	rdVector3 relativeAngVel;
+	rdVector_NormalizeDeltaAngle3(&relativeAngVel, &pConstraint->targetThing->physicsParams.angVel, &pConstraint->constrainedThing->physicsParams.angVel);
+	//rdVector_Sub3(&relativeAngVel, &pConstraint->constrainedThing->physicsParams.angVel, &pConstraint->targetThing->physicsParams.angVel);
+
+	//rdVector3 worldTargetAngVel;
+	//rdMatrix_TransformVector34(&worldTargetAngVel, &pConstraint->targetThing->physicsParams.angVel, &pConstraint->targetThing->lookOrientation);
+	//
+	//rdVector3 worldConstrainedAngVel;
+	//rdMatrix_TransformVector34(&worldConstrainedAngVel, &pConstraint->constrainedThing->physicsParams.angVel, &pConstraint->constrainedThing->lookOrientation);
+	//
+	//rdVector_Sub3(&relativeAngVel, &worldConstrainedAngVel, &worldTargetAngVel);
+
+	float bias = 0.5f;
 	rdVector3 biasTerm;
 	rdVector_Scale3(&biasTerm, &angleError, bias / deltaSeconds);
 
@@ -418,18 +431,6 @@ static void sithConstraint_SolveAngleConstraint(sithConstraint* pConstraint, flo
 	rdVector_Scale3(&correctionChild, &angularCorrection, invMassB / constraintMass);
 	rdVector_Sub3Acc(&pConstraint->constrainedThing->physicsParams.angVel, &correctionChild);
 
-	// Calculate the relative angular velocity
-	rdVector3 relativeAngVel;
-	rdVector_NormalizeDeltaAngle3(&relativeAngVel, &pConstraint->targetThing->physicsParams.angVel, &pConstraint->constrainedThing->physicsParams.angVel);
-	//rdVector_Sub3(&relativeAngVel, &pConstraint->constrainedThing->physicsParams.angVel, &pConstraint->targetThing->physicsParams.angVel);
-
-	//rdVector3 worldTargetAngVel;
-	//rdMatrix_TransformVector34(&worldTargetAngVel, &pConstraint->targetThing->physicsParams.angVel, &pConstraint->targetThing->lookOrientation);
-	//
-	//rdVector3 worldConstrainedAngVel;
-	//rdMatrix_TransformVector34(&worldConstrainedAngVel, &pConstraint->constrainedThing->physicsParams.angVel, &pConstraint->constrainedThing->lookOrientation);
-	//
-	//rdVector_Sub3(&relativeAngVel, &worldConstrainedAngVel, &worldTargetAngVel);
 
 	// Apply the relative angular velocity correction to conserve angular momentum
 	rdVector3 velCorrection = relativeAngVel;
