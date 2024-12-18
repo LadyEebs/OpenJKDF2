@@ -133,7 +133,7 @@ static void sithConstraint_SolveDistanceConstraint(sithConstraint* pConstraint, 
 	float velocityDot = rdVector_Dot3(&relativeVelocity, &offsetDir);
 	//velocityDot = stdMath_ClipPrecision(velocityDot);
 
-	const float biasFactor = 0.1f;
+	const float biasFactor = 0.01f;
 	float bias = -(biasFactor / deltaSeconds) * offset;
 	//bias = stdMath_ClipPrecision(bias);
 
@@ -352,18 +352,20 @@ static void sithConstraint_SolveAngleConstraint(sithConstraint* pConstraint, flo
 	rdMatrix34 invOrientConstrained;
 	rdMatrix_InvertOrtho34(&invOrientConstrained, &pConstraint->constrainedThing->lookOrientation);
 
+	// need to get the relative frame from the constrained thing to the target
 	rdMatrix34 invOrientTarget;
 	rdMatrix_InvertOrtho34(&invOrientTarget, &pConstraint->targetThing->lookOrientation);
 
 	rdMatrix34 relativeOrientation;
 	rdMatrix_Multiply34(&relativeOrientation, &invOrientTarget, &pConstraint->constrainedThing->lookOrientation);
 
+	// extract the angles for constraints
 	rdVector3 relativeAngles;
 	rdMatrix_ExtractAngles34(&relativeOrientation, &relativeAngles);
 
 	//printf("relative angles mat: %f %f %f\n", relativeAnglesMat.x, relativeAnglesMat.y, relativeAnglesMat.z);
 	//relativeAngles.y = -relativeAngles.y; // yaw is inverted for whatever reason
-	rdVector_NormalizeAngleAcute3(&relativeAngles);
+	//rdVector_NormalizeAngleAcute3(&relativeAngles);
 #else // quat
 	// Convert current orientations to quaternions
 	rdQuat targetQuat;
@@ -386,6 +388,7 @@ static void sithConstraint_SolveAngleConstraint(sithConstraint* pConstraint, flo
 	//printf("relative angles quat: %f %f %f\n", relativeAngles.x, relativeAngles.y, relativeAngles.z);
 #endif
 
+	// project angles to the feasible set a.k.a clamp 'em
 	rdVector3 projectedAngles = relativeAngles;
 	rdVector_Clamp3(&projectedAngles, &pConstraint->angleParams.minAngles, &pConstraint->angleParams.maxAngles);
 
@@ -395,13 +398,13 @@ static void sithConstraint_SolveAngleConstraint(sithConstraint* pConstraint, flo
 	//angularCorrection.z = stdMath_NormalizeDeltaAngle(projectedAngles.z, relativeAngles.z);
 
 	rdVector3 angleError;
-	rdVector_NormalizeDeltaAngle3(&angleError, &projectedAngles, &relativeAngles);
-	//rdVector_Sub3(&angleError, &relativeAngles, &projectedAngles);
+	//rdVector_NormalizeDeltaAngle3(&angleError, &projectedAngles, &relativeAngles);
+	rdVector_Sub3(&angleError, &relativeAngles, &projectedAngles);
 
 		// Calculate the relative angular velocity
 	rdVector3 relativeAngVel;
-	rdVector_NormalizeDeltaAngle3(&relativeAngVel, &pConstraint->targetThing->physicsParams.angVel, &pConstraint->constrainedThing->physicsParams.angVel);
-	//rdVector_Sub3(&relativeAngVel, &pConstraint->constrainedThing->physicsParams.angVel, &pConstraint->targetThing->physicsParams.angVel);
+	//rdVector_NormalizeDeltaAngle3(&relativeAngVel, &pConstraint->targetThing->physicsParams.angVel, &pConstraint->constrainedThing->physicsParams.angVel);
+	rdVector_Sub3(&relativeAngVel, &pConstraint->constrainedThing->physicsParams.angVel, &pConstraint->targetThing->physicsParams.angVel);
 
 	//rdVector3 worldTargetAngVel;
 	//rdMatrix_TransformVector34(&worldTargetAngVel, &pConstraint->targetThing->physicsParams.angVel, &pConstraint->targetThing->lookOrientation);
@@ -417,18 +420,19 @@ static void sithConstraint_SolveAngleConstraint(sithConstraint* pConstraint, flo
 
 	rdVector3 angularCorrection;
 	rdVector_Add3(&angularCorrection, &angleError, &biasTerm);
-	rdVector_Scale3Acc(&angularCorrection, constraintMass);
-	rdVector_NormalizeAngleAcute3(&angularCorrection);
+	rdVector_InvScale3Acc(&angularCorrection, constraintMass);
+	//rdVector_NormalizeAngleAcute3(&angularCorrection);
 
 	//float dampingFactor = 0.3;
 	//rdVector_MultAcc3(&angularCorrection, &relativeAngVel, -dampingFactor);
 
+	// apply the correction to angular velocity
 	rdVector3 correctionParent;
-	rdVector_Scale3(&correctionParent, &angularCorrection, invMassA / constraintMass);
+	rdVector_Scale3(&correctionParent, &angularCorrection, invMassA);
 	rdVector_Add3Acc(&pConstraint->targetThing->physicsParams.angVel, &correctionParent);
 
 	rdVector3 correctionChild;
-	rdVector_Scale3(&correctionChild, &angularCorrection, invMassB / constraintMass);
+	rdVector_Scale3(&correctionChild, &angularCorrection, invMassB);
 	rdVector_Sub3Acc(&pConstraint->constrainedThing->physicsParams.angVel, &correctionChild);
 
 
@@ -437,12 +441,12 @@ static void sithConstraint_SolveAngleConstraint(sithConstraint* pConstraint, flo
 	//rdVector_Neg3(&velCorrection, &relativeAngVel);
 	
 	rdVector3 velCorrectionParent = velCorrection;
-	rdMatrix_TransformVector34Acc(&velCorrectionParent, &invOrientTarget);
+	//rdMatrix_TransformVector34Acc(&velCorrectionParent, &invOrientTarget);
 	rdVector_Scale3Acc(&velCorrectionParent, invMassA / constraintMass);
 	rdVector_Add3Acc(&pConstraint->targetThing->physicsParams.angVel, &velCorrectionParent);
 	
 	rdVector3 velCorrectionChild = velCorrection;
-	rdMatrix_TransformVector34Acc(&velCorrectionChild, &invOrientConstrained);
+	//rdMatrix_TransformVector34Acc(&velCorrectionChild, &invOrientConstrained);
 	rdVector_Scale3Acc(&velCorrectionChild, invMassB / constraintMass);
 	rdVector_Sub3Acc(&pConstraint->constrainedThing->physicsParams.angVel, &velCorrectionChild);
 
