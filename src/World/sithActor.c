@@ -558,7 +558,6 @@ void sithActor_RotateTurretToEyePYR(sithThing* pThing)
 }
 
 #ifdef PUPPET_PHYSICS
-
 void sithActor_RotateHeadForEyePYR(sithThing* actor, const rdVector3* eyePYR)
 {
 	actor->actorParams.typeflags &= ~SITH_AF_HEAD_IS_CENTERED;
@@ -578,7 +577,6 @@ void sithActor_RotateHeadForEyePYR(sithThing* actor, const rdVector3* eyePYR)
 		}
 	}
 }
-
 #endif
 
 // MOTS altered
