@@ -2557,6 +2557,7 @@ typedef struct rdThing
 #endif
 #if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 	rdVector3* paHierarchyNodeVelocities;
+	rdVector3* paHierarchyNodeAngularVelocities;
 #endif
 
 } rdThing;
