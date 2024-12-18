@@ -233,7 +233,7 @@ void jkPlayer_StartupVars()
 #if defined(DECAL_RENDERING) || defined(RENDER_DROID2)
 	sithCvar_RegisterFlex("r_enableDecals",             1.0,                        &jkPlayer_enableDecals,             CVARFLAG_LOCAL | CVARFLAG_RESETHUD);
 #endif
-#ifdef RAGDOLLS
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 	sithCvar_RegisterInt("g_ragdolls", 1, &jkPlayer_ragdolls, CVARFLAG_LOCAL | CVARFLAG_UPDATABLE_DEFAULT);
 	sithCvar_RegisterInt("r_debugRagdolls", 0, &jkPlayer_debugRagdolls, CVARFLAG_LOCAL | CVARFLAG_UPDATABLE_DEFAULT);
 #endif
