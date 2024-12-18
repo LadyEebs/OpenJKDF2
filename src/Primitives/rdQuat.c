@@ -121,19 +121,19 @@ void rdQuat_ExtractAxisAngle(rdQuat* q, rdVector3* axis, float* angle)
 
 void rdQuat_ExtractAngles(rdQuat* q, rdVector3* angles)
 {
-	// Roll (x-axis rotation)
+	// Pitch (x-axis rotation)
 	float sinr_cosp = 2 * (q->w * q->x + q->y * q->z);
 	float cosr_cosp = 1 - 2 * (q->x * q->x + q->y * q->y);
 	
-	angles->z = stdMath_ArcTan3(sinr_cosp, cosr_cosp);
+	angles->x = stdMath_ArcTan3(sinr_cosp, cosr_cosp);
 	
-	// Pitch (y-axis rotation)
+	// Roll (y-axis rotation)
 	float sinp = 2 * (q->w * q->y - q->z * q->x);
 	if (fabs(sinp) >= 1)
-		angles->x = copysign(M_PI / 2, sinp);
+		angles->z = copysign(M_PI / 2, sinp);
 	// use 90 degrees if out of range
 	else
-		angles->x = stdMath_ArcSin3(sinp);
+		angles->z = stdMath_ArcSin3(sinp);
 	
 	// Yaw (z-axis rotation)
 	float siny_cosp = 2 * (q->w * q->z + q->x * q->y);
