@@ -645,6 +645,13 @@ void rdVector_NormalizeAngleAcute3(rdVector3* v)
     v->z = stdMath_NormalizeAngleAcute(v->z);
 }
 
+void rdVector_NormalizeDeltaAngle3(rdVector3* v, const rdVector3* a, const rdVector3* b)
+{
+	v->x = stdMath_NormalizeDeltaAngle(a->x, b->x);
+	v->y = stdMath_NormalizeDeltaAngle(a->y, b->y);
+	v->z = stdMath_NormalizeDeltaAngle(a->z, b->z);
+}
+
 void rdVector_ClampRange3(rdVector3* v, float minVal, float maxVal)
 {
     if (v->x < minVal)
@@ -687,6 +694,13 @@ void rdVector_ClampValue3(rdVector3* v, float val)
     }
 
     rdVector_ClampRange3(v, -valAbs, valAbs);
+}
+
+void rdVector_Clamp3(rdVector3* v, const rdVector3* minVal, const rdVector3* maxVal)
+{
+	v->x = stdMath_Clamp(v->x, minVal->x, maxVal->x);
+	v->y = stdMath_Clamp(v->y, minVal->y, maxVal->y);
+	v->z = stdMath_Clamp(v->z, minVal->z, maxVal->z);
 }
 
 void rdVector_Reflect3(rdVector3* v, const rdVector3* incidentVec, const rdVector3* normal)
