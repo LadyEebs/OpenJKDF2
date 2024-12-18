@@ -557,6 +557,30 @@ void sithActor_RotateTurretToEyePYR(sithThing* pThing)
     }
 }
 
+#ifdef PUPPET_PHYSICS
+
+void sithActor_RotateHeadForEyePYR(sithThing* actor, const rdVector3* eyePYR)
+{
+	actor->actorParams.typeflags &= ~SITH_AF_HEAD_IS_CENTERED;
+	actor->actorParams.eyePYR = *eyePYR;
+	
+	sithAnimclass* pAnimClass = actor->animclass;
+	if (!pAnimClass || actor->rdthing.type != RD_THINGTYPE_MODEL)
+		return;
+
+	if (actor->rdthing.hierarchyNodes2)
+	{
+		int headIdx = pAnimClass->bodypart[JOINTTYPE_HEAD].nodeIdx;
+		if (headIdx >= 0 && headIdx < actor->rdthing.model3->numHierarchyNodes)
+		{
+			actor->rdthing.hierarchyNodes2[headIdx].x = eyePYR->x;
+			actor->rdthing.hierarchyNodes2[headIdx].y = eyePYR->y;
+		}
+	}
+}
+
+#endif
+
 // MOTS altered
 int sithActor_thing_anim_blocked(sithThing *a1, sithThing *thing2, sithCollisionSearchEntry *a3)
 {

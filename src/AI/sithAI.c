@@ -662,6 +662,34 @@ void sithAI_idkframesalloc(sithThing *a2, sithThing *a3, rdVector3 *a4)
     }
 }
 
+#ifdef PUPPET_PHYSICS
+void sithAI_LookAtTarget(sithThing* thing, float deltaSeconds)
+{
+	if (thing->rdthing.type != RD_THINGTYPE_MODEL || !thing->animclass)
+		return;
+	
+	if (rdVector_IsZero3(&thing->actor->lookVector))
+		return;
+
+	// transform the look vector to the local body frame to determine the look angle
+	rdMatrix34 invMat;
+	rdVector3 localLook, lookAngles;
+	rdMatrix_InvertOrtho34(&invMat, &thing->lookOrientation);
+	rdMatrix_TransformVector34(&localLook, &thing->actor->lookVector, &invMat);
+	rdVector_ExtractAngle(&localLook, &lookAngles);
+
+	// clamp to something reasonable
+	lookAngles.x = stdMath_Clamp(lookAngles.x, thing->actorParams.minHeadPitch, thing->actorParams.maxHeadPitch);
+	lookAngles.y = stdMath_Clamp(lookAngles.y, -80.0f, 80.0f);
+
+	// interpolate for a smooth look adjustment
+	rdVector3 eyePYR = thing->actorParams.eyePYR;
+	eyePYR.x += (lookAngles.x - eyePYR.x) * 10.0f * deltaSeconds;
+	eyePYR.y += (lookAngles.y - eyePYR.y) * 10.0f * deltaSeconds;
+	sithActor_RotateHeadForEyePYR(thing, &eyePYR);
+}
+#endif
+
 void sithAI_Tick(sithThing *thing, float deltaSeconds)
 {
     if ( thing->type == SITH_THING_ACTOR && thing->actorParams.health > 0.0 )
@@ -670,6 +698,10 @@ void sithAI_Tick(sithThing *thing, float deltaSeconds)
             sithAI_sub_4EA630(thing->actor, deltaSeconds);
         if (thing->actor->flags & SITHAI_MODE_MOVING)
             sithAI_idk_msgarrived_target(thing->actor, deltaSeconds);
+
+#ifdef PUPPET_PHYSICS
+		sithAI_LookAtTarget(thing, deltaSeconds);
+#endif
     }
 }
 

@@ -26,6 +26,9 @@ int sithActor_sub_4ED1D0(sithThing *thing, sithSurface *surface, sithCollisionSe
 void sithActor_MoveJointsForEyePYR(sithThing *actor, const rdVector3 *eyePYR);
 int sithActor_ActorActorCollide(sithThing *thing, sithThing *thing2, sithCollisionSearchEntry *a3, int a4);
 void sithActor_RotateTurretToEyePYR(sithThing *a1);
+#ifdef PUPPET_PHYSICS
+void sithActor_RotateHeadForEyePYR(sithThing* actor, const rdVector3* eyePYR);
+#endif;
 int sithActor_thing_anim_blocked(sithThing *a1, sithThing *thing2, sithCollisionSearchEntry *a3);
 void sithActor_Remove(sithThing *thing);
 void sithActor_RemoveCorpse(sithThing *corpse);

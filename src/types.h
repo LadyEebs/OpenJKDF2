@@ -3061,7 +3061,7 @@ typedef struct sithThingActorParams
     float error;
     uint32_t field_1BC;
     sithPlayerInfo *playerinfo;
-    uint32_t field_1C4;
+    uint32_t field_1C4; // this is actually a vector
     uint32_t field_1C8;
     uint32_t field_1CC;
 #ifdef JKM_TYPES
