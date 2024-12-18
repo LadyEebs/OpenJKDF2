@@ -82,7 +82,7 @@ static jkGuiElement jkGuiGeneral_aElementsAdvanced[22] = {
     { ELEMENT_CHECKBOX,    0,            0, "GUIEXT_INCONSISTENT_PHYS",          0, {20, 190, 300, 40},  1, 0, "GUIEXT_INCONSISTENT_PHYS_HINT",          0, 0, 0, {0}, 0},
     { ELEMENT_CHECKBOX,    0,            0, "GUIEXT_CORPSE_DESPAWN",          0, {20, 150, 300, 40},  1, 0, "GUIEXT_CORPSE_DESPAWN_HINT",          0, 0, 0, {0}, 0},
     { ELEMENT_CHECKBOX,    0,            0, "GUIEXT_50HZ_MIDAIR_PHYS",          0, {20, 230, 300, 40},  1, 0, "GUIEXT_50HZ_MIDAIR_PHYS_HINT",          0, 0, 0, {0}, 0},
-#ifdef RAGDOLLS
+#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 	{ ELEMENT_CHECKBOX,    0,            0, "GUIEXT_RAGDOLL_PHYS",          0, {20, 270, 300, 40},  1, 0, "GUIEXT_RAGDOLL_PHYS_HINT",          0, 0, 0, {0}, 0},
 #endif
     
