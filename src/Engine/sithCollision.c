@@ -782,8 +782,8 @@ float sithCollision_UpdateThingCollision(sithThing *pThing, rdVector3 *a2, float
     }
 
 #ifdef PUPPET_PHYSICS
-	if (pThing->type == SITH_THING_CORPSE)
-		flags |= SITH_RAYCAST_IGNORE_CORPSES; // todo: not sure if this is needed
+	//if (pThing->type == SITH_THING_CORPSE)
+		//flags |= SITH_RAYCAST_IGNORE_CORPSES; // todo: not sure if this is needed
 #endif
 	direction = *a2;
 
