@@ -30,4 +30,6 @@ void rdQuat_Slerp(rdQuat* out, const rdQuat* qa, const rdQuat* qb, const float c
 void rdQuat_NormalizeAcc(rdQuat* q);
 void rdQuat_Inverse(rdQuat* out, const rdQuat* q);
 
+int rdQuat_IsZero(const rdQuat* q);
+
 #endif // _RDQUAT_H
