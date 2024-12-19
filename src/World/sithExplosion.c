@@ -105,7 +105,11 @@ void sithExplosion_UpdateForce(sithThing *explosion)
                         rdVector_Scale3(&a2, &i->hitNorm, -(a1a * force));
                         sithPhysics_ThingApplyForce(v4, &a2);
 						if(v4->physicsParams.physflags & SITH_PF_ANGIMPULSE)
-							sithPhysics_ThingApplyRotForce(v4, &i->hitNorm, -(a1a * force));
+						{
+							rdVector3 contact = v4->position;
+							rdVector_MultAcc3(&contact, &i->hitNorm, -v4->moveSize);
+							sithPhysics_ThingApplyRotForce(v4, &i->hitNorm, &a2, 0.0f);
+						}
 
                     }
 #ifdef RAGDOLLS

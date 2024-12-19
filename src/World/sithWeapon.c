@@ -168,7 +168,11 @@ void sithWeapon_sub_4D35E0(sithThing *weapon)
                     sithPhysics_ThingApplyForce(damageReceiver, &tmp2);
 #ifdef PUPPET_PHYSICS
 					if (damageReceiver->physicsParams.physflags & SITH_PF_ANGIMPULSE)
-						sithPhysics_ThingApplyRotForce(damageReceiver, &searchRes->hitNorm, rdVector_Len3(&tmp2));
+					{
+						rdVector3 contact = damageReceiver->position;
+						rdVector_MultAcc3(&contact, &searchRes->hitNorm, -damageReceiver->moveSize);
+						sithPhysics_ThingApplyRotForce(damageReceiver, &contact, &tmp2, 0.0f);
+					}
 #endif
                 }
 			#ifdef RAGDOLLS
@@ -377,7 +381,11 @@ void sithWeapon_sub_4D3920(sithThing *weapon)
                     sithPhysics_ThingApplyForce(receiveThing, &tmp2);
 					#ifdef PUPPET_PHYSICS
 					if (receiveThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
-						sithPhysics_ThingApplyRotForce(receiveThing, &searchRes->hitNorm, rdVector_Len3(&tmp2));
+					{
+						rdVector3 contact = receiveThing->position;
+						rdVector_MultAcc3(&contact, &searchRes->hitNorm, -receiveThing->moveSize);
+						sithPhysics_ThingApplyRotForce(receiveThing, &contact, &tmp2, 0.0f);
+					}
 					#endif
                 }
 #ifdef RAGDOLLS
@@ -801,7 +809,11 @@ int sithWeapon_Collide(sithThing *physicsThing, sithThing *collidedThing, sithCo
 				rdVector_Scale3(&tmp2, &physicsThing->lookOrientation.lvec, force);
 				sithPhysics_ThingApplyForce(collidedThing, &tmp2);
 				if (collidedThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
-					sithPhysics_ThingApplyRotForce(collidedThing, &physicsThing->lookOrientation.lvec, force);
+				{
+					rdVector3 contact = collidedThing->position;
+					rdVector_MultAcc3(&contact, &a4->hitNorm, -collidedThing->moveSize);
+					sithPhysics_ThingApplyRotForce(collidedThing, &contact, &tmp2, 0.0f);
+				}
 			}
 #endif
 		}
@@ -870,7 +882,11 @@ int sithWeapon_Collide(sithThing *physicsThing, sithThing *collidedThing, sithCo
 				rdVector_Scale3(&tmp2, &physicsThing->lookOrientation.lvec, force);
 				sithPhysics_ThingApplyForce(collidedThing, &tmp2);
 				if(collidedThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
-					sithPhysics_ThingApplyRotForce(collidedThing, &a4->hitNorm, rdVector_Len3(&tmp2));
+				{
+					rdVector3 contact = collidedThing->position;
+					rdVector_MultAcc3(&contact, &a4->hitNorm, -collidedThing->moveSize);
+					sithPhysics_ThingApplyRotForce(collidedThing, &contact, &tmp2, 0.0f);
+				}
 			}
 #endif
         }

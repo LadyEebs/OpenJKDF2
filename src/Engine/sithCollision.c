@@ -1428,9 +1428,14 @@ int sithCollision_DefaultHitHandler(sithThing *thing, sithSurface *surface, sith
 	// todo: should this be here? linear effects for surface collision aren't...
 	if (a1a >= 0.0f && thing->physicsParams.physflags & SITH_PF_ANGIMPULSE && thing->physicsParams.mass != 0.0)
 	{
+		rdVector3 contact = thing->position;
+		rdVector_MultAcc3(&contact, &a3->hitNorm, -thing->moveSize);
+		
 		float restitution = 0.8f;
-		float j = (1.0f + restitution) * a1a * thing->physicsParams.mass;
-		sithPhysics_ThingApplyRotForce(thing, &a3->hitNorm, j);
+		rdVector3 force;
+		rdVector_Scale3(&force, &a3->hitNorm, (1.0f + restitution) * a1a * thing->physicsParams.mass);
+
+		sithPhysics_ThingApplyRotForce(thing, &contact, &force, 0.0f);
 	}
 #endif
 
@@ -1551,32 +1556,39 @@ int sithCollision_DebrisDebrisCollide(sithThing *thing1, sithThing *thing2, sith
 #ifdef PUPPET_PHYSICS
 		if(v4->physicsParams.physflags & SITH_PF_ANGIMPULSE || v5->physicsParams.physflags & SITH_PF_ANGIMPULSE)
 		{
-			rdVector3 contactNormal = a2;
-			
+			rdVector3 contactA = v4->position;
+			rdVector_MultAcc3(&contactA, &a2, -v4->moveSize);
+
+			rdVector3 contactB = v5->position;
+			rdVector_MultAcc3(&contactB, &a2, v5->moveSize);
+
 			float invMassA = 1.0f / v4->physicsParams.mass;
 			float invMassB = 1.0f / v5->physicsParams.mass;
 			float restitution = 0.5f;
 			float impulseMagnitude = (1.0f + restitution) * v6;
 			impulseMagnitude /= invMassA + invMassB;
 
+			rdVector3 rotForce;
+			rdVector_Scale3(&rotForce, &a2, impulseMagnitude);
+
 			if (v4->physicsParams.physflags & SITH_PF_ANGIMPULSE)
-				sithPhysics_ThingApplyRotForce(v4, &contactNormal, impulseMagnitude);
-			rdVector_Neg3Acc(&contactNormal);
+				sithPhysics_ThingApplyRotForce(v4, &contactA, &rotForce, 0.0f);
+			rdVector_Neg3Acc(&rotForce);
 			if (v5->physicsParams.physflags & SITH_PF_ANGIMPULSE)
-				sithPhysics_ThingApplyRotForce(v5, &contactNormal, impulseMagnitude);
+				sithPhysics_ThingApplyRotForce(v5, &contactB, &rotForce, 0.0f);
 		}
 		
-		// don't block if one of the colliders is a corpse
-		//if ((v4->type == SITH_THING_PLAYER && v5->type == SITH_THING_CORPSE)
-		//	|| (v5->type == SITH_THING_PLAYER && v4->type == SITH_THING_CORPSE)
-		//)
-		//{
-		//	return 0;
-		//}
+		// corpses shouldn't block player movement
+		if ((v4->type == SITH_THING_PLAYER && v5->type == SITH_THING_CORPSE)
+			|| (v5->type == SITH_THING_PLAYER && v4->type == SITH_THING_CORPSE)
+		)
+		{
+			return 0;
+		}
 
 		// if both bodies are corpses don't block
-		//if(v4->type == SITH_THING_CORPSE && v5->type == SITH_THING_CORPSE)
-		//	return 0;
+		if(v4->type == SITH_THING_CORPSE && v5->type == SITH_THING_CORPSE)
+			return 0;
 #endif
 
         return sithCollision_CollideHurt(v4, &a2, a3->distance, 0);

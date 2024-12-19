@@ -2745,6 +2745,12 @@ int sithRender_RenderThing(sithThing *pThing)
 	}
 	else
 #endif
+#ifdef PUPPET_PHYSICS
+	int showPhysicsJoints = (jkPlayer_debugRagdolls && pThing->animclass && pThing->puppet && pThing->puppet->physics);
+	if (showPhysicsJoints)
+		ret = 1;
+	else
+#endif
     ret = rdThing_Draw(&pThing->rdthing, &pThing->lookOrientation);
     rdVector_Zero3(&pThing->lookOrientation.scale);
 #ifdef QOL_IMPROVEMENTS
@@ -2781,6 +2787,77 @@ int sithRender_RenderThing(sithThing *pThing)
         }
         pThing->explosionParams.typeflags &= ~SITHEXPLOSION_FLAG_FLASH_BLINDS_THINGS;
     }
+
+#ifdef PUPPET_PHYSICS
+	if (showPhysicsJoints)
+	{
+		// could actually do all this by giving the joint things themselves some draw data
+		uint64_t jointBits = pThing->animclass->physicsJointBits;
+		while (jointBits != 0)
+		{
+			int jointIdx = stdMath_FindLSB64(jointBits);
+			jointBits ^= 1ull << jointIdx;
+
+			sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
+			for(int i = 0; i < pJoint->numThings; ++i)
+			{
+				rdSprite debugSprite;
+				rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, "sabergreen0.mat", pJoint->things[i].moveSize * 2.0f, pJoint->things[i].moveSize * 2.0f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &rdroid_zeroVector3);
+
+				rdThing debug;
+				rdThing_NewEntry(&debug, pThing);
+				rdThing_SetSprite3(&debug, &debugSprite);
+				rdMatrix34 mat;
+				rdMatrix_BuildTranslate34(&mat, &pJoint->things[i].position);
+
+				rdSprite_Draw(&debug, &mat);
+
+				rdSprite_FreeEntry(&debugSprite);
+				rdThing_FreeEntry(&debug);
+			}
+		}
+
+		if(pThing->constraints)
+		{
+			sithConstraint* constraint = pThing->constraints;
+			while (constraint)
+			{
+				if(constraint->type == SITH_CONSTRAINT_DISTANCE)
+				{
+					rdVector3 targetAnchor;
+					constraint->targetThing->lookOrientation.scale = constraint->targetThing->position;
+					rdMatrix_TransformPoint34(&targetAnchor, &constraint->distanceParams.targetAnchor, &constraint->targetThing->lookOrientation);
+					rdVector_Zero3(&constraint->targetThing->lookOrientation.scale);
+
+					rdVector3 constrainedAnchor;
+					constraint->constrainedThing->lookOrientation.scale = constraint->constrainedThing->position;
+					rdMatrix_TransformPoint34(&constrainedAnchor, &constraint->distanceParams.constraintAnchor, &constraint->constrainedThing->lookOrientation);
+					rdVector_Zero3(&constraint->constrainedThing->lookOrientation.scale);
+
+					rdVector3 offset = {0,0,-0.01};
+
+					for (int i = 0; i < 2; ++i)
+					{
+						rdSprite debugSprite;
+						rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, i == 0 ? "saberred0.mat" : "saberblue0.mat", 0.005f, 0.005f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, & offset);
+
+						rdThing debug;
+						rdThing_NewEntry(&debug, pThing);
+						rdThing_SetSprite3(&debug, &debugSprite);
+						rdMatrix34 mat;
+						rdMatrix_BuildTranslate34(&mat, i == 0 ? &targetAnchor : &constrainedAnchor);
+
+						rdSprite_Draw(&debug, &mat);
+
+						rdSprite_FreeEntry(&debugSprite);
+						rdThing_FreeEntry(&debug);
+					}
+				}
+				constraint = constraint->next;
+			}
+		}
+	}
+#endif
 
 	// position debug
 #if 0

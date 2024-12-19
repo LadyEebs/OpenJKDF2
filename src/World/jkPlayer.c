@@ -79,6 +79,10 @@ int jkPlayer_enableDecals = 1;
 #if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 int jkPlayer_ragdolls = 1;
 int jkPlayer_debugRagdolls = 0;
+#ifdef PUPPET_PHYSICS
+float jkPlayer_puppetAngBias = 0.05f;
+float jkPlayer_puppetPosBias = 0.2f;
+#endif
 #endif
 #endif
 
@@ -236,6 +240,10 @@ void jkPlayer_StartupVars()
 #if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 	sithCvar_RegisterInt("g_ragdolls", 1, &jkPlayer_ragdolls, CVARFLAG_LOCAL | CVARFLAG_UPDATABLE_DEFAULT);
 	sithCvar_RegisterInt("r_debugRagdolls", 0, &jkPlayer_debugRagdolls, CVARFLAG_LOCAL | CVARFLAG_UPDATABLE_DEFAULT);
+#ifdef PUPPET_PHYSICS
+	sithCvar_RegisterFlex("g_puppetAngBias", CANONICAL_PHYS_TICKRATE, &jkPlayer_puppetAngBias, CVARFLAG_LOCAL | CVARFLAG_UPDATABLE_DEFAULT);
+	sithCvar_RegisterFlex("g_puppetPosBias", CANONICAL_PHYS_TICKRATE, &jkPlayer_puppetPosBias, CVARFLAG_LOCAL | CVARFLAG_UPDATABLE_DEFAULT);
+#endif
 #endif
     sithCvar_RegisterBool("hud_setCrosshairOnLightsaber", 1,                        &jkPlayer_setCrosshairOnLightsaber, CVARFLAG_LOCAL);
     sithCvar_RegisterBool("hud_setCrosshairOnFist",     1,                          &jkPlayer_setCrosshairOnFist,       CVARFLAG_LOCAL);
@@ -307,6 +315,10 @@ void jkPlayer_ResetVars()
 #if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 	jkPlayer_ragdolls = 1;
 	jkPlayer_debugRagdolls = 0;
+#ifdef PUPPET_PHYSICS
+	jkPlayer_puppetAngBias = 0.05f;
+	jkPlayer_puppetPosBias = 0.2f;
+#endif
 #endif
 #endif
 

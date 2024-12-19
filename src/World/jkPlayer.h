@@ -190,6 +190,10 @@ extern int jkPlayer_enableDecals;
 #if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
 extern int jkPlayer_ragdolls;
 extern int jkPlayer_debugRagdolls;
+#ifdef PUPPET_PHYSICS
+extern float jkPlayer_puppetAngBias;
+extern float jkPlayer_puppetPosBias;
+#endif
 #endif
 
 #define FOV_MIN (40)

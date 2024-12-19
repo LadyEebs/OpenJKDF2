@@ -6,7 +6,12 @@
 #include "Primitives/rdMath.h"
 #include "Primitives/rdQuat.h"
 
-void sithConstraint_AddDistanceConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pAnchor)
+#ifdef PUPPET_PHYSICS
+
+extern float jkPlayer_puppetAngBias;
+extern float jkPlayer_puppetPosBias;
+
+void sithConstraint_AddDistanceConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pTargetAnchor, const rdVector3* pConstrainedAnchor, float distance)
 {
 	sithConstraint* constraint = (sithConstraint*)malloc(sizeof(sithConstraint));
 	if (!constraint)
@@ -15,8 +20,9 @@ void sithConstraint_AddDistanceConstraint(sithThing* pThing, sithThing* pConstra
 	constraint->type = SITH_CONSTRAINT_DISTANCE;
 	constraint->constrainedThing = pConstrainedThing;
 	constraint->targetThing = pTargetThing;
-	constraint->distanceParams.constraintAnchor = *pAnchor;
-	constraint->distanceParams.constraintDistance = 0.0f;//rdVector_Len3(&constraint->distanceParams.constraintAnchor);
+	constraint->distanceParams.targetAnchor = *pTargetAnchor;
+	constraint->distanceParams.constraintAnchor = *pConstrainedAnchor;
+	constraint->distanceParams.constraintDistance = distance;//rdVector_Len3(&constraint->distanceParams.constraintAnchor);
 	constraint->distanceParams.prevLambda = 0.0f;
 
 	constraint->next = pThing->constraints;
@@ -95,7 +101,42 @@ void sithConstraint_AddTwistConstraint(sithThing* pThing, sithThing* pConstraine
 	pThing->constraints = constraint;
 }
 
+void sithPhysics_ThingApplyRotForceAtPoint(sithThing* pThing, const rdVector3* contactPoint, const rdVector3* impulse)
+{
+	// Added: noclip
+	if (pThing == sithPlayer_pLocalPlayerThing && (g_debugmodeFlags & DEBUGFLAG_NOCLIP))
+		return;
 
+	if (pThing->moveType != SITH_MT_PHYSICS || pThing->physicsParams.mass <= 0.0)
+		return;
+
+	rdVector3 leverArm;
+	rdVector_Sub3(&leverArm, contactPoint, &pThing->position);
+	rdVector_ClipPrecision3(&leverArm);
+	if (rdVector_IsZero3(&leverArm))
+		return;
+
+	rdVector3 torque;
+	rdVector_Cross3(&torque, &leverArm, impulse);
+
+	rdVector3 angAccel;
+	rdVector_Scale3(&angAccel, &torque, (180.0f / M_PI) / pThing->physicsParams.inertia);
+	rdVector_ClipPrecision3(&angAccel);
+	if (rdVector_IsZero3(&angAccel))
+		return;
+
+	rdMatrix34 invObjectOrientation;
+	rdMatrix_InvertOrtho34(&invObjectOrientation, &pThing->lookOrientation);
+	rdVector_Zero3(&invObjectOrientation.scale);
+
+	rdVector3 localAngAccel;
+	rdMatrix_TransformVector34(&localAngAccel, &angAccel, &invObjectOrientation);
+
+	//if (pThing->attach_flags & (SITH_ATTACH_THINGSURFACE | SITH_ATTACH_WORLDSURFACE))
+	//	pThing->physicsParams.angVel.y += localAngAccel.y / sithTime_deltaSeconds;
+	//else
+		rdVector_MultAcc3(&pThing->physicsParams.angVel, &localAngAccel, 1.0f / sithTime_deltaSeconds);
+}
 
 static void sithConstraint_SolveDistanceConstraint(sithConstraint* pConstraint, float deltaSeconds)
 {
@@ -108,18 +149,22 @@ static void sithConstraint_SolveDistanceConstraint(sithConstraint* pConstraint, 
 	//rdVector_Copy3(&pConstraint->targetThing->lookOrientation.scale, &pConstraint->targetThing->position);
 	//rdVector_Zero3(&pConstraint->targetThing->lookOrientation.scale);
 
-	rdVector3 anchor;
-	rdMatrix_TransformVector34(&anchor, &pConstraint->distanceParams.constraintAnchor, &pConstraint->targetThing->lookOrientation);
+	rdVector3 targetAnchor;
+	rdMatrix_TransformVector34(&targetAnchor, &pConstraint->distanceParams.targetAnchor, &pConstraint->targetThing->lookOrientation);
+
+	rdVector3 constrainedAnchor;
+	rdMatrix_TransformVector34(&constrainedAnchor, &pConstraint->distanceParams.constraintAnchor, &pConstraint->constrainedThing->lookOrientation);
 
 	//rdVector_Zero3(&pConstraint->targetThing->lookOrientation.scale);
-	rdVector_Add3Acc(&anchor, &pConstraint->targetThing->position);
+	rdVector_Add3Acc(&targetAnchor, &pConstraint->targetThing->position);
+	rdVector_Add3Acc(&constrainedAnchor, &pConstraint->constrainedThing->position);
 
 	rdVector3 relativePos;
-	rdVector_Sub3(&relativePos, &anchor, &pConstraint->constrainedThing->position);
+	rdVector_Sub3(&relativePos, &targetAnchor, &constrainedAnchor);
 
 	float currentDistance = rdVector_Len3(&relativePos);
 	float offset = pConstraint->distanceParams.constraintDistance - currentDistance;
-	//offset = stdMath_ClipPrecision(offset);
+	offset = stdMath_ClipPrecision(offset);
 	if (stdMath_Fabs(offset) <= 0.0f)
 		return;
 
@@ -129,17 +174,35 @@ static void sithConstraint_SolveDistanceConstraint(sithConstraint* pConstraint, 
 	rdVector3 relativeVelocity;
 	rdVector_Sub3(&relativeVelocity, &pConstraint->targetThing->physicsParams.vel, &pConstraint->constrainedThing->physicsParams.vel);
 
+	// Apply spring force
+	float stiffness = 0.5f;
+	rdVector3 springForce;
+	rdVector_Scale3(&springForce, &offsetDir, -stiffness * offset);
+	
+	// Apply damping force
+	float dampingFactor = 0.2f;
+	float dampingForceMag = dampingFactor * rdVector_Dot3(&relativeVelocity, &offsetDir);
+	rdVector3 dampingForce;
+	rdVector_Scale3(&dampingForce, &offsetDir, -dampingForceMag);
+	
+	rdVector3 totalForce;
+	rdVector_Add3(&totalForce, &springForce, &dampingForce);
+
 	// how much of their relative force is affecting the constraint
 	float velocityDot = rdVector_Dot3(&relativeVelocity, &offsetDir);
-	//velocityDot = stdMath_ClipPrecision(velocityDot);
+	velocityDot = stdMath_ClipPrecision(velocityDot);
 
-	const float biasFactor = 0.01f;
+	const float biasFactor = jkPlayer_puppetPosBias;
 	float bias = -(biasFactor / deltaSeconds) * offset;
-	//bias = stdMath_ClipPrecision(bias);
+	bias = stdMath_ClipPrecision(bias);
 
 	float lambda = pConstraint->distanceParams.prevLambda;
 	lambda = -(velocityDot + bias) / constraintMass;
-	//lambda = stdMath_ClipPrecision(lambda);
+	lambda = stdMath_ClipPrecision(lambda);
+
+	lambda *= 1.0 - dampingFactor;
+
+//	lambda = offset / constraintMass;
 
 //	// Calculate the relative velocity
 //	float dC = velocityDot;
@@ -150,27 +213,192 @@ static void sithConstraint_SolveDistanceConstraint(sithConstraint* pConstraint, 
 //	float baumgarteTerm = (beta * dC + gamma * C) / deltaSeconds;
 //	float lambda = baumgarteTerm / constraintMass;
 
-	const float dampingFactor = 0.2f;
-
 	rdVector3 aImpulse;
 	rdVector_Scale3(&aImpulse, &offsetDir, lambda);
 
 	rdVector3 bImpulse;
 	rdVector_Scale3(&bImpulse, &offsetDir, -lambda);
 
-	//rdVector3 dampingForce;
-	//rdVector_Scale3(&dampingForce, &aImpulse, dampingFactor);
+	// Apply total force to impulses
+	//rdVector_Add3Acc(&aImpulse, &totalForce);
+	//rdVector_Sub3Acc(&bImpulse, &totalForce);
 
-	//rdVector_Sub3Acc(&aImpulse, &dampingForce);
-	//rdVector_Sub3Acc(&bImpulse, &dampingForce);
+	//rdVector_Scale3Acc(&aImpulse, invMassA);
+	//rdVector_Scale3Acc(&bImpulse, invMassB);
 
-	rdVector_MultAcc3(&pConstraint->targetThing->physicsParams.vel, &aImpulse, invMassA);
-	rdVector_MultAcc3(&pConstraint->constrainedThing->physicsParams.vel, &bImpulse, invMassB);
 
-	//sithPhysics_ThingApplyForce(pConstraint->targetThing, &aImpulse);
-	//sithPhysics_ThingApplyForce(pConstraint->constrainedThing, &bImpulse);
 
-	pConstraint->distanceParams.prevLambda = lambda;
+
+//	sithCollision_UpdateThingCollision(pConstraint->targetThing, &aImpulse, rdVector_Normalize3Acc(&aImpulse) * invMassA * deltaSeconds,  0);
+//	sithCollision_UpdateThingCollision(pConstraint->constrainedThing, &bImpulse, rdVector_Normalize3Acc(&bImpulse) * invMassB * deltaSeconds, 0 );
+
+//rdVector_MultAcc3(&pConstraint->targetThing->physicsParams.vel, &aImpulse, invMassA);
+//rdVector_MultAcc3(&pConstraint->constrainedThing->physicsParams.vel, &bImpulse, invMassB);
+	
+
+	sithPhysics_ThingApplyForce(pConstraint->targetThing, &aImpulse);
+	sithPhysics_ThingApplyForce(pConstraint->constrainedThing, &bImpulse);
+
+	rdVector_Scale3Acc(&aImpulse, invMassA);
+	rdVector_Scale3Acc(&bImpulse, invMassB);
+
+	if(pConstraint->constrainedThing->physicsParams.physflags & SITH_PF_4000000)
+	{
+		//sithPhysics_ThingApplyRotForce(pConstraint->targetThing, &centerToAnchorA, &aImpulse);
+		//sithPhysics_ThingApplyRotForce(pConstraint->constrainedThing, &centerToAnchorB, &bImpulse);
+
+		rdMatrix34 invOrientConstrained;
+		rdMatrix_InvertOrtho34(&invOrientConstrained, &pConstraint->constrainedThing->lookOrientation);
+		
+		rdMatrix34 invOrientTarget;
+		rdMatrix_InvertOrtho34(&invOrientTarget, &pConstraint->targetThing->lookOrientation);
+		
+		// Calculate relative orientation
+		rdMatrix34 relativeOrientation;
+		rdMatrix_Multiply34(&relativeOrientation, &invOrientTarget, &pConstraint->constrainedThing->lookOrientation);
+		
+		// Extract relative angles
+		rdVector3 relativeAngles;
+		rdMatrix_ExtractAngles34(&relativeOrientation, &relativeAngles);
+		
+		// Clamp the angles to the feasible set
+		rdVector3 projectedAngles = relativeAngles;
+		//rdVector_Clamp3(&projectedAngles, &pConstraint->angleParams.minAngles, &pConstraint->angleParams.maxAngles);
+		rdVector_ClampRange3(&projectedAngles, -15.0f, 15.0f);
+
+		// Calculate angle error and bias term
+		rdVector3 angleError;
+		rdVector_Sub3(&angleError, &relativeAngles, &projectedAngles);
+		
+		// Apply bias
+		rdVector3 biasTerm;
+		rdVector_Scale3(&biasTerm, &angleError, 0.5 / deltaSeconds);
+		
+		// Calculate angular correction in PYR
+		rdVector3 angularCorrection = angleError;
+		//rdVector_Add3(&angularCorrection, &angleError, &biasTerm);
+		//rdVector_InvScale3Acc(&angularCorrection, correctionFactor);
+		
+		// Apply the correction to angular velocity
+		rdVector3 correctionParent;
+		rdVector_Scale3(&correctionParent, &angularCorrection, 1.0f / pConstraint->targetThing->physicsParams.mass);
+	//	rdVector_Add3Acc(&pConstraint->targetThing->physicsParams.angVel, &correctionParent);
+		
+		rdVector3 correctionChild;
+		rdVector_Scale3(&correctionChild, &angularCorrection, -1.0f / pConstraint->constrainedThing->physicsParams.mass);
+	//	rdVector_Sub3Acc(&pConstraint->constrainedThing->physicsParams.angVel, &correctionChild);
+
+		sithPhysics_ThingApplyRotForce(pConstraint->targetThing, &targetAnchor, &aImpulse, jkPlayer_puppetAngBias);
+		sithPhysics_ThingApplyRotForce(pConstraint->constrainedThing, &constrainedAnchor, &bImpulse, jkPlayer_puppetAngBias);
+
+
+
+
+
+	}
+
+
+//	rdVector_Add3Acc(&pConstraint->targetThing->physicsParams.vel, &aImpulse);
+//	rdVector_Add3Acc(&pConstraint->constrainedThing->physicsParams.vel, &bImpulse);
+
+	// Apply velocity correction to maintain the contact point
+
+	//VectorAdd(&constraint->bodyA->velocity, &constraint->bodyA->velocity, &velocityCorrection);
+	//VectorSubtract(&constraint->bodyB->velocity, &constraint->bodyB->velocity, &velocityCorrection);
+
+
+	if (0)//pConstraint->constrainedThing->physicsParams.physflags & SITH_PF_4000000)
+	{
+		rdVector3 centerToAnchorA, centerToAnchorB;
+		rdVector_Sub3(&centerToAnchorA, &targetAnchor, &pConstraint->targetThing->position);
+		rdVector_Sub3(&centerToAnchorB, &constrainedAnchor, &pConstraint->constrainedThing->position);
+	
+		// Calculate and apply angular corrections
+		rdVector3 torqueA, torqueB;
+		rdVector_Cross3(&torqueA, &centerToAnchorA, &aImpulse);
+		rdVector_Cross3(&torqueB, &centerToAnchorB, &bImpulse);
+		
+	//	rdVector3 angularAccelA, angularAccelB;
+	//	rdVector_Scale3(&angularAccelA, &torqueA, (180.0f / M_PI) / inertiaA);
+	//	rdVector_Scale3(&angularAccelB, &torqueB, (180.0f / M_PI) / inertiaB);
+		
+
+		// Calculate angular lambda
+		rdVector3 angularLambdaA, angularLambdaB;
+		rdVector_Scale3(&angularLambdaA, &torqueA, 1.0f);// / pConstraint->targetThing->physicsParams.inertia);
+		rdVector_Scale3(&angularLambdaB, &torqueB, 1.0f);// / pConstraint->constrainedThing->physicsParams.inertia);
+
+		// Calculate angular bias
+		const float angularBiasFactor = jkPlayer_puppetAngBias;
+		// Adjust as needed
+		rdVector3 angularBiasA, angularBiasB;
+		rdVector_Scale3(&angularBiasA, &angularLambdaA, angularBiasFactor / deltaSeconds);
+		rdVector_Scale3(&angularBiasB, &angularLambdaB, angularBiasFactor / deltaSeconds);
+
+		// Apply angular bias
+		rdVector_Add3Acc(&angularLambdaA, &angularBiasA);
+		rdVector_Add3Acc(&angularLambdaB, &angularBiasB);
+		
+		rdVector_Scale3Acc(&angularLambdaA, (180.0f / M_PI));
+		rdVector_Scale3Acc(&angularLambdaB, (180.0f / M_PI));
+
+		// Apply angular damping
+		const float angularDampingFactor = 0.3f;
+		angularLambdaA.x *= (1.0f - angularDampingFactor);
+		angularLambdaA.y *= (1.0f - angularDampingFactor);
+		angularLambdaA.z *= (1.0f - angularDampingFactor);
+		
+		angularLambdaB.x *= (1.0f - angularDampingFactor);
+		angularLambdaB.y *= (1.0f - angularDampingFactor);
+		angularLambdaB.z *= (1.0f - angularDampingFactor);
+		
+		// Convert angular accelerations to local coordinates
+		rdMatrix34 invTargetOrientation, invConstrainedOrientation;
+		rdMatrix_InvertOrtho34(&invTargetOrientation, &pConstraint->targetThing->lookOrientation);
+		rdMatrix_InvertOrtho34(&invConstrainedOrientation, &pConstraint->constrainedThing->lookOrientation);
+
+		rdVector3 localAngularAccelA, localAngularAccelB;
+		rdMatrix_TransformVector34(&localAngularAccelA, &angularLambdaA, &invTargetOrientation);
+		rdMatrix_TransformVector34(&localAngularAccelB, &angularLambdaB, &invConstrainedOrientation);
+
+		//rdVector_ClampRange3(&localAngularAccelA, -15.0f, 15.0f);
+		//rdVector_ClampRange3(&localAngularAccelB, -15.0f, 15.0f);
+
+
+	//	rdQuat qA, qB;
+	//	rdQuat_BuildFromAxisAngle(&qA, &localAngularAccelA, rdVector_Normalize3Acc(&localAngularAccelA) * deltaSeconds);
+	//	rdQuat_BuildFromAxisAngle(&qB, &localAngularAccelB, rdVector_Normalize3Acc(&localAngularAccelB) * deltaSeconds);
+	//
+	//	rdQuat_NormalizeAcc(&qA);
+	//	rdQuat_NormalizeAcc(&qB);
+	//
+	//	if (rdQuat_IsZero(&pConstraint->targetThing->physicsParams.angVelQ))
+	//		pConstraint->targetThing->physicsParams.angVelQ = qA;
+	//	else
+	//		rdQuat_MulAcc(&pConstraint->targetThing->physicsParams.angVelQ, &qA);
+	//
+	//	if (rdQuat_IsZero(&pConstraint->constrainedThing->physicsParams.angVelQ))
+	//		pConstraint->constrainedThing->physicsParams.angVelQ = qB;
+	//	else
+	//		rdQuat_MulAcc(&pConstraint->constrainedThing->physicsParams.angVelQ, &qB);
+
+
+		// Apply the angular acceleration to the thing's angular velocity
+		rdVector_Add3Acc(&pConstraint->targetThing->physicsParams.angVel, &localAngularAccelA);
+		rdVector_Add3Acc(&pConstraint->constrainedThing->physicsParams.angVel, &localAngularAccelB);
+
+
+
+//// Apply the rotational relationship correction to the velocity
+//rdVector3 relativeContactPoint;
+//rdVector_Sub3(&relativeContactPoint, &anchor, & pConstraint->constrainedThing->position);
+//
+//rdVector3 rotationalCorrection;
+//rdVector_Cross3(&rotationalCorrection, &relativeContactPoint, &pConstraint->constrainedThing->physicsParams.angVel);
+//rdVector_Add3Acc(&pConstraint->constrainedThing->physicsParams.vel, &rotationalCorrection);
+	
+	//rdVector_Add3Acc(&pConstraint->targetThing->physicsParams.angVel, &angularAccelA);
+	}
 }
 
 static void sithPhysics_ThingApplyAngularImpulse(sithThing* pThing, const rdVector3* angularImpulse)
@@ -344,11 +572,6 @@ static void sithConstraint_SolveAngleConstraint(sithConstraint* pConstraint, flo
 		return;
 
 #if 1
-
-	//rdVector_Zero3(&pConstraint->targetThing->lookOrientation.scale);
-	//rdVector_Zero3(&pConstraint->constrainedThing->lookOrientation.scale);
-
-#if 1 // mat
 	rdMatrix34 invOrientConstrained;
 	rdMatrix_InvertOrtho34(&invOrientConstrained, &pConstraint->constrainedThing->lookOrientation);
 
@@ -363,92 +586,85 @@ static void sithConstraint_SolveAngleConstraint(sithConstraint* pConstraint, flo
 	rdVector3 relativeAngles;
 	rdMatrix_ExtractAngles34(&relativeOrientation, &relativeAngles);
 
-	//printf("relative angles mat: %f %f %f\n", relativeAnglesMat.x, relativeAnglesMat.y, relativeAnglesMat.z);
-	//relativeAngles.y = -relativeAngles.y; // yaw is inverted for whatever reason
-	//rdVector_NormalizeAngleAcute3(&relativeAngles);
-#else // quat
-	// Convert current orientations to quaternions
-	rdQuat targetQuat;
-	rdQuat_BuildFrom34(&targetQuat, &pConstraint->targetThing->lookOrientation);
-
-	rdQuat constrainedQuat;
-	rdQuat_BuildFrom34(&constrainedQuat, &pConstraint->constrainedThing->lookOrientation);
-
-	// Calculate relative quaternion
-	rdQuat invTargetQuat;
-	rdQuat_Inverse(&invTargetQuat, &targetQuat);
-
-	rdQuat relativeQuat;
-	rdQuat_Mul(&relativeQuat, &invTargetQuat, &constrainedQuat);
-
-	// Extract Euler angles from relative quaternion
-	rdVector3 relativeAngles;
-	rdQuat_ExtractAngles(&relativeQuat, &relativeAngles);
-
-	//printf("relative angles quat: %f %f %f\n", relativeAngles.x, relativeAngles.y, relativeAngles.z);
-#endif
-
 	// project angles to the feasible set a.k.a clamp 'em
 	rdVector3 projectedAngles = relativeAngles;
 	rdVector_Clamp3(&projectedAngles, &pConstraint->angleParams.minAngles, &pConstraint->angleParams.maxAngles);
 
-	//rdVector3 angularCorrection;
-	//angularCorrection.x = stdMath_NormalizeDeltaAngle(projectedAngles.x, relativeAngles.x);
-	//angularCorrection.y = stdMath_NormalizeDeltaAngle(projectedAngles.y, relativeAngles.y);
-	//angularCorrection.z = stdMath_NormalizeDeltaAngle(projectedAngles.z, relativeAngles.z);
-
 	rdVector3 angleError;
-	//rdVector_NormalizeDeltaAngle3(&angleError, &projectedAngles, &relativeAngles);
 	rdVector_Sub3(&angleError, &relativeAngles, &projectedAngles);
 
-		// Calculate the relative angular velocity
+	// Calculate the relative angular velocity
 	rdVector3 relativeAngVel;
 	//rdVector_NormalizeDeltaAngle3(&relativeAngVel, &pConstraint->targetThing->physicsParams.angVel, &pConstraint->constrainedThing->physicsParams.angVel);
-	rdVector_Sub3(&relativeAngVel, &pConstraint->constrainedThing->physicsParams.angVel, &pConstraint->targetThing->physicsParams.angVel);
+	//rdVector_Sub3(&relativeAngVel, &pConstraint->constrainedThing->physicsParams.angVel, &pConstraint->targetThing->physicsParams.angVel);
 
-	//rdVector3 worldTargetAngVel;
-	//rdMatrix_TransformVector34(&worldTargetAngVel, &pConstraint->targetThing->physicsParams.angVel, &pConstraint->targetThing->lookOrientation);
-	//
-	//rdVector3 worldConstrainedAngVel;
-	//rdMatrix_TransformVector34(&worldConstrainedAngVel, &pConstraint->constrainedThing->physicsParams.angVel, &pConstraint->constrainedThing->lookOrientation);
-	//
-	//rdVector_Sub3(&relativeAngVel, &worldConstrainedAngVel, &worldTargetAngVel);
+	rdVector3 worldTargetAngVel;
+	rdMatrix_TransformVector34(&worldTargetAngVel, &pConstraint->targetThing->physicsParams.angVel, &pConstraint->targetThing->lookOrientation);
+	
+	rdVector3 worldConstrainedAngVel;
+	rdMatrix_TransformVector34(&worldConstrainedAngVel, &pConstraint->constrainedThing->physicsParams.angVel, &pConstraint->constrainedThing->lookOrientation);
+	
+	rdVector_Sub3(&relativeAngVel, &worldConstrainedAngVel, &worldTargetAngVel);
 
-	float bias = 0.5f;
+	float bias = 0.1f;
 	rdVector3 biasTerm;
 	rdVector_Scale3(&biasTerm, &angleError, bias / deltaSeconds);
 
 	rdVector3 angularCorrection;
 	rdVector_Add3(&angularCorrection, &angleError, &biasTerm);
-	rdVector_InvScale3Acc(&angularCorrection, constraintMass);
 	//rdVector_NormalizeAngleAcute3(&angularCorrection);
+
+	//angularCorrection = angleError;
+	rdVector_InvScale3Acc(&angularCorrection, constraintMass);
 
 	//float dampingFactor = 0.3;
 	//rdVector_MultAcc3(&angularCorrection, &relativeAngVel, -dampingFactor);
 
+
 	// apply the correction to angular velocity
 	rdVector3 correctionParent;
-	rdVector_Scale3(&correctionParent, &angularCorrection, invMassA);
+	rdVector_Scale3(&correctionParent, &angularCorrection, invMassA * deltaSeconds);
 	rdVector_Add3Acc(&pConstraint->targetThing->physicsParams.angVel, &correctionParent);
+//	rdMatrix_PreRotate34(&pConstraint->targetThing->lookOrientation, &correctionParent);
+	//rdVector_NormalizeAngleAcute3(&correctionParent);
+
+	rdMatrix34 rotA;
+	rdMatrix_BuildRotate34(&rotA, &correctionParent);
+//	sithCollision_sub_4E7670(pConstraint->targetThing, &rotA);
 
 	rdVector3 correctionChild;
-	rdVector_Scale3(&correctionChild, &angularCorrection, invMassB);
+	rdVector_Scale3(&correctionChild, &angularCorrection, -invMassB * deltaSeconds);
 	rdVector_Sub3Acc(&pConstraint->constrainedThing->physicsParams.angVel, &correctionChild);
+//	rdMatrix_PreRotate34(&pConstraint->constrainedThing->lookOrientation, &correctionChild);
+	//rdVector_NormalizeAngleAcute3(&correctionChild);
+	// 
+//	rdMatrix34 rotB;
+//	rdMatrix_BuildRotate34(&rotB, &correctionChild);
+//	sithCollision_sub_4E7670(pConstraint->constrainedThing, &rotB);
 
 
-	// Apply the relative angular velocity correction to conserve angular momentum
-	rdVector3 velCorrection = relativeAngVel;
-	//rdVector_Neg3(&velCorrection, &relativeAngVel);
-	
-	rdVector3 velCorrectionParent = velCorrection;
-	//rdMatrix_TransformVector34Acc(&velCorrectionParent, &invOrientTarget);
-	rdVector_Scale3Acc(&velCorrectionParent, invMassA / constraintMass);
-	rdVector_Add3Acc(&pConstraint->targetThing->physicsParams.angVel, &velCorrectionParent);
-	
-	rdVector3 velCorrectionChild = velCorrection;
-	//rdMatrix_TransformVector34Acc(&velCorrectionChild, &invOrientConstrained);
-	rdVector_Scale3Acc(&velCorrectionChild, invMassB / constraintMass);
-	rdVector_Sub3Acc(&pConstraint->constrainedThing->physicsParams.angVel, &velCorrectionChild);
+
+//	// Apply the relative angular velocity correction to conserve angular momentum
+//	rdVector3 velCorrection = relativeAngVel;
+//	//rdVector_Neg3(&velCorrection, &relativeAngVel);
+//	
+//	rdVector3 velCorrectionParent = velCorrection;
+//	rdMatrix_TransformVector34Acc(&velCorrectionParent, &invOrientTarget);
+//	rdVector_Scale3Acc(&velCorrectionParent, invMassA / constraintMass);
+//	rdMatrix34 rotVelA;
+//	rdMatrix_BuildRotate34(&rotVelA, &velCorrectionParent);
+//	sithCollision_sub_4E7670(pConstraint->targetThing, &rotVelA);
+//
+//	//rdVector_Add3Acc(&pConstraint->targetThing->physicsParams.angVel, &velCorrectionParent);
+//	
+//	rdVector3 velCorrectionChild = velCorrection;
+//	rdMatrix_TransformVector34Acc(&velCorrectionChild, &invOrientConstrained);
+//	rdVector_Scale3Acc(&velCorrectionChild, -invMassB / constraintMass);
+//	rdMatrix34 rotVelB;
+//	rdMatrix_BuildRotate34(&rotVelB, &velCorrectionChild);
+//	sithCollision_sub_4E7670(pConstraint->constrainedThing, &rotVelB);
+//
+//	//rdVector_Sub3Acc(&pConstraint->constrainedThing->physicsParams.angVel, &velCorrectionChild);
 
 #else
 	rdMatrix34 parentRotTranspose, relativeRotation;
@@ -1048,7 +1264,7 @@ void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
 					sithConstraint_SolveConeConstraint(constraint, deltaSeconds);
 					break;
 				case SITH_CONSTRAINT_ANGLES:
-					sithConstraint_SolveAngleConstraint(constraint, deltaSeconds);
+					//sithConstraint_SolveAngleConstraint(constraint, deltaSeconds);
 					break;
 				case SITH_CONSTRAINT_LOOK:
 					sithConstraint_SolveLookConstraint(constraint, deltaSeconds);
@@ -1069,13 +1285,10 @@ void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
 			//	jointBits ^= 1ull << jointIdx;
 			//
 			//	sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
-			//	
-			//	rdVector_Zero3(&pJoint->thing.physicsParams.velocityMaybe);
-			//	rdVector_Zero3(&pJoint->thing.physicsParams.addedVelocity);
 			//
 			//	// would it make sense to split this so we're not diving head first into collision code?
-			//	sithPhysics_ThingTick(&pJoint->thing, deltaSeconds);
-			//	//sithThing_TickPhysics(&pJoint->thing, deltaSeconds);
+			//	sithPhysics_ThingTick(&pJoint->things[0], deltaSeconds / 10.0f);
+			//	//sithThing_TickPhysics(&pJoint->things[0], deltaSeconds);
 			//
 			//	//rdVector_Zero3(&pJoint->thing.lookOrientation.scale);
 			//}
@@ -1106,3 +1319,5 @@ void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
 	//	sithCollision_UpdateThingCollision(pThing, &delta, deltaLen, 0);
 	}
 }
+
+#endif

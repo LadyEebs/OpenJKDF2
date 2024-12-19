@@ -37,7 +37,7 @@ void sithPhysics_ThingRagdollApplyForce(sithThing* pThing, rdVector3* forceVec, 
 #endif
 
 #ifdef PUPPET_PHYSICS
-void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactNormal, float impulseMagnitude);
+void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactPoint, const rdVector3* impulse, float bias);
 #endif
 
 static void (*_sithPhysics_ThingPhysAttached)(sithThing *pThing, float deltaSeconds) = (void*)sithPhysics_ThingPhysAttached_ADDR;

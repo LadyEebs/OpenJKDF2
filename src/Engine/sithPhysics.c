@@ -173,6 +173,10 @@ void sithPhysics_ThingTick(sithThing *pThing, float deltaSecs)
     }
 
 #ifdef PUPPET_PHYSICS
+	 // the mass to unit ratio is really high so scale it down for this
+	float adjustedMass = pThing->physicsParams.mass * 0.01f;
+	pThing->physicsParams.inertia = (2.0 / 5.0) * adjustedMass * pThing->moveSize * pThing->moveSize;
+
 	if (pThing->puppet && pThing->puppet->physics)
 	{
 		// let the animation system take over
@@ -219,7 +223,11 @@ void sithPhysics_ThingTick(sithThing *pThing, float deltaSecs)
 }
 
 #ifdef PUPPET_PHYSICS
-void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactNormal, float impulseMagnitude)
+// thing: thing to apply force to
+// contact point: the position on the thing (usually a point on its collide sphere) to apply the force
+// impulse: the impulse force to apply to the thing to cause rotation
+// bias: if non-zero, will relax the force applied, useful for constraints
+void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactPoint, const rdVector3* impulse, float bias)
 {   
 	// Added: noclip
 	if (pThing == sithPlayer_pLocalPlayerThing && (g_debugmodeFlags & DEBUGFLAG_NOCLIP))
@@ -228,29 +236,30 @@ void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactN
 	if (pThing->moveType != SITH_MT_PHYSICS || pThing->physicsParams.mass <= 0.0)
 		return;
 
-	rdVector3 contactPoint = pThing->position;
-	rdVector_MultAcc3(&contactPoint, contactNormal, -pThing->moveSize);
-	
-	rdVector3 impulse;
-	rdVector_Scale3(&impulse, contactNormal, impulseMagnitude);
-
 	rdVector3 leverArm;
-	rdVector_Sub3(&leverArm, &contactPoint, &pThing->position);
+	rdVector_Sub3(&leverArm, contactPoint, &pThing->position);
 	rdVector_ClipPrecision3(&leverArm);
 	if (rdVector_IsZero3(&leverArm))
 		return;
 
 	rdVector3 torque;
-	rdVector_Cross3(&torque, &leverArm, &impulse);
-
-	float adjustedMass = pThing->physicsParams.mass * 0.01f; // the mass to unit ratio is really high, so account for that here
-	float inertia = (2.0 / 5.0) * adjustedMass * pThing->moveSize * pThing->moveSize;
+	rdVector_Cross3(&torque, &leverArm, impulse);
 
 	rdVector3 angAccel;
-	rdVector_Scale3(&angAccel, &torque, (180.0f / M_PI) / inertia);
+	rdVector_Scale3(&angAccel, &torque, 1.0f / pThing->physicsParams.inertia);
 	rdVector_ClipPrecision3(&angAccel);
 	if (rdVector_IsZero3(&angAccel))
 		return;
+
+	if (bias > 0.0)
+	{
+		rdVector3 angBias;
+		rdVector_Scale3(&angBias, &angAccel, bias / sithTime_deltaSeconds);
+		rdVector_Add3Acc(&angAccel, &angBias);
+	}
+
+	// make sure we're in degrees
+	rdVector_Scale3Acc(&angAccel, (180.0f / M_PI));
 
 	rdMatrix34 invObjectOrientation;
 	rdMatrix_InvertOrtho34(&invObjectOrientation, &pThing->lookOrientation);
@@ -259,10 +268,17 @@ void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactN
 	rdVector3 localAngAccel;
 	rdMatrix_TransformVector34(&localAngAccel, &angAccel, &invObjectOrientation);
 
-	if (pThing->attach_flags & (SITH_ATTACH_THINGSURFACE | SITH_ATTACH_WORLDSURFACE))
+	// attached things without angthrust flag only rotate with Yaw to avoid funny behavior
+	// such as boxes rotating on the floor
+	if (pThing->attach_flags & (SITH_ATTACH_THINGSURFACE | SITH_ATTACH_WORLDSURFACE)
+		&& !(pThing->physicsParams.physflags & SITH_PF_ANGTHRUST))
+	{
 		pThing->physicsParams.angVel.y += localAngAccel.y / sithTime_deltaSeconds;
+	}
 	else
+	{
 		rdVector_MultAcc3(&pThing->physicsParams.angVel, &localAngAccel, 1.0f / sithTime_deltaSeconds);
+	}
 }
 #endif
 

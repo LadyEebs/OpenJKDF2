@@ -224,7 +224,6 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 						animclass->jointBits |= (1ull << bodypart_idx);
 						if (flags & JOINTFLAGS_PHYSICS)
 							animclass->physicsJointBits |= (1ull << bodypart_idx);
-
 						animclass->bodypart[bodypart_idx].flags = flags;
 						animclass->bodypart[bodypart_idx].mass = mass;
 						animclass->bodypart[bodypart_idx].buoyancy = buoyancy;

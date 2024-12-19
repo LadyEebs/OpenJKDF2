@@ -1399,9 +1399,10 @@ typedef struct sithAnimclass
     char name[32];
     sithAnimclassMode modes[6];
 #ifdef ANIMCLASS_NAMES
-	uint32_t flags;
-	uint64_t jointBits;
-	uint64_t physicsJointBits;
+	uint32_t flags; // SITH_PUPPET_FLAGS
+	uint64_t jointBits; // bitmask for configured joints
+	uint64_t physicsJointBits; // bitmask for physicalized joints
+	uint64_t hingeJointBits; // bitmask for hinge joints
 	sithBodyPart bodypart[JOINTTYPE_NUM_JOINTS];
 	int* jointToBodypart;
 	int root;
@@ -3100,6 +3101,9 @@ typedef struct sithThingPhysParams
 #ifdef DYNAMIC_POV
 	float povOffset;
 #endif
+#ifdef PUPPET_PHYSICS
+	float inertia;
+#endif
 } sithThingPhysParams;
 
 typedef struct sithThingFrame
@@ -3136,6 +3140,7 @@ enum SITH_CONSTRAINT_TYPE
 
 typedef struct sithConstraint_DistanceParams
 {
+	rdVector3 targetAnchor;
 	rdVector3 constraintAnchor;
 	float constraintDistance;
 	float prevLambda;
@@ -3321,19 +3326,16 @@ typedef struct sithPuppetJointFrame
 
 typedef struct sithPuppetJoint
 {
-	sithThing  thing;         // physicalized thing representation
-	rdVector3  nextPosAcc;    // accumulated constraint target
-	float      nextPosWeight; // weight of accumulated position for normalization
-	int isInit;
-	rdMatrix34 localMat;
-	float prevDistLambda;
+	int        numThings;
+	sithThing  things[2]; // physicalized thing representation
+	rdMatrix34 localMat;  // local matrix for the joint
 } sithPuppetJoint;
 
 typedef struct sithPuppetPhysics
 {
-	sithPuppetJoint joints[JOINTTYPE_NUM_JOINTS];
-	uint64_t        constrainedJoints; // bitmask for any joints that were constrained this frame
-	float*          constraintDistances;
+	sithPuppetJoint      joints[JOINTTYPE_NUM_JOINTS];
+	uint64_t             constrainedJoints; // bitmask for any joints that were constrained this frame
+	float*               constraintDistances;
 } sithPuppetPhysics;
 
 struct sithPuppet
