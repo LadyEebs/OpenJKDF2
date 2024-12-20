@@ -2604,7 +2604,7 @@ void sithPuppet_GetJointCenter(rdVector3* center, sithPuppetJoint* pJoint)
 	rdVector_InvScale3Acc(center, (float)pJoint->numThings);
 }
 
-static void sithPuppet_BuildJointMatrices(sithThing* thing)
+void sithPuppet_BuildJointMatrices(sithThing* thing)
 {
 //	rdVector_Copy3(&thing->lookOrientation.scale, &thing->position);
 	

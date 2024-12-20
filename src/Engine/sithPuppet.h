@@ -50,6 +50,7 @@ int sithPuppet_FindHitLoc(sithThing* pReceiverThing, rdVector3* pPos);
 #ifdef PUPPET_PHYSICS
 void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float deltaSeconds);
 void sithPuppet_StopPhysics(sithThing* pThing);
+void sithPuppet_BuildJointMatrices(sithThing* thing);
 void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds);
 #endif
 
