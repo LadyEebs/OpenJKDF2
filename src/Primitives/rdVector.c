@@ -225,9 +225,10 @@ void rdVector_Cross3(rdVector3 *v1, const rdVector3 *v2, const rdVector3 *v3)
 
 void rdVector_Cross3Acc(rdVector3 *v1, const rdVector3 *v2)
 {
-    v1->x = (v2->z * v1->y) - (v1->z * v2->y);
-    v1->y = (v1->z * v2->x) - (v2->z * v1->x);
-    v1->z = (v2->y * v1->x) - (v1->y * v2->x);
+	rdVector3 tmp = *v1;
+    v1->x = (v2->z * tmp.y) - (tmp.z * v2->y);
+    v1->y = (tmp.z * v2->x) - (v2->z * tmp.x);
+    v1->z = (v2->y * tmp.x) - (tmp.y * v2->x);
 }
 
 float rdVector_Len2(const rdVector2* v)
