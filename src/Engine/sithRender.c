@@ -2802,7 +2802,7 @@ int sithRender_RenderThing(sithThing *pThing)
 			for(int i = 0; i < pJoint->numThings; ++i)
 			{
 				rdSprite debugSprite;
-				rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, "sabergreen0.mat", pJoint->things[i].moveSize * 2.0f, pJoint->things[i].moveSize * 2.0f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &rdroid_zeroVector3);
+				rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, "sabergreen0.mat", pJoint->things[i].moveSize * 0.5f, pJoint->things[i].moveSize * 0.5f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &rdroid_zeroVector3);
 
 				rdThing debug;
 				rdThing_NewEntry(&debug, pThing);
@@ -2834,7 +2834,7 @@ int sithRender_RenderThing(sithThing *pThing)
 					rdMatrix_TransformPoint34(&constrainedAnchor, &constraint->distanceParams.constraintAnchor, &constraint->constrainedThing->lookOrientation);
 					rdVector_Zero3(&constraint->constrainedThing->lookOrientation.scale);
 
-					rdVector3 offset = {0,0,-0.01};
+					rdVector3 offset = {0,0,0};
 
 					for (int i = 0; i < 2; ++i)
 					{
