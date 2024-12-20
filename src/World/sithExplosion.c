@@ -108,7 +108,7 @@ void sithExplosion_UpdateForce(sithThing *explosion)
 						{
 							rdVector3 contact = v4->position;
 							rdVector_MultAcc3(&contact, &i->hitNorm, -v4->moveSize);
-							sithPhysics_ThingApplyRotForce(v4, &i->hitNorm, &a2, 0.0f);
+							sithPhysics_ThingApplyRotForce(v4, &contact, &a2, 0.0f);
 						}
 
                     }
