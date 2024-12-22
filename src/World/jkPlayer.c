@@ -80,8 +80,8 @@ int jkPlayer_enableDecals = 1;
 int jkPlayer_ragdolls = 1;
 int jkPlayer_debugRagdolls = 0;
 #ifdef PUPPET_PHYSICS
-float jkPlayer_puppetAngBias = 0.05f;
-float jkPlayer_puppetPosBias = 0.2f;
+float jkPlayer_puppetAngBias = 0.3f;
+float jkPlayer_puppetPosBias = 0.5f;
 #endif
 #endif
 #endif

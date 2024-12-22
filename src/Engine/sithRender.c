@@ -2915,14 +2915,26 @@ int sithRender_RenderThing(sithThing *pThing)
 								//rdVector_Cross3(&normal, &coneNormal, &coneVector);
 								//rdVector_Normalize3Acc(&normal);
 
+								//rdVector3 upVec = constraint->targetThing->lookOrientation.uvec;
+								//if (stdMath_Fabs(rdVector_Dot3(&coneAxis, &upVec)) > 0.9999f)
+								//	upVec = constraint->targetThing->lookOrientation.rvec;
+								//
+								//rdVector3 planeRight;
+								//rdVector_Cross3(&planeRight, &coneAxis, &upVec);
+								//rdVector_Normalize3Acc(&planeRight);
+								//
+								//rdVector3 planeUp;
+								//rdVector_Cross3(&planeUp, &planeRight, &coneAxis);
+								//rdVector_Normalize3Acc(&planeUp);
+
 								rdVector_Add3(&lookPos, &coneAnchor, &normal);
 
 								//len = rdVector_Dot3(&normal, &thingAxis) / constraint->constrainedThing->physicsParams.mass;
 							}
 							else if(i==0)
 							{
-								sizey = 0.01f * acosf(constraint->coneParams.coneAngleCos);
-								len = 0.02f;
+								sizey = 0.02f * (constraint->coneParams.coneAngle / 180.0f);
+								len = 0.01f;
 							}
 
 						rdPolyLine debugLine;
