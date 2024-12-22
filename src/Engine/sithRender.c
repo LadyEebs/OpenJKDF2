@@ -2921,8 +2921,8 @@ int sithRender_RenderThing(sithThing *pThing)
 							}
 							else if(i==0)
 							{
-								sizey = 0.01f * constraint->coneParams.coneAngleCos;
-								len = 0.05f;
+								sizey = 0.01f * acosf(constraint->coneParams.coneAngleCos);
+								len = 0.02f;
 							}
 
 						rdPolyLine debugLine;

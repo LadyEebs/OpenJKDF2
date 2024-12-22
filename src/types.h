@@ -3104,7 +3104,8 @@ typedef struct sithThingPhysParams
 #ifdef PUPPET_PHYSICS
 	float inertia;
 	rdVector3 accLinearForces;
-	rdMatrix34 accAngularForces;
+	//rdMatrix34 accAngularForces;
+	rdVector3 accAngularForces;
 	rdVector3 lastPos;
 #endif
 } sithThingPhysParams;
@@ -3177,13 +3178,17 @@ typedef struct sithConstraint_TwistParams
 	float maxTwistAngle;
 } sithConstraint_TwistParams;
 
+typedef struct sithConstraintResult
+{
+	rdVector3 JvA, JvB, JrA, JrB;
+	float C;
+} sithConstraintResult;
+
 typedef struct sithConstraint
 {
 	int type;
 	sithThing* constrainedThing; // the thing to be constrained
 	sithThing* targetThing;
-	rdVector3 JvA, JvB, JrA, JrB;
-	double C;
 	union
 	{
 		sithConstraint_DistanceParams distanceParams;
