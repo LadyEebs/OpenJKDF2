@@ -2853,6 +2853,96 @@ int sithRender_RenderThing(sithThing *pThing)
 						rdThing_FreeEntry(&debug);
 					}
 				}
+				else if (constraint->type == SITH_CONSTRAINT_CONE)
+				{
+					rdVector3 coneAxis;
+					rdMatrix_TransformVector34(&coneAxis, &constraint->coneParams.coneAxis, &constraint->targetThing->lookOrientation);
+					rdVector_Normalize3Acc(&coneAxis);
+
+					rdVector3 coneAnchor;
+					rdMatrix_TransformVector34(&coneAnchor, &constraint->coneParams.coneAnchor, &constraint->targetThing->lookOrientation);
+					rdVector_Add3Acc(&coneAnchor, &constraint->targetThing->position);
+
+					rdVector3 thingAxis;
+					rdMatrix_TransformVector34(&thingAxis, &constraint->coneParams.jointAxis, &constraint->constrainedThing->lookOrientation);
+
+
+					for (int i = 0; i < 3; ++i)
+					{
+						const char* mat0;
+						const char* mat1;
+						if(i == 0)
+						{
+							mat0 = "saberyellow0.mat";
+							mat1 = "saberyellow1.mat";
+						}
+						else
+							if (i == 1)
+							{
+								mat0 = "saberred0.mat";
+								mat1 = "saberred1.mat";
+							}
+							else
+								if (i == 2)
+								{
+									mat0 = "saberpurple0.mat";
+									mat1 = "saberpurple1.mat";
+								}
+
+							float len = 0.01f;
+							float sizex = 0.002f;
+							float sizey = 0.002f;
+							rdVector3 lookPos;
+							rdVector_Add3(&lookPos, &coneAnchor, i == 0 ? &coneAxis : &thingAxis);
+
+							if (i == 2)
+							{
+								rdVector3 normal;
+								rdVector_Cross3(&normal, &thingAxis, &coneAxis);
+								rdVector_Normalize3Acc(&normal);
+
+
+								//rdMatrix34 qm;
+								//rdMatrix_BuildFromVectorAngle34(&qm, &normal, constraint->coneParams.coneAngle);
+								//rdMatrix_Normalize34(&qm);
+								//
+								//rdVector3 coneVector;
+								//rdMatrix_TransformVector34(&coneVector, &coneAxis, &qm);
+								////rdVector_Normalize3Acc(&coneVector);
+								//
+								//rdVector3 coneNormal;
+								//rdVector_Cross3(&coneNormal, &coneVector, &coneAxis);
+								//rdVector_Cross3(&normal, &coneNormal, &coneVector);
+								//rdVector_Normalize3Acc(&normal);
+
+								rdVector_Add3(&lookPos, &coneAnchor, &normal);
+
+								//len = rdVector_Dot3(&normal, &thingAxis) / constraint->constrainedThing->physicsParams.mass;
+							}
+							else if(i==0)
+							{
+								sizey = 0.01f * constraint->coneParams.coneAngleCos;
+								len = 0.05f;
+							}
+
+						rdPolyLine debugLine;
+						_memset(&debugLine, 0, sizeof(rdPolyLine));
+						if (rdPolyLine_NewEntry(&debugLine, "dbgragoll", mat1, mat0, len, sizex, sizey, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_PERSPECTIVE, 1.0f))
+						{
+							rdThing debug;
+							rdThing_NewEntry(&debug, pThing);
+							rdThing_SetPolyline(&debug, &debugLine);
+
+							rdMatrix34 look;
+							rdMatrix_LookAt(&look, &coneAnchor, &lookPos, 0.0f);
+
+							rdPolyLine_Draw(&debug, &look);
+
+							rdPolyLine_FreeEntry(&debugLine);
+							rdThing_FreeEntry(&debug);
+						}
+					}
+				}
 				constraint = constraint->next;
 			}
 		}
