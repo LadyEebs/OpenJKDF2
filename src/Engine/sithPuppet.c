@@ -1618,7 +1618,9 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 			|| jointIdx == JOINTTYPE_RHAND
 			|| jointIdx == JOINTTYPE_RFOREARM
 			|| jointIdx == JOINTTYPE_LFOREARM
-			//|| jointIdx == JOINTTYPE_HEAD
+			|| jointIdx == JOINTTYPE_RSHOULDER
+			|| jointIdx == JOINTTYPE_LSHOULDER
+		//|| jointIdx == JOINTTYPE_HEAD
 			//|| jointIdx == JOINTTYPE_NECK
 			//jointIdx == JOINTTYPE_TORSO
 		)
