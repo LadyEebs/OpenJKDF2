@@ -415,7 +415,7 @@ void sithConstraint_RotateThingTest(sithThing* thing, const rdVector3* contactPo
 void ApplyImpulse(sithThing* pThing, const rdVector3* linearImpulse, const rdVector3* angularImpulse)
 {
 	rdVector3 dampedLinearImpulse = *linearImpulse;
-	//sithPhysics_ApplyDrag(&dampedLinearImpulse, 0.5f, 0.0f, sithTime_deltaSeconds);
+	//sithPhysics_ApplyDrag(&dampedLinearImpulse, 0.1f, 0.0f, sithTime_deltaSeconds);
 
 	// apply impulse to the velocity
 	// for whatever reason, it only works if we divide by mass again or it explodes, is it supposed to be a force?
@@ -433,7 +433,7 @@ void ApplyImpulse(sithThing* pThing, const rdVector3* linearImpulse, const rdVec
 		return;
 
 	rdVector3 dampedAngularImpulse = *angularImpulse;
-	//sithPhysics_ApplyDrag(&dampedAngularImpulse, 0.5f, 0.0f, sithTime_deltaSeconds);
+	//sithPhysics_ApplyDrag(&dampedAngularImpulse, 0.1f, 0.0f, sithTime_deltaSeconds);
 
 	// local frame, to get local orientation for the thing
 	rdMatrix34 invObjectOrientation;
@@ -850,9 +850,10 @@ static void sithConstraint_SolveConeConstraint(sithConstraintResult* pConeResult
 
 	float dotProduct = rdVector_Dot3(&coneAxis, &thingAxis);
 	dotProduct = stdMath_Clamp(dotProduct, -1.0f, 1.0f); // just in case cuz we're catching problems with NaN
-	float angle = acosf(dotProduct);
 	if (dotProduct < pConstraint->coneParams.coneAngleCos)
-	{	
+	{
+		float angle = acosf(dotProduct);
+
 		rdVector3 JwA = relativeAxis;
 		rdVector3 JwB = relativeAxis;
 		rdVector_Neg3Acc(&JwB);
@@ -861,40 +862,59 @@ static void sithConstraint_SolveConeConstraint(sithConstraintResult* pConeResult
 		pConeResult->JvB = rdroid_zeroVector3;
 		pConeResult->JrA = JwA;
 		pConeResult->JrB = JwB;
-		pConeResult->C = 0.1 * (angle - pConstraint->coneParams.coneAngle * (M_PI / 180.0f));
+		pConeResult->C = (angle - pConstraint->coneParams.coneAngle * (M_PI / 180.0f));
 	}
 	else
 	{
 		pConeResult->C = 0.0f;
 	}
 
-	rdVector3 relativeAxisTwist;
-	rdVector_Cross3(&relativeAxisTwist, &coneAxis, &thingAxis);
-	rdVector_Normalize3Acc(&relativeAxisTwist);
-	float twistAngle = atan2f(
-		rdVector_Dot3(&bodyB->lookOrientation.uvec, &relativeAxis),
-		rdVector_Dot3(&bodyB->lookOrientation.rvec, &relativeAxis)
-	);
+	rdVector3 perpRefVec =
+	{
+		thingAxis.x - rdVector_Dot3(&thingAxis, &coneAxis) * coneAxis.x,
+		thingAxis.y - rdVector_Dot3(&thingAxis, &coneAxis) * coneAxis.y,
+		thingAxis.z - rdVector_Dot3(&thingAxis, &coneAxis) * coneAxis.z
+	};
 	
-	float twistRange = M_PI / 8;
-	float twistError = stdMath_Fabs(twistAngle) - twistRange;
-	//if (fabsf(twistAngle) > twistRange)
-	//{
-	//	if (twistAngle > 0)
-	//	{
-	//		twistError = twistAngle - twistRange;
-	//	}
-	//	else
-	//	{
-	//		twistError = twistAngle + twistRange;
-	//	}
-	//}
+	rdVector3 perpConstrainedVec =
+	{
+		coneAxis.x - rdVector_Dot3(&thingAxis, &coneAxis) * thingAxis.x,
+		coneAxis.y - rdVector_Dot3(&thingAxis, &coneAxis) * thingAxis.y,
+		coneAxis.z - rdVector_Dot3(&thingAxis, &coneAxis) * thingAxis.z
+	};
 	
-	pTwistResult->JvA = rdroid_zeroVector3;
-	pTwistResult->JvB = rdroid_zeroVector3;
-	pTwistResult->JrA = relativeAxisTwist;
-	pTwistResult->JrB = (rdVector3){ -relativeAxisTwist.x, -relativeAxisTwist.y, -relativeAxisTwist.z };
-	pTwistResult->C = 0.0f;// 0.1f * twistError;
+	rdVector_Normalize3Acc(&perpRefVec);
+	rdVector_Normalize3Acc(&perpConstrainedVec);
+
+	float sinAlpha = rdVector_Dot3(&perpRefVec, &coneAxis);
+	float cosAlpha = rdVector_Dot3(&perpConstrainedVec, &thingAxis);
+	float twistAngle = atan2f(sinAlpha, cosAlpha);
+	float twistRange = M_PI / 4;
+	if(stdMath_Fabs(twistAngle) > twistRange)
+	{
+		float twistError = twistAngle - copysignf(twistRange, twistAngle);
+		//if (fabsf(twistAngle) > twistRange)
+		//{
+		//	if (twistAngle > 0)
+		//	{
+		//		twistError = twistAngle - twistRange;
+		//	}
+		//	else
+		//	{
+		//		twistError = twistAngle + twistRange;
+		//	}
+		//}
+	
+		pTwistResult->JvA = rdroid_zeroVector3;
+		pTwistResult->JvB = rdroid_zeroVector3;
+		pTwistResult->JrA = relativeAxis;
+		pTwistResult->JrB = (rdVector3){ -relativeAxis.x, -relativeAxis.y, -relativeAxis.z };
+		pTwistResult->C = 0.0f;//twistError;
+	}
+	else
+	{
+		pTwistResult->C = 0.0f;
+	}
 #else
 	// calculate the angle and test for violation
 	float angle = rdVector_Dot3(&coneAxis, &thingAxis);
