@@ -782,8 +782,8 @@ float sithCollision_UpdateThingCollision(sithThing *pThing, rdVector3 *a2, float
     }
 
 #ifdef PUPPET_PHYSICS
-	//if (pThing->type == SITH_THING_CORPSE)
-		//flags |= SITH_RAYCAST_IGNORE_CORPSES; // todo: not sure if this is needed
+	if (pThing->type == SITH_THING_CORPSE)
+		flags |= SITH_RAYCAST_IGNORE_CORPSES; // todo: not sure if this is needed
 #endif
 	direction = *a2;
 
@@ -1433,7 +1433,7 @@ int sithCollision_DefaultHitHandler(sithThing *thing, sithSurface *surface, sith
 		
 		float restitution = 0.8f;
 		rdVector3 force;
-		rdVector_Scale3(&force, &a3->hitNorm, (1.0f + restitution) * a1a * thing->physicsParams.mass);
+		rdVector_Scale3(&force, &a3->hitNorm, -(1.0f + restitution) * a1a * thing->physicsParams.mass);
 
 		sithPhysics_ThingApplyRotForce(thing, &contact, &force, 0.0f);
 	}
