@@ -174,7 +174,7 @@ void sithPhysics_ThingTick(sithThing *pThing, float deltaSecs)
 
 #ifdef PUPPET_PHYSICS
 	 // the mass to unit ratio is really high so scale it down for this
-	float adjustedMass = pThing->physicsParams.mass * 0.01f;
+	float adjustedMass = pThing->physicsParams.mass;// * 0.01f;
 	pThing->physicsParams.inertia = (2.0 / 5.0) * adjustedMass * pThing->moveSize * pThing->moveSize;
 
 	if (pThing->puppet && pThing->puppet->physics)
@@ -246,7 +246,7 @@ void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactP
 	rdVector_Cross3(&torque, &leverArm, impulse);
 
 	rdVector3 angAccel;
-	rdVector_Scale3(&angAccel, &torque, 1.0f / pThing->physicsParams.inertia);
+	rdVector_InvScale3(&angAccel, &torque, pThing->physicsParams.inertia);
 	rdVector_ClipPrecision3(&angAccel);
 	if (rdVector_IsZero3(&angAccel))
 		return;
@@ -259,25 +259,37 @@ void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactP
 	}
 
 	// make sure we're in degrees
-	rdVector_Scale3Acc(&angAccel, (180.0f / M_PI));
+	//rdVector_Scale3Acc(&angAccel, (180.0f / M_PI));
 
+	rdVector3 axis;
 	rdMatrix34 invObjectOrientation;
 	rdMatrix_InvertOrtho34(&invObjectOrientation, &pThing->lookOrientation);
 	rdVector_Zero3(&invObjectOrientation.scale);
 
-	rdVector3 localAngAccel;
-	rdMatrix_TransformVector34(&localAngAccel, &angAccel, &invObjectOrientation);
+	float angle = rdVector_Normalize3(&axis, &angAccel) * (180.0f / M_PI);
+	
+	rdMatrix34 rotMatrix;
+	rdMatrix_BuildFromVectorAngle34(&rotMatrix, &axis, angle);
+	rdMatrix_Normalize34(&rotMatrix);
+
+	rdMatrix_PostMultiply34(&rotMatrix, &invObjectOrientation);
+
+	//sithCollision_sub_4E7670(pThing, &rotMatrix);
+	//rdMatrix_Normalize34(&pThing->lookOrientation);
+
+	rdVector3 angles;
+	rdMatrix_ExtractAngles34(&rotMatrix, &angles);
 
 	// attached things without angthrust flag only rotate with Yaw to avoid funny behavior
 	// such as boxes rotating on the floor
 	if (pThing->attach_flags & (SITH_ATTACH_THINGSURFACE | SITH_ATTACH_WORLDSURFACE)
 		&& !(pThing->physicsParams.physflags & SITH_PF_ANGTHRUST))
 	{
-		pThing->physicsParams.angVel.y += localAngAccel.y / sithTime_deltaSeconds;
+		pThing->physicsParams.angVel.y += angles.y;// / sithTime_deltaSeconds;
 	}
 	else
 	{
-		rdVector_MultAcc3(&pThing->physicsParams.angVel, &localAngAccel, 1.0f / sithTime_deltaSeconds);
+		rdVector_MultAcc3(&pThing->physicsParams.angVel, &angles, 1.0f);// / sithTime_deltaSeconds);
 	}
 }
 #endif
@@ -476,6 +488,10 @@ void sithPhysics_ThingStop(sithThing *pThing)
     rdVector_Zero3(&pThing->physicsParams.acceleration);
     rdVector_Zero3(&pThing->physicsParams.velocityMaybe);
     rdVector_Zero3(&pThing->field_268);
+#ifdef PUPPET_PHYSICS
+	rdVector_Zero3(&pThing->physicsParams.accLinearForces);
+	rdMatrix_Identity34(&pThing->physicsParams.accAngularForces);
+#endif
 }
 
 float sithPhysics_ThingGetInsertOffsetZ(sithThing *pThing)
@@ -1029,6 +1045,10 @@ void sithPhysics_ThingPhysAttached(sithThing *pThing, float deltaSeconds)
 
         rdMatrix_BuildRotate34(&a, &a3);
         sithCollision_sub_4E7670(pThing, &a);
+#ifdef PUPPET_PHYSICS
+		if (!(pThing->physicsParams.physflags & SITH_PF_ANGIMPULSE))
+		{
+#endif
         if ( possibly_undef_2 >= 1.0 )
         {
             rdMatrix_TransformVector34Acc(&pThing->physicsParams.vel, &a);
@@ -1039,6 +1059,9 @@ void sithPhysics_ThingPhysAttached(sithThing *pThing, float deltaSeconds)
             rdVector_Scale3Acc(&pThing->physicsParams.vel, 1.0 - possibly_undef_2);
             rdVector_MultAcc3(&pThing->physicsParams.vel, &out, possibly_undef_2);
         }
+#ifdef PUPPET_PHYSICS
+		}
+#endif
         if ( (((bShowInvisibleThings & 0xFF) + (pThing->thingIdx & 0xFF)) & 7) == 0 )
             rdMatrix_Normalize34(&pThing->lookOrientation);
     }
