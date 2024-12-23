@@ -3647,7 +3647,7 @@ void sithPuppet_ApplyIterativeCorrections(sithSector* pSector, sithThing* pThing
 void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds)
 {
 	sithPuppet_UpdateJoints(thing, deltaSeconds);
-	sithPuppet_ApplyIterativeCorrections(thing->sector, thing, deltaSeconds);
+	//sithPuppet_ApplyIterativeCorrections(thing->sector, thing, deltaSeconds);
 	sithPuppet_BuildJointMatrices(thing);
 
 	// pin the thing to the root joint
