@@ -267,35 +267,35 @@ void sithPhysics_ThingApplyRotForceToThing(sithThing* pThing, rdVector3* torque)
 	rdVector3 childForce;
 	rdVector_Scale3(&childForce, torque, 0.5f);
 
-	sithConstraint* constraint = pThing->constraints;
-	while (constraint)
-	{
-		rdMatrix34 childOrient;
-		rdMatrix_InvertOrtho34(&childOrient, &constraint->thing->lookOrientation);
-
-		rdVector3 childTorque;
-		rdMatrix_TransformVector34(&childTorque, &childForce, &childOrient);
-
-		sithPhysics_ThingApplyRotForceToThing(constraint->thing, &childTorque);
-		constraint = constraint->next;
-	}
-
-	// propagate forces up the parent chain
-	rdVector3 reactionForce = *torque;
-	sithThing* parent = pThing->constraintParent;
-	while (parent)
-	{
-		rdVector_Scale3Acc(&reactionForce, -0.5f);
-
-		rdMatrix34 parentOrient;
-		rdMatrix_InvertOrtho34(&parentOrient, &parent->lookOrientation);
-
-		rdVector3 parentTorque;
-		rdMatrix_TransformVector34(&parentTorque, &reactionForce, &parentOrient);
-
-		sithPhysics_ThingApplyRotForceToVel(parent, &parentTorque);
-		parent = parent->constraintParent;
-	}
+	//sithConstraint* constraint = pThing->constraints;
+	//while (constraint)
+	//{
+	//	rdMatrix34 childOrient;
+	//	rdMatrix_InvertOrtho34(&childOrient, &constraint->thing->lookOrientation);
+	//
+	//	rdVector3 childTorque;
+	//	rdMatrix_TransformVector34(&childTorque, &childForce, &childOrient);
+	//
+	//	sithPhysics_ThingApplyRotForceToThing(constraint->thing, &childTorque);
+	//	constraint = constraint->next;
+	//}
+	//
+	//// propagate forces up the parent chain
+	//rdVector3 reactionForce = *torque;
+	//sithThing* parent = pThing->constraintParent;
+	//while (parent)
+	//{
+	//	rdVector_Scale3Acc(&reactionForce, -0.5f);
+	//
+	//	rdMatrix34 parentOrient;
+	//	rdMatrix_InvertOrtho34(&parentOrient, &parent->lookOrientation);
+	//
+	//	rdVector3 parentTorque;
+	//	rdMatrix_TransformVector34(&parentTorque, &reactionForce, &parentOrient);
+	//
+	//	sithPhysics_ThingApplyRotForceToVel(parent, &parentTorque);
+	//	parent = parent->constraintParent;
+	//}
 }
 
 // thing: thing to apply force to
@@ -381,27 +381,27 @@ void sithPhysics_ThingApplyForce(sithThing* pThing, rdVector3* forceVec)
 		// apply the force to the thing
 		sithPhysics_ThingApplyForceToVel(pThing, forceVec);
 
-		// propagate forces down the constraint chain
-		// for now, just use a simple energy loss factor
-		rdVector3 childForce;
-		rdVector_Scale3(&childForce, forceVec, 0.5f);
-
-		sithConstraint* constraint = pThing->constraints;
-		while (constraint)
-		{
-			sithPhysics_ThingApplyForce(constraint->thing, &childForce);
-			constraint = constraint->next;
-		}
-		
-		// propagate forces up the parent chain
-		rdVector3 reactionForce = *forceVec;
-		sithThing* parent = pThing->constraintParent;
-		while (parent)
-		{
-			rdVector_Scale3Acc(&reactionForce, -0.5f);
-			sithPhysics_ThingApplyForceToVel(parent, &reactionForce);
-			parent = parent->constraintParent;
-		}
+		//// propagate forces down the constraint chain
+		//// for now, just use a simple energy loss factor
+		//rdVector3 childForce;
+		//rdVector_Scale3(&childForce, forceVec, 0.5f);
+		//
+		//sithConstraint* constraint = pThing->constraints;
+		//while (constraint)
+		//{
+		//	sithPhysics_ThingApplyForce(constraint->thing, &childForce);
+		//	constraint = constraint->next;
+		//}
+		//
+		//// propagate forces up the parent chain
+		//rdVector3 reactionForce = *forceVec;
+		//sithThing* parent = pThing->constraintParent;
+		//while (parent)
+		//{
+		//	rdVector_Scale3Acc(&reactionForce, -0.5f);
+		//	sithPhysics_ThingApplyForceToVel(parent, &reactionForce);
+		//	parent = parent->constraintParent;
+		//}
 	}
 }
 #else

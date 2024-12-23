@@ -27,15 +27,15 @@ void sithConstraint_AddDistanceConstraint(sithThing* pThing, sithThing* pConstra
 	constraint->distanceParams.constraintDistance = distance;//rdVector_Len3(&constraint->distanceParams.constraintAnchor);
 	constraint->distanceParams.prevLambda = 0.0f;
 	
-	constraint->next = pThing->constraints;
-	pThing->constraints = constraint;
+// 	constraint->next = pThing->constraints;
+//	pThing->constraints = constraint;
 
 	// new
-//	constraint->thing = pConstrainedThing;
-//	constraint->thing->constraintParent = pTargetThing;
-//	
-//	constraint->next = pTargetThing->constraints;
-//	pTargetThing->constraints = constraint;
+	constraint->thing = pConstrainedThing;
+	constraint->thing->constraintParent = pTargetThing;
+	
+	constraint->next = pTargetThing->constraints;
+	pTargetThing->constraints = constraint;
 }
 
 void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pConeAnchor, const rdVector3* pAxis, float angle, const rdVector3* pJointAxis)
@@ -59,15 +59,15 @@ void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrained
 	constraint->coneParams.coneAngleCos = c;
 	constraint->coneParams.jointAxis = *pJointAxis;
 
-	constraint->next = pThing->constraints;
-	pThing->constraints = constraint;
+//	constraint->next = pThing->constraints;
+//	pThing->constraints = constraint;
 
 	// new
-//	constraint->thing = pConstrainedThing;
-//	constraint->thing->constraintParent = pTargetThing;
-//
-//	constraint->next = pTargetThing->constraints;
-//	pTargetThing->constraints = constraint;
+	constraint->thing = pConstrainedThing;
+	constraint->thing->constraintParent = pTargetThing;
+
+	constraint->next = pTargetThing->constraints;
+	pTargetThing->constraints = constraint;
 }
 
 

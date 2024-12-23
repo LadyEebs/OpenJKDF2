@@ -750,7 +750,7 @@ void ssithCollision_ApplyConstraint(sithThing* pParent, sithThing* pChild, sithC
 		float lambda = result->C * Me;
 		lambda = stdMath_ClipPrecision(lambda);
 
-		float damping = 1.0f - 0.2f;
+		float damping = (1.0f - 0.0f) * sithTime_deltaSeconds;
 
 		// calculate linear impulses
 		rdVector3 impulseLinearA, impulseLinearB;
@@ -779,25 +779,40 @@ void ssithCollision_ApplyConstraint(sithThing* pParent, sithThing* pChild, sithC
 
 		// apply the impulses
 		{
-			rdVector_Add3Acc(&pParent->physicsParams.vel, &impulseLinearA);
+		//	rdVector_Add3Acc(&pParent->physicsParams.vel, &impulseLinearA);
 			//rdVector_Add3Acc(&pParent->physicsParams.angVel, &impulseAngularA);
 
-			rdVector3 pitchAxisA = { 1, 0, 0 };  // Local X-axis
-			rdVector3 yawAxisA = { 0, 0, 1 };  // Local Z-axis
-			rdVector3 rollAxisA = { 0, 1, 0 };  // Local Y-axis
+			float impulseDist = rdVector_Normalize3Acc(&impulseLinearA);
+			if(impulseDist > 0.0001)
+			{
+				sithCollision_UpdateThingCollision(pParent, &impulseLinearA, impulseDist, 0x10000000);
+			}
 
-			rdMatrix34 invOrient;
-			rdMatrix_InvertOrtho34(&invOrient, &pParent->lookOrientation);
+			if (!rdVector_IsZero3(&impulseAngularA))
+			{
+				rdVector3 pitchAxisA = { 1, 0, 0 };  // Local X-axis
+				rdVector3 yawAxisA = { 0, 0, 1 };  // Local Z-axis
+				rdVector3 rollAxisA = { 0, 1, 0 };  // Local Y-axis
 
-			rdVector3 localUnitConstraint;
-			rdMatrix_TransformVector34(&localUnitConstraint, &impulseAngularA, &invOrient);
+				rdMatrix34 invOrient;
+				rdMatrix_InvertOrtho34(&invOrient, &pParent->lookOrientation);
 
-			// Compute angular contributions in PYR space for child
-			rdVector3 angVel;
-			angVel.x = rdVector_Dot3(&localUnitConstraint, &pitchAxisA) * (180.0f / M_PI);  // Pitch
-			angVel.y = rdVector_Dot3(&localUnitConstraint, &yawAxisA) * (180.0f / M_PI);   // Yaw
-			angVel.z = rdVector_Dot3(&localUnitConstraint, &rollAxisA) * (180.0f / M_PI);   // Roll
-			rdVector_Add3Acc(&pParent->physicsParams.angVel, &angVel);
+				rdVector3 localUnitConstraint;
+				rdMatrix_TransformVector34(&localUnitConstraint, &impulseAngularA, &invOrient);
+
+				// Compute angular contributions in PYR space for child
+				rdVector3 angVel;
+				angVel.x = rdVector_Dot3(&localUnitConstraint, &pitchAxisA) * (180.0f / M_PI);  // Pitch
+				angVel.y = rdVector_Dot3(&localUnitConstraint, &yawAxisA) * (180.0f / M_PI);   // Yaw
+				angVel.z = rdVector_Dot3(&localUnitConstraint, &rollAxisA) * (180.0f / M_PI);   // Roll
+
+				rdMatrix34 a;
+				rdMatrix_BuildRotate34(&a, &angVel);
+				sithCollision_sub_4E7670(pParent, &a);
+
+			}
+
+		//	rdVector_Add3Acc(&pParent->physicsParams.angVel, &angVel);
 
 
 		//	rdMatrix34 invObjectOrientation;
@@ -820,8 +835,14 @@ void ssithCollision_ApplyConstraint(sithThing* pParent, sithThing* pChild, sithC
 		{
 			//sithCollision_UpdateThingCollision(pChild, &impulseLinearB, sithTime_deltaSeconds * rdVector_Normalize3Acc(&impulseLinearB), 0x10000000);
 
-			rdVector_Add3Acc(&pChild->physicsParams.vel, &impulseLinearB);
+			//rdVector_Add3Acc(&pChild->physicsParams.vel, &impulseLinearB);
 			//rdVector_Add3Acc(&pChild->physicsParams.angVel, &impulseAngularB);
+
+			float impulseDist = rdVector_Normalize3Acc(&impulseLinearB);
+			if (impulseDist > 0.0001)
+			{
+				sithCollision_UpdateThingCollision(pChild, &impulseLinearB, impulseDist, 0x10000000);
+			}
 
 			rdVector3 pitchAxisA = { 1, 0, 0 };  // Local X-axis
 			rdVector3 yawAxisA = { 0, 0, 1 };  // Local Z-axis
@@ -838,7 +859,11 @@ void ssithCollision_ApplyConstraint(sithThing* pParent, sithThing* pChild, sithC
 			angVel.x = rdVector_Dot3(&localUnitConstraint, &pitchAxisA) * (180.0f / M_PI);  // Pitch
 			angVel.y = rdVector_Dot3(&localUnitConstraint, &yawAxisA) * (180.0f / M_PI);   // Yaw
 			angVel.z = rdVector_Dot3(&localUnitConstraint, &rollAxisA) * (180.0f / M_PI);   // Roll
-			rdVector_Add3Acc(&pChild->physicsParams.angVel, &angVel);
+			//rdVector_Add3Acc(&pChild->physicsParams.angVel, &angVel);
+
+			rdMatrix34 a;
+			rdMatrix_BuildRotate34(&a, &angVel);
+			sithCollision_sub_4E7670(pChild, &a);
 
 			//rdMatrix34 invObjectOrientation;
 			//rdMatrix_InvertOrtho34(&invObjectOrientation, &pChild->lookOrientation);
@@ -1018,6 +1043,7 @@ void sithCollision_ConstraintLoopTest(sithThing* pThing, const rdVector3* dir, f
 				break;
 			}
 
+			// this kinda fucks up gravity...
 			//rdVector_Scale3Acc(&constraint->thing->physicsParams.vel, 0.99f);
 			//rdVector_Scale3Acc(&pThing->physicsParams.vel, 0.99f);
 			//rdVector_Scale3Acc(&constraint->thing->physicsParams.angVel, 0.99f);
@@ -1090,8 +1116,8 @@ float sithCollision_UpdateThingCollision(sithThing *pThing, rdVector3 *a2, float
     }
 
 #ifdef PUPPET_PHYSICS
-	if (pThing->type == SITH_THING_CORPSE)
-		flags |= SITH_RAYCAST_IGNORE_CORPSES; // todo: not sure if this is needed
+	//if (pThing->type == SITH_THING_CORPSE)
+		//flags |= SITH_RAYCAST_IGNORE_CORPSES; // todo: not sure if this is needed
 #endif
 	direction = *a2;
 
@@ -1519,9 +1545,10 @@ LABEL_81:
 
 
 #ifdef PUPPET_PHYSICS
-	//if (v5->constraintParent && !(flags & 0x10000000))
-	//	sithCollision_ConstraintLoopTest(v5->constraintParent, &direction, a6, flags);
-	//sithCollision_ConstraintLoopTest(v5, &direction, a6, flags);
+	if (v5->constraintParent && !(flags & 0x10000000))
+		sithCollision_ConstraintLoopTest(v5->constraintParent, &direction, a6, flags);
+	if(!(flags & 0x10000000))
+	sithCollision_ConstraintLoopTest(v5, &direction, a6, flags);
 #endif
 
 #if 0//def PUPPET_PHYSICS
@@ -1872,8 +1899,8 @@ int sithCollision_DebrisDebrisCollide(sithThing *thing1, sithThing *thing2, sith
 		}
 
 		// if both bodies are corpses don't block
-		if(v4->type == SITH_THING_CORPSE && v5->type == SITH_THING_CORPSE)
-			return 0;
+		//if(v4->type == SITH_THING_CORPSE && v5->type == SITH_THING_CORPSE)
+		//	return 0;
 #endif
 
         return sithCollision_CollideHurt(v4, &a2, a3->distance, 0);
