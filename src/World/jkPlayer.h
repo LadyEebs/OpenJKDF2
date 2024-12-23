@@ -194,6 +194,7 @@ extern int jkPlayer_debugRagdolls;
 #ifdef PUPPET_PHYSICS
 extern float jkPlayer_puppetAngBias;
 extern float jkPlayer_puppetPosBias;
+extern float jkPlayer_puppetFriction;
 #endif
 #endif
 

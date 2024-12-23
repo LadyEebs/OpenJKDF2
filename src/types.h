@@ -3106,6 +3106,7 @@ typedef struct sithThingPhysParams
 	rdVector3 accLinearForces;
 	//rdMatrix34 accAngularForces;
 	rdVector3 accAngularForces;
+	rdMatrix34 lastOrient;
 	rdVector3 lastPos;
 #endif
 } sithThingPhysParams;
@@ -3187,17 +3188,21 @@ typedef struct sithConstraintResult
 typedef struct sithConstraint
 {
 	int type;
+	//
 	sithThing* constrainedThing; // the thing to be constrained
 	sithThing* targetThing;
+	//
 	union
 	{
 		sithConstraint_DistanceParams distanceParams;
-		sithConstraint_ConeParams coneParams;
-		sithConstraint_AngleParams angleParams;
-		sithConstraint_LookParams lookParams;
-		sithConstraint_TwistParams twistParams;
+		sithConstraint_ConeParams     coneParams;
+		sithConstraint_AngleParams    angleParams;
+		sithConstraint_LookParams     lookParams;
+		sithConstraint_TwistParams    twistParams;
 	};
 	struct sithConstraint* next;
+	// new test
+	sithThing* thing;
 } sithConstraint;
 #endif
 
@@ -3224,6 +3229,7 @@ typedef struct sithThing
 #endif // JKM_TYPES
 #ifdef PUPPET_PHYSICS
 	sithConstraint* constraints;
+	sithThing* constraintParent;
 #endif
     // TODO split these into a struct
     uint32_t attach_flags;

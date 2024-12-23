@@ -1531,8 +1531,8 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 				rdVector_Add3Acc(&meshCenter, vtx);
 			}
 			rdVector_InvScale3Acc(&meshCenter, (float)mesh->numVertices);
-			pJointThing->moveSize = (minDist + maxDist) * 0.5;// * 0.6;
-			pJointThing->collideSize = pJointThing->moveSize;//minDist * 0.6;// - (minDist * 0.1f);
+			pJointThing->moveSize = minDist;//(minDist + maxDist) * 0.5;// * 0.6;
+			pJointThing->collideSize = minDist;//pJointThing->moveSize;//minDist * 0.6;// - (minDist * 0.1f);
 
 			rdMatrix_TransformVector34Acc(&meshCenter, &pJointThing->lookOrientation);
 			rdVector_Add3Acc(&pos, &meshCenter);
@@ -1613,8 +1613,8 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 		//	SITH_PF_4000000 = 0x4000000, // Jones: jeep
 		//	SITH_PF_8000000 = 0x8000000,
 
-		//if (pThing->physicsParams.physflags & SITH_PF_USEGRAVITY)
-			//pJointThing->physicsParams.physflags |= SITH_PF_USEGRAVITY;
+		if (pThing->physicsParams.physflags & SITH_PF_USEGRAVITY)
+			pJointThing->physicsParams.physflags |= SITH_PF_USEGRAVITY;
 
 		if (pThing->physicsParams.physflags & SITH_PF_PARTIALGRAVITY)
 			pJointThing->physicsParams.physflags |= SITH_PF_PARTIALGRAVITY;
@@ -1642,8 +1642,8 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 		)
 			pJointThing->physicsParams.physflags |= SITH_PF_4000000;// | SITH_PF_USEGRAVITY;
 
-		if (jointIdx == JOINTTYPE_HEAD)
-			pJointThing->physicsParams.physflags |= SITH_PF_2000000;
+		//if (jointIdx == JOINTTYPE_HEAD)
+		//	pJointThing->physicsParams.physflags |= SITH_PF_2000000;
 
 		pJointThing->physicsParams.staticDrag = fmax(pJointThing->physicsParams.staticDrag, 0.001f);
 	//	pJointThing->physicsParams.airDrag = 0;
@@ -1841,16 +1841,16 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 //	//	sithPuppet_AddLookConstraint(pThing, JOINTTYPE_NECK, JOINTTYPE_TORSO, 1);
 
 #if 1
-	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RFOOT, JOINTTYPE_RCALF, 2, 0, 55.0f);
-	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LFOOT, JOINTTYPE_LCALF, 2, 0, 55.0f);
-	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RHAND, JOINTTYPE_RFOREARM, 2, 1, 55.0f);
-	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LHAND, JOINTTYPE_LFOREARM, 2, 0, 55.0f);
-	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, 2, 0, 50.0f);
-	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, 2, 0, 50.0f);
-	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER, 2, 0, 80.0f);
-	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER, 2, 0, 80.0f);
-	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_HIP, 2, 0, 70.0f);
-	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LTHIGH, JOINTTYPE_HIP, 2, 0, 70.0f);
+	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RFOOT, JOINTTYPE_RCALF, 2, 1, 35.0f);
+	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LFOOT, JOINTTYPE_LCALF, 2, 1, 35.0f);
+	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RHAND, JOINTTYPE_RFOREARM, 2, 1, 35.0f);
+	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LHAND, JOINTTYPE_LFOREARM, 2, 1, 35.0f);
+	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, 2, 1, 20.0f);
+	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, 2, 1, 20.0f);
+	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER, 2, 1, 30.0f);
+	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER, 2, 1, 30.0f);
+	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_HIP, 2, 1, 70.0f);
+	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LTHIGH, JOINTTYPE_HIP, 2, 1, 70.0f);
 	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RSHOULDER, JOINTTYPE_TORSO, 1, 0, 150.0f);
 	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LSHOULDER, JOINTTYPE_TORSO, 1, 1, 150.0f);
 
@@ -3314,12 +3314,13 @@ inline void sithPuppet_UpdateJointThing(sithThing* pThing, sithThing* pJointThin
 		pJointThing->collide = SITH_COLLIDE_NONE;
 
 	sithPhysics_ThingTick(pJointThing, deltaSeconds);
-//	sithThing_TickPhysics(pJointThing, deltaSeconds);
+	sithThing_TickPhysics(pJointThing, deltaSeconds);
 
 	rdVector_Zero3(&pJointThing->physicsParams.accLinearForces);
 	rdMatrix_Identity34(&pJointThing->physicsParams.accAngularForces);
 
 	pJointThing->physicsParams.lastPos = pJointThing->position;
+	pJointThing->physicsParams.lastOrient = pJointThing->lookOrientation;
 
 	//rdVector_Zero3(&pJointThing->physicsParams.angVel);
 
