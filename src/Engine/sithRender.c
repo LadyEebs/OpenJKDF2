@@ -2553,6 +2553,13 @@ void sithRender_RenderThings()
                                     model3->geosetSelect = 2;
                                 break;
                         }
+
+					#ifdef QOL_IMPROVEMENTS
+						// todo: why is this setting the geoset on the actual model instance instead of rdthing???
+						model3->geosetSelect += jkPlayer_lodBias;
+						model3->geosetSelect = stdMath_ClampInt(model3->geosetSelect, 0, model3->numGeosets-1);
+					#endif
+
                     }
                     
                     texMode = thingIter->rdthing.desiredTexMode;
