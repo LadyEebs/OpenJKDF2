@@ -750,15 +750,17 @@ void ssithCollision_ApplyConstraint(sithThing* pParent, sithThing* pChild, sithC
 		float lambda = result->C * Me;
 		lambda = stdMath_ClipPrecision(lambda);
 
+		float damping = 1.0f - 0.2f;
+
 		// calculate linear impulses
 		rdVector3 impulseLinearA, impulseLinearB;
-		rdVector_Scale3(&impulseLinearA, &result->JvA, lambda * invMassA);
-		rdVector_Scale3(&impulseLinearB, &result->JvB, lambda * invMassB);
+		rdVector_Scale3(&impulseLinearA, &result->JvA, lambda * invMassA * damping);
+		rdVector_Scale3(&impulseLinearB, &result->JvB, lambda * invMassB * damping);
 
 		// calculate angular impulses
 		rdVector3 impulseAngularA, impulseAngularB;
-		rdVector_Scale3(&impulseAngularA, &result->JrA, lambda * invInertiaTensorA);
-		rdVector_Scale3(&impulseAngularB, &result->JrB, lambda * invInertiaTensorB);
+		rdVector_Scale3(&impulseAngularA, &result->JrA, lambda * invInertiaTensorA * damping);
+		rdVector_Scale3(&impulseAngularB, &result->JrB, lambda * invInertiaTensorB * damping);
 
 		// friction
 		if(jkPlayer_puppetFriction > 0.0)
@@ -1016,10 +1018,10 @@ void sithCollision_ConstraintLoopTest(sithThing* pThing, const rdVector3* dir, f
 				break;
 			}
 
-			rdVector_Scale3Acc(&constraint->thing->physicsParams.vel, 0.99f);
-			rdVector_Scale3Acc(&pThing->physicsParams.vel, 0.99f);
-			rdVector_Scale3Acc(&constraint->thing->physicsParams.angVel, 0.99f);
-			rdVector_Scale3Acc(&pThing->physicsParams.angVel, 0.99f);
+			//rdVector_Scale3Acc(&constraint->thing->physicsParams.vel, 0.99f);
+			//rdVector_Scale3Acc(&pThing->physicsParams.vel, 0.99f);
+			//rdVector_Scale3Acc(&constraint->thing->physicsParams.angVel, 0.99f);
+			//rdVector_Scale3Acc(&pThing->physicsParams.angVel, 0.99f);
 
 			constraint = constraint->next;
 		}

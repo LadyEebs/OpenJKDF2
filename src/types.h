@@ -3230,6 +3230,8 @@ typedef struct sithThing
 #ifdef PUPPET_PHYSICS
 	sithConstraint* constraints;
 	sithThing* constraintParent;
+	rdVector3 nextPosAcc;
+	float nextPosWeight;
 #endif
     // TODO split these into a struct
     uint32_t attach_flags;

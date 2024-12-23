@@ -2321,15 +2321,16 @@ void sithPuppet_DoDistanceConstraint(sithThing* pThing, sithThing* pJointA, sith
 			float bias = -(biasFactor / deltaSeconds) * offset;
 
 			float lambda = -(velocityDot + bias) / constraintMass;
+			lambda = offset / constraintMass;
 
 			const float dampingFactor = 0.2f;
 			//lambda *= 1.0f - dampingFactor;
 
 			rdVector3 aImpulse;
-			rdVector_Scale3(&aImpulse, &offsetDir, lambda);
+			rdVector_Scale3(&aImpulse, &offsetDir, lambda * invMassA);
 
 			rdVector3 bImpulse;
-			rdVector_Scale3(&bImpulse, &offsetDir, -lambda);
+			rdVector_Scale3(&bImpulse, &offsetDir, -lambda * invMassB);
 
 			//rdVector3 dampingForce;
 			//rdVector_Scale3(&dampingForce, &aImpulse, dampingFactor);
@@ -2337,8 +2338,18 @@ void sithPuppet_DoDistanceConstraint(sithThing* pThing, sithThing* pJointA, sith
 			//rdVector_Sub3Acc(&aImpulse, &dampingForce);
 			//rdVector_Sub3Acc(&bImpulse, &dampingForce);
 
-			rdVector_MultAcc3(&pJointA->physicsParams.vel, &aImpulse, invMassA);
-			rdVector_MultAcc3(&pJointB->physicsParams.vel, &bImpulse, invMassB);
+		//	rdVector_MultAcc3(&pJointA->physicsParams.vel, &aImpulse, invMassA);
+		//	rdVector_MultAcc3(&pJointB->physicsParams.vel, &bImpulse, invMassB);
+
+			rdVector3 posA, posB;
+			rdVector_Add3(&posA, &pJointA->position, &aImpulse);
+			rdVector_Add3(&posB, &pJointB->position, &bImpulse);
+
+			rdVector_Add3Acc(&pJointA->nextPosAcc, &posA);
+			rdVector_Add3Acc(&pJointB->nextPosAcc, &posB);
+			
+			++pJointA->nextPosWeight;
+			++pJointB->nextPosWeight;
 
 			//sithPhysics_ThingApplyForce(physA, &aImpulse);
 			//sithPhysics_ThingApplyForce(physB, &bImpulse);
@@ -3600,7 +3611,35 @@ void sithPuppet_ApplyIterativeCorrections(sithSector* pSector, sithThing* pThing
 
 	// do fewer iterations if we're not directly visible
 	for (int i = 0; i < iterations; ++i)
+	{
 		sithPuppet_ApplyConstraints(pThing, deltaSeconds);
+
+
+		uint64_t jointBits = pThing->animclass->physicsJointBits;
+		while (jointBits != 0)
+		{
+			int jointIdx = stdMath_FindLSB64(jointBits);
+			jointBits ^= 1ull << jointIdx;
+
+			sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
+			for (int j = 0; j < pJoint->numThings; ++j)
+			{
+				if (pJoint->things[j].nextPosWeight)
+				{
+					rdVector_InvScale3Acc(&pJoint->things[j].nextPosAcc, pJoint->things[j].nextPosWeight);
+
+					rdVector3 delta;
+					rdVector_Sub3(&delta, &pJoint->things[j].nextPosAcc, &pJoint->things[j].position);
+					float dist = rdVector_Normalize3Acc(&delta);
+					if (dist > 0.0)
+						sithCollision_UpdateThingCollision(&pJoint->things[j], &delta, dist, 0);
+				}
+				pJoint->things[j].nextPosWeight = 0.0f;
+				pJoint->things[j].nextPosAcc = rdroid_zeroVector3;
+			}
+		}
+	}
+
 
 	sithPuppet_UpdatePhysicsJointOrientations(pThing, deltaSeconds);
 }
@@ -3608,7 +3647,7 @@ void sithPuppet_ApplyIterativeCorrections(sithSector* pSector, sithThing* pThing
 void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds)
 {
 	sithPuppet_UpdateJoints(thing, deltaSeconds);
-	//sithPuppet_ApplyIterativeCorrections(thing->sector, thing, deltaSeconds);
+	sithPuppet_ApplyIterativeCorrections(thing->sector, thing, deltaSeconds);
 	sithPuppet_BuildJointMatrices(thing);
 
 	// pin the thing to the root joint
