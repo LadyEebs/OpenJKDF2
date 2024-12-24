@@ -1624,8 +1624,8 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 		//	SITH_PF_4000000 = 0x4000000, // Jones: jeep
 		//	SITH_PF_8000000 = 0x8000000,
 
-		//if (pThing->physicsParams.physflags & SITH_PF_USEGRAVITY)
-		//	pJointThing->physicsParams.physflags |= SITH_PF_USEGRAVITY;
+		if (pThing->physicsParams.physflags & SITH_PF_USEGRAVITY)
+			pJointThing->physicsParams.physflags |= SITH_PF_USEGRAVITY;
 
 		if (pThing->physicsParams.physflags & SITH_PF_PARTIALGRAVITY)
 			pJointThing->physicsParams.physflags |= SITH_PF_PARTIALGRAVITY;
