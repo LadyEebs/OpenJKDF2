@@ -40,6 +40,9 @@ void sithPhysics_ThingRagdollApplyForce(sithThing* pThing, rdVector3* forceVec, 
 void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactPoint, const rdVector3* impulse, float bias);
 #endif
 
+void sithPhysics_AnglesToAngularVelocity(rdVector3* result, const rdVector3* eulerPYR, const rdMatrix34* orientation);
+void sithPhysics_AngularVelocityToAngles(rdVector3* result, const rdVector3* angularVelocity, const rdMatrix34* orientation);
+
 static void (*_sithPhysics_ThingPhysAttached)(sithThing *pThing, float deltaSeconds) = (void*)sithPhysics_ThingPhysAttached_ADDR;
 
 #endif // _ENGINE_SITHPHYSICS_H

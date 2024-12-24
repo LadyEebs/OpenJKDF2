@@ -172,11 +172,24 @@ void sithPhysics_ThingTick(sithThing *pThing, float deltaSecs)
         rdVector_Zero3(&pThing->physicsParams.acceleration);
     }
 
+
 #ifdef PUPPET_PHYSICS
 	 // the mass to unit ratio is really high so scale the radius to a consistent unit
 	float adjustedSize = pThing->moveSize * 5.0f;
 	pThing->physicsParams.inertia = (2.0 / 5.0) * pThing->physicsParams.mass * adjustedSize * adjustedSize;
 
+#ifdef PUPPET_PHYSICS
+	//if (pThing->nextPosWeight > 0.0)
+	//{
+	//	rdVector_InvScale3Acc(&pThing->nextPosAcc, pThing->nextPosWeight);
+	//	rdVector3 delta;
+	//	rdVector_Sub3(&delta, &pThing->nextPosAcc, &pThing->position);
+	//	rdVector_Scale3Acc(&delta, 1.0f / deltaSecs);
+	//	rdVector_Add3Acc(&pThing->physicsParams.vel, &delta);
+	//	pThing->nextPosWeight = 0.0f;
+	//	rdVector_Zero3(&pThing->nextPosAcc);
+	//}
+#endif
 	if (pThing->puppet && pThing->puppet->physics)
 	{
 		// let the animation system take over
@@ -232,18 +245,11 @@ void sithPhysics_ThingApplyRotForceToVel(sithThing* pThing, rdVector3* torque)
 	rdVector3 angAccel;
 	rdVector_InvScale3(&angAccel, torque, pThing->physicsParams.inertia);
 	rdVector_ClipPrecision3(&angAccel);
+	if(rdVector_IsZero3(&angAccel))
+		return;
 
-	rdMatrix34 invOrient;
-	rdMatrix_InvertOrtho34(&invOrient, &pThing->lookOrientation);
-
-	rdVector3 localAngAccel;
-	rdMatrix_TransformVector34(&localAngAccel, &angAccel, &invOrient);
-
-	// Compute angular contributions in PYR space for child
 	rdVector3 angles;
-	angles.x = rdVector_Dot3(&localAngAccel, &pitchAxisA) * (180.0f / M_PI);  // Pitch
-	angles.y = rdVector_Dot3(&localAngAccel, &yawAxisA) * (180.0f / M_PI);   // Yaw
-	angles.z = rdVector_Dot3(&localAngAccel, &rollAxisA) * (180.0f / M_PI);   // Roll
+	sithPhysics_AngularVelocityToAngles(&angles, &angAccel, &pThing->lookOrientation);
 
 	// attached things without angthrust flag only rotate with Yaw to avoid funny behavior
 	// such as boxes rotating on the floor
@@ -1404,6 +1410,46 @@ void sithPhysics_ThingPhysAttached(sithThing *pThing, float deltaSeconds)
 		pThing->physicsParams.povOffset = v131;
 #endif
     }
+}
+
+void sithPhysics_AnglesToAngularVelocity(rdVector3* result, const rdVector3* eulerPYR, const rdMatrix34* orientation)
+{
+	// Local angular velocity in axis terms
+	rdVector3 pitchAxis = { 1, 0, 0 };
+	rdVector3 yawAxis = { 0, 0, 1 };
+	rdVector3 rollAxis = { 0, 1, 0 };
+
+	// Scale by respective angular velocities
+	rdVector_Scale3(&pitchAxis, &pitchAxis, eulerPYR->x * (M_PI / 180.0f)); // Convert to radians
+	rdVector_Scale3(&yawAxis, &yawAxis, eulerPYR->y * (M_PI / 180.0f));     // Convert to radians
+	rdVector_Scale3(&rollAxis, &rollAxis, eulerPYR->z * (M_PI / 180.0f));   // Convert to radians
+
+	// Transform each axis to world space
+	rdVector3 pitchWorld, yawWorld, rollWorld;
+	rdMatrix_TransformVector34(&pitchWorld, &pitchAxis, orientation);
+	rdMatrix_TransformVector34(&yawWorld, &yawAxis, orientation);
+	rdMatrix_TransformVector34(&rollWorld, &rollAxis, orientation);
+
+	// Combine them into a single world angular velocity vector
+	rdVector_Add3(result, &pitchWorld, &rollWorld);
+	rdVector_Add3Acc(result, &yawWorld);
+}
+
+void sithPhysics_AngularVelocityToAngles(rdVector3* result, const rdVector3* angularVelocity, const rdMatrix34* orientation)
+{
+	rdVector3 pitchAxisA = { 1, 0, 0 };  // Local X-axis
+	rdVector3 yawAxisA = { 0, 0, 1 };  // Local Z-axis
+	rdVector3 rollAxisA = { 0, 1, 0 };  // Local Y-axis
+
+	rdMatrix34 invOrient;
+	rdMatrix_InvertOrtho34(&invOrient, &orientation);
+
+	rdVector3 localUnitConstraint;
+	rdMatrix_TransformVector34(&localUnitConstraint, angularVelocity, &invOrient);
+
+	result->x = rdVector_Dot3(&localUnitConstraint, &pitchAxisA) * (180.0f / M_PI);  // Pitch
+	result->y = rdVector_Dot3(&localUnitConstraint, &yawAxisA) * (180.0f / M_PI);   // Yaw
+	result->z = rdVector_Dot3(&localUnitConstraint, &rollAxisA) * (180.0f / M_PI);   // Roll
 }
 
 #ifdef RAGDOLLS
