@@ -1652,7 +1652,8 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 		//	pJointThing->physicsParams.physflags |= SITH_PF_2000000;
 
 		pJointThing->physicsParams.staticDrag = fmax(pJointThing->physicsParams.staticDrag, 0.01f);
-	//	pJointThing->physicsParams.airDrag = 0;
+		//pJointThing->physicsParams.airDrag *= 5.0f;
+		//pJointThing->physicsParams.surfaceDrag *= 5.0f;
 
 		rdVector3 vel;
 		rdMatrix_TransformVector34(&vel, &pThing->rdthing.paHierarchyNodeVelocities[pNode->idx], &pThing->rdthing.hierarchyNodeMatrices[pBodyPart->nodeIdx]);
@@ -2276,7 +2277,7 @@ void sithPuppet_ApplyLookConstraint(sithThing* pThing, int jointIdx, int targetJ
 }
 #else
 
-void sithPuppet_DoDistanceConstraint(sithThing* pThing, sithThing* pJointA, sithThing* pJointB, float distance, float minDist, float deltaSeconds)
+void sithPuppet_DoDistanceConstraint(sithThing* pThing, sithThing* pJointA, sithThing* pJointB, int jointA, int jointB, float distance, float minDist, float deltaSeconds)
 {
 	rdVector3 relativePos;
 	rdVector_Sub3(&relativePos, &pJointA->position, &pJointB->position);
@@ -2285,6 +2286,7 @@ void sithPuppet_DoDistanceConstraint(sithThing* pThing, sithThing* pJointA, sith
 		return;
 
 	float offset = distance - currentDistance;
+	offset = stdMath_ClipPrecision(offset);
 	if (stdMath_Fabs(offset) > 0.0f)
 	{
 		rdVector3 offsetDir;
@@ -2351,6 +2353,8 @@ void sithPuppet_DoDistanceConstraint(sithThing* pThing, sithThing* pJointA, sith
 			
 			++pJointA->nextPosWeight;
 			++pJointB->nextPosWeight;
+			pThing->puppet->physics->constrainedJoints |= 1ull << jointA;
+			pThing->puppet->physics->constrainedJoints |= 1ull << jointB;
 
 			//sithPhysics_ThingApplyForce(physA, &aImpulse);
 			//sithPhysics_ThingApplyForce(physB, &bImpulse);
@@ -2682,7 +2686,7 @@ void sithPuppet_ApplyConstraints(sithThing* pThing, float deltaSeconds)
 
 		for (int i = 0; i < pJointA->numThings; ++i)
 			for (int j = 0; j < pJointB->numThings; ++j)
-				sithPuppet_DoDistanceConstraint(pThing, &pJointA->things[i], &pJointB->things[j], distance, pConstraint->minDist, deltaSeconds);
+				sithPuppet_DoDistanceConstraint(pThing, &pJointA->things[i], &pJointB->things[j], pConstraint->jointA, pConstraint->jointB, distance, pConstraint->minDist, deltaSeconds);
 	}
 
 	uint64_t jointBits = pThing->animclass->physicsJointBits;
@@ -2693,7 +2697,7 @@ void sithPuppet_ApplyConstraints(sithThing* pThing, float deltaSeconds)
 
 		sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
 		if(pJoint->numThings > 1)
-			sithPuppet_DoDistanceConstraint(pThing, &pJoint->things[0], &pJoint->things[1], 0.01f, -1.0f, deltaSeconds);
+			sithPuppet_DoDistanceConstraint(pThing, &pJoint->things[0], &pJoint->things[1], jointIdx, jointIdx, 0.01f, -1.0f, deltaSeconds);
 	}
 #endif
 }
@@ -3531,7 +3535,7 @@ void sithPuppet_ApplyIterativeCorrections(sithSector* pSector, sithThing* pThing
 {
 	//sithPuppet_ClearVelocities(pThing);
 	
-	int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 3 : 1;
+	int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 5 : 1;
 	//for (int i = 0; i < iterations; ++i)
 	//{
 	//	uint64_t jointBits = pThing->animclass->physicsJointBits;
@@ -3639,7 +3643,7 @@ void sithPuppet_ApplyIterativeCorrections(sithSector* pSector, sithThing* pThing
 		sithPuppet_ApplyConstraints(pThing, deltaSeconds);
 
 
-		uint64_t jointBits = pThing->animclass->physicsJointBits;
+		uint64_t jointBits = pThing->puppet->physics->constrainedJoints;
 		while (jointBits != 0)
 		{
 			int jointIdx = stdMath_FindLSB64(jointBits);
@@ -3670,7 +3674,7 @@ void sithPuppet_ApplyIterativeCorrections(sithSector* pSector, sithThing* pThing
 	}
 
 
-	uint64_t jointBits = pThing->animclass->physicsJointBits;
+	uint64_t jointBits = pThing->puppet->physics->constrainedJoints;
 	while (jointBits != 0)
 	{
 		int jointIdx = stdMath_FindLSB64(jointBits);
