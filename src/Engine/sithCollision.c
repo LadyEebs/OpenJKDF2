@@ -789,7 +789,7 @@ void ssithCollision_ApplyConstraint(sithThing* pParent, sithThing* pChild, sithC
 			rdVector_Rotate3(&angVelWS_B, &dir, &pChild->physicsParams.angVel);
 
 			rdVector3 omega_rel;
-			rdVector_Sub3(&omega_rel, &angVelWS_A, &angVelWS_B);
+			rdVector_Sub3(&omega_rel, &angVelWS_B, &angVelWS_A);
 
 			apply_friction_to_rotational_impulse(&omega_rel, jkPlayer_puppetFriction, &impulseAngularA, &impulseAngularB);
 		}
@@ -1062,8 +1062,8 @@ void sithCollision_ConstraintLoopTest(sithThing* pThing, const rdVector3* dir, f
 			// this kinda fucks up gravity...
 			//rdVector_Scale3Acc(&constraint->thing->physicsParams.vel, 0.99f);
 			//rdVector_Scale3Acc(&pThing->physicsParams.vel, 0.99f);
-			//rdVector_Scale3Acc(&constraint->thing->physicsParams.angVel, 0.99f);
-			//rdVector_Scale3Acc(&pThing->physicsParams.angVel, 0.99f);
+			rdVector_Scale3Acc(&constraint->thing->physicsParams.angVel, 0.99f);
+			rdVector_Scale3Acc(&pThing->physicsParams.angVel, 0.99f);
 
 			constraint = constraint->next;
 		}

@@ -1540,7 +1540,8 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 		rdMatrix_TransformVector34Acc(&meshCenter, &pJointThing->lookOrientation);
 		rdVector_Add3Acc(&pos, &meshCenter);
 
-		pJointThing->moveSize = pJointThing->collideSize = minDist;
+		float avgDist = (minDist + maxDist) * 0.5f;
+		pJointThing->moveSize = pJointThing->collideSize = avgDist;
 	}
 #endif
 
@@ -1736,7 +1737,7 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 		if(!pJoint->things)
 			continue;
 
-		pJoint->distances = pSithHS->alloc((pJoint->numThings - 1) * sizeof(sithPuppetConstraint));
+		pJoint->distances = pSithHS->alloc((pJoint->numThings - 1) * sizeof(float));
 		if (!pJoint->distances)
 			continue;
 
@@ -1890,8 +1891,8 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER, 2, 1, 30.0f);
 	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_HIP, 2, 1, 70.0f);
 	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LTHIGH, JOINTTYPE_HIP, 2, 1, 70.0f);
-	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RSHOULDER, JOINTTYPE_TORSO, 1, 0, 150.0f);
-	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LSHOULDER, JOINTTYPE_TORSO, 1, 1, 150.0f);
+	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RSHOULDER, JOINTTYPE_TORSO, 0, 0, 150.0f);
+	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LSHOULDER, JOINTTYPE_TORSO, 0, 1, 150.0f);
 
 
 	if (pThing->animclass->jointBits & (1ull << JOINTTYPE_NECK))
