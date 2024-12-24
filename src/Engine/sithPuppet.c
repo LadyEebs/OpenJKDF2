@@ -3708,7 +3708,8 @@ void sithPuppet_ApplyIterativeCorrections(sithSector* pSector, sithThing* pThing
 		}
 	}
 
-
+	// apparently deferring the call to sithCollision_UpdateThingCollision fucking causes shit to fall through elevators again
+	// I really don't want to have to call it for every stupid constraint or position update...
 	uint64_t jointBits = pThing->puppet->physics->constrainedJoints;
 	while (jointBits != 0)
 	{
