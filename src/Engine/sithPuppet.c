@@ -3652,17 +3652,41 @@ void sithPuppet_ApplyIterativeCorrections(sithSector* pSector, sithThing* pThing
 				{
 					rdVector_InvScale3Acc(&pJoint->things[j].nextPosAcc, pJoint->things[j].nextPosWeight);
 		
-					rdVector3 delta;
-					rdVector_Sub3(&delta, &pJoint->things[j].nextPosAcc, &pJoint->things[j].position);
-					float dist = rdVector_Normalize3Acc(&delta);
-					if (dist > 0.00001)
-					{
-						// I really hate having to do this update
-						sithCollision_UpdateThingCollision(&pJoint->things[j], &delta, dist, 0);
-					}
+					pJoint->things[j].position = pJoint->things[j].nextPosAcc;
+
+					//rdVector3 delta;
+					//rdVector_Sub3(&delta, &pJoint->things[j].nextPosAcc, &pJoint->things[j].position);
+					//float dist = rdVector_Normalize3Acc(&delta);
+					//if (dist > 0.0)
+					//{
+					//	// I really hate having to do this update
+					//	sithCollision_UpdateThingCollision(&pJoint->things[j], &delta, dist, 0);
+					//}
 				}
 				pJoint->things[j].nextPosWeight = 0.0f;
 				pJoint->things[j].nextPosAcc = rdroid_zeroVector3;
+			}
+		}
+	}
+
+
+	uint64_t jointBits = pThing->animclass->physicsJointBits;
+	while (jointBits != 0)
+	{
+		int jointIdx = stdMath_FindLSB64(jointBits);
+		jointBits ^= 1ull << jointIdx;
+
+		sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
+		for (int j = 0; j < pJoint->numThings; ++j)
+		{
+			rdVector3 delta;
+			rdVector_Sub3(&delta, &pJoint->things[j].position, &pJoint->things[j].physicsParams.lastPos);
+			float dist = rdVector_Normalize3Acc(&delta);
+			if (dist > 0.0)
+			{
+				pJoint->things[j].position = pJoint->things[j].physicsParams.lastPos;
+				// I really hate having to do this update
+				sithCollision_UpdateThingCollision(&pJoint->things[j], &delta, dist, 0);
 			}
 		}
 	}
