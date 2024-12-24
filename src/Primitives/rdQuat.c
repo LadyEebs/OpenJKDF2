@@ -278,64 +278,64 @@ void rdQuat_ToMatrix(rdMatrix34* out, const rdQuat* q)
 
 void rdQuat_Slerp(rdQuat* out, const rdQuat* qa, const rdQuat* qb, const float c)
 {
-	float dot = qa->x * qb->x + qa->y * qb->y + qa->z * qb->z + qa->w * qb->w;
-	float theta = acosf(dot);
-	float sinTheta = sinf(theta);
-	if (sinTheta > 0.001f)
+	//float dot = qa->x * qb->x + qa->y * qb->y + qa->z * qb->z + qa->w * qb->w;
+	//float theta = acosf(dot);
+	//float sinTheta = sinf(theta);
+	//if (sinTheta > 0.001f)
+	//{
+	//	float invSinTheta = 1.0f / sinTheta;
+	//	float scale1 = sinf((1.0f - c) * theta) * invSinTheta;
+	//	float scale2 = sinf(c * theta) * invSinTheta;
+	//	
+	//	out->x = scale1 * qa->x + scale2 * qb->x;
+	//	out->y = scale1 * qa->y + scale2 * qb->y;
+	//	out->z = scale1 * qa->z + scale2 * qb->z;
+	//	out->w = scale1 * qa->w + scale2 * qb->w;
+	//}
+	//else
+	//{
+	//	// If the quaternions are very close, use linear interpolation
+	//	out->x = qa->x * (1.0f - c) + qb->x * c;
+	//	out->y = qa->y * (1.0f - c) + qb->y * c;
+	//	out->z = qa->z * (1.0f - c) + qb->z * c;
+	//	out->w = qa->w * (1.0f - c) + qb->w * c;
+	//}
+
+	float comega = qa->x * qb->x + qa->y * qb->y + qa->z * qb->z + qa->w * qb->w;
+
+	rdQuat q2;	
+	if (comega < 0.0f)
 	{
-		float invSinTheta = 1.0f / sinTheta;
-		float scale1 = sinf((1.0f - c) * theta) * invSinTheta;
-		float scale2 = sinf(c * theta) * invSinTheta;
-		
-		out->x = scale1 * qa->x + scale2 * qb->x;
-		out->y = scale1 * qa->y + scale2 * qb->y;
-		out->z = scale1 * qa->z + scale2 * qb->z;
-		out->w = scale1 * qa->w + scale2 * qb->w;
+		comega = -comega;
+		q2.x = -qb->x;
+		q2.y = -qb->y;
+		q2.z = -qb->z;
+		q2.w = -qb->w;
 	}
 	else
 	{
-		// If the quaternions are very close, use linear interpolation
-		out->x = qa->x * (1.0f - c) + qb->x * c;
-		out->y = qa->y * (1.0f - c) + qb->y * c;
-		out->z = qa->z * (1.0f - c) + qb->z * c;
-		out->w = qa->w * (1.0f - c) + qb->w * c;
+		q2 = *qb;
 	}
 
-//	float comega = qa->x * qb->x + qa->y * qb->y + qa->z * qb->z + qa->w * qb->w;
-//
-//	rdQuat q2;	
-//	if (comega < 0.0f)
-//	{
-//		comega = -comega;
-//		q2.x = -qb->x;
-//		q2.y = -qb->y;
-//		q2.z = -qb->z;
-//		q2.w = -qb->w;
-//	}
-//	else
-//	{
-//		q2 = *qb;
-//	}
-//
-//	float k1, k2;
-//	if (1.0f - comega > 0.000001f)
-//	{
-//		// fixme: use stdMath stuff
-//		float omega = acos(comega);
-//		float sinfomega = sin(omega);
-//		k1 = sin((1 - c) * omega) / sinfomega;
-//		k2 = sin(c * omega) / sinfomega;
-//	}
-//	else
-//	{
-//		k1 = 1.0f - c;
-//		k2 = c;
-//	}
-//
-//	out->x = qa->x * k1 + q2.x * k2;
-//	out->y = qa->y * k1 + q2.y * k2;
-//	out->z = qa->z * k1 + q2.z * k2;
-//	out->w = qa->w * k1 + q2.w * k2;
+	float k1, k2;
+	if (1.0f - comega > 0.000001f)
+	{
+		// fixme: use stdMath stuff
+		float omega = acos(comega);
+		float sinfomega = sin(omega);
+		k1 = sin((1 - c) * omega) / sinfomega;
+		k2 = sin(c * omega) / sinfomega;
+	}
+	else
+	{
+		k1 = 1.0f - c;
+		k2 = c;
+	}
+
+	out->x = qa->x * k1 + q2.x * k2;
+	out->y = qa->y * k1 + q2.y * k2;
+	out->z = qa->z * k1 + q2.z * k2;
+	out->w = qa->w * k1 + q2.w * k2;
 }
 
 void rdQuat_NormalizeAcc(rdQuat* q)
