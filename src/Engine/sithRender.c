@@ -2824,38 +2824,39 @@ int sithRender_RenderThing(sithThing *pThing)
 				sithConstraint* constraint = pJoint->thing.constraints;
 				while (constraint)
 				{
-					if(constraint->type == SITH_CONSTRAINT_DISTANCE)
-					{
-						rdVector3 targetAnchor;
-						constraint->targetThing->lookOrientation.scale = constraint->targetThing->position;
-						rdMatrix_TransformPoint34(&targetAnchor, &constraint->distanceParams.targetAnchor, &constraint->targetThing->lookOrientation);
-						rdVector_Zero3(&constraint->targetThing->lookOrientation.scale);
-		
-						rdVector3 constrainedAnchor;
-						constraint->constrainedThing->lookOrientation.scale = constraint->constrainedThing->position;
-						rdMatrix_TransformPoint34(&constrainedAnchor, &constraint->distanceParams.constraintAnchor, &constraint->constrainedThing->lookOrientation);
-						rdVector_Zero3(&constraint->constrainedThing->lookOrientation.scale);
-		
-						rdVector3 offset = {0,0,0};
-		
-						for (int i = 0; i < 2; ++i)
-						{
-							rdSprite debugSprite;
-							rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, i == 0 ? "saberred0.mat" : "saberblue0.mat", 0.005f, 0.005f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, & offset);
-		
-							rdThing debug;
-							rdThing_NewEntry(&debug, pThing);
-							rdThing_SetSprite3(&debug, &debugSprite);
-							rdMatrix34 mat;
-							rdMatrix_BuildTranslate34(&mat, i == 0 ? &targetAnchor : &constrainedAnchor);
-		
-							rdSprite_Draw(&debug, &mat);
-		
-							rdSprite_FreeEntry(&debugSprite);
-							rdThing_FreeEntry(&debug);
-						}
-					}
-					else if (constraint->type == SITH_CONSTRAINT_CONE)
+					//if(constraint->type == SITH_CONSTRAINT_DISTANCE)
+					//{
+					//	rdVector3 targetAnchor;
+					//	constraint->targetThing->lookOrientation.scale = constraint->targetThing->position;
+					//	rdMatrix_TransformPoint34(&targetAnchor, &constraint->distanceParams.targetAnchor, &constraint->targetThing->lookOrientation);
+					//	rdVector_Zero3(&constraint->targetThing->lookOrientation.scale);
+					//
+					//	rdVector3 constrainedAnchor;
+					//	constraint->constrainedThing->lookOrientation.scale = constraint->constrainedThing->position;
+					//	rdMatrix_TransformPoint34(&constrainedAnchor, &constraint->distanceParams.constraintAnchor, &constraint->constrainedThing->lookOrientation);
+					//	rdVector_Zero3(&constraint->constrainedThing->lookOrientation.scale);
+					//
+					//	rdVector3 offset = {0,0,0};
+					//
+					//	for (int i = 0; i < 2; ++i)
+					//	{
+					//		rdSprite debugSprite;
+					//		rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, i == 0 ? "saberred0.mat" : "saberblue0.mat", 0.005f, 0.005f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, & offset);
+					//
+					//		rdThing debug;
+					//		rdThing_NewEntry(&debug, pThing);
+					//		rdThing_SetSprite3(&debug, &debugSprite);
+					//		rdMatrix34 mat;
+					//		rdMatrix_BuildTranslate34(&mat, i == 0 ? &targetAnchor : &constrainedAnchor);
+					//
+					//		rdSprite_Draw(&debug, &mat);
+					//
+					//		rdSprite_FreeEntry(&debugSprite);
+					//		rdThing_FreeEntry(&debug);
+					//	}
+					//}
+					//else
+					if (constraint->type == SITH_CONSTRAINT_CONE)
 					{
 						rdVector3 coneAxis;
 						rdMatrix_TransformVector34(&coneAxis, &constraint->coneParams.coneAxis, &constraint->targetThing->lookOrientation);
@@ -2869,7 +2870,7 @@ int sithRender_RenderThing(sithThing *pThing)
 						rdMatrix_TransformVector34(&thingAxis, &constraint->coneParams.jointAxis, &constraint->constrainedThing->lookOrientation);
 		
 		
-						for (int i = 0; i < 3; ++i)
+						for (int i = 0; i < 2; ++i)
 						{
 							const char* mat0;
 							const char* mat1;
@@ -2935,7 +2936,7 @@ int sithRender_RenderThing(sithThing *pThing)
 								}
 								else if(i==0)
 								{
-									sizey = 0.02f * (constraint->coneParams.coneAngle / 180.0f);
+									sizey = 0.05f * (constraint->coneParams.coneAngle / 180.0f);
 									len = 0.01f;
 								}
 		
