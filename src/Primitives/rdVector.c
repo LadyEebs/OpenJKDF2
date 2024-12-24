@@ -746,3 +746,30 @@ int rdVector_Compare4(const rdVector4* a, const rdVector4* b)
 {
 	return memcmp(a, b, sizeof(rdVector4));
 }
+
+void rdVector_ToPYR(rdVector3* pyr, const rdVector3* v)
+{
+	static const rdVector3 pitchAxisA = { 1, 0, 0 };  // Local X-axis
+	static const rdVector3 yawAxisA = { 0, 0, 1 };  // Local Z-axis
+	static const rdVector3 rollAxisA = { 0, 1, 0 };  // Local Y-axis
+
+	pyr->x = rdVector_Dot3(v, &pitchAxisA) * (180.0f / M_PI);  // Pitch
+	pyr->y = rdVector_Dot3(v, &yawAxisA) * (180.0f / M_PI);   // Yaw
+	pyr->z = rdVector_Dot3(v, &rollAxisA) * (180.0f / M_PI);   // Roll
+}
+
+void rdVector_FromPYR(rdVector3* v, const rdVector3* pyr)
+{
+	// Local angular velocity in axis terms
+	rdVector3 pitchAxis = { 1, 0, 0 };
+	rdVector3 yawAxis = { 0, 0, 1 };
+	rdVector3 rollAxis = { 0, 1, 0 };
+
+	// Scale by respective angular velocities
+	rdVector_Scale3(&pitchAxis, &pitchAxis, pyr->x * (M_PI / 180.0f)); // Convert to radians
+	rdVector_Scale3(&yawAxis, &yawAxis, pyr->y * (M_PI / 180.0f));     // Convert to radians
+	rdVector_Scale3(&rollAxis, &rollAxis, pyr->z * (M_PI / 180.0f));   // Convert to radians
+
+	rdVector_Add3(v, &pitchAxis, &rollAxis);
+	rdVector_Add3Acc(v, &yawAxis);
+}
