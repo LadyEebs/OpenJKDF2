@@ -3347,9 +3347,14 @@ typedef struct sithPuppetJointFrame
 
 typedef struct sithPuppetJoint
 {
-	int        numThings;
-	sithThing  things[2]; // physicalized thing representation
-	rdMatrix34 localMat;  // local matrix for the joint
+#ifdef RIGID_BODY
+	sithThing  thing;
+#else
+	int        numThings;    // number of particle things representing the joint
+	sithThing* things;       // particle thing instances
+	float*     distances;    // distances between particles, in order
+#endif
+	rdMatrix34 localMat;     // local matrix for the joint
 } sithPuppetJoint;
 
 typedef struct sithPuppetPhysics

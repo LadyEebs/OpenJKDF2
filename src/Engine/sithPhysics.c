@@ -262,11 +262,11 @@ void sithPhysics_ThingApplyRotForceToThing(sithThing* pThing, rdVector3* torque)
 {
 	sithPhysics_ThingApplyRotForceToVel(pThing, torque);
 
+#ifdef RIGID_BODY
 	// propagate forces down the constraint chain
 	// for now, just use a simple energy loss factor
-	rdVector3 childForce;
-	rdVector_Scale3(&childForce, torque, 0.5f);
-
+	//rdVector3 childForce;
+	//rdVector_Scale3(&childForce, torque, 0.5f);
 	//sithConstraint* constraint = pThing->constraints;
 	//while (constraint)
 	//{
@@ -296,6 +296,7 @@ void sithPhysics_ThingApplyRotForceToThing(sithThing* pThing, rdVector3* torque)
 	//	sithPhysics_ThingApplyRotForceToVel(parent, &parentTorque);
 	//	parent = parent->constraintParent;
 	//}
+#endif
 }
 
 // thing: thing to apply force to
@@ -380,7 +381,7 @@ void sithPhysics_ThingApplyForce(sithThing* pThing, rdVector3* forceVec)
 	{
 		// apply the force to the thing
 		sithPhysics_ThingApplyForceToVel(pThing, forceVec);
-
+#ifdef RIGID_BODY
 		//// propagate forces down the constraint chain
 		//// for now, just use a simple energy loss factor
 		//rdVector3 childForce;
@@ -402,6 +403,7 @@ void sithPhysics_ThingApplyForce(sithThing* pThing, rdVector3* forceVec)
 		//	sithPhysics_ThingApplyForceToVel(parent, &reactionForce);
 		//	parent = parent->constraintParent;
 		//}
+#endif
 	}
 }
 #else

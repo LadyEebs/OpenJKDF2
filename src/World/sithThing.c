@@ -309,7 +309,9 @@ void sithThing_TickAll(float deltaSeconds, int deltaMs)
             sithPuppet_Tick(pThingIter, deltaSeconds);
 
 #ifdef PUPPET_PHYSICS
+#ifdef RIGID_BODY
 			//sithConstraint_SolveConstraints(pThingIter, deltaSeconds);
+#endif
 #endif
 
             continue;

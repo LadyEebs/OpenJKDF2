@@ -12,6 +12,8 @@ extern float jkPlayer_puppetAngBias;
 extern float jkPlayer_puppetPosBias;
 extern float jkPlayer_puppetFriction;
 
+#ifdef RIGID_BODY
+
 void sithConstraint_AddDistanceConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pTargetAnchor, const rdVector3* pConstrainedAnchor, float distance)
 {
 	sithConstraint* constraint = (sithConstraint*)malloc(sizeof(sithConstraint));
@@ -2102,14 +2104,14 @@ void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
 			
 				rdMatrix34 a;
 				rdMatrix_BuildRotate34(&a, &a3);
-				sithCollision_sub_4E7670(&pJoint->things[0], &a);
-				rdMatrix_Normalize34(&pJoint->things[0].lookOrientation);
+				sithCollision_sub_4E7670(&pJoint->thing, &a);
+				rdMatrix_Normalize34(&pJoint->thing.lookOrientation);
 			
-				rdVector_Scale3(&pJoint->things[0].physicsParams.velocityMaybe, &pJoint->things[0].physicsParams.accLinearForces, deltaSeconds);
-				sithThing_TickPhysics(&pJoint->things[0], deltaSeconds);
+				rdVector_Scale3(&pJoint->thing.physicsParams.velocityMaybe, &pJoint->thing.physicsParams.accLinearForces, deltaSeconds);
+				sithThing_TickPhysics(&pJoint->thing, deltaSeconds);
 			
-				rdVector_Zero3(&pJoint->things[0].physicsParams.accLinearForces);
-				rdVector_Zero3(&pJoint->things[0].physicsParams.accAngularForces);
+				rdVector_Zero3(&pJoint->thing.physicsParams.accLinearForces);
+				rdVector_Zero3(&pJoint->thing.physicsParams.accAngularForces);
 			}
 		}
 
@@ -2254,5 +2256,7 @@ void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
 
 #endif
 
+
+#endif
 
 #endif

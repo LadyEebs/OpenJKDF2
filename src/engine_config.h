@@ -19,6 +19,7 @@
 #define GAMEPLAY_COGS        // adds some gameplay system cogs (like MasterCog and ActionCog) that can be used for specific shared game logic
 #define ANIMCLASS_NAMES      // adds name support to puppet file joint section
 #define PUPPET_PHYSICS       // alternative physics animations (ragdolls) using puppet joints
+#define RIGID_BODY // rigid body tests for puppet physics
 
 // Old render pipeline features
 #define STENCIL_BUFFER       // mark the stencil buffer with dynamic/transparent stuff, so we can effectively cull things like decals

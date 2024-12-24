@@ -689,6 +689,7 @@ void sithCollision_sub_4E7670(sithThing *thing, rdMatrix34 *orient)
 	//}
 #endif
 }
+#ifdef RIGID_BODY
 
 void sithCollision_ConstrainThings(sithThing* thing1, sithThing* thing2, float distance)
 {
@@ -750,7 +751,7 @@ void ssithCollision_ApplyConstraint(sithThing* pParent, sithThing* pChild, sithC
 		float lambda = result->C * Me;
 		lambda = stdMath_ClipPrecision(lambda);
 
-		float damping = (1.0f - 0.0f) * sithTime_deltaSeconds;
+		float damping = (1.0f - 0.f) * sithTime_deltaSeconds;
 
 		// calculate linear impulses
 		rdVector3 impulseLinearA, impulseLinearB;
@@ -762,24 +763,40 @@ void ssithCollision_ApplyConstraint(sithThing* pParent, sithThing* pChild, sithC
 		rdVector_Scale3(&impulseAngularA, &result->JrA, lambda * invInertiaTensorA * damping);
 		rdVector_Scale3(&impulseAngularB, &result->JrB, lambda * invInertiaTensorB * damping);
 
+		//if(jkPlayer_puppetFriction > 0.0)
+		//{
+		//	sithPhysics_ApplyDrag(&impulseAngularA, jkPlayer_puppetFriction, 0.0f, deltaSeconds);
+		//	sithPhysics_ApplyDrag(&impulseAngularB, jkPlayer_puppetFriction, 0.0f, deltaSeconds);
+		//	sithPhysics_ApplyDrag(&impulseLinearA, jkPlayer_puppetFriction, 0.0f, deltaSeconds);
+		//	sithPhysics_ApplyDrag(&impulseLinearB, jkPlayer_puppetFriction, 0.0f, deltaSeconds);
+		//}
+
 		// friction
 		if(jkPlayer_puppetFriction > 0.0)
 		{
-			rdMatrix34 I;
-			rdMatrix_InvertOrtho34(&I, &pParent->lookOrientation);
-		
-			rdMatrix34 R_rel;
-			rdMatrix_Multiply34(&R_rel, &I, &pChild->lookOrientation);
-		
+			//rdMatrix34 I;
+			//rdMatrix_InvertOrtho34(&I, &pParent->lookOrientation);
+			//
+			//rdMatrix34 R_rel;
+			//rdMatrix_Multiply34(&R_rel, &I, &pChild->lookOrientation);
+			//
+			//rdVector3 omega_rel;
+			//compute_angular_velocity_from_rotation(&omega_rel, &R_rel);
+
+			rdVector3 dir = {0, 1, 0};
+			rdVector3 angVelWS_A, angVelWS_B;
+			rdVector_Rotate3(&angVelWS_A, &dir, &pParent->physicsParams.angVel);
+			rdVector_Rotate3(&angVelWS_B, &dir, &pChild->physicsParams.angVel);
+
 			rdVector3 omega_rel;
-			compute_angular_velocity_from_rotation(&omega_rel, &R_rel);
-		
+			rdVector_Sub3(&omega_rel, &angVelWS_A, &angVelWS_B);
+
 			apply_friction_to_rotational_impulse(&omega_rel, jkPlayer_puppetFriction, &impulseAngularA, &impulseAngularB);
 		}
 
 		// apply the impulses
 		{
-		//	rdVector_Add3Acc(&pParent->physicsParams.vel, &impulseLinearA);
+			//rdVector_Add3Acc(&pParent->physicsParams.vel, &impulseLinearA);
 			//rdVector_Add3Acc(&pParent->physicsParams.angVel, &impulseAngularA);
 
 			float impulseDist = rdVector_Normalize3Acc(&impulseLinearA);
@@ -809,10 +826,9 @@ void ssithCollision_ApplyConstraint(sithThing* pParent, sithThing* pChild, sithC
 				rdMatrix34 a;
 				rdMatrix_BuildRotate34(&a, &angVel);
 				sithCollision_sub_4E7670(pParent, &a);
-
+				//rdVector_Add3Acc(&pParent->physicsParams.angVel, &angVel);
 			}
 
-		//	rdVector_Add3Acc(&pParent->physicsParams.angVel, &angVel);
 
 
 		//	rdMatrix34 invObjectOrientation;
@@ -859,7 +875,7 @@ void ssithCollision_ApplyConstraint(sithThing* pParent, sithThing* pChild, sithC
 			angVel.x = rdVector_Dot3(&localUnitConstraint, &pitchAxisA) * (180.0f / M_PI);  // Pitch
 			angVel.y = rdVector_Dot3(&localUnitConstraint, &yawAxisA) * (180.0f / M_PI);   // Yaw
 			angVel.z = rdVector_Dot3(&localUnitConstraint, &rollAxisA) * (180.0f / M_PI);   // Roll
-			//rdVector_Add3Acc(&pChild->physicsParams.angVel, &angVel);
+		//	rdVector_Add3Acc(&pChild->physicsParams.angVel, &angVel);
 
 			rdMatrix34 a;
 			rdMatrix_BuildRotate34(&a, &angVel);
@@ -987,7 +1003,7 @@ void sithCollision_SolveConeConstraint(sithThing* pParent,
 	rdVector_Neg3Acc(&normal);
 
 	sithConstraintResult res;
-	rdVector_Copy3(&res.JvB, &normal);
+	rdVector_Copy3(&res.JvB, &rdroid_zeroVector3);//&normal);
 	rdVector_Cross3(&res.JrB, &p1, &normal);
 
 	res.C = rdVector_Dot3(&normal, &thingAxis);// / (180.0f / M_PI);
@@ -1002,7 +1018,7 @@ void sithCollision_SolveConeConstraint(sithThing* pParent,
 	//rdVector_Add3Acc(&p2, &coneVector);
 	rdVector_Sub3Acc(&p2, &pParent->position);
 
-	rdVector_Copy3(&res.JvA, &normal);
+	rdVector_Copy3(&res.JvA, &rdroid_zeroVector3);// &normal);
 	rdVector_Cross3(&res.JrA, &p2, &normal);
 
 	ssithCollision_ApplyConstraint(pParent, pChild, &res, sithTime_deltaSeconds);
@@ -1053,6 +1069,7 @@ void sithCollision_ConstraintLoopTest(sithThing* pThing, const rdVector3* dir, f
 		}
 	}
 }
+#endif
 
 float sithCollision_UpdateThingCollision(sithThing *pThing, rdVector3 *a2, float a6, int flags)
 {
@@ -1116,8 +1133,17 @@ float sithCollision_UpdateThingCollision(sithThing *pThing, rdVector3 *a2, float
     }
 
 #ifdef PUPPET_PHYSICS
+#ifdef RIGID_BODY
 	//if (pThing->type == SITH_THING_CORPSE)
-		//flags |= SITH_RAYCAST_IGNORE_CORPSES; // todo: not sure if this is needed
+		//flags |= SITH_RAYCAST_IGNORE_CORPSES; // disable collisions between corpse bodies for now
+#endif
+
+	//sithConstraint* constraint = pThing->constraints;
+	//while (constraint)
+	//{
+	//	//sithCollision_UpdateThingCollision(constraint->thing, a2, a6, 0x30000000);
+	//	constraint = constraint->next;
+	//}
 #endif
 	direction = *a2;
 
@@ -1545,10 +1571,12 @@ LABEL_81:
 
 
 #ifdef PUPPET_PHYSICS
+#ifdef RIGID_BODY
 	if (v5->constraintParent && !(flags & 0x10000000))
 		sithCollision_ConstraintLoopTest(v5->constraintParent, &direction, a6, flags);
 	if(!(flags & 0x10000000))
-	sithCollision_ConstraintLoopTest(v5, &direction, a6, flags);
+		sithCollision_ConstraintLoopTest(v5, &direction, a6, flags);
+#endif
 #endif
 
 #if 0//def PUPPET_PHYSICS
