@@ -29,8 +29,10 @@ void sithConstraint_AddDistanceConstraint(sithThing* pThing, sithThing* pConstra
 	constraint->distanceParams.constraintDistance = distance;//rdVector_Len3(&constraint->distanceParams.constraintAnchor);
 	constraint->distanceParams.prevLambda = 0.0f;
 	
-// 	constraint->next = pThing->constraints;
-//	pThing->constraints = constraint;
+	constraint->constrainedThing->constraintParent = pTargetThing;
+
+ 	//constraint->next = pThing->constraints;
+	//pThing->constraints = constraint;
 
 	// new
 	constraint->thing = pConstrainedThing;
@@ -61,8 +63,10 @@ void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrained
 	constraint->coneParams.coneAngleCos = c;
 	constraint->coneParams.jointAxis = *pJointAxis;
 
-//	constraint->next = pThing->constraints;
-//	pThing->constraints = constraint;
+	constraint->constrainedThing->constraintParent = pTargetThing;
+
+	//constraint->next = pThing->constraints;
+	//pThing->constraints = constraint;
 
 	// new
 	constraint->thing = pConstrainedThing;
@@ -358,17 +362,28 @@ void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
 
 #else
 
-void compute_angular_velocity_from_rotation(rdVector3* angVel, const rdMatrix34* R_rel)
+void compute_angular_velocity_from_rotation(rdVector3* omega_rel, const rdMatrix34* R_rel)
 {
-	rdMatrix34 R_diff = *R_rel;
-	R_diff.rvec.x -= 1.0f;
-	R_diff.lvec.y -= 1.0f;
-	R_diff.uvec.z -= 1.0f;
+	float angle;
+	rdVector3 axis;
+	rdMatrix_ExtractAxisAngle34(R_rel, &axis, &angle);
 
-	// Use the skew-symmetric matrix to extract angular velocity (ignoring higher-order terms for small rotations)
-	angVel->x = 0.5f * (R_diff.uvec.y - R_diff.lvec.z);
-	angVel->y = 0.5f * (R_diff.rvec.z - R_diff.uvec.x);
-	angVel->z = 0.5f * (R_diff.lvec.x - R_diff.rvec.y);
+	float theta = angle * M_PI / 180.0f;
+
+	// Compute angular velocity: omega_rel = (theta / deltaTime) * rotationAxis
+	omega_rel->x = (theta) * axis.x;
+	omega_rel->y = (theta) * axis.y;
+	omega_rel->z = (theta) * axis.z;
+
+//	rdMatrix34 R_diff = *R_rel;
+//	R_diff.rvec.x -= 1.0f;
+//	R_diff.lvec.y -= 1.0f;
+//	R_diff.uvec.z -= 1.0f;
+//
+//	// Use the skew-symmetric matrix to extract angular velocity (ignoring higher-order terms for small rotations)
+//	omega_rel->x = 0.5f * (R_diff.uvec.y - R_diff.lvec.z);
+//	omega_rel->y = 0.5f * (R_diff.rvec.z - R_diff.uvec.x);
+//	omega_rel->z = 0.5f * (R_diff.lvec.x - R_diff.rvec.y);
 }
 
 void compute_twist_component(rdVector3* result, rdVector3* omega_rel, rdVector3* jointAxisB)
@@ -386,7 +401,7 @@ void apply_friction_to_rotational_impulse(const rdVector3* omega_rel, float fric
 	{
 		// Compute the frictional torque: opposite direction of relative angular velocity
 		rdVector3 friction_torque;
-		rdVector_Scale3(&friction_torque, omega_rel, -friction_coefficient);// * omega_magnitude / omega_magnitude);
+		rdVector_Scale3(&friction_torque, omega_rel, friction_coefficient);// * omega_magnitude / omega_magnitude);
 
 		// Add the frictional torque to the impulse
 		rdVector_Add3Acc(impulseA, &friction_torque);
@@ -397,11 +412,8 @@ void apply_friction_to_rotational_impulse(const rdVector3* omega_rel, float fric
 void ApplyImpulse(sithThing* pThing, const rdVector3* linearImpulse, const rdVector3* angularImpulse)
 {
 	rdVector3 dampedLinearImpulse = *linearImpulse;
-	//sithPhysics_ApplyDrag(&dampedLinearImpulse, 0.1f, 0.0f, sithTime_deltaSeconds);
 
 	// apply impulse to the velocity
-	// for whatever reason, it only works if we divide by mass again or it explodes, is it supposed to be a force?
-	//float invMass = 1.0 / pThing->physicsParams.mass;
 	//rdVector_MultAcc3(&pThing->physicsParams.vel, &dampedLinearImpulse, 1.0);
 	//pThing->physicsParams.physflags |= SITH_PF_HAS_FORCE;
 
@@ -409,34 +421,19 @@ void ApplyImpulse(sithThing* pThing, const rdVector3* linearImpulse, const rdVec
 	// todo: accumulate position changes and do this once per frame or iteration instead of on every constraint, it's expensive
 //	sithCollision_UpdateThingCollision(pThing, &dampedLinearImpulse, sithTime_deltaSeconds*rdVector_Normalize3Acc(&dampedLinearImpulse), 0);//SITH_RAYCAST_IGNORE_THINGS | RAYCAST_4);
 //	rdVector_MultAcc3(&pThing->position, &dampedLinearImpulse, sithTime_deltaSeconds);
-  rdVector_MultAcc3(&pThing->physicsParams.accLinearForces, &dampedLinearImpulse, 1.0f);//sithTime_deltaSeconds);
+
+	// apply impulse to an accumulator
+	rdVector_MultAcc3(&pThing->physicsParams.accLinearForces, &dampedLinearImpulse, 1.0f);//sithTime_deltaSeconds);
 
 	// ignore angular impulses if there isn't any
 	if(rdVector_IsZero3(angularImpulse))
 		return;
 
 	rdVector3 dampedAngularImpulse = *angularImpulse;
-	//sithPhysics_ApplyDrag(&dampedAngularImpulse, 0.1f, 0.0f, sithTime_deltaSeconds);
 
-
-
-
-	rdVector3 pitchAxisA = { 1, 0, 0 };  // Local X-axis
-	rdVector3 yawAxisA = { 0, 0, 1 };  // Local Z-axis
-	rdVector3 rollAxisA = { 0, 1, 0 };  // Local Y-axis
-
-	rdMatrix34 invOrient;
-	rdMatrix_InvertOrtho34(&invOrient, &pThing->lookOrientation);
-
-	rdVector3 localUnitConstraint;
-	rdMatrix_TransformVector34(&localUnitConstraint, &dampedAngularImpulse, &invOrient);
-
-	// Compute angular contributions in PYR space for child
-	rdVector3 angVel;
-	angVel.x = rdVector_Dot3(&localUnitConstraint, &pitchAxisA) * (180.0f / M_PI);  // Pitch
-	angVel.y = rdVector_Dot3(&localUnitConstraint, &yawAxisA) * (180.0f / M_PI);   // Yaw
-	angVel.z = rdVector_Dot3(&localUnitConstraint, &rollAxisA) * (180.0f / M_PI);   // Roll
-	rdVector_Add3Acc(&pThing->physicsParams.accAngularForces, &angVel);
+	//rdVector3 angVel;
+	//sithPhysics_AngularVelocityToAngles(&angVel, &dampedAngularImpulse, &pThing->lookOrientation);
+	rdVector_Add3Acc(&pThing->physicsParams.accAngularForces, &dampedAngularImpulse);
 
 
 
@@ -530,7 +527,7 @@ static void sithConstraint_SolveDistanceConstraint(sithConstraintResult* pResult
 	pResult->JvB.y = unitConstraint.y;
 	pResult->JvB.z = unitConstraint.z;
 
-	if(pConstraint->constrainedThing->physicsParams.physflags & SITH_PF_4000000)
+	if(1)//pConstraint->constrainedThing->physicsParams.physflags & SITH_PF_4000000)
 	{
 		rdVector_Cross3(&pResult->JrB, &offsetB, &unitConstraint);
 		if (1)//!(pConstraint->targetThing->physicsParams.physflags & SITH_PF_2000000))
@@ -901,7 +898,7 @@ static void sithConstraint_SolveConeConstraint(sithConstraintResult* pConeResult
 	//	pTwistResult->JvB = rdroid_zeroVector3;
 	//}
 
-#elif 0
+#elif 1
 	sithThing* bodyA = pConstraint->targetThing;
 	sithThing* bodyB = pConstraint->constrainedThing;
 	
@@ -2020,7 +2017,7 @@ void sithConstraint_ApplyConstraint(sithThing* pThing, sithConstraint* constrain
 		rdVector3 omega_rel;
 		compute_angular_velocity_from_rotation(&omega_rel, &R_rel);
 
-		//apply_friction_to_rotational_impulse(&omega_rel, jkPlayer_puppetFriction, &impulseAngularA, &impulseAngularB);
+		apply_friction_to_rotational_impulse(&omega_rel, jkPlayer_puppetFriction, &impulseAngularA, &impulseAngularB);
 
 		// apply the impulses
 		ApplyImpulse(constraint->targetThing, &impulseLinearA, &impulseAngularA);
@@ -2099,16 +2096,23 @@ void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
 		   	
 		   		sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
 			
-				rdVector3 a3;
-				rdVector_Scale3(&a3, &pThing->physicsParams.accAngularForces, deltaSeconds);
+				if(!rdVector_IsZero3(&pThing->physicsParams.accAngularForces))
+				{
+					rdVector3 a3;
+					rdVector_Scale3(&a3, &pThing->physicsParams.accAngularForces, deltaSeconds);
+					float angle = (180.0f / M_PI) * rdVector_Normalize3Acc(&a3);
+
+					rdMatrix34 a;
+					rdMatrix_BuildFromVectorAngle34(&a, &a3, angle);
+					sithCollision_sub_4E7670(&pJoint->thing, &a);
+					rdMatrix_Normalize34(&pJoint->thing.lookOrientation);
+				}
 			
-				rdMatrix34 a;
-				rdMatrix_BuildRotate34(&a, &a3);
-				sithCollision_sub_4E7670(&pJoint->thing, &a);
-				rdMatrix_Normalize34(&pJoint->thing.lookOrientation);
-			
-				rdVector_Scale3(&pJoint->thing.physicsParams.velocityMaybe, &pJoint->thing.physicsParams.accLinearForces, deltaSeconds);
-				sithThing_TickPhysics(&pJoint->thing, deltaSeconds);
+				if(!rdVector_IsZero3(&pJoint->thing.physicsParams.accLinearForces))
+				{
+					rdVector_Scale3(&pJoint->thing.physicsParams.velocityMaybe, &pJoint->thing.physicsParams.accLinearForces, deltaSeconds);
+					sithThing_TickPhysics(&pJoint->thing, deltaSeconds);
+				}
 			
 				rdVector_Zero3(&pJoint->thing.physicsParams.accLinearForces);
 				rdVector_Zero3(&pJoint->thing.physicsParams.accAngularForces);
