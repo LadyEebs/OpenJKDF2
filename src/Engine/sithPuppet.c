@@ -112,13 +112,11 @@ static const sithPuppetConstraint sithPuppet_constraints[] =
 	{ JOINTTYPE_HEAD,     JOINTTYPE_TORSO, -1 },
 	{ JOINTTYPE_HEAD, JOINTTYPE_RSHOULDER, -1 },
 	{ JOINTTYPE_HEAD, JOINTTYPE_LSHOULDER, -1 },
-	{ JOINTTYPE_HEAD,       JOINTTYPE_HIP, -1 },
 
 	// neck constraints
 	{ JOINTTYPE_NECK,     JOINTTYPE_TORSO, -1 },
 	{ JOINTTYPE_NECK, JOINTTYPE_RSHOULDER, -1 },
 	{ JOINTTYPE_NECK, JOINTTYPE_LSHOULDER, -1 },
-	{ JOINTTYPE_NECK,       JOINTTYPE_HIP, -1 },
 
 	// torso constraints
 	{ JOINTTYPE_TORSO,       JOINTTYPE_HIP,   -1 },
@@ -1573,7 +1571,9 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 		// angthrust isn't actually used (we never set the thrust)
 		// but this enables angular velocity drag and clamping
 	//	pJointThing->physicsParams.physflags |= SITH_PF_ANGTHRUST;
+#ifdef RIGID_BODY
 		pJointThing->physicsParams.physflags |= SITH_PF_ANGIMPULSE;
+#endif
 
 		//if (jointIdx == JOINTTYPE_TORSO)
 		{
@@ -1651,24 +1651,21 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 		//if (jointIdx == JOINTTYPE_HEAD)
 		//	pJointThing->physicsParams.physflags |= SITH_PF_2000000;
 
-		pJointThing->physicsParams.staticDrag = fmax(pJointThing->physicsParams.staticDrag, 0.001f);
+		pJointThing->physicsParams.staticDrag = fmax(pJointThing->physicsParams.staticDrag, 0.01f);
 	//	pJointThing->physicsParams.airDrag = 0;
 
 		rdVector3 vel;
 		rdMatrix_TransformVector34(&vel, &pThing->rdthing.paHierarchyNodeVelocities[pNode->idx], &pThing->rdthing.hierarchyNodeMatrices[pBodyPart->nodeIdx]);
-//		rdVector_Copy3(&pJointThing->physicsParams.vel, &vel);
-
-		//rdVector_Sub3(&pJoint->thing.physicsParams.vel, &pJoint->thing.position, &lastPos);
-		//rdVector_Scale3Acc(&pJoint->thing.physicsParams.vel, 1.0f / deltaSeconds);
-		//sithPhysics_ApplyDrag(&pJoint->thing.physicsParams.vel, 1.0f, 0.0f, deltaSeconds);
-		//rdVector_Add3Acc(&pJointThing->physicsParams.vel, &thingVel);
-
-	//	rdVector_Copy3(&pJointThing->physicsParams.angVel, &pThing->rdthing.paHierarchyNodeAngularVelocities[pNode->idx]);
+		rdVector_Copy3(&pJointThing->physicsParams.vel, &vel);
+		rdVector_Copy3(&pJointThing->physicsParams.angVel, &pThing->rdthing.paHierarchyNodeAngularVelocities[pNode->idx]);
 
 		//printf("init velocity for joint %d is %f!\n", jointIdx, rdVector_Len3(&pJoint->thing.physicsParams.vel));
 
+	#ifdef RIGID_BODY
+		// disabled forn ow
 		pJointThing->physicsParams.vel = rdroid_zeroVector3;
 		pJointThing->physicsParams.angVel = rdroid_zeroVector3;
+	#endif
 	}
 
 	// enter the things sector to start physics
@@ -2321,20 +2318,20 @@ void sithPuppet_DoDistanceConstraint(sithThing* pThing, sithThing* pJointA, sith
 			float velocityDot = rdVector_Dot3(&relativeVelocity, &offsetDir);
 			velocityDot = stdMath_ClipPrecision(velocityDot);
 
-			const float biasFactor = 0.05f;
+			const float biasFactor = 0.5f;
 			float bias = -(biasFactor / deltaSeconds) * offset;
 
 			float lambda = -(velocityDot + bias) / constraintMass;
-			lambda = offset / constraintMass;
+			//lambda = offset / constraintMass;
 
 			const float dampingFactor = 0.2f;
 			//lambda *= 1.0f - dampingFactor;
 
 			rdVector3 aImpulse;
-			rdVector_Scale3(&aImpulse, &offsetDir, lambda * invMassA);
+			rdVector_Scale3(&aImpulse, &offsetDir, lambda * invMassA * deltaSeconds);
 
 			rdVector3 bImpulse;
-			rdVector_Scale3(&bImpulse, &offsetDir, -lambda * invMassB);
+			rdVector_Scale3(&bImpulse, &offsetDir, -lambda * invMassB * deltaSeconds);
 
 			//rdVector3 dampingForce;
 			//rdVector_Scale3(&dampingForce, &aImpulse, dampingFactor);
@@ -2342,13 +2339,13 @@ void sithPuppet_DoDistanceConstraint(sithThing* pThing, sithThing* pJointA, sith
 			//rdVector_Sub3Acc(&aImpulse, &dampingForce);
 			//rdVector_Sub3Acc(&bImpulse, &dampingForce);
 
-		//	rdVector_MultAcc3(&pJointA->physicsParams.vel, &aImpulse, invMassA);
-		//	rdVector_MultAcc3(&pJointB->physicsParams.vel, &bImpulse, invMassB);
+			//rdVector_MultAcc3(&pJointA->physicsParams.vel, &aImpulse, invMassA);
+			//rdVector_MultAcc3(&pJointB->physicsParams.vel, &bImpulse, invMassB);
 
 			rdVector3 posA, posB;
 			rdVector_Add3(&posA, &pJointA->position, &aImpulse);
 			rdVector_Add3(&posB, &pJointB->position, &bImpulse);
-
+		
 			rdVector_Add3Acc(&pJointA->nextPosAcc, &posA);
 			rdVector_Add3Acc(&pJointB->nextPosAcc, &posB);
 			
@@ -3526,7 +3523,7 @@ void sithPuppet_ApplyIterativeCorrections(sithSector* pSector, sithThing* pThing
 {
 	//sithPuppet_ClearVelocities(pThing);
 	
-	int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 10 : 1;
+	int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 3 : 1;
 	//for (int i = 0; i < iterations; ++i)
 	//{
 	//	uint64_t jointBits = pThing->animclass->physicsJointBits;
@@ -3639,19 +3636,22 @@ void sithPuppet_ApplyIterativeCorrections(sithSector* pSector, sithThing* pThing
 		{
 			int jointIdx = stdMath_FindLSB64(jointBits);
 			jointBits ^= 1ull << jointIdx;
-
+		
 			sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
 			for (int j = 0; j < pJoint->numThings; ++j)
 			{
 				if (pJoint->things[j].nextPosWeight)
 				{
 					rdVector_InvScale3Acc(&pJoint->things[j].nextPosAcc, pJoint->things[j].nextPosWeight);
-
+		
 					rdVector3 delta;
 					rdVector_Sub3(&delta, &pJoint->things[j].nextPosAcc, &pJoint->things[j].position);
 					float dist = rdVector_Normalize3Acc(&delta);
-					if (dist > 0.0)
+					if (dist > 0.00001)
+					{
+						// I really hate having to do this update
 						sithCollision_UpdateThingCollision(&pJoint->things[j], &delta, dist, 0);
+					}
 				}
 				pJoint->things[j].nextPosWeight = 0.0f;
 				pJoint->things[j].nextPosAcc = rdroid_zeroVector3;
