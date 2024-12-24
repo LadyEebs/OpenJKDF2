@@ -2655,7 +2655,9 @@ void sithPuppet_ApplyConstraints(sithThing* pThing, float deltaSeconds)
 #endif
 
 #ifndef RIGID_BODY
-	for (int i = 0; i < ARRAYSIZE(sithPuppet_constraints); ++i)
+	int numConstraints = ARRAYSIZE(sithPuppet_constraints) - 1;
+	//for (int i = 0; i < ARRAYSIZE(sithPuppet_constraints); ++i)
+	for (int i = numConstraints; i >= 0; --i)
 	{
 		sithPuppetConstraint* pConstraint = &sithPuppet_constraints[i];
 	
@@ -3441,6 +3443,12 @@ void sithPuppet_UpdatePhysicsJointOrientations(sithThing* pThing, float deltaSec
 		else if (pJoint->numThings > 1)
 		{
 			rdVector_Sub3(&right, &pJoint->things[0].position, &pJoint->things[1].position);
+			rdVector_Normalize3Acc(&right);
+
+		}
+		else if (pTargetJoint->numThings > 1)
+		{
+			rdVector_Sub3(&right, &pTargetJoint->things[0].position, &pTargetJoint->things[1].position);
 			rdVector_Normalize3Acc(&right);
 
 		}
