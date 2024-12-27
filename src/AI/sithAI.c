@@ -662,7 +662,7 @@ void sithAI_idkframesalloc(sithThing *a2, sithThing *a3, rdVector3 *a4)
     }
 }
 
-#ifdef PUPPET_PHYSICS
+#ifdef QOL_IMPROVEMENTS
 void sithAI_LookAtTarget(sithThing* thing, float deltaSeconds)
 {
 	if (thing->rdthing.type != RD_THINGTYPE_MODEL || !thing->animclass)
@@ -699,7 +699,7 @@ void sithAI_Tick(sithThing *thing, float deltaSeconds)
         if (thing->actor->flags & SITHAI_MODE_MOVING)
             sithAI_idk_msgarrived_target(thing->actor, deltaSeconds);
 
-#ifdef PUPPET_PHYSICS
+#ifdef QOL_IMPROVEMENTS
 		sithAI_LookAtTarget(thing, deltaSeconds);
 #endif
     }
