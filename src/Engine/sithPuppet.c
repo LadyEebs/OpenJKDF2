@@ -1242,8 +1242,8 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 		rdVector_Add3Acc(&pos, &meshCenter);
 
 		float avgDist = (minDist + maxDist) * 0.5f;
-		pJointThing->moveSize = pJointThing->collideSize = minDist;
-		//pJointThing->collideSize = minDist;
+		pJointThing->moveSize = maxDist;
+		pJointThing->collideSize = minDist;
 	}
 
 	sithCollision_GetSectorLookAt(pThing->sector, &pJointThing->position, &pos, 0.0f);
@@ -1264,10 +1264,13 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 		_memcpy(&pJointThing->physicsParams, &pThing->physicsParams, sizeof(sithThingPhysParams));
 		pJointThing->physicsParams.mass *= pBodyPart->mass;
 		pJointThing->physicsParams.buoyancy *= pBodyPart->buoyancy;
-		pJointThing->physicsParams.height = 0.00001f;
+		pJointThing->physicsParams.height = 0.0f;
 
 		pJointThing->physicsParams.physflags = SITH_PF_FEELBLASTFORCE;
 		pJointThing->physicsParams.physflags |= SITH_PF_ANGIMPULSE;
+
+		// todo: it would probably be better to simply attach the root
+		// and constrain the hip as a fixed joint and let everything else follow
 		pJointThing->physicsParams.physflags |= SITH_PF_FLOORSTICK;
 
 		//SITH_PF_USEGRAVITY = 0x1,
