@@ -105,6 +105,7 @@ static const char* sithPuppet_jointNames[] =
 
 #ifdef PUPPET_PHYSICS
 
+#ifndef PARTICLE_BODIES
 static const sithPuppetConstraint sithPuppet_constraints[] =
 {
 	// head constraints
@@ -267,7 +268,7 @@ static const int sithPuppet_jointChild[] =
 	-1,   	// JOINTTYPE_RFOOT
 	-1,   	// JOINTTYPE_LFOOT
 };
-
+#endif
 
 #endif
 
@@ -1250,16 +1251,16 @@ void sithPuppet_AddDistanceConstraint(sithThing* pThing, int joint, int target, 
 
 	float d = rdVector_Dist3(&targetThing->position, &jointThing->position);
 	float penetrationDepth = jointThing->moveSize + targetThing->moveSize - d;
-	if (penetrationDepth > 0.0f)
-	{
-		contactPointA.x -= direction.x * (penetrationDepth / 2.0f);
-		contactPointA.y -= direction.y * (penetrationDepth / 2.0f);
-		contactPointA.z -= direction.z * (penetrationDepth / 2.0f);
-	
-		contactPointB.x += direction.x * (penetrationDepth / 2.0f);
-		contactPointB.y += direction.y * (penetrationDepth / 2.0f);
-		contactPointB.z += direction.z * (penetrationDepth / 2.0f);
-	}
+	//if (penetrationDepth > 0.0f)
+	//{
+	//	contactPointA.x -= direction.x * (penetrationDepth / 2.0f);
+	//	contactPointA.y -= direction.y * (penetrationDepth / 2.0f);
+	//	contactPointA.z -= direction.z * (penetrationDepth / 2.0f);
+	//
+	//	contactPointB.x += direction.x * (penetrationDepth / 2.0f);
+	//	contactPointB.y += direction.y * (penetrationDepth / 2.0f);
+	//	contactPointB.z += direction.z * (penetrationDepth / 2.0f);
+	//}
 
 	rdVector3 anchor;
 	rdVector_Add3(&anchor, &contactPointA, &contactPointB);
@@ -1312,9 +1313,21 @@ void sithPuppet_AddDistanceConstraint(sithThing* pThing, int joint, int target, 
 	if(flip)
 		rdVector_Neg3Acc(&coneAxis);
 
-//	coneAxis.x = 0;
-//	coneAxis.y = 0;
-//	coneAxis.z = flip ? -1 : 1;
+
+
+	rdVector3* pBasePosA = &pThing->rdthing.model3->paBasePoseMatrices[pThing->animclass->bodypart[target].nodeIdx].scale;
+	rdVector3* pBasePosB = &pThing->rdthing.model3->paBasePoseMatrices[pThing->animclass->bodypart[joint].nodeIdx].scale;
+
+	// invert the matrix so we can get a local position for the constraint
+	rdMatrix34 inv;
+	rdMatrix_InvertOrtho34(&inv, &pThing->rdthing.model3->paBasePoseMatrices[pThing->animclass->bodypart[target].nodeIdx]);
+
+	// derive the anchor from the base pose and the inverse target matrix
+	rdMatrix_TransformPoint34(&anchor, pBasePosB, &inv);
+
+	//anchor = pNode->pos;
+	//rdVector_Add3Acc(&anchor, &pNode->pivot);
+	//rdVector_Sub3Acc(&anchor, &pNode->parent->pivot);
 
 	//rdVector_Sub3(&coneAxis, &pThing->rdthing.hierarchyNodeMatrices[pThing->animclass->bodypart[joint].nodeIdx].scale, &targetThing->position);
 	//rdVector_Normalize3Acc(&coneAxis);
@@ -1323,7 +1336,7 @@ void sithPuppet_AddDistanceConstraint(sithThing* pThing, int joint, int target, 
 		//sithConstraint_AddConeConstraint(pThing, jointThing, targetThing, &rdroid_zeroVector3, &coneAxis, angle, &coneAxis);
 
 //	if (jointThing->physicsParams.physflags & SITH_PF_4000000)
-		sithConstraint_AddDistanceConstraint(pThing, jointThing, targetThing, &contactPointA, &contactPointB, distance);
+		sithConstraint_AddDistanceConstraint(pThing, jointThing, targetThing, &anchor, &rdroid_zeroVector3, distance);
 
 //	sithThing* targetThing = &pThing->puppet->physics->joints[target].thing;
 //	sithThing* jointThing = &pThing->puppet->physics->joints[joint].thing;
@@ -1374,7 +1387,36 @@ void sithPuppet_AddConeConstraint(sithThing* pThing, int joint, int target, int 
 
 	if (flip)
 		rdVector_Neg3Acc(&coneAxis);
+	
+	rdHierarchyNode* pNode = &pThing->rdthing.model3->hierarchyNodes[pThing->animclass->bodypart[joint].nodeIdx];
 
+	rdMatrix34 invTargetMat;
+	targetThing->lookOrientation.scale = targetThing->position;
+	rdMatrix_InvertOrtho34(&invTargetMat, &targetThing->lookOrientation);
+	targetThing->lookOrientation.scale = rdroid_zeroVector3;
+
+	rdMatrix34 invJointMat;
+	jointThing->lookOrientation.scale = jointThing->position;
+	rdMatrix_InvertOrtho34(&invJointMat, &jointThing->lookOrientation);
+	jointThing->lookOrientation.scale = rdroid_zeroVector3;
+
+	rdVector3 direction;
+	rdVector_Sub3(&direction, &targetThing->position, &jointThing->position);
+	rdVector_Normalize3Acc(&direction);
+
+	rdVector3 contactPointA, contactPointB;
+	rdVector_Scale3(&contactPointA, &direction, targetThing->moveSize);
+	rdVector_Add3Acc(&contactPointA, &targetThing->position);
+
+	rdVector_Scale3(&contactPointB, &direction, -jointThing->moveSize);
+	rdVector_Add3Acc(&contactPointB, &jointThing->position);
+
+	rdVector3 anchor;
+	rdVector_Add3(&anchor, &contactPointA, &contactPointB);
+	rdVector_Scale3Acc(&anchor, 0.5f);
+
+	rdMatrix_TransformPoint34(&contactPointA, &anchor, &invTargetMat);
+	rdMatrix_TransformPoint34(&contactPointB, &anchor, &invJointMat);
 
 	// figure out the cone axis from the pose
 
@@ -1391,7 +1433,7 @@ void sithPuppet_AddConeConstraint(sithThing* pThing, int joint, int target, int 
 //	rdVector_Normalize3(&coneAxis, &localPos);
 
 
-	sithConstraint_AddConeConstraint(pThing, jointThing, targetThing, &rdroid_zeroVector3, &coneAxis, angle, &coneAxis);
+	sithConstraint_AddConeConstraint(pThing, jointThing, targetThing, &contactPointA, &coneAxis, angle, &coneAxis);
 }
 
 
@@ -1483,6 +1525,7 @@ void sithPuppet_AddLookConstraint(sithThing* pThing, int joint, int target, int 
 }
 #endif
 
+#ifndef PARTICLE_BODIES
 void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithBodyPart* pBodyPart, rdHierarchyNode* pNode, const rdVector3* pOffset, int jointIdx)
 {
 	sithThing_DoesRdThingInit(pJointThing);
@@ -1519,7 +1562,7 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 
 		rdVector3 meshCenter = rdroid_zeroVector3;
 		float minDist = 10000.0f;
-		float maxDist = 0.0f;
+		float maxDist = -1000.0f;
 		for (int j = 0; j < pMesh->numVertices; j++)
 		{
 			rdVector3* vtx = &pMesh->vertices[j];
@@ -1541,6 +1584,7 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 
 		float avgDist = (minDist + maxDist) * 0.5f;
 		pJointThing->moveSize = pJointThing->collideSize = avgDist;
+		pJointThing->collideSize = minDist;
 	}
 //#endif
 
@@ -1573,7 +1617,7 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 		// but this enables angular velocity drag and clamping
 	//	pJointThing->physicsParams.physflags |= SITH_PF_ANGTHRUST;
 #ifdef RIGID_BODY
-	//	pJointThing->physicsParams.physflags |= SITH_PF_ANGIMPULSE;
+		pJointThing->physicsParams.physflags |= SITH_PF_ANGIMPULSE;
 #endif
 
 		//if (jointIdx == JOINTTYPE_TORSO)
@@ -1673,6 +1717,797 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 	// enter the things sector to start physics
 	sithThing_EnterSector(pJointThing, pThing->sector, 1, 0);
 }
+#endif
+
+#ifdef PARTICLE_BODIES
+
+typedef struct sithPuppetStickConstraint
+{
+	sithThing* A;
+	sithThing* B;
+	float      distance;
+} sithPuppetStickConstraint;
+
+typedef struct sithPuppetBone
+{
+	int jointIdx;
+
+	sithThing* A;
+	sithThing* B;
+	sithThing* C;
+	sithThing* D;
+
+	sithPuppetFigure*         parent;
+	sithPuppetStickConstraint stick[6];
+
+	rdMatrix34 coord_R;	
+	rdMatrix34 coords_wsc_to_bf;
+
+	float radius;
+	rdVector3 center;
+	//int num_connected_bones;
+	//struct sithPuppetBone ragdoll_bones[4]; // up to 4 connected bones
+	float mass;
+	int fixed;
+	const char* name;
+} sithPuppetBone;
+
+typedef struct sithPuppetBoneJoint
+{
+	sithPuppetBone* A;
+	sithPuppetBone* B;
+	rdMatrix34 coords_wcs_to_bf; /// < Coordinate system used to go from WCS to BF of bone A
+	rdMatrix34 coords_bf_to_wcs; /// < Coordinate system used to go from BF to WCS
+} sithPuppetBoneJoint;
+
+typedef struct sithPuppetBoneHingeJoint
+{
+	sithPuppetBoneJoint base;
+
+	sithThing* hinge_1;
+	sithThing* hinge_2;
+	sithThing* pB_1; /// < Pointer to particle 1 in	bone B that is not part of the hinge
+	sithThing* pB_2; /// < Pointer to particle 2 in bone B that is not part of the hinge
+	sithThing* pA_1; /// < Pointer to particle 1 in bone A that is not part of the hinge
+	
+	sithPuppetStickConstraint stick_pos; /// < Stick constraint to satisfy hen positive breach occur
+	sithPuppetStickConstraint m_stick_neg; /// < Stick constraint to satisfy when negative breach occur
+	rdVector3 rotation_axis; /// < The hinge rotation axis, given from m_hinge_1 to m_hinge_2
+	
+	rdVector4 plane_pos; /// < Plane defining the positive border
+	rdVector4 plane_neg; /// < Plane defining the negative border
+	rdVector4 plane_B; /// < Plane defining the initial position
+		
+	rdVector3 pos_point_1; /// < The point on m_plane_pos to project m_pB_1 back to
+	rdVector3 pos_point_2; /// < The point on m_plane_pos to project m_pB_2 back to
+	rdVector3 neg_point_1; /// < The point on m_plane_neg to project m_pB_1 back to
+	rdVector3 neg_point_2; /// < The point on m_plane_neg to project m_pB_2 back to
+	
+	int choice; /// < Member indicating which satisfy type that is used(1, 2) default 2
+} sithPuppetBoneHinge;
+
+typedef struct sithPuppetBoneBallJoint
+{
+	sithPuppetBoneJoint base;
+	
+	sithThing* ball_particle; /// < Pointer to the particles that is part of the ball joint
+	sithThing* pA; /// < Pointer to mass_mid_pontin bone A
+	sithThing* pB; /// < Pointer to mass_mid_pontin bone B
+	sithThing* pA_1; /// < Pointer to a particle in bone A that 's not the ball particle
+	sithThing* pB_ref; /// < Pointer to a reference particle in bone B that 's not the ball particle
+	
+	float angle_limit; /// < The min allowable angle relative to the plane
+	rdVector4 m_plane; /// < The plane used to specify the direction of the limit cone
+	sithPuppetStickConstraint stick_ref; /// < Stick contraint used to project particles back from breaches
+	float min_length_ref; /// < The length to measure breaches with
+} sithPuppetBoneBallJoint;
+
+void sithPuppet_InitJoint(sithPuppetBoneJoint* joint, sithPuppetBone* A, sithPuppetBone* B)
+{
+	joint->A = A;
+	joint->B = B;
+
+	// Use the BF coordsys from bone A
+	joint->coords_bf_to_wcs = A->coord_R;
+	
+	// Inverse it to go from WCS to BF
+	rdMatrix_InvertOrtho34(&joint->coords_wcs_to_bf, &joint->coords_bf_to_wcs);
+}
+
+typedef struct sithPuppetFigure
+{
+	sithThing*     parent;
+	sithThing      things[16 * 4];
+	sithPuppetBone bones[16];
+	int lastConstraint;
+	sithPuppetStickConstraint* constraints[16*6];
+} sithPuppetFigure;
+
+void sithPuppet_DrawBone(sithPuppetBone* bone, int mode)
+{
+	if (!bone->A->type || !bone->B->type)
+		return;
+
+	const char* mtl = "saberblue0.mat";
+	if (bone->fixed)
+		mtl = "saberred0.mat";
+		
+	rdSprite debugSprite;
+	rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, mtl, bone->radius, bone->radius, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &rdroid_zeroVector3);
+
+	rdThing debug;
+	rdThing_NewEntry(&debug, bone->parent->parent);
+	rdThing_SetSprite3(&debug, &debugSprite);
+	
+	rdMatrix34 mat;
+	rdMatrix_BuildTranslate34(&mat, &bone->center);
+
+	rdSprite_Draw(&debug, &mat);
+
+	rdSprite_FreeEntry(&debugSprite);
+	rdThing_FreeEntry(&debug);
+}
+
+void sithPuppet_DrawBoneThing(sithThing* thing)
+{
+	if (!thing->type)
+		return;
+
+	rdSprite debugSprite;
+	rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, "sabergreen0.mat", 0.005f, 0.005f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &rdroid_zeroVector3);
+
+	rdThing debug;
+	rdThing_NewEntry(&debug, thing->prev_thing);
+	rdThing_SetSprite3(&debug, &debugSprite);
+	rdMatrix34 mat;
+	rdMatrix_BuildTranslate34(&mat, &thing->position);
+
+	rdSprite_Draw(&debug, &mat);
+
+	rdSprite_FreeEntry(&debugSprite);
+	rdThing_FreeEntry(&debug);
+}
+
+void sithPuppet_DrawConstraint(sithPuppetStickConstraint* constraint)
+{
+	if (!constraint->A->type || !constraint->B->type)
+		return;
+
+	float len = rdVector_Dist3(&constraint->A->position, &constraint->B->position);
+
+	rdPolyLine debugLine;
+	_memset(&debugLine, 0, sizeof(rdPolyLine));
+	if (rdPolyLine_NewEntry(&debugLine, "dbgragoll", "saberyellow1.mat", "saberyellow0.mat", len, 0.0005f, 0.0005f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_PERSPECTIVE, 1.0f))
+	{
+		rdThing debug;
+		rdThing_NewEntry(&debug, constraint->A->prev_thing);
+		rdThing_SetPolyline(&debug, &debugLine);
+
+		rdMatrix34 look;
+		rdMatrix_LookAt(&look, &constraint->A->position, &constraint->B->position, 0.0f);
+
+		rdPolyLine_Draw(&debug, &look);
+
+		rdPolyLine_FreeEntry(&debugLine);
+		rdThing_FreeEntry(&debug);
+	}
+}
+
+void sithPuppet_DrawFigure(sithPuppetFigure* figure, int mode)
+{
+	if(mode == 1)
+	{
+		for (int i = 0; i < 16 * 4; ++i)
+		{
+			sithPuppet_DrawBoneThing(&figure->things[i]);
+		}
+	}
+	else if (mode == 2)
+	{
+		for (int i = 0; i < figure->lastConstraint; ++i)
+		{
+			sithPuppet_DrawConstraint(figure->constraints[i]);
+		}
+	}
+	else if (mode == 3)
+	{
+		for (int i = 0; i < 16; ++i)
+		{
+			sithPuppet_DrawBone(&figure->bones[i], mode);
+		}
+	}
+}
+
+void sithPuppet_UpdateBoneMatrices(sithPuppetBone* bone)
+{
+	rdVector3 X, Y, Z;
+	rdVector_Sub3(&X, &bone->B->position, &bone->A->position);
+	rdVector_Normalize3Acc(&X);
+
+	rdVector3 tmp;
+	rdVector_Sub3(&tmp, &bone->D->position, &bone->A->position);
+	rdVector_Cross3(&Z, &tmp , &X);
+	rdVector_Normalize3Acc(&Z);
+
+	rdVector_Cross3(&Y, &X , &Z);
+
+	bone->coord_R.rvec = X;
+	bone->coord_R.lvec = Y;
+	bone->coord_R.uvec = Z;
+	bone->coord_R.scale = bone->A->position;
+
+	rdMatrix_InvertOrtho34(&bone->coords_wsc_to_bf, &bone->coord_R);
+}
+
+void sithPuppet_InitStickConstraint(sithPuppetStickConstraint* stick, sithThing* A, sithThing* B)
+{
+	stick->A = A;
+	stick->B = B;
+	stick->distance = rdVector_Dist3(&A->position, &B->position);
+}
+
+void sithPuppet_InitBone(sithPuppetBone* bone, sithPuppetFigure* parent, sithThing* A, sithThing* B, sithThing* C, sithThing* D)
+{
+	bone->parent = parent;
+	bone->A = A;
+	bone->B = B;
+	bone->C = C;
+	bone->D = D;
+	
+	sithPuppet_InitStickConstraint(&bone->stick[0], A , B);
+	sithPuppet_InitStickConstraint(&bone->stick[1], A , C);
+	sithPuppet_InitStickConstraint(&bone->stick[2], A , D);
+	sithPuppet_InitStickConstraint(&bone->stick[3], B , C);
+	sithPuppet_InitStickConstraint(&bone->stick[4], B , D);
+	sithPuppet_InitStickConstraint(&bone->stick[5], C , D);
+	
+	for (int i = 0; i < 6; ++i)
+		parent->constraints[parent->lastConstraint++] = &bone->stick[i];
+	
+	// Make the bone coordinate system
+	sithPuppet_UpdateBoneMatrices(bone);
+	
+	rdVector3 sideLengths;
+	sideLengths.x = rdVector_Dist3(&B->position, &A->position);
+	sideLengths.y = rdVector_Dist3(&C->position, &A->position);
+	sideLengths.z = rdVector_Dist3(&D->position, &A->position);
+	bone->radius = rdVector_Len3(&sideLengths) * 0.5f;
+
+	bone->center = rdroid_zeroVector3;
+	rdVector_Add3Acc(&bone->center, &A->position);
+	rdVector_Add3Acc(&bone->center, &B->position);
+	rdVector_Add3Acc(&bone->center, &C->position);
+	rdVector_Add3Acc(&bone->center, &D->position);
+	rdVector_Scale3Acc(&bone->center, 0.25f);
+}
+
+void sithPuppet_CreateBoneThing(sithThing* thing, sithThing* parent)
+{
+	rdVector3 pos = thing->position;
+
+	sithThing_DoesRdThingInit(thing);
+	thing->rdthing.curGeoMode = 0;
+	thing->rdthing.desiredGeoMode = 0;
+	thing->thingflags = SITH_TF_INVISIBLE;
+	//thing->thingIdx = (parent->thingIdx << 16) + jointIdx;
+	extern int sithThing_bInitted2;
+	thing->signature = sithThing_bInitted2++;
+	thing->thing_id = -1;
+	thing->type = SITH_THING_CORPSE;
+	thing->moveType = SITH_MT_PHYSICS;
+	thing->prev_thing = parent;
+	thing->child_signature = parent->signature;
+	thing->moveSize = thing->collideSize = 0.01f;	
+	thing->collide = SITH_COLLIDE_SPHERE;
+
+	thing->position = pos;
+
+	// setup physics params
+	_memcpy(&thing->physicsParams, &parent->physicsParams, sizeof(sithThingPhysParams));
+	thing->physicsParams.height = 0.00001f;
+	thing->physicsParams.physflags = SITH_PF_FEELBLASTFORCE;
+	thing->physicsParams.physflags |= SITH_PF_FLOORSTICK;
+
+	if (parent->physicsParams.physflags & SITH_PF_USEGRAVITY)
+		thing->physicsParams.physflags |= SITH_PF_USEGRAVITY;
+
+	if (parent->physicsParams.physflags & SITH_PF_PARTIALGRAVITY)
+		thing->physicsParams.physflags |= SITH_PF_PARTIALGRAVITY;
+
+	if (parent->physicsParams.physflags & SITH_PF_NOTHRUST)
+		thing->physicsParams.physflags |= SITH_PF_NOTHRUST;
+
+	thing->physicsParams.staticDrag = fmax(thing->physicsParams.staticDrag, 0.01f);
+
+	sithThing_EnterSector(thing, parent->sector, 1, 0);
+}
+
+void sithPuppet_SetupBoneThingPosition(sithThing* thing, sithThing* parent, rdVector3 offset, rdHierarchyNode* node)
+{
+	rdVector_Scale3(&thing->position, &offset, parent->rdthing.model3->geosets[0].meshes[node->meshIdx].radius);
+	rdMatrix_TransformPoint34Acc(&thing->position, &parent->rdthing.hierarchyNodeMatrices[node->idx]);
+}
+
+rdHierarchyNode* sithPuppet_GetNodeForJoint(sithThing* parent, int joint)
+{
+	return &parent->rdthing.model3->hierarchyNodes[parent->animclass->bodypart[joint].nodeIdx];
+}
+
+void sithPuppet_InitFigure(sithPuppetFigure* figure, sithThing* parent)
+{
+	memset(figure, 0, sizeof(sithPuppetFigure));
+
+	figure->parent = parent;
+
+	// todo: get sizes from meshes
+	float size = parent->moveSize * 0.01;
+
+	int boneCount = 0;
+
+	sithThing* A = &figure->things[boneCount++];
+	sithThing* B = &figure->things[boneCount++];
+	sithThing* C = &figure->things[boneCount++];
+	sithThing* D = &figure->things[boneCount++];
+
+	rdHierarchyNode* node = sithPuppet_GetNodeForJoint(parent, JOINTTYPE_HEAD);
+		
+	float sqrt2_3 = sqrtf(2.0f / 3.0f);
+	float sqrt3_6 = sqrtf(3.0f) / 6.0f;
+	float sqrt3_3 = sqrtf(3.0f) / 3.0f;
+
+	// Particles for head
+	sithPuppet_SetupBoneThingPosition(A, parent, (rdVector3) {   0,    0, sqrt2_3 }, node);
+	sithPuppet_SetupBoneThingPosition(B, parent, (rdVector3) { 0.5, -sqrt3_6, 0 }, node);
+	sithPuppet_SetupBoneThingPosition(C, parent, (rdVector3) {-0.5, -sqrt3_6, 0 }, node);
+	sithPuppet_SetupBoneThingPosition(D, parent, (rdVector3) {   0, sqrt3_3, 0 }, node);
+	
+	sithPuppet_CreateBoneThing(A, parent);
+	sithPuppet_CreateBoneThing(B, parent);
+	sithPuppet_CreateBoneThing(C, parent);
+	sithPuppet_CreateBoneThing(D, parent);
+#if 0
+
+	// Particles for neck
+	node = sithPuppet_GetNodeForJoint(parent, JOINTTYPE_NECK);
+
+	//A = &figure->things[boneCount++];
+	//B = &figure->things[boneCount++];
+	C = &figure->things[boneCount++];
+	D = &figure->things[boneCount++];
+
+	// A. position () = vector3_type ( -5.45 , 0, -10.0) * size + position ;
+	// B. position () = vector3_type ( 5.45 , 0, -10.0) * size + position ;
+	sithPuppet_SetupBoneThingPosition(C, parent, (rdVector3) { 0,    0, 0 }, node);
+	sithPuppet_SetupBoneThingPosition(D, parent, (rdVector3) { 0, -0.5, 0 }, node);
+
+	/* create_particle ( A );
+	create_particle ( B ) ;*/
+	sithPuppet_CreateBoneThing(C, parent);
+	sithPuppet_CreateBoneThing(D, parent);
+
+	// Particles for chest
+	node = sithPuppet_GetNodeForJoint(parent, JOINTTYPE_TORSO);
+
+	//A = &figure->things[boneCount++];
+	B = &figure->things[boneCount++];
+	C = &figure->things[boneCount++];
+	D = &figure->things[boneCount++];
+
+	// A. position () = vector3_type ( 0, 0, -22.3) * size + position ;
+	sithPuppet_SetupBoneThingPosition(B, parent, (rdVector3){  -0.5, 0, 1 }, node);
+	sithPuppet_SetupBoneThingPosition(C, parent, (rdVector3){  -0.5, 0, 1 }, node);
+	sithPuppet_SetupBoneThingPosition(D, parent, (rdVector3){    0,  0, 0 }, node);
+	
+	/* create_particle ( A ) ;*/
+	sithPuppet_CreateBoneThing(B, parent);
+	sithPuppet_CreateBoneThing(C, parent);
+	sithPuppet_CreateBoneThing(D, parent);
+
+
+	// Particles for hip
+	node = sithPuppet_GetNodeForJoint(parent, JOINTTYPE_HIP);
+
+	//A = &figure->things[boneCount++];
+	B = &figure->things[boneCount++];
+	C = &figure->things[boneCount++];
+	D = &figure->things[boneCount++];
+
+	// A. position () = vector3_type ( 0, 0, -61.5) * size + position ;
+	sithPuppet_SetupBoneThingPosition(B, parent, (rdVector3) {  0, 0, 1 }, node);
+	sithPuppet_SetupBoneThingPosition(C, parent, (rdVector3) {  1, 0, 0 }, node);
+	sithPuppet_SetupBoneThingPosition(D, parent, (rdVector3) { -1, 0, 0 }, node);
+
+	/* create_particle ( A ) ;*/
+	sithPuppet_CreateBoneThing(B, parent);
+	sithPuppet_CreateBoneThing(C, parent);
+	sithPuppet_CreateBoneThing(D, parent);
+
+	// Particles for left overarm
+	node = sithPuppet_GetNodeForJoint(parent, JOINTTYPE_LSHOULDER);
+
+	//A = &figure->things[boneCount++];
+	B = &figure->things[boneCount++];
+	C = &figure->things[boneCount++];
+	D = &figure->things[boneCount++];
+
+	// A. position () = vector3_type ( 19.6 , 0, -26.7) * size + position ;
+	sithPuppet_SetupBoneThingPosition(B, parent, (rdVector3) { 0.5, 0, 0 }, node);
+	sithPuppet_SetupBoneThingPosition(C, parent, (rdVector3) { 0.5, 0, 0 }, node);
+	sithPuppet_SetupBoneThingPosition(D, parent, (rdVector3) { 0, 0.5, 0 }, node);
+
+	/* create_particle ( A ) ;*/
+	sithPuppet_CreateBoneThing(B, parent);
+	sithPuppet_CreateBoneThing(C, parent);
+	sithPuppet_CreateBoneThing(D, parent);
+
+	// Particles for right overarm
+	//A = &figure->things[boneCount++];
+	B = &figure->things[boneCount++];
+	C = &figure->things[boneCount++];
+	D = &figure->things[boneCount++];
+
+	// A. position () = vector3_type ( -19.6 , 0, -26.7) * size + position ;
+//	sithPuppet_SetupBoneThingPosition(B, parent, (rdVector3) { -37.9, 0, -26.70 }, size);
+//	sithPuppet_SetupBoneThingPosition(C, parent, (rdVector3) { -56.2, 0, -30.95 }, size);
+//	sithPuppet_SetupBoneThingPosition(D, parent, (rdVector3) { -56.2, 0, -22.45 }, size);
+
+	/* create_particle ( A ) ;*/
+	sithPuppet_CreateBoneThing(B, parent);
+	sithPuppet_CreateBoneThing(C, parent);
+	sithPuppet_CreateBoneThing(D, parent);
+	
+	// Particles for left underarm
+	A = &figure->things[boneCount++];
+	B = &figure->things[boneCount++];
+	//C = &figure->things[boneCount++];
+	//D = &figure->things[boneCount++];
+
+//	sithPuppet_SetupBoneThingPosition(A, parent, (rdVector3) { 85, 0, -30.95 }, size);
+//	sithPuppet_SetupBoneThingPosition(B, parent, (rdVector3) { 85, 0, -22.45 }, size);
+	// C. position () = vector3_type ( 56.2 , 0, -30.95) * size + position ;
+	// D. position () = vector3_type ( 56.2 , 0, -22.45) * size + position ;
+	sithPuppet_CreateBoneThing(A, parent);
+	sithPuppet_CreateBoneThing(B, parent);
+	/* create_particle ( C ) ;	create_particle ( D ) ;*/
+	
+	// Particles for right underarm
+	A = &figure->things[boneCount++];
+	B = &figure->things[boneCount++];
+	//C = &figure->things[boneCount++];
+	//D = &figure->things[boneCount++];
+	
+//	sithPuppet_SetupBoneThingPosition(A, parent, (rdVector3) { -85, 0, -30.95 }, size);
+//	sithPuppet_SetupBoneThingPosition(B, parent, (rdVector3) { -85, 0, -22.45 }, size);
+	// C. position () = vector3_type ( -56.2 , 0, -30.95) * size + position ;
+	// D. position () = vector3_type ( -56.2 , 0, -22.45) * size + position ;
+
+	sithPuppet_CreateBoneThing(A, parent);
+	sithPuppet_CreateBoneThing(B, parent);
+	/* create_particle ( C ) ;	create_particle ( D ) ;*/
+	
+	// Particles for left hand
+	//A = &figure->things[boneCount++];
+	//B = &figure->things[boneCount++];
+	C = &figure->things[boneCount++];
+	D = &figure->things[boneCount++];
+
+	// A. position () = vector3_type ( 85 , 0, -30.95) * size + position ;
+	// B. position () = vector3_type ( 85 , 0, -22.45) * size + position ;
+//	sithPuppet_SetupBoneThingPosition(C, parent, (rdVector3) { 93.9, 0, -30.95 }, size);
+//	sithPuppet_SetupBoneThingPosition(D, parent, (rdVector3) { 93.9, 0, -22.45 }, size);
+
+	/* create_particle ( A ); create_particle ( B ) ;*/
+	sithPuppet_CreateBoneThing(C, parent);
+	sithPuppet_CreateBoneThing(D, parent);
+
+	// Particles for right hand
+	//A = &figure->things[boneCount++];
+	//B = &figure->things[boneCount++];
+	C = &figure->things[boneCount++];
+	D = &figure->things[boneCount++];
+
+	// A. position () = vector3_type ( -85 , 0, -30.95) * size + position ;
+	// B. position () = vector3_type ( -85 , 0, -22.45) * size + position ;
+//	sithPuppet_SetupBoneThingPosition(C, parent, (rdVector3) { -93.9, 0, -30.95 }, size);
+//	sithPuppet_SetupBoneThingPosition(D, parent, (rdVector3) { -93.9, 0, -22.45 }, size);
+
+	/* create_particle ( A ); create_particle ( B ) ;*/
+	sithPuppet_CreateBoneThing(C, parent);
+	sithPuppet_CreateBoneThing(D, parent);	
+	
+	// Particles for left thigh
+	//A = &figure->things[boneCount++];
+	B = &figure->things[boneCount++];
+	C = &figure->things[boneCount++];
+	D = &figure->things[boneCount++];
+
+	// A. position () = vector3_type ( 9.45 , 0, -77.7) * size + position ;
+//	sithPuppet_SetupBoneThingPosition(B, parent, (rdVector3) { 9.45, 0, -100 }, size);
+//	sithPuppet_SetupBoneThingPosition(C, parent, (rdVector3) { 4.15, 0, -128.9 }, size);
+//	sithPuppet_SetupBoneThingPosition(D, parent, (rdVector3) { 14.75, 0, -128.9 }, size);
+
+	/* create_particle ( A ) ;*/
+	sithPuppet_CreateBoneThing(B, parent);
+	sithPuppet_CreateBoneThing(C, parent);
+	sithPuppet_CreateBoneThing(D, parent);
+
+	// Particles for right thigh
+	//A = &figure->things[boneCount++];
+	B = &figure->things[boneCount++];
+	C = &figure->things[boneCount++];
+	D = &figure->things[boneCount++];
+
+	// A. position () = vector3_type ( -9.45 , 0, -77.7) * size + position ;
+//	sithPuppet_SetupBoneThingPosition(B, parent, (rdVector3) { -9.45, 0, -100 }, size);
+//	sithPuppet_SetupBoneThingPosition(C, parent, (rdVector3) { -4.15, 0, -128.9 }, size);
+//	sithPuppet_SetupBoneThingPosition(D, parent, (rdVector3) { -14.75, 0, -128.9 }, size);
+	
+	/* create_particle ( A ) ;*/
+	sithPuppet_CreateBoneThing(B, parent);
+	sithPuppet_CreateBoneThing(C, parent);
+	sithPuppet_CreateBoneThing(D, parent);
+
+	// Particles for left calf
+	A = &figure->things[boneCount++];
+	B = &figure->things[boneCount++];
+	//C = &figure->things[boneCount++];
+	//D = &figure->things[boneCount++];
+	
+//	sithPuppet_SetupBoneThingPosition(A, parent, (rdVector3) { 4.15, 0, -159.4 }, size);
+//	sithPuppet_SetupBoneThingPosition(B, parent, (rdVector3) { 14.75, 0, -159.4 }, size);
+	// C. position () = vector3_type ( 4.15 , 0, -128.9) * size + position ;
+	// D. position () = vector3_type ( 14.75 , 0 , -128.9) * size + position ;
+	
+	sithPuppet_CreateBoneThing(A, parent);
+	sithPuppet_CreateBoneThing(B, parent);
+	/* create_particle ( C ) ; create_particle ( D ) ;*/
+	
+	// Particles for right calf
+	A = &figure->things[boneCount++];
+	B = &figure->things[boneCount++];
+	//C = &figure->things[boneCount++];
+	//D = &figure->things[boneCount++];
+
+//	sithPuppet_SetupBoneThingPosition(A, parent, (rdVector3) { -4.15, 0, -159.4 }, size);
+//	sithPuppet_SetupBoneThingPosition(B, parent, (rdVector3) { -14.75, 0, -159.4 }, size);
+	// C. position () = vector3_type ( -4.15 , 0 , -128.9) * size + position ;
+	// D. position () = vector3_type ( -14.75 , 0 , -128.9) * size + position ;
+	
+	sithPuppet_CreateBoneThing(A, parent);
+	sithPuppet_CreateBoneThing(B, parent);
+	/* create_particle ( C ) ; create_particle ( D ) ;*/
+	
+	// Particles for left foot
+	//A = &figure->things[boneCount++];
+	//B = &figure->things[boneCount++];
+	C = &figure->things[boneCount++];
+	D = &figure->things[boneCount++];
+
+	// A. position () = vector3_type ( 4.15 , 0, -159.4) * size + position ;
+	// B. position () = vector3_type ( 14.75 , 0 , -159.4) * size + position ;
+//	sithPuppet_SetupBoneThingPosition(C, parent, (rdVector3) { 4.15, -10, -173.3 }, size);
+//	sithPuppet_SetupBoneThingPosition(D, parent, (rdVector3) { 14.75, -10, -173.3 }, size);
+
+	/* create_particle ( A ); create_particle ( B ) ;*/
+	sithPuppet_CreateBoneThing(C, parent);
+	sithPuppet_CreateBoneThing(D, parent);
+
+	
+	// Particles for right foot
+	//A = &figure->things[boneCount++];
+	//B = &figure->things[boneCount++];
+	C = &figure->things[boneCount++];
+	D = &figure->things[boneCount++];
+
+	// A. position () = vector3_type ( -4.15 , 0 , -159.4) * size + position ;
+	// B. position () = vector3_type ( -14.75 , 0 , -159.4) * size + position ;
+//	sithPuppet_SetupBoneThingPosition(C, parent, (rdVector3) { -4.15, -10, -173.3 }, size);
+//	sithPuppet_SetupBoneThingPosition(D, parent, (rdVector3) { -14.75, -10, -173.3 }, size);
+
+	/* create_particle ( A ); create_particle ( B ) ;*/
+	sithPuppet_CreateBoneThing(C, parent);
+	sithPuppet_CreateBoneThing(D, parent);
+#endif
+	sithThing* p = figure->things - 4;
+	
+	sithPuppet_InitBone(&figure->bones[0], figure, p + 4, p + 5, p + 6, p + 7); // 1
+	sithPuppet_InitBone(&figure->bones[1], figure, p + 4, p + 5, p + 8, p + 9); // 2
+	sithPuppet_InitBone(&figure->bones[2], figure, p + 8, p + 10, p + 11, p + 12); // 3
+	sithPuppet_InitBone(&figure->bones[3], figure, p + 12, p + 13, p + 14, p + 15); // 4
+	sithPuppet_InitBone(&figure->bones[4], figure, p + 10, p + 16, p + 17, p + 18); // 5
+	sithPuppet_InitBone(&figure->bones[5], figure, p + 11, p + 19, p + 20, p + 21); // 6
+	sithPuppet_InitBone(&figure->bones[6], figure, p + 17, p + 18, p + 22, p + 23); // 7
+	sithPuppet_InitBone(&figure->bones[7], figure, p + 20, p + 21, p + 24, p + 25); // 8
+	sithPuppet_InitBone(&figure->bones[8], figure, p + 22, p + 23, p + 26, p + 27); // 9
+	sithPuppet_InitBone(&figure->bones[9], figure, p + 24, p + 25, p + 28, p + 29); // 10
+	sithPuppet_InitBone(&figure->bones[10], figure, p + 14, p + 30, p + 31, p + 32); // 11
+	sithPuppet_InitBone(&figure->bones[11], figure, p + 15, p + 33, p + 34, p + 35); // 12
+	sithPuppet_InitBone(&figure->bones[12], figure, p + 31, p + 32, p + 36, p + 37); // 13
+	sithPuppet_InitBone(&figure->bones[13], figure, p + 34, p + 35, p + 38, p + 39); // 14
+	sithPuppet_InitBone(&figure->bones[14], figure, p + 36, p + 37, p + 40, p + 41); // 15
+	sithPuppet_InitBone(&figure->bones[15], figure, p + 38, p + 39, p + 42, p + 43); // 16
+
+//	sithPuppet_InitBone(&figure->bones[0], figure, p, p + 1, p + 2, p + 3); // 0
+//	sithPuppet_InitBone(&figure->bones[1], figure, p + 4, p + 5, p + 6, p + 7); // 1
+//	sithPuppet_InitBone(&figure->bones[2], figure, p + 4, p + 5, p + 8, p + 9); // 2
+//	sithPuppet_InitBone(&figure->bones[3], figure, p + 8, p + 10, p + 11, p + 12); // 3
+//	sithPuppet_InitBone(&figure->bones[4], figure, p + 12, p + 13, p + 14, p + 15); // 4
+//	sithPuppet_InitBone(&figure->bones[5], figure, p + 10, p + 16, p + 17, p + 18); // 5
+//	sithPuppet_InitBone(&figure->bones[6], figure, p + 11, p + 19, p + 20, p + 21); // 6
+//	sithPuppet_InitBone(&figure->bones[7], figure, p + 17, p + 18, p + 22, p + 23); // 7
+//	sithPuppet_InitBone(&figure->bones[8], figure, p + 20, p + 21, p + 24, p + 25); // 8
+//	sithPuppet_InitBone(&figure->bones[9], figure, p + 22, p + 23, p + 26, p + 27); // 9
+//	sithPuppet_InitBone(&figure->bones[10], figure, p + 24, p + 25, p + 28, p + 29); // 10
+//	sithPuppet_InitBone(&figure->bones[11], figure, p + 14, p + 30, p + 31, p + 32); // 11
+//	sithPuppet_InitBone(&figure->bones[12], figure, p + 15, p + 33, p + 34, p + 35); // 12
+//	sithPuppet_InitBone(&figure->bones[13], figure, p + 31, p + 32, p + 36, p + 37); // 13
+//	sithPuppet_InitBone(&figure->bones[14], figure, p + 34, p + 35, p + 38, p + 39); // 14
+//	sithPuppet_InitBone(&figure->bones[15], figure, p + 36, p + 37, p + 40, p + 41); // 15
+//	//sithPuppet_InitBone(&figure->bones[16], figure, p + 38, p + 39, p + 42, p + 43); // 16
+	
+	rdMatrix34 R = rdroid_identMatrix34;
+	sithPuppetBone* bs = figure->bones;
+	
+	// head
+	//(bs + 1)->set_obb_wcs(vector3_type(0, 0, 0) * size + position, R);
+	//(bs + 1)->set_obb_size(15.7 * size, 20 * size, 20 * size);
+	(bs + 0)->name = "head";
+	(bs + 0)->jointIdx = JOINTTYPE_HEAD;
+
+	// neck
+	//(bs + 1)->set_obb_wcs(vector3_type(0, 0, -16.15) * size + position, R);
+	//(bs + 1)->set_obb_size(10.9 * size, 10.9 * size, 12.3 * size);
+	(bs + 1)->name = "neck";
+	(bs + 1)->jointIdx = JOINTTYPE_NECK;
+
+	// chest
+	//(bs + 2)->set_obb_wcs(vector3_type(0, 0, -42.75) * size + position, R);
+	//(bs + 2)->set_obb_size(39.2 * size, 25 * size, 40.9 * size);
+	(bs + 2)->name = "chest";
+	(bs + 2)->jointIdx = JOINTTYPE_TORSO;
+
+	// hip
+	//(bs + 3)->set_obb_wcs(vector3_type(0, 0, -70.45) * size + position, R);
+	//(bs + 3)->set_obb_size(35.8 * size, 14.3 * size, 14.5 * size);
+	(bs + 3)->name = "hip";
+	(bs + 3)->jointIdx = JOINTTYPE_HIP;
+
+	// left overarm
+	//(bs + 4)->set_obb_wcs(vector3_type(37.9, 0, -26.7) * size + position, R);
+	//(bs + 4)->set_obb_size(36.6 * size, 8.8 * size, 8.8 * size);
+	(bs + 4)->name = "left overarm";
+	(bs + 4)->jointIdx = JOINTTYPE_LSHOULDER;
+
+
+	// right overarm
+	//(bs + 5)->set_obb_wcs(vector3_type(-37.9, 0, -26.7) * size + position, R);
+	//(bs + 5)->set_obb_size(36.6 * size, 8.8 * size, 8.8 * size);
+	(bs + 5)->name = "right overarm";
+	(bs + 5)->jointIdx = JOINTTYPE_RSHOULDER;
+
+	// left underarm
+	//(bs + 6)->set_obb_wcs(vector3_type(70.6, 0, -26.7) * size + position, R);
+	//(bs + 6)->set_obb_size(28.8 * size, 8.5 * size, 8.5 * size);
+	(bs + 6)->name = "left underarm";
+	(bs + 6)->jointIdx = JOINTTYPE_LFOREARM;
+
+	// right underarm
+	//(bs + 7)->set_obb_wcs(vector3_type(-70.6, 0, -26.7) * size + position, R);
+	//(bs + 7)->set_obb_size(28.8 * size, 8.5 * size, 8.5 * size);
+	(bs + 7)->name = "right underarm";
+	(bs + 7)->jointIdx = JOINTTYPE_RFOREARM;
+
+	// left hand 238
+	//( bs + 8) -> set_obb_wcs ( vector3_type (89.45 ,0 , -26.7) * size + position ,R);
+	//( bs + 8) -> set_obb_size ( 8.9* size , 8.9* size , 8.9* size );
+	(bs + 8)->name= "left hand";
+	(bs + 8)->jointIdx = JOINTTYPE_LHAND;
+
+	// right hand
+	//( bs + 9)->set_obb_wcs( vector3_type ( -89.45 ,0 , -26.7) * size + position ,R );
+	//( bs + 9)->set_obb_size ( 8.9* size , 8.9* size , 8.9* size );
+	(bs + 9)->name = "right hand";
+	(bs + 9)->jointIdx = JOINTTYPE_RHAND;
+
+	// left thigh
+	//( bs + 10) -> set_obb_wcs ( vector3_type (9.45 ,0 , -103.3) * size + position ,R) ; 	
+	//( bs + 10) -> set_obb_size ( 16.9 * size , 16.9* size , 51.2* size ); 
+	(bs + 10)->name = "left thigh"; 
+	(bs + 10)->jointIdx = JOINTTYPE_LTHIGH;
+
+	// right thigh
+	//( bs + 11)-> set_obb_wcs ( vector3_type ( -9.45 ,0 , -103.3) * size + position ,R );
+	//( bs + 11)-> set_obb_size ( 16.9* size , 16.9* size , 51.2* size );
+	(bs + 11)->name = "right thigh";
+	(bs + 11)->jointIdx = JOINTTYPE_RTHIGH;
+
+	// left calf	
+	//(bs + 12)->set_obb_wcs(vector3_type(9.45, 0, -144.15) * size + position, R);
+	//(bs + 12)->set_obb_size(10.6 * size, 10.6 * size, 30.5 * size);
+	(bs + 12)->name = "left calf";
+	(bs + 12)->jointIdx = JOINTTYPE_LCALF;
+
+	// right calf
+	//(bs + 13)->set_obb_wcs(vector3_type(-9.45, 0, -144.15) * size + position, R);
+	//(bs + 13)->set_obb_size(10.6 * size, 10.6 * size, 30.5 * size);
+	(bs + 13)->name = "right calf";
+	(bs + 13)->jointIdx = JOINTTYPE_RCALF;
+
+	// left foot
+	//(bs + 14)->set_obb_wcs(vector3_type(9.45, -5.2, -166.45) * size + position, R);
+	//(bs + 14)->set_obb_size(9.9 * size, 27.3 * size, 13.9 * size);
+	(bs + 14)->name = "left foot";
+	(bs + 14)->jointIdx = JOINTTYPE_LFOOT;
+
+	// right foot
+	//(bs + 15)->set_obb_wcs(vector3_type(-9.45, -5.2, -166.45) * size + position, R);
+	//(bs + 15)->set_obb_size(9.9 * size, 27.3 * size, 13.9 * size);
+	(bs + 15)->name = "right foot";
+	(bs + 15)->jointIdx = JOINTTYPE_RFOOT;
+
+	
+//	// attach head to neck
+//	link_bones_hinge_joint(*(bs + 1), *(bs + 2), (bs + 2)->A, (bs + 2)->B, M_PI / 4, M_PI / 4);
+//	
+//	// attach neck to chest
+//	link_bones_ball_joint(*(bs + 3), *(bs + 2), (bs + 3)->particle_A(), (bs + 2) ->
+//								  particle_D(), OT_M_PI / 4, vector3_type(0, 0, 1));
+//	
+//	// attach hip to chest
+//	link_bones_ball_joint(*(bs + 3), *(bs + 4), (bs + 4)->particle_A(), (bs + 4) ->
+//								  particle_B(), OT_M_PI / 4, vector3_type(0, 0, -1));
+//	
+//	// attach left overarm to chest
+//	link_bones_ball_joint(*(bs + 3), *(bs + 5), (bs + 3)->particle_B(), (bs + 5) ->
+//							  particle_D(), OT_M_PI / 2, vector3_type(1, -1, 0));
+//
+//	// attach right overarm to chest
+//	link_bones_ball_joint(*(bs + 6), *(bs + 3), (bs + 3)->particle_C(), (bs + 6) ->
+//							  particle_D(), OT_M_PI / 2, vector3_type(-1, -1, 0));
+//
+//	// attach left underarm to left overarm
+//	link_bones_hinge_joint(*(bs + 7), *(bs + 5), (bs + 5)->particle_C(), (bs + 5) ->
+//							   particle_D(), OT_M_PI * .75, 0);
+//
+//	// attach right underarm right overarm
+//	link_bones_hinge_joint(*(bs + 8), *(bs + 6), (bs + 6)->particle_C(), (bs + 6) ->
+//							   particle_D(), OT_M_PI * .75, 0);
+//
+//	// attach left hand to left underarm
+//	link_bones_hinge_joint(*(bs + 9), *(bs + 7), (bs + 7)->particle_A(), (bs + 7) ->
+//							   particle_B(), OT_M_PI / 2, OT_M_PI / 2);
+//	// attach right hand to right underarm
+//	link_bones_hinge_joint(*(bs + 10), *(bs + 8), (bs + 8)->particle_A(), (bs + 8) ->
+//							   particle_B(), OT_M_PI / 2, OT_M_PI / 2);
+//
+//	// attach left thigh to hip
+//	link_bones_ball_joint(*(bs + 4), *(bs + 11), (bs + 4)->particle_C(), (bs + 11) ->
+//							  particle_B(), OT_M_PI / 4, vector3_type(0, -1, -1));
+//
+//	// attach right thigh to hip
+//	link_bones_ball_joint(*(bs + 4), *(bs + 12), (bs + 4)->particle_D(), (bs + 12) ->
+//							  particle_B(), OT_M_PI / 4, vector3_type(0, -1, -1));
+//
+//	// attach left calf to left thigh
+//	link_bones_hinge_joint(*(bs + 13), *(bs + 11), (bs + 11)->particle_C(), (bs + 11) ->
+//							   particle_D(), 0, OT_M_PI * .75);
+//
+//	// attach right calf to right thigh
+//	link_bones_hinge_joint(*(bs + 14), *(bs + 12), (bs + 12)->particle_C(), (bs + 12) ->
+//							   particle_D(), 0, OT_M_PI * .75);
+//
+//	// attach left foot to left calf
+//	link_bones_hinge_joint(*(bs + 15), *(bs + 13), (bs + 15)->particle_A(), (bs + 15) ->
+//							   particle_B(), 0, OT_M_PI / 2);
+//
+//	// attach right foot to right calf
+//	link_bones_hinge_joint(*(bs + 16), *(bs + 14), (bs + 16)->particle_A(), (bs + 16) ->
+//							   particle_B(), 0, OT_M_PI / 2);
+}
+
+
+#endif
+
 
 void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float deltaSeconds)
 {
@@ -1708,7 +2543,15 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 	if (pThing->rdthing.paHierarchyNodeMatricesPrev) // todo: only do this when needed
 		_memcpy(pThing->rdthing.paHierarchyNodeMatricesPrev, pThing->rdthing.hierarchyNodeMatrices, sizeof(rdMatrix34) * pThing->rdthing.model3->numHierarchyNodes);
 
+#ifdef PARTICLE_BODIES
 
+	pThing->puppet->figure = (sithPuppetFigure*)pSithHS->alloc(sizeof(sithPuppetFigure));
+	if(!pThing->puppet->figure)
+		return;
+	
+	sithPuppet_InitFigure(pThing->puppet->figure, pThing);
+
+#else
 	uint64_t jointBits = pThing->animclass->jointBits;
 	while (jointBits != 0)
 	{
@@ -1840,6 +2683,16 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 //	//if (pThing->animclass->jointBits & (1ull << JOINTTYPE_NECK))
 //	//	sithPuppet_AddLookConstraint(pThing, JOINTTYPE_NECK, JOINTTYPE_TORSO, 1);
 
+//	sithConstraint* constraint = (sithConstraint*)malloc(sizeof(sithConstraint));
+//	memset(constraint, 0, sizeof(sithConstraint));
+//	constraint->type = SITH_CONSTRAINT_FIXED;
+//	constraint->constrainedThing = &pThing->puppet->physics->joints[JOINTTYPE_HIP].thing;
+//	constraint->targetThing = pThing;
+//	constraint->thing = constraint->constrainedThing;
+//	constraint->thing->constraintParent = pThing;
+//	constraint->next = pThing->constraints;
+//	pThing->constraints = constraint;
+
 	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RFOOT, JOINTTYPE_RCALF, 2, 1, 35.0f);
 	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LFOOT, JOINTTYPE_LCALF, 2, 1, 35.0f);
 	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RHAND, JOINTTYPE_RFOREARM, 2, 1, 35.0f);
@@ -1962,7 +2815,7 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 
 #endif
 
-
+#endif
 
 
 
@@ -1974,6 +2827,13 @@ void sithPuppet_StopPhysics(sithThing* pThing)
 {
 	if (pThing->puppet && pThing->puppet->physics)
 	{
+#ifdef PARTICLE_BODIES
+		if (pThing->puppet->figure)
+		{
+			pSithHS->free(pThing->puppet->figure);
+			pThing->puppet->figure = NULL;
+		}
+#endif
 		uint64_t jointBits = pThing->animclass->jointBits;
 		while (jointBits != 0)
 		{
@@ -1981,6 +2841,9 @@ void sithPuppet_StopPhysics(sithThing* pThing)
 			jointBits ^= 1ull << jointIdx;
 
 			sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
+#ifdef PARTICLE_BODIES
+
+#else
 #ifdef RIGID_BODY
 			sithThing_LeaveSector(&pJoint->thing);
 			sithThing_FreeEverything(&pJoint->thing);
@@ -1993,10 +2856,13 @@ void sithPuppet_StopPhysics(sithThing* pThing)
 				rdThing_FreeEntry(&pJoint->things[i].rdthing);
 			}
 #endif
+#endif
 		}
 
+#ifdef PARTICLE_BODIES
 		if(pThing->puppet->physics->constraintDistances)
 			pSithHS->free(pThing->puppet->physics->constraintDistances);
+#endif
 
 		pSithHS->free(pThing->puppet->physics);
 		pThing->puppet->physics = 0;
@@ -2282,6 +3148,8 @@ void sithPuppet_ApplyLookConstraint(sithThing* pThing, int jointIdx, int targetJ
 }
 #else
 
+#ifndef PARTICLE_BODIES
+
 void sithPuppet_DoDistanceConstraint(sithThing* pThing, sithThing* pJointA, sithThing* pJointB, int jointA, int jointB, float distance, float minDist, float deltaSeconds)
 {
 	rdVector3 relativePos;
@@ -2366,7 +3234,13 @@ void sithPuppet_DoDistanceConstraint(sithThing* pThing, sithThing* pJointA, sith
 		}
 	}
 }
+
 #endif
+
+#endif
+
+
+#ifndef PARTICLE_BODIES
 
 void sithPuppet_ApplyConstraints(sithThing* pThing, float deltaSeconds)
 {
@@ -3375,7 +4249,7 @@ inline void sithPuppet_UpdateJointThing(sithThing* pThing, sithThing* pJointThin
 	if (pBodyPart->nodeIdx < pThing->rdthing.rootJoint || pThing->rdthing.amputatedJoints[pBodyPart->nodeIdx])
 		pJointThing->collide = SITH_COLLIDE_NONE;
 
-	sithPhysics_ThingTick(pJointThing, deltaSeconds);
+ 	sithPhysics_ThingTick(pJointThing, deltaSeconds);
 	sithThing_TickPhysics(pJointThing, deltaSeconds);
 
 	rdVector_Zero3(&pJointThing->physicsParams.accLinearForces);
@@ -3737,12 +4611,28 @@ void sithPuppet_ApplyIterativeCorrections(sithSector* pSector, sithThing* pThing
 	sithPuppet_UpdatePhysicsJointOrientations(pThing, deltaSeconds);
 }
 #endif
+void sithCollision_ConstraintLoopTest(sithThing* pThing, const rdVector3* dir, float dist, int flags);
+
+void sithPuppet_SatisfyConstraints(sithThing* pThing)
+{
+	uint64_t jointBits = pThing->animclass->physicsJointBits;
+	while (jointBits != 0)
+	{
+		int jointIdx = stdMath_FindLSB64(jointBits);
+		jointBits ^= 1ull << jointIdx;
+
+		sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
+		//sithCollision_ConstraintLoopTest(&pJoint->thing, &rdroid_zeroVector3, 0, 0);
+	}
+}
 
 void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds)
 {
 	sithPuppet_UpdateJoints(thing, deltaSeconds);
 #ifndef RIGID_BODY
 	sithPuppet_ApplyIterativeCorrections(thing->sector, thing, deltaSeconds);
+#else
+	sithPuppet_SatisfyConstraints(thing);
 #endif
 	sithPuppet_BuildJointMatrices(thing);
 
@@ -3757,5 +4647,30 @@ void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds)
 	sithThing_MoveToSector(thing, pJoint->things[0].sector, 0);
 #endif
 }
+
+#else
+
+void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds)
+{
+	for (int i = 0; i < 16; ++i)
+	{
+		sithPuppetBone* bone = &thing->puppet->figure->bones[i];
+		if (thing->animclass->jointBits & (1ull << bone->jointIdx))
+		{
+			sithBodyPart* bodyPart = &thing->animclass->bodypart[bone->jointIdx];
+			thing->rdthing.paHiearchyNodeMatrixOverrides[bodyPart->nodeIdx] = &bone->coord_R;
+		}
+	}
+
+
+
+	// pin the thing to the root joint
+	//int rootJoint = thing->animclass->root < 0 ? JOINTTYPE_HIP : thing->animclass->root;
+	//sithPuppetJoint* pJoint = &thing->puppet->physics->joints[rootJoint];
+	//rdVector_Copy3(&thing->position, &pJoint->things[0].position);
+	//sithThing_MoveToSector(thing, pJoint->things[0].sector, 0);
+}
+
+#endif
 
 #endif

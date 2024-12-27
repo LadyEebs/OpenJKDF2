@@ -310,7 +310,7 @@ void sithThing_TickAll(float deltaSeconds, int deltaMs)
 
 #ifdef PUPPET_PHYSICS
 #ifdef RIGID_BODY
-			//sithConstraint_SolveConstraints(pThingIter, deltaSeconds);
+			sithConstraint_SolveConstraints(pThingIter, deltaSeconds);
 #endif
 #endif
 
@@ -374,6 +374,15 @@ void sithThing_TickPhysics(sithThing *pThing, float deltaSecs)
     if ((pThing->attach_flags & SITH_ATTACH_NO_MOVE))
         return;
 
+#ifdef RIGID_BODY
+	//sithConstraint* constraint = pThing->constraints;
+	//while (constraint)
+	//{
+	//	sithThing_TickPhysics(constraint->thing, deltaSecs);
+	//	constraint = constraint->next;
+	//}
+#endif
+
     if ( pThing->moveType == SITH_MT_PHYSICS )
     {
         rdVector_Copy3(&pThing->field_268, &pThing->physicsParams.velocityMaybe);
@@ -412,6 +421,15 @@ void sithThing_TickPhysics(sithThing *pThing, float deltaSecs)
         arg4a = rdVector_Normalize3(&v1, &pThing->field_268);
         pThing->waggle = sithCollision_UpdateThingCollision(pThing, &v1, arg4a, v2);
     }
+
+#ifdef RIGID_BODY
+	//sithConstraint* constraint = pThing->constraints;
+	//while (constraint)
+	//{
+	//	sithThing_TickPhysics(constraint->thing, deltaSecs);
+	//	constraint = constraint->next;
+	//}
+#endif
 }
 
 void sithThing_Remove(sithThing* pThing)

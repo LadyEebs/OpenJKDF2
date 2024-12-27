@@ -349,6 +349,10 @@ typedef struct rdRagdollSkeleton rdRagdollSkeleton;
 typedef struct rdRagdoll rdRagdoll;
 #endif
 
+#ifdef PUPPET_PHYSICS
+typedef struct sithPuppetFigure sithPuppetFigure;
+#endif
+
 typedef struct sithGamesave_Header sithGamesave_Header;
 typedef struct jkGuiStringEntry jkGuiStringEntry;
 typedef struct jkGuiKeyboardEntry jkGuiKeyboardEntry;
@@ -3102,6 +3106,7 @@ typedef struct sithThingPhysParams
 	float povOffset;
 #endif
 #ifdef PUPPET_PHYSICS
+	rdVector3 rotVel;
 	float inertia;
 	rdVector3 accLinearForces;
 	//rdMatrix34 accAngularForces;
@@ -3136,6 +3141,7 @@ typedef struct sithThingTrackParams
 #ifdef PUPPET_PHYSICS
 enum SITH_CONSTRAINT_TYPE
 {
+	SITH_CONSTRAINT_FIXED,
 	SITH_CONSTRAINT_DISTANCE,
 	SITH_CONSTRAINT_CONE,
 	SITH_CONSTRAINT_ANGLES,
@@ -3191,6 +3197,7 @@ typedef struct sithConstraint
 	//
 	sithThing* constrainedThing; // the thing to be constrained
 	sithThing* targetThing;
+	sithConstraintResult result;
 	//
 	union
 	{
@@ -3201,6 +3208,8 @@ typedef struct sithConstraint
 		sithConstraint_TwistParams    twistParams;
 	};
 	struct sithConstraint* next;
+	float lambda;
+	float effectiveMass;
 	// new test
 	sithThing* thing;
 } sithConstraint;
@@ -3377,6 +3386,8 @@ struct sithPuppet
 	int currentTrack;
 	int animStartedMs;
 	sithPuppetPhysics* physics;
+
+	sithPuppetFigure* figure;
 };
 
 #endif

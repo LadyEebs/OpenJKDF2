@@ -955,12 +955,42 @@ int rdMatrix_ExtractAxisAngle34(rdMatrix34* m, rdVector3* axis, float* angle)
 
 void rdMatrix_BuildFromAxisAngle34(rdMatrix34* m, const rdVector3* axis, float angle)
 {
-	float c, s, t;
+	// Compute sine and cosine terms
+	float sin_angle = sinf(angle);
+	float cos_angle = cosf(angle);
+	float one_minus_cos = 1.0 - cos_angle;
+
+	// Extract components of the normalized vector
+	float wx = axis->x;
+	float wy = axis->y;
+	float wz = axis->z;
+
+	// Compute the rotation matrix using Rodrigues' formula
+	m->rvec.x = cos_angle + wx * wx * one_minus_cos;
+	m->rvec.y = wx * wy * one_minus_cos - wz * sin_angle;
+	m->rvec.z = wx * wz * one_minus_cos + wy * sin_angle;
+
+	m->lvec.x = wy * wx * one_minus_cos + wz * sin_angle;
+	m->lvec.y = cos_angle + wy * wy * one_minus_cos;
+	m->lvec.z = wy * wz * one_minus_cos - wx * sin_angle;
+
+	m->uvec.x = wz * wx * one_minus_cos - wy * sin_angle;
+	m->uvec.y = wz * wy * one_minus_cos + wx * sin_angle;
+	m->uvec.z = cos_angle + wz * wz * one_minus_cos;
+
+	// Translation remains unchanged (initialize as needed)
+	m->scale.x = 0.0;  // t_x (adjust as needed)
+	m->scale.y = 0.0;  // t_y (adjust as needed)
+	m->scale.z = 0.0;  // t_z (adjust as needed)
+
+/*	float c, s, t;
 	rdVector3 sv, tv;
 
-	angle = stdMath_NormalizeAngleAcute(angle);
+	//angle = stdMath_NormalizeAngleAcute(angle);
 
-	stdMath_SinCos(angle, &s, &c);
+	//stdMath_SinCos(angle, &s, &c);
+	s = sinf(angle);
+	c = cosf(angle);
 
 	t = 1.0f - c;
 
@@ -980,6 +1010,49 @@ void rdMatrix_BuildFromAxisAngle34(rdMatrix34* m, const rdVector3* axis, float a
 	m->uvec.z = tv.z * axis->z + c;
 
 	m->scale.x = m->scale.y = m->scale.z = 0.0f;
+*/
+	/*float sinAngle, cosAngle;
+	stdMath_SinCos(angle, &sinAngle, &cosAngle);
+
+	if (axis->z < 1.0f && axis->z > -1.0f)
+	{
+		float oneMinusCos = 1.0f - cosAngle; // 2*sin(angle/2)^2
+		float xx = axis->x * axis->x;
+		float yy = axis->y * axis->y;
+		float zz = 1.0f - xx - yy;
+		float xy = axis->x * axis->y;
+		float xz = axis->x * axis->z;
+		float yz = axis->y * axis->z;
+		float xs = axis->x * sinAngle;
+		float ys = axis->y * sinAngle;
+		float zs = axis->z * sinAngle;
+		float invZZ = 1.0f / (1.0f - zz);
+
+		m->rvec.x = (cosAngle * xx * zz + cosAngle * yy) * invZZ + xx;
+		m->lvec.y = (cosAngle * yy * zz + cosAngle * xx) * invZZ + yy;
+		m->uvec.z = zz + cosAngle * xx + cosAngle * yy;
+
+		m->rvec.y = oneMinusCos * xy + zs;
+		m->lvec.x = oneMinusCos * xy - zs;
+		m->rvec.z = oneMinusCos * xz - ys;
+		m->lvec.z = oneMinusCos * yz + xs;
+		m->uvec.x = oneMinusCos * xz + ys;
+		m->uvec.y = oneMinusCos * yz - xs;
+	}
+	else if (axis->z <= -1.0f)
+	{
+		m->rvec = (rdVector3){ cosAngle, -sinAngle, 0.0f };
+		m->lvec = (rdVector3){ sinAngle, cosAngle, 0.0f };
+		m->uvec = rdroid_zeroVector3;// (rdVector3) { 0.0f, 0.0f, 1.0f };
+	}
+	else // vec->z >= 1.0f
+	{
+		m->rvec = (rdVector3){ cosAngle, sinAngle, 0.0f };
+		m->lvec = (rdVector3){ -sinAngle, cosAngle, 0.0f };
+		m->uvec = rdroid_zeroVector3; // (rdVector3) { 0.0f, 0.0f, 1.0f };
+	}
+
+	m->scale = rdroid_zeroVector3;//(rdVector3){ 0.0f, 0.0f, 0.0f };*/
 }
 
 void rdMatrix_Invert44(rdMatrix44* out, const rdMatrix44* m)
