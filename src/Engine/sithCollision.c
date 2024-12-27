@@ -726,10 +726,8 @@ float sithCollision_UpdateThingCollision(sithThing *pThing, rdVector3 *a2, float
     }
 
 #ifdef PUPPET_PHYSICS
-#ifdef RIGID_BODY
 	//if (pThing->type == SITH_THING_CORPSE)
 		//flags |= SITH_RAYCAST_IGNORE_CORPSES; // disable collisions between corpse bodies for now
-#endif
 #endif
 	direction = *a2;
     v10 = pThing->attachedParentMaybe;
@@ -997,7 +995,7 @@ int sithCollision_DefaultHitHandler(sithThing *thing, sithSurface *surface, sith
 		rdVector3 force;
 		rdVector_Scale3(&force, &a3->hitNorm, (1.0f + restitution) * a1a * thing->physicsParams.mass);
 
-		sithPhysics_ThingApplyRotForce(thing, &contact, &force, 0.0f);
+		sithPhysics_ThingApplyRotForce(thing, &contact, &force);
 	}
 #endif
 
@@ -1125,10 +1123,10 @@ int sithCollision_DebrisDebrisCollide(sithThing *thing1, sithThing *thing2, sith
 			rdVector_Scale3(&rotForce, &a2, impulseMagnitude);
 
 			if (v4->physicsParams.physflags & SITH_PF_ANGIMPULSE)
-				sithPhysics_ThingApplyRotForce(v4, &contactA, &rotForce, 0.0f);
+				sithPhysics_ThingApplyRotForce(v4, &contactA, &rotForce);
 			rdVector_Neg3Acc(&rotForce);
 			if (v5->physicsParams.physflags & SITH_PF_ANGIMPULSE)
-				sithPhysics_ThingApplyRotForce(v5, &contactB, &rotForce, 0.0f);
+				sithPhysics_ThingApplyRotForce(v5, &contactB, &rotForce);
 		}
 		
 		// corpses shouldn't block player movement

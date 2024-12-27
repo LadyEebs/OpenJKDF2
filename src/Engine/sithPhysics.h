@@ -37,7 +37,7 @@ void sithPhysics_ThingRagdollApplyForce(sithThing* pThing, rdVector3* forceVec, 
 #endif
 
 #ifdef PUPPET_PHYSICS
-void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactPoint, const rdVector3* impulse, float bias);
+void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactPoint, const rdVector3* impulse);
 #endif
 
 void sithPhysics_AnglesToAngularVelocity(rdVector3* result, const rdVector3* eulerPYR, const rdMatrix34* orientation);

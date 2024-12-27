@@ -349,10 +349,6 @@ typedef struct rdRagdollSkeleton rdRagdollSkeleton;
 typedef struct rdRagdoll rdRagdoll;
 #endif
 
-#ifdef PUPPET_PHYSICS
-typedef struct sithPuppetFigure sithPuppetFigure;
-#endif
-
 typedef struct sithGamesave_Header sithGamesave_Header;
 typedef struct jkGuiStringEntry jkGuiStringEntry;
 typedef struct jkGuiKeyboardEntry jkGuiKeyboardEntry;
@@ -1387,13 +1383,13 @@ typedef struct sithAnimclassMode
 #ifdef ANIMCLASS_NAMES
 typedef struct sithBodyPart
 {
-	int nodeIdx;
+	int      nodeIdx;
 #ifdef PUPPET_PHYSICS
 	uint32_t flags;
-	float mass;
-	float buoyancy;
-	float health;
-	float damage;
+	float    mass;
+	float    buoyancy;
+	float    health;
+	float    damage;
 #endif
 } sithBodyPart;
 #endif
@@ -2881,6 +2877,54 @@ typedef struct sithAIAlign
     float field_8;
 } sithAIAlign;
 
+
+#ifdef PUPPET_PHYSICS
+enum SITH_CONSTRAINT_TYPE
+{
+	SITH_CONSTRAINT_DISTANCE,
+	SITH_CONSTRAINT_CONE,
+};
+
+typedef struct sithConstraintResult
+{
+	rdVector3 JvA, JrA; // jacobians for body A
+	rdVector3 JvB, JrB; // jacobians for body B
+	float C; // constraint error
+} sithConstraintResult;
+
+typedef struct sithConstraintDistanceParams
+{
+	rdVector3 targetAnchor;
+	rdVector3 constraintAnchor;
+} sithConstraintDistanceParams;
+
+typedef struct sithConstraintConeParams
+{
+	rdVector3 coneAnchor;
+	rdVector3 coneAxis;
+	rdVector3 jointAxis;
+	float     coneAngle;
+	float     coneAngleCos;
+} sithConstraintConeParams;
+
+typedef struct sithConstraint
+{
+	int        type; // SITH_CONSTRAINT_TYPE
+	float      lambda; // the previous lambda calculation
+	float      effectiveMass; // effective mass of the constraint
+	sithThing* constrainedThing; // the thing to be constrained
+	sithThing* targetThing;      // the thing to constrain to
+	sithConstraintResult result; // jacobian/constraint error result
+	union
+	{
+		sithConstraintDistanceParams distanceParams;
+		sithConstraintConeParams     coneParams;
+	};
+	struct sithConstraint* next;
+} sithConstraint;
+
+#endif
+
 typedef struct sithThingParticleParams
 {
     uint32_t typeFlags;
@@ -3106,13 +3150,12 @@ typedef struct sithThingPhysParams
 	float povOffset;
 #endif
 #ifdef PUPPET_PHYSICS
-	rdVector3 rotVel;
-	float inertia;
-	rdVector3 accLinearForces;
-	//rdMatrix34 accAngularForces;
-	rdVector3 accAngularForces;
+	// todo: turn angVel into rotVel on load and only use 1
+	float      inertia;
+	rdVector3  rotVel; // world space angular velocity accumulation, as opposed to angVel (which is local euler angles)
 	rdMatrix34 lastOrient;
-	rdVector3 lastPos;
+	rdVector3  lastPos;
+	int   atRest;
 #endif
 } sithThingPhysParams;
 
@@ -3138,83 +3181,6 @@ typedef struct sithThingTrackParams
     rdVector3 orientation;
 } sithThingTrackParams;
 
-#ifdef PUPPET_PHYSICS
-enum SITH_CONSTRAINT_TYPE
-{
-	SITH_CONSTRAINT_FIXED,
-	SITH_CONSTRAINT_DISTANCE,
-	SITH_CONSTRAINT_CONE,
-	SITH_CONSTRAINT_ANGLES,
-	SITH_CONSTRAINT_LOOK,
-	SITH_CONSTRAINT_TWIST,
-};
-
-typedef struct sithConstraint_DistanceParams
-{
-	rdVector3 targetAnchor;
-	rdVector3 constraintAnchor;
-	float constraintDistance;
-	float prevLambda;
-} sithConstraint_DistanceParams;
-
-typedef struct sithConstraint_ConeParams
-{
-	rdVector3 coneAnchor;
-	rdVector3 coneAxis;
-	float     coneAngle;
-	float     coneAngleCos;
-	rdVector3 jointAxis;
-	rdVector3 prevImpulse;
-} sithConstraint_ConeParams;
-
-typedef struct sithConstraint_AngleParams
-{
-	rdVector3 maxAngles;
-	rdVector3 minAngles;
-} sithConstraint_AngleParams;
-
-typedef struct sithConstraint_LookParams
-{
-	rdMatrix34 referenceMat;
-	int flipUp;
-} sithConstraint_LookParams;
-
-typedef struct sithConstraint_TwistParams
-{
-	rdVector3 twistAxis;
-	float maxTwistAngle;
-} sithConstraint_TwistParams;
-
-typedef struct sithConstraintResult
-{
-	rdVector3 JvA, JvB, JrA, JrB;
-	float C;
-} sithConstraintResult;
-
-typedef struct sithConstraint
-{
-	int type;
-	//
-	sithThing* constrainedThing; // the thing to be constrained
-	sithThing* targetThing;
-	sithConstraintResult result;
-	//
-	union
-	{
-		sithConstraint_DistanceParams distanceParams;
-		sithConstraint_ConeParams     coneParams;
-		sithConstraint_AngleParams    angleParams;
-		sithConstraint_LookParams     lookParams;
-		sithConstraint_TwistParams    twistParams;
-	};
-	struct sithConstraint* next;
-	float lambda;
-	float effectiveMass;
-	// new test
-	sithThing* thing;
-} sithConstraint;
-#endif
-
 typedef struct sithThing
 {
     uint32_t thingflags;
@@ -3238,9 +3204,7 @@ typedef struct sithThing
 #endif // JKM_TYPES
 #ifdef PUPPET_PHYSICS
 	sithConstraint* constraints;
-	sithThing* constraintParent;
-	rdVector3 nextPosAcc;
-	float nextPosWeight;
+	sithThing*      constraintParent;
 #endif
     // TODO split these into a struct
     uint32_t attach_flags;
@@ -3335,43 +3299,15 @@ typedef struct sithThing
 
 #ifdef PUPPET_PHYSICS
 
-typedef struct sithPuppetConstraint
-{
-	int jointA;
-	int jointB;
-	float minDist;
-} sithPuppetConstraint;
-
-// each joint has another associated set of joints forming a reference frame used to determine orientation
-typedef struct sithPuppetJointFrame
-{
-	int   targetJoint; // joint above (or below if reversed) for orienting the mesh
-	int   leftJoint;   // joint to the left for yaw constraint
-	int   rightJoint;  // joint to the right for yaw constraint
-	int   pitchJoint;  // joint used with targetJoint to constrain pitch
-	int   reversed;    // if the up joint points up (0) or down (1)
-	float maxYaw;      // maximum yaw change allowed
-	float maxPitch;    // maximum yaw change allowed
-} sithPuppetJointFrame;
-
 typedef struct sithPuppetJoint
 {
-#ifdef RIGID_BODY
-	sithThing  thing;
-#else
-	int        numThings;    // number of particle things representing the joint
-	sithThing  things[2];
-	//sithThing* things;       // particle thing instances
-	//float*     distances;    // distances between particles, in order
-#endif
-	rdMatrix34 localMat;     // local matrix for the joint
+	sithThing  thing;    // thing representing the joint
+	rdMatrix34 localMat; // local matrix for the joint
 } sithPuppetJoint;
 
 typedef struct sithPuppetPhysics
 {
-	sithPuppetJoint      joints[JOINTTYPE_NUM_JOINTS];
-	uint64_t             constrainedJoints; // bitmask for any joints that were constrained this frame
-	float*               constraintDistances;
+	sithPuppetJoint joints[JOINTTYPE_NUM_JOINTS];
 } sithPuppetPhysics;
 
 struct sithPuppet
@@ -3386,8 +3322,6 @@ struct sithPuppet
 	int currentTrack;
 	int animStartedMs;
 	sithPuppetPhysics* physics;
-
-	sithPuppetFigure* figure;
 };
 
 #endif

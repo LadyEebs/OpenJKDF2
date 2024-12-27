@@ -236,103 +236,13 @@ void sithPhysics_ThingTick(sithThing *pThing, float deltaSecs)
     {
         sithPhysics_ThingPhysGeneral(pThing, deltaSecs);
     }
-
-#ifdef RIGID_BODY
-	//rdVector_Zero3(&pThing->physicsParams.accLinearForces);
-	//rdMatrix_Identity34(&pThing->physicsParams.accAngularForces);
-	//
-	//pThing->physicsParams.lastPos = pThing->position;
-	//pThing->physicsParams.lastOrient = pThing->lookOrientation;
-	//
-	//sithConstraint* constraint = pThing->constraints;
-	//while (constraint)
-	//{
-	//	sithPhysics_ThingTick(constraint->thing, deltaSecs);
-	//	constraint = constraint->next;
-	//}
-	//
-	//sithCollision_ConstraintLoopTest(pThing, &rdroid_zeroVector3, 0, 0);
-#endif
 }
 
 #ifdef PUPPET_PHYSICS
-void sithPhysics_ThingApplyRotForceToVel(sithThing* pThing, rdVector3* torque)
-{
-	rdVector3 pitchAxisA = { 1, 0, 0 };  // Local X-axis
-	rdVector3 yawAxisA = { 0, 0, 1 };  // Local Z-axis
-	rdVector3 rollAxisA = { 0, 1, 0 };  // Local Y-axis
-
-	rdVector3 angAccel;
-	rdVector_InvScale3(&angAccel, torque, pThing->physicsParams.inertia);
-	rdVector_ClipPrecision3(&angAccel);
-	if(rdVector_IsZero3(&angAccel))
-		return;
-
-
-	rdVector_Add3Acc(&pThing->physicsParams.rotVel, &angAccel);
-
-//	rdVector3 angles;
-//	sithPhysics_AngularVelocityToAngles(&angles, &angAccel, &pThing->lookOrientation);
-//
-//	// attached things without angthrust flag only rotate with Yaw to avoid funny behavior
-//	// such as boxes rotating on the floor
-//	if (pThing->attach_flags & (SITH_ATTACH_THINGSURFACE | SITH_ATTACH_WORLDSURFACE)
-//		&& !(pThing->physicsParams.physflags & SITH_PF_ANGTHRUST))
-//	{
-//		pThing->physicsParams.angVel.y += angles.y;// / sithTime_deltaSeconds;
-//	}
-//	else
-//	{
-//		rdVector_MultAcc3(&pThing->physicsParams.angVel, &angles, 1.0f);// / sithTime_deltaSeconds);
-//	}
-}
-
-void sithPhysics_ThingApplyRotForceToThing(sithThing* pThing, rdVector3* torque)
-{
-	sithPhysics_ThingApplyRotForceToVel(pThing, torque);
-
-#ifdef RIGID_BODY
-	// propagate forces down the constraint chain
-	// for now, just use a simple energy loss factor
-	//rdVector3 childForce;
-	//rdVector_Scale3(&childForce, torque, 0.5f);
-	//sithConstraint* constraint = pThing->constraints;
-	//while (constraint)
-	//{
-	//	rdMatrix34 childOrient;
-	//	rdMatrix_InvertOrtho34(&childOrient, &constraint->thing->lookOrientation);
-	//
-	//	rdVector3 childTorque;
-	//	rdMatrix_TransformVector34(&childTorque, &childForce, &childOrient);
-	//
-	//	sithPhysics_ThingApplyRotForceToThing(constraint->thing, &childTorque);
-	//	constraint = constraint->next;
-	//}
-	//
-	//// propagate forces up the parent chain
-	//rdVector3 reactionForce = *torque;
-	//sithThing* parent = pThing->constraintParent;
-	//while (parent)
-	//{
-	//	rdVector_Scale3Acc(&reactionForce, -0.5f);
-	//
-	//	rdMatrix34 parentOrient;
-	//	rdMatrix_InvertOrtho34(&parentOrient, &parent->lookOrientation);
-	//
-	//	rdVector3 parentTorque;
-	//	rdMatrix_TransformVector34(&parentTorque, &reactionForce, &parentOrient);
-	//
-	//	sithPhysics_ThingApplyRotForceToVel(parent, &parentTorque);
-	//	parent = parent->constraintParent;
-	//}
-#endif
-}
-
 // thing: thing to apply force to
 // contact point: the position on the thing (usually a point on its collide sphere) to apply the force
 // impulse: the impulse force to apply to the thing to cause rotation
-// bias: if non-zero, will relax the force applied, useful for constraints
-void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactPoint, const rdVector3* impulse, float bias)
+void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactPoint, const rdVector3* impulse)
 {   
 	// Added: noclip
 	if (pThing == sithPlayer_pLocalPlayerThing && (g_debugmodeFlags & DEBUGFLAG_NOCLIP))
@@ -350,93 +260,26 @@ void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactP
 	rdVector3 torque;
 	rdVector_Cross3(&torque, &leverArm, impulse);
 
-	//rdVector3 angAccel;
-	//rdVector_InvScale3(&angAccel, &torque, pThing->physicsParams.inertia);
-	//rdVector_ClipPrecision3(&angAccel);
-	//if (rdVector_IsZero3(&angAccel))
-	//	return;
-	//
-	//if (bias > 0.0)
-	//{
-	//	rdVector3 angBias;
-	//	rdVector_Scale3(&angBias, &angAccel, bias / sithTime_deltaSeconds);
-	//	rdVector_Add3Acc(&angAccel, &angBias);
-	//}
-
-	// make sure we're in degrees
-	//rdVector_Scale3Acc(&angAccel, (180.0f / M_PI));
-
-//	rdVector3 axis;
-//	rdMatrix34 invObjectOrientation;
-//	rdMatrix_InvertOrtho34(&invObjectOrientation, &pThing->lookOrientation);
-//	rdVector_Zero3(&invObjectOrientation.scale);
-//
-//	rdMatrix_TransformVector34Acc(&angAccel, &invObjectOrientation);
-//
-//	float angle = rdVector_Normalize3(&axis, &angAccel) * (180.0f / M_PI);
-//	
-//	rdMatrix34 rotMatrix;
-//	rdMatrix_BuildFromVectorAngle34(&rotMatrix, &axis, angle);
-//	rdMatrix_Normalize34(&rotMatrix);
-//
-//	//sithCollision_sub_4E7670(pThing, &rotMatrix);
-//	//rdMatrix_Normalize34(&pThing->lookOrientation);
-//
-//	rdVector3 angles;
-//	rdMatrix_ExtractAngles34(&rotMatrix, &angles);
-	sithPhysics_ThingApplyRotForceToThing(pThing, &torque);
-}
-
-void sithPhysics_ThingApplyForceToVel(sithThing* pThing, rdVector3* forceVec)
-{
-	float invMass = 1.0 / pThing->physicsParams.mass;
-
-	if (forceVec->z * invMass > 0.5) // TODO verify
-		sithThing_DetachThing(pThing);
-
-	rdVector_MultAcc3(&pThing->physicsParams.vel, forceVec, invMass);
-	//if(pThing->type != SITH_THING_CORPSE)
-	pThing->physicsParams.physflags |= SITH_PF_HAS_FORCE;
-}
-
-void sithPhysics_ThingApplyForce(sithThing* pThing, rdVector3* forceVec)
-{
-	// Added: noclip
-	if (pThing == sithPlayer_pLocalPlayerThing && (g_debugmodeFlags & DEBUGFLAG_NOCLIP))
-	{
+	rdVector3 angAccel;
+	rdVector_InvScale3(&angAccel, &torque, pThing->physicsParams.inertia);
+	rdVector_ClipPrecision3(&angAccel);
+	if (rdVector_IsZero3(&angAccel))
 		return;
-	}
 
-	if (pThing->moveType == SITH_MT_PHYSICS && pThing->physicsParams.mass > 0.0)
+	rdVector_Add3Acc(&pThing->physicsParams.rotVel, &angAccel);
+
+	if (rdVector_Len3(&angAccel) > 0.1)
 	{
-		// apply the force to the thing
-		sithPhysics_ThingApplyForceToVel(pThing, forceVec);
-#ifdef RIGID_BODY
-		//// propagate forces down the constraint chain
-		//// for now, just use a simple energy loss factor
-		//rdVector3 childForce;
-		//rdVector_Scale3(&childForce, forceVec, 0.5f);
-		//
-		//sithConstraint* constraint = pThing->constraints;
-		//while (constraint)
-		//{
-		//	sithPhysics_ThingApplyForce(constraint->thing, &childForce);
-		//	constraint = constraint->next;
-		//}
-		//
-		//// propagate forces up the parent chain
-		//rdVector3 reactionForce = *forceVec;
-		//sithThing* parent = pThing->constraintParent;
-		//while (parent)
-		//{
-		//	rdVector_Scale3Acc(&reactionForce, -0.5f);
-		//	sithPhysics_ThingApplyForceToVel(parent, &reactionForce);
-		//	parent = parent->constraintParent;
-		//}
-#endif
+		sithThing* root = pThing->prev_thing;
+		if (root)
+		{
+			root->physicsParams.atRest = 0;
+			root->physicsParams.noMoveTime = 0;
+		}
 	}
 }
-#else
+
+#endif
 
 void sithPhysics_ThingApplyForce(sithThing *pThing, rdVector3 *forceVec)
 {
@@ -454,9 +297,20 @@ void sithPhysics_ThingApplyForce(sithThing *pThing, rdVector3 *forceVec)
 
         rdVector_MultAcc3(&pThing->physicsParams.vel, forceVec, invMass);
         pThing->physicsParams.physflags |= SITH_PF_HAS_FORCE;
+
+#ifdef PUPPET_PHYSICS
+		if (rdVector_Len3(forceVec) * invMass > 0.1)
+		{
+			sithThing* root = pThing->prev_thing;
+			if (root)
+			{
+				root->physicsParams.atRest = 0;
+				root->physicsParams.noMoveTime = 0;
+			}
+		}
+#endif
     }
 }
-#endif
 
 void sithPhysics_ThingSetLook(sithThing *pThing, const rdVector3 *lookat, float a3)
 {
@@ -634,10 +488,7 @@ void sithPhysics_ThingStop(sithThing *pThing)
     rdVector_Zero3(&pThing->physicsParams.velocityMaybe);
     rdVector_Zero3(&pThing->field_268);
 #ifdef PUPPET_PHYSICS
-	rdVector_Zero3(&pThing->physicsParams.accLinearForces);
-	rdMatrix_Identity34(&pThing->physicsParams.accAngularForces);
 	rdVector_Zero3(&pThing->physicsParams.rotVel);
-
 #endif
 }
 

@@ -309,9 +309,7 @@ void sithThing_TickAll(float deltaSeconds, int deltaMs)
             sithPuppet_Tick(pThingIter, deltaSeconds);
 
 #ifdef PUPPET_PHYSICS
-#ifdef RIGID_BODY
 			sithConstraint_SolveConstraints(pThingIter, deltaSeconds);
-#endif
 #endif
 
             continue;
@@ -374,15 +372,6 @@ void sithThing_TickPhysics(sithThing *pThing, float deltaSecs)
     if ((pThing->attach_flags & SITH_ATTACH_NO_MOVE))
         return;
 
-#ifdef RIGID_BODY
-	//sithConstraint* constraint = pThing->constraints;
-	//while (constraint)
-	//{
-	//	sithThing_TickPhysics(constraint->thing, deltaSecs);
-	//	constraint = constraint->next;
-	//}
-#endif
-
     if ( pThing->moveType == SITH_MT_PHYSICS )
     {
         rdVector_Copy3(&pThing->field_268, &pThing->physicsParams.velocityMaybe);
@@ -392,11 +381,6 @@ void sithThing_TickPhysics(sithThing *pThing, float deltaSecs)
         v2 = 4;
         rdVector_Zero3(&pThing->field_268);
     }
-
-#ifdef PUPPET_PHYSICS
-	//if (pThing->type == SITH_THING_CORPSE)
-		//v2 |= SITH_RAYCAST_IGNORE_THINGS; // todo: not sure if this is needed
-#endif
 
     if (pThing->attach_flags && pThing->attach_flags & SITH_ATTACH_WORLDSURFACE)
     {
@@ -410,9 +394,6 @@ void sithThing_TickPhysics(sithThing *pThing, float deltaSecs)
     
     if (rdVector_IsZero3(&pThing->field_268))
     {
-		//if ( pThing->moveType == SITH_MT_PHYSICS)
-		//	sithConstraint_SolveConstraints(pThing, deltaSecs);
-
         if ( pThing->moveType == SITH_MT_PHYSICS && (pThing->attach_flags & (SITH_ATTACH_THINGSURFACE|SITH_ATTACH_THING)) != 0 && pThing->attachedThing->moveType == SITH_MT_PATH )
             sithPhysics_FindFloor(pThing, 0);
     }
@@ -421,15 +402,6 @@ void sithThing_TickPhysics(sithThing *pThing, float deltaSecs)
         arg4a = rdVector_Normalize3(&v1, &pThing->field_268);
         pThing->waggle = sithCollision_UpdateThingCollision(pThing, &v1, arg4a, v2);
     }
-
-#ifdef RIGID_BODY
-	//sithConstraint* constraint = pThing->constraints;
-	//while (constraint)
-	//{
-	//	sithThing_TickPhysics(constraint->thing, deltaSecs);
-	//	constraint = constraint->next;
-	//}
-#endif
 }
 
 void sithThing_Remove(sithThing* pThing)
@@ -2258,3 +2230,18 @@ int sithThing_MotsTick(int param_1,int param_2,float param_3)
     return 1;
 }
 
+#ifdef PUPPET_PHYSICS
+int sithThing_GetNumConstraints(sithThing* pThing)
+{
+	// not the nicest thing in the world
+	// maybe do a dynamic array instead and keep count
+	int num = 0;
+	sithConstraint* constraint = pThing->constraints;
+	while (constraint)
+	{
+		++num;
+		constraint = constraint->next;
+	}
+	return num;
+}
+#endif

@@ -175,7 +175,7 @@ void sithWeapon_sub_4D35E0(sithThing *weapon)
 					{
 						rdVector3 contact = damageReceiver->position;
 						rdVector_MultAcc3(&contact, &searchRes->hitNorm, -damageReceiver->moveSize);
-						sithPhysics_ThingApplyRotForce(damageReceiver, &contact, &tmp2, 0.0f);
+						sithPhysics_ThingApplyRotForce(damageReceiver, &contact, &tmp2);
 					}
 #endif
                 }
@@ -388,7 +388,7 @@ void sithWeapon_sub_4D3920(sithThing *weapon)
 					{
 						rdVector3 contact = receiveThing->position;
 						rdVector_MultAcc3(&contact, &searchRes->hitNorm, -receiveThing->moveSize);
-						sithPhysics_ThingApplyRotForce(receiveThing, &contact, &tmp2, 0.0f);
+						sithPhysics_ThingApplyRotForce(receiveThing, &contact, &tmp2);
 					}
 					#endif
                 }
@@ -816,7 +816,7 @@ int sithWeapon_Collide(sithThing *physicsThing, sithThing *collidedThing, sithCo
 				{
 					rdVector3 contact = collidedThing->position;
 					rdVector_MultAcc3(&contact, &a4->hitNorm, -collidedThing->moveSize);
-					sithPhysics_ThingApplyRotForce(collidedThing, &contact, &tmp2, 0.0f);
+					sithPhysics_ThingApplyRotForce(collidedThing, &contact, &tmp2);
 				}
 			}
 #endif
@@ -889,7 +889,7 @@ int sithWeapon_Collide(sithThing *physicsThing, sithThing *collidedThing, sithCo
 				{
 					rdVector3 contact = collidedThing->position;
 					rdVector_MultAcc3(&contact, &a4->hitNorm, -collidedThing->moveSize);
-					sithPhysics_ThingApplyRotForce(collidedThing, &contact, &tmp2, 0.0f);
+					sithPhysics_ThingApplyRotForce(collidedThing, &contact, &tmp2);
 				}
 			}
 #endif
