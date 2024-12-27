@@ -256,7 +256,6 @@ void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactP
 		if (root)
 		{
 			root->physicsParams.atRest = 0;
-			root->physicsParams.noMoveTime = 0;
 		}
 	}
 }
