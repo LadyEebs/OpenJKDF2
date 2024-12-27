@@ -14,12 +14,13 @@ extern float jkPlayer_puppetFriction;
 
 void sithConstraint_AddDistanceConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pTargetAnchor, const rdVector3* pConstrainedAnchor, float distance)
 {
-	sithConstraint* constraint = (sithConstraint*)malloc(sizeof(sithConstraint));
+	sithConstraint* constraint = (sithConstraint*)pSithHS->alloc(sizeof(sithConstraint));
 	if (!constraint)
 		return;
 	memset(constraint, 0, sizeof(sithConstraint));
 
 	constraint->type = SITH_CONSTRAINT_DISTANCE;
+	constraint->parentThing = pThing;
 	constraint->constrainedThing = pConstrainedThing;
 	constraint->targetThing = pTargetThing;
 	constraint->distanceParams.targetAnchor = *pTargetAnchor;
@@ -40,12 +41,13 @@ void sithConstraint_AddDistanceConstraint(sithThing* pThing, sithThing* pConstra
 
 void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pConeAnchor, const rdVector3* pAxis, float angle, const rdVector3* pJointAxis)
 {
-	sithConstraint* constraint = (sithConstraint*)malloc(sizeof(sithConstraint));
+	sithConstraint* constraint = (sithConstraint*)pSithHS->alloc(sizeof(sithConstraint));
 	if (!constraint)
 		return;
 	memset(constraint, 0, sizeof(sithConstraint));
 
 	constraint->type = SITH_CONSTRAINT_CONE;
+	constraint->parentThing = pThing;
 	constraint->constrainedThing = pConstrainedThing;
 	constraint->targetThing = pTargetThing;
 
@@ -69,6 +71,30 @@ void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrained
 //
 //	constraint->next = pTargetThing->constraints;
 //	pTargetThing->constraints = constraint;
+}
+
+void sithConstraint_RemoveConstraint(sithConstraint* pConstraint)
+{
+	if(!pConstraint)
+		return;
+
+	sithConstraint* pConstraintList = pConstraint->parentThing->constraints;
+	if (pConstraintList == pConstraint)
+	{
+		pConstraint->parentThing->constraints = pConstraint->next;
+		pSithHS->free(pConstraint);
+		return;
+	}
+		
+	sithConstraint* current = pConstraintList;
+	while (current->next && current->next != pConstraint)
+		current = current->next;
+
+	if (current->next == pConstraint)
+	{
+		current->next = pConstraint->next;
+		pSithHS->free(pConstraint);
+	}
 }
 
 // 1 / (J * M^-1 * J^T)
@@ -267,7 +293,7 @@ void sithConstraint_SatisfyConstraints(sithThing* thing, int iterations, float d
 		sithConstraint* c = thing->constraints;
 		while (c)
 		{
-			if(stdMath_Fabs(c->result.C) < 0.01)
+			if(stdMath_Fabs(c->result.C) < 0.001)
 			{
 				c = c->next;
 				continue;
@@ -361,7 +387,7 @@ void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
 			constraint->result.C = stdMath_ClipPrecision(constraint->result.C);
 			constraint->effectiveMass = sithConstraint_ComputeEffectiveMass(constraint);
 
-			if(stdMath_Fabs(constraint->result.C) > 0.01)
+			if(stdMath_Fabs(constraint->result.C) > 0.001)
 				atRest = 0;
 
 			constraint = constraint->next;

@@ -2907,11 +2907,13 @@ typedef struct sithConstraintConeParams
 	float     coneAngleCos;
 } sithConstraintConeParams;
 
+// todo: signatures
 typedef struct sithConstraint
 {
-	int        type; // SITH_CONSTRAINT_TYPE
-	float      lambda; // the previous lambda calculation
-	float      effectiveMass; // effective mass of the constraint
+	int        type;             // SITH_CONSTRAINT_TYPE
+	float      lambda;           // the previous lambda calculation
+	float      effectiveMass;    // effective mass of the constraint
+	sithThing* parentThing;      // thing that owns the constraint
 	sithThing* constrainedThing; // the thing to be constrained
 	sithThing* targetThing;      // the thing to constrain to
 	sithConstraintResult result; // jacobian/constraint error result
