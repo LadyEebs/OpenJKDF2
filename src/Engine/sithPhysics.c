@@ -157,9 +157,6 @@ LABEL_8:
 }
 
 // Inlined func
-void sithCollision_ConstraintLoopTest(sithThing* pThing, const rdVector3* dir, float dist, int flags);
-
-
 void sithPhysics_ThingTick(sithThing *pThing, float deltaSecs)
 {
     if (!pThing->sector)
@@ -180,19 +177,6 @@ void sithPhysics_ThingTick(sithThing *pThing, float deltaSecs)
 	float adjustedSize = pThing->moveSize;// * 10.0f;
 	pThing->physicsParams.inertia = (2.0 / 5.0) * pThing->physicsParams.mass * adjustedSize * adjustedSize;
 	pThing->physicsParams.inertia = fmax(pThing->physicsParams.inertia, 0.001f);
-
-#ifdef PUPPET_PHYSICS
-	//if (pThing->nextPosWeight > 0.0)
-	//{
-	//	rdVector_InvScale3Acc(&pThing->nextPosAcc, pThing->nextPosWeight);
-	//	rdVector3 delta;
-	//	rdVector_Sub3(&delta, &pThing->nextPosAcc, &pThing->position);
-	//	rdVector_Scale3Acc(&delta, 1.0f / deltaSecs);
-	//	rdVector_Add3Acc(&pThing->physicsParams.vel, &delta);
-	//	pThing->nextPosWeight = 0.0f;
-	//	rdVector_Zero3(&pThing->nextPosAcc);
-	//}
-#endif
 	if (pThing->puppet && pThing->puppet->physics)
 	{
 		// let the animation system take over
@@ -208,8 +192,6 @@ void sithPhysics_ThingTick(sithThing *pThing, float deltaSecs)
     {
         sithPhysics_ThingPhysUnderwater(pThing, deltaSecs);
     }
-	//else if(pThing->type == SITH_THING_CORPSE)
-	//	sithPhysics_ThingPhysPlayer(pThing, deltaSecs);
 #ifdef QOL_IMPROVEMENTS
     else if ( pThing->type == SITH_THING_PLAYER && (jkPlayer_bUseOldPlayerPhysics || sithNet_isMulti))
     {
@@ -772,6 +754,27 @@ void sithPhysics_ThingPhysPlayer(sithThing *player, float deltaSeconds)
             rdMatrix_Normalize34(&player->lookOrientation);
     }
 
+#ifdef PUPPET_PHYSICS
+	if (!rdVector_IsZero3(&player->physicsParams.rotVel))
+	{
+		sithPhysics_ApplyDrag(&player->physicsParams.rotVel, player->physicsParams.airDrag, 0.0001, deltaSeconds);
+		//rdMath_ClampVectorRange(&pThing->physicsParams.rotVel, -pThing->physicsParams.maxRotVel, pThing->physicsParams.maxRotVel);
+
+		rdMatrix34 invMat;
+		rdMatrix_InvertOrtho34(&invMat, &player->lookOrientation);
+
+		rdVector3 localRotVel;
+		rdMatrix_TransformVector34(&localRotVel, &player->physicsParams.rotVel, &invMat);
+
+		rdVector3 axis;
+		float angle = rdVector_Normalize3(&axis, &localRotVel) * deltaSeconds * (180.0f / M_PI);
+		rdMatrix_BuildFromAxisAngle34(&a, &axis, angle);
+		sithCollision_sub_4E7670(player, &a);
+		//if (((bShowInvisibleThings + (pThing->thingIdx & 0xFF)) & 7) == 0)
+			//rdMatrix_Normalize34(&pThing->lookOrientation);
+	}
+#endif
+
     if (!(player->physicsParams.physflags & SITH_PF_FLY))
     {
         rdVector_Scale3Acc(&player->physicsParams.acceleration, 0.3);
@@ -869,6 +872,26 @@ void sithPhysics_ThingPhysUnderwater(sithThing *pThing, float deltaSeconds)
         if ( (((bShowInvisibleThings & 0xFF) + (pThing->thingIdx & 0xFF)) & 7) == 0 )
             rdMatrix_Normalize34(&pThing->lookOrientation);
     }
+#ifdef PUPPET_PHYSICS
+	if (!rdVector_IsZero3(&pThing->physicsParams.rotVel))
+	{
+		sithPhysics_ApplyDrag(&pThing->physicsParams.rotVel, pThing->physicsParams.airDrag, 0.0001, deltaSeconds);
+		//rdMath_ClampVectorRange(&pThing->physicsParams.rotVel, -pThing->physicsParams.maxRotVel, pThing->physicsParams.maxRotVel);
+
+		rdMatrix34 invMat;
+		rdMatrix_InvertOrtho34(&invMat, &pThing->lookOrientation);
+
+		rdVector3 localRotVel;
+		rdMatrix_TransformVector34(&localRotVel, &pThing->physicsParams.rotVel, &invMat);
+
+		rdVector3 axis;
+		float angle = rdVector_Normalize3(&axis, &localRotVel) * deltaSeconds * (180.0f / M_PI);
+		rdMatrix_BuildFromAxisAngle34(&tmpMat, &axis, angle);
+		sithCollision_sub_4E7670(pThing, &tmpMat);
+		//if (((bShowInvisibleThings + (pThing->thingIdx & 0xFF)) & 7) == 0)
+			//rdMatrix_Normalize34(&pThing->lookOrientation);
+	}
+#endif
     if ( pThing->physicsParams.airDrag != 0.0 )
     {
         sithPhysics_ApplyDrag(&pThing->physicsParams.vel, pThing->physicsParams.airDrag * 4.0, 0.0, deltaSeconds);
@@ -1065,6 +1088,28 @@ void sithPhysics_ThingPhysAttached(sithThing *pThing, float deltaSeconds)
 
         rdMatrix_BuildRotate34(&a, &a3);
         sithCollision_sub_4E7670(pThing, &a);
+
+#ifdef PUPPET_PHYSICS
+		if (!rdVector_IsZero3(&pThing->physicsParams.rotVel))
+		{
+			sithPhysics_ApplyDrag(&pThing->physicsParams.rotVel, pThing->physicsParams.airDrag, 0.0001, deltaSeconds);
+			//rdMath_ClampVectorRange(&pThing->physicsParams.rotVel, -pThing->physicsParams.maxRotVel, pThing->physicsParams.maxRotVel);
+
+			rdMatrix34 invMat;
+			rdMatrix_InvertOrtho34(&invMat, &pThing->lookOrientation);
+
+			rdVector3 localRotVel;
+			rdMatrix_TransformVector34(&localRotVel, &pThing->physicsParams.rotVel, &invMat);
+
+			rdVector3 axis;
+			float angle = rdVector_Normalize3(&axis, &localRotVel) * deltaSeconds * (180.0f / M_PI);
+			rdMatrix_BuildFromAxisAngle34(&a, &axis, angle);
+			sithCollision_sub_4E7670(pThing, &a);
+			//if (((bShowInvisibleThings + (pThing->thingIdx & 0xFF)) & 7) == 0)
+				//rdMatrix_Normalize34(&pThing->lookOrientation);
+		}
+#endif
+
 #ifdef PUPPET_PHYSICS
 		if (!(pThing->physicsParams.physflags & SITH_PF_ANGIMPULSE))
 		{
@@ -1175,6 +1220,27 @@ void sithPhysics_ThingPhysAttached(sithThing *pThing, float deltaSeconds)
                 if ( ((bShowInvisibleThings + (pThing->thingIdx & 0xFF)) & 7) == 0 )
                     rdMatrix_Normalize34(&pThing->lookOrientation);
             }
+
+#ifdef PUPPET_PHYSICS
+			if (!rdVector_IsZero3(&pThing->physicsParams.rotVel))
+			{
+				sithPhysics_ApplyDrag(&pThing->physicsParams.rotVel, pThing->physicsParams.airDrag, 0.0001, deltaSeconds);
+				//rdMath_ClampVectorRange(&pThing->physicsParams.rotVel, -pThing->physicsParams.maxRotVel, pThing->physicsParams.maxRotVel);
+
+				rdMatrix34 invMat;
+				rdMatrix_InvertOrtho34(&invMat, &pThing->lookOrientation);
+
+				rdVector3 localRotVel;
+				rdMatrix_TransformVector34(&localRotVel, &pThing->physicsParams.rotVel, &invMat);
+
+				rdVector3 axis;
+				float angle = rdVector_Normalize3(&axis, &localRotVel) * deltaSeconds * (180.0f / M_PI);
+				rdMatrix_BuildFromAxisAngle34(&a, &axis, angle);
+				sithCollision_sub_4E7670(pThing, &a);
+				//if (((bShowInvisibleThings + (pThing->thingIdx & 0xFF)) & 7) == 0)
+					//rdMatrix_Normalize34(&pThing->lookOrientation);
+			}
+#endif
 
             if ( pThing->physicsParams.airDrag != 0.0 )
                 sithPhysics_ApplyDrag(&pThing->physicsParams.vel, pThing->physicsParams.airDrag, 0.0, deltaSeconds);
