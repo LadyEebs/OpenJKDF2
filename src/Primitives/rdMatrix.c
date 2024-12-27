@@ -956,8 +956,11 @@ int rdMatrix_ExtractAxisAngle34(rdMatrix34* m, rdVector3* axis, float* angle)
 void rdMatrix_BuildFromAxisAngle34(rdMatrix34* m, const rdVector3* axis, float angle)
 {
 	// Compute sine and cosine terms
-	float sin_angle = sinf(angle);
-	float cos_angle = cosf(angle);
+	//float sin_angle = sinf(angle);
+	//float cos_angle = cosf(angle);
+	float sin_angle, cos_angle;
+	stdMath_SinCos(angle, &sin_angle, &cos_angle);
+
 	float one_minus_cos = 1.0 - cos_angle;
 
 	// Extract components of the normalized vector

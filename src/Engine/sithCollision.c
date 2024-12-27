@@ -1730,7 +1730,7 @@ LABEL_81:
         {
             if ( (v5->attach_flags) != 0 && !(v5->attach_flags & SITH_ATTACH_NO_MOVE)
 		#ifdef PUPPET_PHYSICS
-				&& !(v5->attach_flags& SITH_ATTACH_CONSTRAIN)
+				//&& !(v5->attach_flags& SITH_ATTACH_CONSTRAIN)
 		#endif
               || (v5->physicsParams.physflags & SITH_PF_FLOORSTICK) != 0
               && (v5->physicsParams.vel.z < -2.0 || v5->physicsParams.vel.z <= 0.2) )

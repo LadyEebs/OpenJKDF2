@@ -395,6 +395,7 @@ void sithPhysics_ThingApplyForceToVel(sithThing* pThing, rdVector3* forceVec)
 		sithThing_DetachThing(pThing);
 
 	rdVector_MultAcc3(&pThing->physicsParams.vel, forceVec, invMass);
+	//if(pThing->type != SITH_THING_CORPSE)
 	pThing->physicsParams.physflags |= SITH_PF_HAS_FORCE;
 }
 
@@ -764,8 +765,7 @@ void sithPhysics_ThingPhysGeneral(sithThing *pThing, float deltaSeconds)
 	if (!rdVector_IsZero3(&pThing->physicsParams.rotVel))
 	{
 		sithPhysics_ApplyDrag(&pThing->physicsParams.rotVel, pThing->physicsParams.airDrag, 0.0001, deltaSeconds);
-		
-		rdMath_ClampVectorRange(&pThing->physicsParams.rotVel, -pThing->physicsParams.maxRotVel, pThing->physicsParams.maxRotVel);
+		//rdMath_ClampVectorRange(&pThing->physicsParams.rotVel, -pThing->physicsParams.maxRotVel, pThing->physicsParams.maxRotVel);
 
 		rdMatrix34 invMat;
 		rdMatrix_InvertOrtho34(&invMat, &pThing->lookOrientation);
@@ -774,10 +774,9 @@ void sithPhysics_ThingPhysGeneral(sithThing *pThing, float deltaSeconds)
 		rdMatrix_TransformVector34(&localRotVel, &pThing->physicsParams.rotVel, &invMat);
 
 		rdVector3 axis;
-		float angle = rdVector_Normalize3(&axis, &localRotVel) * deltaSeconds;// * (180.0f / M_PI);
+		float angle = rdVector_Normalize3(&axis, &localRotVel) * deltaSeconds * (180.0f / M_PI);
 		rdMatrix_BuildFromAxisAngle34(&a, &axis, angle);
-		rdMatrix_PreMultiply34(&pThing->lookOrientation, &a);
-		//sithCollision_sub_4E7670(pThing, &a);
+		sithCollision_sub_4E7670(pThing, &a);
 		//if (((bShowInvisibleThings + (pThing->thingIdx & 0xFF)) & 7) == 0)
 			//rdMatrix_Normalize34(&pThing->lookOrientation);
 	}

@@ -1583,8 +1583,8 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 		rdVector_Add3Acc(&pos, &meshCenter);
 
 		float avgDist = (minDist + maxDist) * 0.5f;
-		pJointThing->moveSize = pJointThing->collideSize = avgDist;
-		pJointThing->collideSize = minDist;
+		pJointThing->moveSize = pJointThing->collideSize = minDist;//avgDist;
+		//pJointThing->collideSize = minDist;
 	}
 //#endif
 
@@ -1703,14 +1703,16 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 		rdVector3 vel;
 		rdMatrix_TransformVector34(&vel, &pThing->rdthing.paHierarchyNodeVelocities[pNode->idx], &pThing->rdthing.hierarchyNodeMatrices[pBodyPart->nodeIdx]);
 		rdVector_Copy3(&pJointThing->physicsParams.vel, &vel);
-		rdVector_Copy3(&pJointThing->physicsParams.angVel, &pThing->rdthing.paHierarchyNodeAngularVelocities[pNode->idx]);
+		//rdVector_Copy3(&pJointThing->physicsParams.angVel, &pThing->rdthing.paHierarchyNodeAngularVelocities[pNode->idx]);
 
 		//printf("init velocity for joint %d is %f!\n", jointIdx, rdVector_Len3(&pJoint->thing.physicsParams.vel));
 
+		sithPhysics_AnglesToAngularVelocity(&pJointThing->physicsParams.angVel, &pThing->rdthing.paHierarchyNodeAngularVelocities[pNode->idx], &pThing->rdthing.hierarchyNodeMatrices[pBodyPart->nodeIdx]);
+
 	#ifdef RIGID_BODY
 		// disabled forn ow
-		pJointThing->physicsParams.vel = rdroid_zeroVector3;
-		pJointThing->physicsParams.angVel = rdroid_zeroVector3;
+		//pJointThing->physicsParams.vel = rdroid_zeroVector3;
+		//pJointThing->physicsParams.angVel = rdroid_zeroVector3;
 	#endif
 	}
 
@@ -3639,16 +3641,14 @@ void sithPuppet_BuildJointMatrices(sithThing* thing)
 		rdQuat_BuildFrom34(&q1, &pJoint->thing.lookOrientation);
 
 		rdQuat q;
-		rdQuat_Slerp(&q, &q0, &q1, 0.1f);
+		rdQuat_Slerp(&q, &q0, &q1, 0.3f);
 
 		rdQuat_ToMatrix(&pJoint->localMat, &q);
 
-		rdVector_Lerp3(&pJoint->localMat.scale, &oldPos, &pJoint->thing.position, 0.1f);
+		rdVector_Lerp3(&pJoint->localMat.scale, &oldPos, &pJoint->thing.position, 0.3f);
 
 		//rdVector_Copy3(&pJoint->localMat.scale, &pJoint->things[0].position);
-		rdMatrix_Normalize34(&pJoint->localMat);
-
-		rdMatrix_Normalize34(&pJoint->localMat);
+		//rdMatrix_Normalize34(&pJoint->localMat);
 
 		thing->rdthing.paHiearchyNodeMatrixOverrides[pBodyPart->nodeIdx] = &pJoint->localMat;
 

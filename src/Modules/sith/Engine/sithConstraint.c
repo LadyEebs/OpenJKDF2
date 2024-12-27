@@ -2049,7 +2049,7 @@ void solvePGS(
 				// Compute corrective impulse
 				float deltaLambda = (c->result.C - Jv) * effectiveMass;
 				//printf("deltaLambda: %f\n", deltaLambda);
-				deltaLambda *= 0.5;
+				deltaLambda *= 0.8;
 
 				// Add deltaLambda to the current lambda
 				float newLambda = c->lambda + deltaLambda;
