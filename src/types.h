@@ -2883,6 +2883,7 @@ enum SITH_CONSTRAINT_TYPE
 {
 	SITH_CONSTRAINT_DISTANCE,
 	SITH_CONSTRAINT_CONE,
+	SITH_CONSTRAINT_HINGE,
 };
 
 typedef struct sithConstraintResult
@@ -2907,6 +2908,14 @@ typedef struct sithConstraintConeParams
 	float     coneAngleCos;
 } sithConstraintConeParams;
 
+typedef struct sithConstraintHingeParams
+{
+	rdVector3 targetAxis;
+	rdVector3 jointAxis;
+	float     minAngle;
+	float     maxAngle;
+} sithConstraintHingeParams;
+
 // todo: signatures
 typedef struct sithConstraint
 {
@@ -2921,6 +2930,7 @@ typedef struct sithConstraint
 	{
 		sithConstraintDistanceParams distanceParams;
 		sithConstraintConeParams     coneParams;
+		sithConstraintHingeParams    hingeParams;
 	};
 	struct sithConstraint* next;
 } sithConstraint;
@@ -3205,8 +3215,12 @@ typedef struct sithThing
     float treeSize;
 #endif // JKM_TYPES
 #ifdef PUPPET_PHYSICS
-	sithConstraint* constraints;
-	sithThing*      constraintParent;
+	sithConstraint* constraints;      // list of constraints
+	// todo: handle more than 1 chain
+	sithThing* constraintRoot;        // the root of the constraint tree we're part of
+	sithThing* constraintParent;      // thing we're constrained to
+	//sithThing* constrainedThingsNext; // next thing under root
+	//sithThing* constrainedThingsPrev; // prev thing under root
 #endif
     // TODO split these into a struct
     uint32_t attach_flags;

@@ -26,7 +26,8 @@ void sithConstraint_AddDistanceConstraint(sithThing* pThing, sithThing* pConstra
 	constraint->distanceParams.targetAnchor = *pTargetAnchor;
 	constraint->distanceParams.constraintAnchor = *pConstrainedAnchor;
 	
-	constraint->constrainedThing->constraintParent = pTargetThing;
+	pConstrainedThing->constraintParent = pTargetThing;
+	pConstrainedThing->constraintRoot = pThing;
 
  	constraint->next = pThing->constraints;
 	pThing->constraints = constraint;
@@ -60,7 +61,39 @@ void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrained
 	constraint->coneParams.coneAngleCos = c;
 	constraint->coneParams.jointAxis = *pJointAxis;
 
-	constraint->constrainedThing->constraintParent = pTargetThing;
+	pConstrainedThing->constraintParent = pTargetThing;
+	pConstrainedThing->constraintRoot = pThing;
+
+	constraint->next = pThing->constraints;
+	pThing->constraints = constraint;
+
+	// new
+//	constraint->thing = pConstrainedThing;
+//	constraint->thing->constraintParent = pTargetThing;
+//
+//	constraint->next = pTargetThing->constraints;
+//	pTargetThing->constraints = constraint;
+}
+
+void sithConstraint_AddHingeConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pTargetAxis, const rdVector3* pJointAxis, float minAngle, float maxAngle)
+{
+	sithConstraint* constraint = (sithConstraint*)pSithHS->alloc(sizeof(sithConstraint));
+	if (!constraint)
+		return;
+	memset(constraint, 0, sizeof(sithConstraint));
+
+	constraint->type = SITH_CONSTRAINT_HINGE;
+	constraint->parentThing = pThing;
+	constraint->constrainedThing = pConstrainedThing;
+	constraint->targetThing = pTargetThing;
+
+	constraint->hingeParams.targetAxis = *pTargetAxis;
+	constraint->hingeParams.jointAxis = *pJointAxis;
+	constraint->hingeParams.minAngle = cosf(minAngle * (M_PI / 180.0f));
+	constraint->hingeParams.maxAngle = cosf(maxAngle * (M_PI / 180.0f));
+
+	pConstrainedThing->constraintParent = pTargetThing;
+	pConstrainedThing->constraintRoot = pThing;
 
 	constraint->next = pThing->constraints;
 	pThing->constraints = constraint;
@@ -282,6 +315,43 @@ static void sithConstraint_SolveConeConstraint(sithConstraintResult* pResult, si
 #endif
 }
 
+static void sithConstraint_SolveHingeConstraint(sithConstraintResult* pResult, sithConstraint* pConstraint, float deltaSeconds)
+{
+	rdVector3 hingeAxisA, hingeAxisB;
+	
+	rdMatrix_TransformVector34(&hingeAxisA, &pConstraint->hingeParams.targetAxis, &pConstraint->targetThing->lookOrientation);
+	rdMatrix_TransformVector34(&hingeAxisB, &pConstraint->hingeParams.jointAxis, &pConstraint->constrainedThing->lookOrientation);
+	
+	float cosAngle = rdVector_Dot3(&hingeAxisA, &hingeAxisB);
+
+	// Step 3: Calculate the constraint violation C
+	rdVector3 axisOfRotation;  // Axis around which the constraint operates
+	rdVector_Cross3(&axisOfRotation, &hingeAxisA, &hingeAxisB);  // Cross product to get the axis of rotation
+	rdVector_Normalize3Acc(&axisOfRotation);  // Normalize to get the direction of the axis
+
+	// Determine the constraint value (C) – this represents the violation (error) between the current configuration and the desired constraint
+	pResult->C = 1.0f - cosAngle;  // This is the angle between the two hinge axes (could use an angle limit)
+
+	// Step 5: Apply angular limits
+	if (cosAngle > pConstraint->hingeParams.minAngle)
+		pConstraint->result.C = cosAngle - pConstraint->hingeParams.minAngle;
+	else if (cosAngle < pConstraint->hingeParams.maxAngle)
+		pConstraint->result.C = cosAngle - pConstraint->hingeParams.maxAngle;
+	else
+	{
+		// No correction needed if the angle is within the limits
+		pConstraint->result.C = 0;
+		return;
+	}
+
+	// Step 4: Compute Jacobians
+	pResult->JrA = axisOfRotation;  // Angular velocity Jacobian for body A
+	pResult->JrB = axisOfRotation;  // Angular velocity Jacobian for body B
+
+	rdVector_Zero3(&pResult->JvA);
+	rdVector_Zero3(&pResult->JvB);
+}
+
 // Projected Gauss-Seidel
 void sithConstraint_SatisfyConstraints(sithThing* thing, int iterations, float deltaSeconds)
 {
@@ -380,6 +450,9 @@ void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
 				break;
 			case SITH_CONSTRAINT_CONE:
 				sithConstraint_SolveConeConstraint(&constraint->result, constraint, iterationStep);
+				break;
+			case SITH_CONSTRAINT_HINGE:
+				sithConstraint_SolveHingeConstraint(&constraint->result, constraint, iterationStep);
 				break;
 			default:
 				break;
