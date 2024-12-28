@@ -1100,9 +1100,11 @@ int sithCollision_DebrisDebrisCollide(sithThing *thing1, sithThing *thing2, sith
 
 		rdVector_Scale3(&forceVec, &a2, v6 * senderb);
 
-		sithPhysics_ThingApplyForce(v4, &forceVec);
+		if((v4->type != SITH_THING_PLAYER && v5->type == SITH_THING_CORPSE)) // added, corpses don't push players
+			sithPhysics_ThingApplyForce(v4, &forceVec);
 		rdVector_Neg3Acc(&forceVec);
-		sithPhysics_ThingApplyForce(v5, &forceVec);
+		if ((v5->type != SITH_THING_PLAYER && v4->type == SITH_THING_CORPSE)) // added, corpses don't push players
+			sithPhysics_ThingApplyForce(v5, &forceVec);
 
 #ifdef PUPPET_PHYSICS
 		if(v4->physicsParams.physflags & SITH_PF_ANGIMPULSE || v5->physicsParams.physflags & SITH_PF_ANGIMPULSE)

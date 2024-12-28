@@ -347,6 +347,7 @@ static void sithConstraint_SolveHingeConstraint(sithConstraintResult* pResult, s
 	// Step 4: Compute Jacobians
 	pResult->JrA = axisOfRotation;  // Angular velocity Jacobian for body A
 	pResult->JrB = axisOfRotation;  // Angular velocity Jacobian for body B
+	//rdVector_Neg3Acc(&pResult->JrB);  // Angular velocity Jacobian for body B
 
 	rdVector_Zero3(&pResult->JvA);
 	rdVector_Zero3(&pResult->JvB);

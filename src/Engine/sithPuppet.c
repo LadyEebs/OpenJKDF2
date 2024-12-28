@@ -1281,11 +1281,11 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 	rdVector_Zero3(&pJointThing->lookOrientation.scale);
 
 //	rdVector3 worldPivot;
-//	rdMatrix_TransformVector34(&worldPivot, &pNode->pivot, &pThing->rdthing.hierarchyNodeMatrices[pNode->idx]);
+//	rdMatrix_TransformVector34(&worldPivot, &pNode->pivot, &pThing->rdthing.hierarchyNodeMatrices[pNode->parent->idx]);
 //	rdVector_Sub3Acc(&pJointThing->position, &worldPivot);
-//
+//	
 //	rdVector3 worldParentPivot;
-//	rdMatrix_TransformVector34(&worldParentPivot, &pNode->parent->pivot, &pThing->rdthing.hierarchyNodeMatrices[pNode->parent->idx]);
+//	rdMatrix_TransformVector34(&worldParentPivot, &pNode->parent->pivot, &pThing->rdthing.hierarchyNodeMatrices[pNode->idx]);
 //	rdVector_Add3Acc(&pJointThing->position, &worldParentPivot);
 
 
@@ -1320,11 +1320,11 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 		rdVector_InvScale3Acc(&meshCenter, (float)pMesh->numVertices);
 
 		rdMatrix_TransformVector34Acc(&meshCenter, &pJointThing->lookOrientation);
-		rdVector_Add3Acc(&pos, &meshCenter);
+		//rdVector_Add3Acc(&pos, &meshCenter);
 
 		float avgDist = (minDist + maxDist) * 0.5f;
-		pJointThing->moveSize = maxDist;
-		pJointThing->collideSize = minDist;
+		pJointThing->moveSize = avgDist;
+		pJointThing->collideSize = minDist * 0.5;
 	}
 
 	sithCollision_GetSectorLookAt(pThing->sector, &pJointThing->position, &pos, 0.0f);
@@ -1472,14 +1472,14 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 	//sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, 2, 1, 20.0f);
 	//sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, 2, 1, 20.0f);
 
-	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, 2, 1, 0.0, 130);
-	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, 2, 1, 0.0, 130);
+	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, 2, 1, 0.0, 70);
+	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, 2, 1, 0.0, 70);
 
 	//sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER, 2, 1, 30.0f);
 	//sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER, 2, 1, 30.0f);
 
-	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER, 2, 1, 0.0, 130);
-	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER, 2, 1, 0.0, 130);
+	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER, 2, 1, 0.0, 70);
+	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER, 2, 1, 0.0, 70);
 
 	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_HIP, 2, 1, 30.0f);
 	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LTHIGH, JOINTTYPE_HIP, 2, 1, 30.0f);
