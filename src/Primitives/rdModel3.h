@@ -158,6 +158,11 @@ typedef struct rdMesh
     float field_64;
     int field_68;
     int field_6C;
+#ifdef PUPPET_PHYSICS
+	float minRadius;
+	float maxRadius;
+	rdVector3 center;
+#endif
 } rdMesh;
 #else
 
@@ -189,7 +194,10 @@ typedef struct rdMesh
     float field_64;
     int field_68;
     int field_6C;
-    
+#ifdef PUPPET_PHYSICS
+	float minRadius;
+	float maxRadius;
+#endif
 } rdMesh;
 #endif
 

@@ -91,6 +91,31 @@ void rdModel3_AccumulateMatrices(rdMatrix34* matrices, rdHierarchyNode* node, rd
 		childIter = childIter->nextSibling;
 	}
 }
+
+void rdModel3_CalculateMeshRadii(rdModel3* model)
+{
+	for (int i = 0; i < model->geosets[0].numMeshes; i++)
+	{
+		rdMesh* mesh = &model->geosets[0].meshes[i];
+	
+		mesh->center = rdroid_zeroVector3;
+		mesh->minRadius =  10000.0f;
+		mesh->maxRadius = -10000.0f;
+		for (int j = 0; j < mesh->numVertices; j++)
+		{
+			rdVector3* vtx = &mesh->vertices[j];
+			float dist = rdVector_Len3(vtx);
+			if (dist < mesh->minRadius)
+				mesh->minRadius = dist;
+
+			if (dist > mesh->maxRadius)
+				mesh->maxRadius = dist;
+
+			rdVector_Add3Acc(&mesh->center, vtx);
+		}
+		rdVector_InvScale3Acc(&mesh->center, (float)mesh->numVertices);
+	}
+}
 #endif
 
 // MOTS altered (RGB lights?)
@@ -546,6 +571,8 @@ int rdModel3_Load(char *model_fpath, rdModel3 *model)
     rdModel3_CalcNumParents(model); // MOTS added
 
 #if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
+	rdModel3_CalculateMeshRadii(model);
+
 	// generate base pose matrices
 	if(model->numHierarchyNodes)
 	{
