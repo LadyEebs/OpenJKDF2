@@ -1513,6 +1513,21 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 	}
 	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_TORSO, JOINTTYPE_HIP, 2, 0, 25.0f);
 
+	sithAnimclassConstraint* constraints = pThing->animclass->constraints;
+	while (constraints)
+	{
+		switch (constraints->type)
+		{
+		case SITH_CONSTRAINT_DISTANCE:
+			//sithPuppet_AddDistanceConstraint(pThing, constraints->constrainedJoint, constraints->targetJoint);
+			break;
+		case SITH_CONSTRAINT_CONE:
+			//sithPuppet_AddConeConstraint(pThing, constraints->constrainedJoint, constraints->targetJoint, constraints->param0, constraints->param1, constraint->param2);
+			break;
+		}
+		constraints = constraints->next;
+	}
+
 	sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_RFOOT, JOINTTYPE_RCALF);
 		sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_LFOOT, JOINTTYPE_LCALF);
 

@@ -1394,6 +1394,18 @@ typedef struct sithBodyPart
 } sithBodyPart;
 #endif
 
+#ifdef PUPPET_PHYSICS
+typedef struct sithAnimclassConstraint
+{
+	int type;                 // SITH_CONSTRAINT_TYPE
+	int constrainedJoint;     // JOINTTYPE
+	int targetJoint;          // JOINTTYPE
+	rdVector3 axis0, axis1;   // optional axis
+	float minAngle, maxAngle; // optional angles
+	struct sithAnimclassConstraint* next;
+} sithAnimclassConstraint;
+#endif
+
 typedef struct sithAnimclass
 {
     char name[32];
@@ -1406,6 +1418,9 @@ typedef struct sithAnimclass
 	sithBodyPart bodypart[JOINTTYPE_NUM_JOINTS];
 	int* jointToBodypart;
 	int root;
+#ifdef PUPPET_PHYSICS
+	sithAnimclassConstraint* constraints;
+#endif
 #else
 	int bodypart_to_joint[JOINTTYPE_NUM_JOINTS];
 #endif
@@ -2884,6 +2899,8 @@ enum SITH_CONSTRAINT_TYPE
 	SITH_CONSTRAINT_DISTANCE,
 	SITH_CONSTRAINT_CONE,
 	SITH_CONSTRAINT_HINGE,
+
+	SITH_CONSTRAINT_COUNT
 };
 
 typedef struct sithConstraintResult

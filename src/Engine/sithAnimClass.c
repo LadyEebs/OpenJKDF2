@@ -9,6 +9,25 @@
 #include "World/sithModel.h"
 #endif
 
+#ifdef PUPPET_PHYSICS
+int sithAnimClass_ConstraintTypeFromName(const char* name)
+{
+	static const char* sithAnimClass_constraintNames[SITH_CONSTRAINT_COUNT] =
+	{
+		"ballsocket",
+		"cone",
+		"hinge"
+	};
+
+	for (int i = 0; i < SITH_CONSTRAINT_COUNT; ++i)
+	{
+		if(stricmp(sithAnimClass_constraintNames[i], name) == 0)
+			return i;
+	}
+	return -1;
+}
+#endif
+
 int sithAnimClass_Load(sithWorld *world, int a2)
 {
     int num_animclasses; // ebx
@@ -182,7 +201,7 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 					if (stdConffile_entry.numArgs <= 2)
 						flags = 0;
 					else
-						_sscanf(stdConffile_entry.args[2].value, "%x", &flags);
+						_sscanf(stdConffile_entry.args[2].key, "%x", &flags);
 
 					if (stdConffile_entry.numArgs <= 3)
 						mass = 1.0;
@@ -242,6 +261,87 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 #endif
 			}
         }
+#ifdef PUPPET_PHYSICS
+		else if (!_strcmp(stdConffile_entry.args[0].value, "constraints"))
+		{
+			while (stdConffile_ReadArgs())
+			{
+				if (!stdConffile_entry.numArgs || !_strcmp(stdConffile_entry.args[0].key, "end"))
+					break;
+
+				int type, targetJoint, constrainedJoint;
+				if (model && stdConffile_entry.numArgs > 2)
+				{
+					type = sithAnimClass_ConstraintTypeFromName(stdConffile_entry.args[0].key);
+					if(type != -1)
+					{
+						constrainedJoint = (intptr_t)stdHashTable_GetKeyVal(sithPuppet_jointNamesToIdxHashtable, stdConffile_entry.args[1].key) - 1;
+						targetJoint = (intptr_t)stdHashTable_GetKeyVal(sithPuppet_jointNamesToIdxHashtable, stdConffile_entry.args[2].key) - 1;
+				
+						if (targetJoint != -1 && constrainedJoint != -1)
+						{
+							sithAnimclassConstraint* constraint = (sithAnimclassConstraint*)rdroid_pHS->alloc(sizeof(sithAnimclassConstraint));
+							memset(constraint, 0, sizeof(sithAnimclassConstraint));
+							constraint->type = type;
+							constraint->constrainedJoint = constrainedJoint;
+							constraint->targetJoint = targetJoint;
+							constraint->next = animclass->constraints;
+							animclass->constraints = constraint;
+					
+							switch(type)
+							{
+							case SITH_CONSTRAINT_CONE:
+								if (stdConffile_entry.numArgs > 4)
+								{
+									if (_sscanf(stdConffile_entry.args[3].key,
+										"(%f/%f/%f)",
+										&constraint->axis0.x,
+										&constraint->axis0.y,
+										&constraint->axis0.z) != 3
+									)
+									{
+										return 0;
+									}
+									constraint->minAngle = atof(stdConffile_entry.args[4].key);
+								}
+								break;
+							case SITH_CONSTRAINT_HINGE:
+								if (stdConffile_entry.numArgs > 6)
+								{
+									if (_sscanf(stdConffile_entry.args[3].key,
+												"(%f/%f/%f)",
+												&constraint->axis0.x,
+												&constraint->axis0.y,
+												&constraint->axis0.z) != 3
+										)
+									{
+										return 0;
+									}
+
+									if (_sscanf(stdConffile_entry.args[4].key,
+												"(%f/%f/%f)",
+												&constraint->axis1.x,
+												&constraint->axis1.y,
+												&constraint->axis1.z) != 3
+										)
+									{
+										return 0;
+									}
+
+									constraint->minAngle = atof(stdConffile_entry.args[5].key);
+									constraint->maxAngle = atof(stdConffile_entry.args[6].key);
+								}
+								break;
+							case SITH_CONSTRAINT_DISTANCE:
+							default:
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+#endif
         else if ( stdConffile_entry.numArgs > 1u )
         {
             animNameIdx = (intptr_t)stdHashTable_GetKeyVal(sithPuppet_animNamesToIdxHashtable, stdConffile_entry.args[0].value);
@@ -325,6 +425,16 @@ void sithAnimClass_Free(sithWorld *world)
 #ifdef ANIMCLASS_NAMES
 				if(world->animclasses[v2].jointToBodypart)
 					rdroid_pHS->free(world->animclasses[v2].jointToBodypart);
+#endif
+#ifdef PUPPET_PHYSICS
+				sithAnimclassConstraint* constraint = world->animclasses[v2].constraints;
+				while (constraint)
+				{
+					sithAnimclassConstraint* next = constraint->next;
+					if(constraint)
+						rdroid_pHS->free(constraint);
+					constraint = next;
+				}
 #endif
                 stdHashTable_FreeKey(sithPuppet_hashtable, world->animclasses[v2].name);
                 ++v1;
