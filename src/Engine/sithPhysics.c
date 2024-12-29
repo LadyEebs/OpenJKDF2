@@ -176,7 +176,7 @@ void sithPhysics_ThingTick(sithThing *pThing, float deltaSecs)
 	 // the mass to unit ratio is really high so scale the radius to a consistent unit
 	float adjustedSize = pThing->moveSize;// * 10.0f;
 	pThing->physicsParams.inertia = (2.0 / 5.0) * pThing->physicsParams.mass * adjustedSize * adjustedSize;
-	pThing->physicsParams.inertia = fmax(pThing->physicsParams.inertia, 0.001f);
+	pThing->physicsParams.inertia = fmax(pThing->physicsParams.inertia, 0.0001f);
 	if (pThing->puppet && pThing->puppet->physics)
 	{
 		// let the animation system take over
@@ -1082,27 +1082,6 @@ void sithPhysics_ThingPhysAttached(sithThing *pThing, float deltaSeconds)
         sithCollision_sub_4E7670(pThing, &a);
 
 #ifdef PUPPET_PHYSICS
-		if (!rdVector_IsZero3(&pThing->physicsParams.rotVel))
-		{
-			sithPhysics_ApplyDrag(&pThing->physicsParams.rotVel, pThing->physicsParams.airDrag, 0.0001, deltaSeconds);
-			//rdMath_ClampVectorRange(&pThing->physicsParams.rotVel, -pThing->physicsParams.maxRotVel, pThing->physicsParams.maxRotVel);
-
-			rdMatrix34 invMat;
-			rdMatrix_InvertOrtho34(&invMat, &pThing->lookOrientation);
-
-			rdVector3 localRotVel;
-			rdMatrix_TransformVector34(&localRotVel, &pThing->physicsParams.rotVel, &invMat);
-
-			rdVector3 axis;
-			float angle = rdVector_Normalize3(&axis, &localRotVel) * deltaSeconds * (180.0f / M_PI);
-			rdMatrix_BuildFromAxisAngle34(&a, &axis, angle);
-			sithCollision_sub_4E7670(pThing, &a);
-			//if (((bShowInvisibleThings + (pThing->thingIdx & 0xFF)) & 7) == 0)
-				//rdMatrix_Normalize34(&pThing->lookOrientation);
-		}
-#endif
-
-#ifdef PUPPET_PHYSICS
 		if (!(pThing->physicsParams.physflags & SITH_PF_ANGIMPULSE))
 		{
 #endif
@@ -1122,6 +1101,26 @@ void sithPhysics_ThingPhysAttached(sithThing *pThing, float deltaSeconds)
         if ( (((bShowInvisibleThings & 0xFF) + (pThing->thingIdx & 0xFF)) & 7) == 0 )
             rdMatrix_Normalize34(&pThing->lookOrientation);
     }
+#ifdef PUPPET_PHYSICS
+	if (!rdVector_IsZero3(&pThing->physicsParams.rotVel))
+	{
+		sithPhysics_ApplyDrag(&pThing->physicsParams.rotVel, pThing->physicsParams.airDrag, 0.0001, deltaSeconds);
+		//rdMath_ClampVectorRange(&pThing->physicsParams.rotVel, -pThing->physicsParams.maxRotVel, pThing->physicsParams.maxRotVel);
+
+		rdMatrix34 invMat;
+		rdMatrix_InvertOrtho34(&invMat, &pThing->lookOrientation);
+
+		rdVector3 localRotVel;
+		rdMatrix_TransformVector34(&localRotVel, &pThing->physicsParams.rotVel, &invMat);
+
+		rdVector3 axis;
+		float angle = rdVector_Normalize3(&axis, &localRotVel) * deltaSeconds * (180.0f / M_PI);
+		rdMatrix_BuildFromAxisAngle34(&a, &axis, angle);
+		sithCollision_sub_4E7670(pThing, &a);
+		//if (((bShowInvisibleThings + (pThing->thingIdx & 0xFF)) & 7) == 0)
+			//rdMatrix_Normalize34(&pThing->lookOrientation);
+	}
+#endif
     if ( possibly_undef_2 < 0.25 )
     {
         possibly_undef_2 = 0.25;
