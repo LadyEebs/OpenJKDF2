@@ -17,7 +17,7 @@
 #define REGIONAL_DAMAGE      // dismemberment enhancements and regional damage support
 #define GAMEPLAY_COGS        // adds some gameplay system cogs (like MasterCog and ActionCog) that can be used for specific shared game logic
 #define ANIMCLASS_NAMES      // adds name support to puppet file joint section
-#define PUPPET_PHYSICS       // alternative physics animations (ragdolls) using puppet joints
+#define PUPPET_PHYSICS       // physics-based animations (ex. ragdolls) using puppet joints
 
 // Old render pipeline features
 #define STENCIL_BUFFER       // mark the stencil buffer with dynamic/transparent stuff, so we can effectively cull things like decals
@@ -78,18 +78,6 @@
 #define FOG
 #endif
 
-#ifdef PUPPET_PHYSICS
-
-#ifndef REGIONAL_DAMAGE
-#define REGIONAL_DAMAGE // make sure this on
-#endif
-
-#ifndef ANIMCLASS_NAMES
-#define ANIMCLASS_NAMES // make sure we use the named system
-#endif
-
-#endif
-
 // helper to avoid redundantly checking this constantly
 #ifdef SPECULAR_LIGHTING
 #define USES_VERTEX_LIGHTING(LIGHT_MODE) (((LIGHT_MODE) == 3) || ((LIGHT_MODE) == 4)|| ((LIGHT_MODE) == 5))
@@ -102,6 +90,18 @@
 #if defined(DECAL_RENDERING) || defined(PARTICLE_LIGHTS) || defined(SPHERE_AO)
 #define VIEW_SPACE_GBUFFER // store view space data in the gbuffer instead of clip space, important for deferred effects like decals
 #define DEFERRED_FRAMEWORK // helper stuff for deferred passes
+#endif
+
+#endif
+
+#ifdef PUPPET_PHYSICS
+
+#ifndef REGIONAL_DAMAGE
+#define REGIONAL_DAMAGE // make sure this on
+#endif
+
+#ifndef ANIMCLASS_NAMES
+#define ANIMCLASS_NAMES // make sure we use the named system
 #endif
 
 #endif
