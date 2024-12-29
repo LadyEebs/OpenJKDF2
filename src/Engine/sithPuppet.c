@@ -1133,7 +1133,7 @@ void sithPuppet_AddDistanceConstraint(sithThing* pThing, int joint, int target)
 	sithConstraint_AddDistanceConstraint(pThing, jointThing, targetThing, &anchor, &rdroid_zeroVector3, 0.0f);*/
 }
 
-void sithPuppet_AddConeConstraint(sithThing* pThing, int joint, int target, int axis, int flip, float angle)
+void sithPuppet_AddConeConstraint(sithThing* pThing, int joint, int target, const rdVector3* axis, float angle)
 {
 	int hasJoint = pThing->animclass->jointBits & (1ull << joint);
 	int hasTarget = pThing->animclass->jointBits & (1ull << target);
@@ -1142,17 +1142,6 @@ void sithPuppet_AddConeConstraint(sithThing* pThing, int joint, int target, int 
 
 	sithThing* targetThing = &pThing->puppet->physics->joints[target].thing;
 	sithThing* jointThing = &pThing->puppet->physics->joints[joint].thing;
-
-	rdVector3 coneAxis;
-	if (axis == 0)
-		coneAxis = rdroid_xVector3;
-	else if (axis == 1)
-		coneAxis = rdroid_yVector3;
-	else
-		coneAxis = rdroid_zVector3;
-
-	if (flip)
-		rdVector_Neg3Acc(&coneAxis);
 	
 	rdHierarchyNode* pNode = &pThing->rdthing.model3->hierarchyNodes[pThing->animclass->bodypart[joint].nodeIdx];
 
@@ -1198,12 +1187,12 @@ void sithPuppet_AddConeConstraint(sithThing* pThing, int joint, int target, int 
 //	//rdVector_Neg3Acc(&localPos);
 //	rdVector_Normalize3(&coneAxis, &localPos);
 
-	sithConstraint_AddConeConstraint(pThing, jointThing, targetThing, &contactPointA, &coneAxis, angle, &coneAxis);
+	sithConstraint_AddConeConstraint(pThing, jointThing, targetThing, &contactPointA, axis, angle, axis);
 }
 
 
 
-void sithPuppet_AddHingeConstraint(sithThing* pThing, int joint, int target, int axis, int flip, float minAngle, float maxAngle)
+void sithPuppet_AddHingeConstraint(sithThing* pThing, int joint, int target, const rdVector3* axis, float minAngle, float maxAngle)
 {
 	int hasJoint = pThing->animclass->jointBits & (1ull << joint);
 	int hasTarget = pThing->animclass->jointBits & (1ull << target);
@@ -1212,17 +1201,6 @@ void sithPuppet_AddHingeConstraint(sithThing* pThing, int joint, int target, int
 
 	sithThing* targetThing = &pThing->puppet->physics->joints[target].thing;
 	sithThing* jointThing = &pThing->puppet->physics->joints[joint].thing;
-
-	rdVector3 coneAxis;
-	if (axis == 0)
-		coneAxis = rdroid_xVector3;
-	else if (axis == 1)
-		coneAxis = rdroid_yVector3;
-	else
-		coneAxis = rdroid_zVector3;
-
-	if (flip)
-		rdVector_Neg3Acc(&coneAxis);
 
 	rdHierarchyNode* pNode = &pThing->rdthing.model3->hierarchyNodes[pThing->animclass->bodypart[joint].nodeIdx];
 
@@ -1268,10 +1246,8 @@ void sithPuppet_AddHingeConstraint(sithThing* pThing, int joint, int target, int
 //	//rdVector_Neg3Acc(&localPos);
 //	rdVector_Normalize3(&coneAxis, &localPos);
 
-	rdVector3 jointAxis;
-	rdVector_Neg3(&jointAxis, &coneAxis);
 
-	sithConstraint_AddHingeConstraint(pThing, jointThing, targetThing, &coneAxis, &coneAxis, minAngle, maxAngle);
+	sithConstraint_AddHingeConstraint(pThing, jointThing, targetThing, axis, axis, minAngle, maxAngle);
 }
 
 void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithBodyPart* pBodyPart, rdHierarchyNode* pNode, int jointIdx, const rdVector3* pInitialVel)
@@ -1483,81 +1459,85 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 		sithPuppet_SetupJointThing(pThing, &pJoint->thing, pBodyPart, pNode, jointIdx, pInitialVel);
 	}
 
-	//sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RFOOT, JOINTTYPE_RCALF, 2, 1, 35.0f);
-	//sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LFOOT, JOINTTYPE_LCALF, 2, 1, 35.0f);
-	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_RFOOT, JOINTTYPE_RCALF, 0, 0, -45.0, 5.0f);
-	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_LFOOT, JOINTTYPE_LCALF, 0, 0, -45.0, 5.0f);
-	
-	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_RHAND, JOINTTYPE_RFOREARM, 0, 0, -45.0, 35.0f);
-	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_LHAND, JOINTTYPE_LFOREARM, 0, 0, -45.0, 35.0f);
-	//sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RHAND, JOINTTYPE_RFOREARM, 0, 0, 35.0f);
-	//sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LHAND, JOINTTYPE_LFOREARM, 0, 0, 35.0f);
-	//sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, 2, 1, 20.0f);
-	//sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, 2, 1, 20.0f);
-
-	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, 0, 0, 0.0, 70);
-	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, 0, 0, 0.0, 70);
-
-	//sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER, 2, 1, 30.0f);
-	//sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER, 2, 1, 30.0f);
-
-	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER, 0, 0, 0.0, 70);
-	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER, 0, 0, 0.0, 70);
-
-	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_HIP, 2, 1, 30.0f);
-	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LTHIGH, JOINTTYPE_HIP, 2, 1, 30.0f);
-	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RSHOULDER, JOINTTYPE_TORSO, 0, 0, 100.0f);
-	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LSHOULDER, JOINTTYPE_TORSO, 0, 1, 100.0f);
-	if (pThing->animclass->jointBits & (1ull << JOINTTYPE_NECK))
-	{
-		sithPuppet_AddConeConstraint(pThing, JOINTTYPE_HEAD, JOINTTYPE_NECK, 2, 0, 15.0f);
-		//sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_NECK, JOINTTYPE_TORSO, 0, 0, -5.0, 15.0f);
-		sithPuppet_AddConeConstraint(pThing, JOINTTYPE_NECK, JOINTTYPE_TORSO, 2, 0, 15.0f);
-	}
-	else
-	{
-		sithPuppet_AddConeConstraint(pThing, JOINTTYPE_HEAD, JOINTTYPE_TORSO, 2, 0, 15.0f);
-	}
-	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_TORSO, JOINTTYPE_HIP, 2, 0, 25.0f);
-
 	sithAnimclassConstraint* constraints = pThing->animclass->constraints;
-	while (constraints)
+	if(constraints)
 	{
-		switch (constraints->type)
+		while (constraints)
 		{
-		case SITH_CONSTRAINT_DISTANCE:
-			//sithPuppet_AddDistanceConstraint(pThing, constraints->constrainedJoint, constraints->targetJoint);
-			break;
-		case SITH_CONSTRAINT_CONE:
-			//sithPuppet_AddConeConstraint(pThing, constraints->constrainedJoint, constraints->targetJoint, constraints->param0, constraints->param1, constraint->param2);
-			break;
+			switch (constraints->type)
+			{
+			case SITH_CONSTRAINT_DISTANCE:
+				sithPuppet_AddDistanceConstraint(pThing, constraints->constrainedJoint, constraints->targetJoint);
+				break;
+			case SITH_CONSTRAINT_CONE:
+				sithPuppet_AddConeConstraint(pThing, constraints->constrainedJoint, constraints->targetJoint, &constraints->axis, constraints->minAngle);
+				break;
+			case SITH_CONSTRAINT_HINGE:
+				sithPuppet_AddHingeConstraint(pThing, constraints->constrainedJoint, constraints->targetJoint, &constraints->axis, constraints->minAngle, constraints->maxAngle);
+				break;
+			default:
+				break;
+			}
+			constraints = constraints->next;
 		}
-		constraints = constraints->next;
 	}
-
-	sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_RFOOT, JOINTTYPE_RCALF);
-		sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_LFOOT, JOINTTYPE_LCALF);
-
-	sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_RHAND, JOINTTYPE_RFOREARM);
-	sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_LHAND, JOINTTYPE_LFOREARM);
-	sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH);
-	sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH);
-	sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER);
-	sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER);
-	sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_HIP);
-	sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_LTHIGH, JOINTTYPE_HIP);
-	sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_RSHOULDER, JOINTTYPE_TORSO);
-	sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_LSHOULDER, JOINTTYPE_TORSO);
-	if (pThing->animclass->jointBits & (1ull << JOINTTYPE_NECK))
+	else // temp until content is updated
 	{
-		sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_HEAD, JOINTTYPE_NECK);
-		sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_NECK, JOINTTYPE_TORSO);
+		sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_RFOOT, JOINTTYPE_RCALF, &rdroid_xVector3, -45.0, 5.0f);
+		sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_LFOOT, JOINTTYPE_LCALF, &rdroid_xVector3, -45.0, 5.0f);	
+		sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_RHAND, JOINTTYPE_RFOREARM, &rdroid_xVector3, -45.0, 35.0f);
+		sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_LHAND, JOINTTYPE_LFOREARM, &rdroid_xVector3, -45.0, 35.0f);
+		sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, &rdroid_xVector3, 0.0, 70);
+		sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, &rdroid_xVector3, 0.0, 70);
+		sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER, &rdroid_xVector3, 0.0, 70);
+		sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER, &rdroid_xVector3, 0.0, 70);
+
+		rdVector3 down;
+		rdVector_Neg3(&down, &rdroid_zVector3);
+
+		rdVector3 left;
+		rdVector_Neg3(&left, &rdroid_xVector3);
+
+		sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_HIP, &down, 30.0f);
+		sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LTHIGH, JOINTTYPE_HIP, &down, 30.0f);
+		sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RSHOULDER, JOINTTYPE_TORSO, &rdroid_xVector3, 100.0f);
+		sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LSHOULDER, JOINTTYPE_TORSO, &left, 100.0f);
+		if (pThing->animclass->jointBits & (1ull << JOINTTYPE_NECK))
+		{
+			sithPuppet_AddConeConstraint(pThing, JOINTTYPE_HEAD, JOINTTYPE_NECK, &rdroid_zVector3, 15.0f);
+			//sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_NECK, JOINTTYPE_TORSO, 0, 0, -5.0, 15.0f);
+			sithPuppet_AddConeConstraint(pThing, JOINTTYPE_NECK, JOINTTYPE_TORSO, &rdroid_zVector3, 15.0f);
+		}
+		else
+		{
+			sithPuppet_AddConeConstraint(pThing, JOINTTYPE_HEAD, JOINTTYPE_TORSO, &rdroid_zVector3, 15.0f);
+		}
+		sithPuppet_AddConeConstraint(pThing, JOINTTYPE_TORSO, JOINTTYPE_HIP, &rdroid_zVector3, 25.0f);
+
+		sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_RFOOT, JOINTTYPE_RCALF);
+			sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_LFOOT, JOINTTYPE_LCALF);
+
+		sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_RHAND, JOINTTYPE_RFOREARM);
+		sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_LHAND, JOINTTYPE_LFOREARM);
+		sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH);
+		sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH);
+		sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_RFOREARM, JOINTTYPE_RSHOULDER);
+		sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_LFOREARM, JOINTTYPE_LSHOULDER);
+		sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_RTHIGH, JOINTTYPE_HIP);
+		sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_LTHIGH, JOINTTYPE_HIP);
+		sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_RSHOULDER, JOINTTYPE_TORSO);
+		sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_LSHOULDER, JOINTTYPE_TORSO);
+		if (pThing->animclass->jointBits & (1ull << JOINTTYPE_NECK))
+		{
+			sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_HEAD, JOINTTYPE_NECK);
+			sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_NECK, JOINTTYPE_TORSO);
+		}
+		else
+		{
+			sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_HEAD, JOINTTYPE_TORSO);
+		}	
+		sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_TORSO, JOINTTYPE_HIP);
 	}
-	else
-	{
-		sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_HEAD, JOINTTYPE_TORSO);
-	}	
-	sithPuppet_AddDistanceConstraint(pThing, JOINTTYPE_TORSO, JOINTTYPE_HIP);
 }
 
 void sithPuppet_StopPhysics(sithThing* pThing)

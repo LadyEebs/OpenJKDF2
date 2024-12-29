@@ -295,41 +295,30 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 								{
 									if (_sscanf(stdConffile_entry.args[3].key,
 										"(%f/%f/%f)",
-										&constraint->axis0.x,
-										&constraint->axis0.y,
-										&constraint->axis0.z) != 3
+										&constraint->axis.x,
+										&constraint->axis.y,
+										&constraint->axis.z) != 3
 									)
 									{
 										return 0;
 									}
-									constraint->minAngle = atof(stdConffile_entry.args[4].key);
+									constraint->maxAngle = constraint->minAngle = atof(stdConffile_entry.args[4].key);
 								}
 								break;
 							case SITH_CONSTRAINT_HINGE:
-								if (stdConffile_entry.numArgs > 6)
+								if (stdConffile_entry.numArgs > 5)
 								{
 									if (_sscanf(stdConffile_entry.args[3].key,
 												"(%f/%f/%f)",
-												&constraint->axis0.x,
-												&constraint->axis0.y,
-												&constraint->axis0.z) != 3
+												&constraint->axis.x,
+												&constraint->axis.y,
+												&constraint->axis.z) != 3
 										)
 									{
 										return 0;
 									}
-
-									if (_sscanf(stdConffile_entry.args[4].key,
-												"(%f/%f/%f)",
-												&constraint->axis1.x,
-												&constraint->axis1.y,
-												&constraint->axis1.z) != 3
-										)
-									{
-										return 0;
-									}
-
-									constraint->minAngle = atof(stdConffile_entry.args[5].key);
-									constraint->maxAngle = atof(stdConffile_entry.args[6].key);
+									constraint->minAngle = atof(stdConffile_entry.args[4].key);
+									constraint->maxAngle = atof(stdConffile_entry.args[5].key);
 								}
 								break;
 							case SITH_CONSTRAINT_DISTANCE:
