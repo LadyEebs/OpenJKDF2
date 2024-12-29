@@ -101,6 +101,31 @@ static const char* sithPuppet_jointNames[] =
 	"rfoot",
 	"lfoot",
 #endif
+#ifdef PUPPET_PHYSICS
+	"btail",
+	"mtail",
+	"ttail",
+	"bcloak",
+	"mcloak",
+	"tcloak",
+	"bwing",
+	"mwing",
+	"twing",
+	"fskirt",
+	"bskirt",
+	"lskirt",
+	"rskirt",
+	"tcape",
+	"mcape",
+	"bcape",
+	"fbelt",
+	"bbelt",
+	"lbelt",
+	"rbelt",
+	"bponytail",
+	"mponytail",
+	"tponytail",
+#endif
 };
 #endif
 
