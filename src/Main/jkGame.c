@@ -21,6 +21,9 @@
 #include "Engine/rdColormap.h"
 #include "Engine/sithCamera.h"
 #include "General/stdString.h"
+#ifdef PUPPET_PHYSICS
+#include "Engine/sithPuppet.h"
+#endif
 
 #include "stdPlatform.h"
 #include "jk.h"
@@ -215,6 +218,9 @@ int jkGame_Update()
                     sithNet_thingsIdx);
                 if ( sithNet_isMulti )
                     _sprintf(&std_genBuffer[_strlen(std_genBuffer)], " %d m %d b", stdComm_dword_8321F4, stdComm_dword_8321F0);
+#ifdef PUPPET_PHYSICS
+				_sprintf(&std_genBuffer[_strlen(std_genBuffer)], " %da %dr", sithPuppet_activePuppets, sithPuppet_restingPuppets);
+#endif
                 jkDev_sub_41FC40(100, std_genBuffer);
                 v3 = Video_dword_5528A8;
             }

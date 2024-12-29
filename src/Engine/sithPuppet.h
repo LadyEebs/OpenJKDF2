@@ -48,6 +48,9 @@ void sithPuppet_advanceidk(sithThing *pThing, float a2);
 int sithPuppet_FindHitLoc(sithThing* pReceiverThing, rdVector3* pPos);
 
 #ifdef PUPPET_PHYSICS
+extern int sithPuppet_activePuppets;
+extern int sithPuppet_restingPuppets;
+
 void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float deltaSeconds);
 void sithPuppet_StopPhysics(sithThing* pThing);
 void sithPuppet_BuildJointMatrices(sithThing* thing);

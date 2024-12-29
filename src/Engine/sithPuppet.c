@@ -104,6 +104,11 @@ static const char* sithPuppet_jointNames[] =
 };
 #endif
 
+#ifdef PUPPET_PHYSICS
+int sithPuppet_activePuppets = 0;
+int sithPuppet_restingPuppets = 0;
+#endif
+
 int sithPuppet_Startup()
 {
     sithPuppet_hashtable = stdHashTable_New(64);
@@ -1726,8 +1731,12 @@ int sithbPuppet_IsAtRest(sithThing* thing, float deltaSeconds)
 void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds)
 {
 	if (thing->physicsParams.atRest > 0)
+	{
+		++sithPuppet_restingPuppets;
 		return;
+	}
 
+	++sithPuppet_activePuppets;
 	sithPuppet_UpdateJoints(thing, deltaSeconds);
 	sithPuppet_UpdateJointMatrices(thing);
 

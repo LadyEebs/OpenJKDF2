@@ -233,6 +233,11 @@ void sithThing_TickAll(float deltaSeconds, int deltaMs)
     if ( sithWorld_pCurrentWorld->numThings < 0 )
         return;
 
+	#ifdef PUPPET_PHYSICS
+	sithPuppet_activePuppets = 0;
+	sithPuppet_restingPuppets = 0;
+	#endif
+
     for (int i = 0; i < sithWorld_pCurrentWorld->numThings+1; i++)
     {
         pThingIter = &sithWorld_pCurrentWorld->things[i];
