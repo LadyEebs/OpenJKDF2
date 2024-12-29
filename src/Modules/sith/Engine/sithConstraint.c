@@ -89,8 +89,8 @@ void sithConstraint_AddHingeConstraint(sithThing* pThing, sithThing* pConstraine
 
 	constraint->hingeParams.targetAxis = *pTargetAxis;
 	constraint->hingeParams.jointAxis = *pJointAxis;
-	constraint->hingeParams.minAngle = cosf(minAngle * (M_PI / 180.0f));
-	constraint->hingeParams.maxAngle = cosf(maxAngle * (M_PI / 180.0f));
+	constraint->hingeParams.minAngle = cosf(minAngle * 0.5f * (M_PI / 180.0f));
+	constraint->hingeParams.maxAngle = cosf(maxAngle * 0.5f * (M_PI / 180.0f));
 
 	pConstrainedThing->constraintParent = pTargetThing;
 	pConstrainedThing->constraintRoot = pThing;
@@ -191,7 +191,7 @@ static void sithConstraint_SolveDistanceConstraint(sithConstraintResult* pResult
 
 	// add bias for error correction
 	pResult->C = -(jkPlayer_puppetPosBias / deltaSeconds) * pResult->C;
-	//pResult->C = stdMath_Clamp(pResult->C, -2.0f, 2.0f); // todo: what's a good clamp value?
+	pResult->C = stdMath_Clamp(pResult->C, -2.0f, 2.0f);
 
 	rdVector3 unitConstraintN;
 	rdVector_Neg3(&unitConstraintN, &unitConstraint);
@@ -238,8 +238,6 @@ static void sithConstraint_SolveConeConstraint(sithConstraintResult* pResult, si
 		return;
 	}
 
-	float angle = acosf(dotProduct);
-
 	rdVector3 correctionAxis;
 	rdVector_Cross3(&correctionAxis, &coneAxis, &relativeAxis);
 	rdVector_Normalize3Acc(&correctionAxis);
@@ -254,6 +252,7 @@ static void sithConstraint_SolveConeConstraint(sithConstraintResult* pResult, si
 	pResult->JrB = JwB;
 	pResult->C = pConstraint->coneParams.coneAngleCos - dotProduct;
 	pResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * pResult->C;
+	pResult->C = stdMath_Clamp(pResult->C, -2.0f, 2.0f);
 
 #else
 	// calculate the angle and test for violation
@@ -323,31 +322,38 @@ static void sithConstraint_SolveHingeConstraint(sithConstraintResult* pResult, s
 	rdMatrix_TransformVector34(&hingeAxisB, &pConstraint->hingeParams.jointAxis, &pConstraint->constrainedThing->lookOrientation);
 	
 	float cosAngle = rdVector_Dot3(&hingeAxisA, &hingeAxisB);
-
-	// Step 3: Calculate the constraint violation C
-	rdVector3 axisOfRotation;  // Axis around which the constraint operates
-	rdVector_Cross3(&axisOfRotation, &hingeAxisA, &hingeAxisB);  // Cross product to get the axis of rotation
-	rdVector_Normalize3Acc(&axisOfRotation);  // Normalize to get the direction of the axis
-
-	// Determine the constraint value (C) – this represents the violation (error) between the current configuration and the desired constraint
-	pResult->C = 1.0f - cosAngle;  // This is the angle between the two hinge axes (could use an angle limit)
-
-	// Step 5: Apply angular limits
-	if (cosAngle > pConstraint->hingeParams.minAngle)
-		pConstraint->result.C = cosAngle - pConstraint->hingeParams.minAngle;
-	else if (cosAngle < pConstraint->hingeParams.maxAngle)
-		pConstraint->result.C = cosAngle - pConstraint->hingeParams.maxAngle;
-	else
+	if (cosAngle >= 0.999f)
 	{
-		// No correction needed if the angle is within the limits
-		pConstraint->result.C = 0;
+		pConstraint->result.C = 0.0f;
 		return;
 	}
 
-	// Step 4: Compute Jacobians
-	pResult->JrA = axisOfRotation;  // Angular velocity Jacobian for body A
-	pResult->JrB = axisOfRotation;  // Angular velocity Jacobian for body B
-	//rdVector_Neg3Acc(&pResult->JrB);  // Angular velocity Jacobian for body B
+	rdVector3 rotationAxis;
+	rdVector_Cross3(&rotationAxis, &hingeAxisA, &hingeAxisB);
+	rdVector_Normalize3Acc(&rotationAxis);
+
+	if (cosAngle < pConstraint->hingeParams.minAngle)
+	{
+		// Push up towards the minAngle
+		pResult->C = pConstraint->hingeParams.minAngle - cosAngle;
+	}
+	else if (cosAngle > pConstraint->hingeParams.maxAngle)
+	{
+		// Pull down towards the maxAngle
+		pResult->C = cosAngle - pConstraint->hingeParams.maxAngle;
+	}
+	else
+	{
+		// No correction needed if the angle is within the limits
+		pConstraint->result.C = 0.0f;
+		return;
+	}
+	pResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * pResult->C;
+	pResult->C = stdMath_Clamp(pResult->C, -2.0f, 2.0f);
+
+	pResult->JrA = rotationAxis;
+	pResult->JrB = rotationAxis;
+	rdVector_Neg3Acc(&pResult->JrA);
 
 	rdVector_Zero3(&pResult->JvA);
 	rdVector_Zero3(&pResult->JvB);
@@ -379,7 +385,6 @@ void sithConstraint_SatisfyConstraints(sithThing* thing, int iterations, float d
 				rdVector_Dot3(&c->result.JvB, &bodyB->physicsParams.vel) +
 				rdVector_Dot3(&c->result.JrB, &bodyB->physicsParams.rotVel);
 			Jv = stdMath_ClipPrecision(Jv);
-
 			if (stdMath_Fabs(Jv) < 0.001)
 			{
 				c = c->next;
@@ -390,6 +395,12 @@ void sithConstraint_SatisfyConstraints(sithThing* thing, int iterations, float d
 			float deltaLambda = (c->result.C - Jv) * c->effectiveMass;
 			deltaLambda *= 0.8; // todo: what's a good damping value?
 			deltaLambda = stdMath_ClipPrecision(deltaLambda);
+
+			if(stdMath_Fabs(deltaLambda) < 0.0001)
+			{
+				c = c->next;
+				continue;
+			}
 
 			// Add deltaLambda to the current lambda
 			float newLambda = c->lambda + deltaLambda;
@@ -407,11 +418,6 @@ void sithConstraint_SatisfyConstraints(sithThing* thing, int iterations, float d
 			rdVector_Scale3(&linearImpulseB, &c->result.JvB, deltaLambda / c->constrainedThing->physicsParams.mass);
 			rdVector_Scale3(&angularImpulseB, &c->result.JrB, deltaLambda / c->constrainedThing->physicsParams.inertia);
 
-			// Friction
-			rdVector3 omega_rel;
-			rdVector_Sub3(&omega_rel, &c->constrainedThing->physicsParams.rotVel, &c->targetThing->physicsParams.rotVel);
-			sithConstraint_ApplyFrictionToRotationalImpulses(&omega_rel, jkPlayer_puppetFriction, &angularImpulseA, &angularImpulseB);
-		
 			rdVector_Add3Acc(&bodyA->physicsParams.vel, &linearImpulseA);
 			rdVector_Add3Acc(&bodyA->physicsParams.rotVel, &angularImpulseA);
 
@@ -471,6 +477,28 @@ void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
 		{
 			int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 10 : 1;
 			sithConstraint_SatisfyConstraints(pThing, iterations, deltaSeconds);
+		}
+
+		// apply friction as impulses
+		constraint = pThing->constraints;
+		while (constraint)
+		{
+			float invMassA = 1.0f / constraint->targetThing->physicsParams.mass;
+			float invMassB = 1.0f / constraint->constrainedThing->physicsParams.mass;
+			float totalInvMass = invMassA + invMassB;
+
+			rdVector3 omegaRel;
+			rdVector_Sub3(&omegaRel, &constraint->targetThing->physicsParams.rotVel, &constraint->constrainedThing->physicsParams.rotVel);
+			rdVector_Scale3Acc(&omegaRel, jkPlayer_puppetFriction / totalInvMass);
+
+			rdVector3 impulseA, impulseB;
+			rdVector_Scale3(&impulseA, &omegaRel, -invMassA);
+			rdVector_Scale3(&impulseB, &omegaRel,  invMassB);
+
+			rdVector_Add3Acc(&constraint->targetThing->physicsParams.rotVel, &impulseA);
+			rdVector_Add3Acc(&constraint->constrainedThing->physicsParams.rotVel, &impulseB);
+
+			constraint = constraint->next;
 		}
 	}
 }
