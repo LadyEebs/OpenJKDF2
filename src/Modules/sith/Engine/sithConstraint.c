@@ -56,13 +56,10 @@ void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrained
 	constraint->constrainedThing = pConstrainedThing;
 	constraint->targetThing = pTargetThing;
 
-	float s, c;
-	stdMath_SinCos(angle * 0.5f, &s, &c);
-
 	constraint->coneParams.coneAnchor = *pConeAnchor;
 	constraint->coneParams.coneAxis = *pAxis;
 	constraint->coneParams.coneAngle = angle * 0.5f;
-	constraint->coneParams.coneAngleCos = c;
+	constraint->coneParams.coneAngleCos = stdMath_Cos(angle * 0.5f);
 	constraint->coneParams.jointAxis = *pJointAxis;
 
 	pConstrainedThing->constraintParent = pTargetThing;
@@ -93,8 +90,8 @@ void sithConstraint_AddHingeConstraint(sithThing* pThing, sithThing* pConstraine
 
 	constraint->hingeParams.targetAxis = *pTargetAxis;
 	constraint->hingeParams.jointAxis = *pJointAxis;
-	constraint->hingeParams.minAngle = cosf(minAngle * 0.5f * (M_PI / 180.0f));
-	constraint->hingeParams.maxAngle = cosf(maxAngle * 0.5f * (M_PI / 180.0f));
+	constraint->hingeParams.minCosAngle = stdMath_Cos(minAngle * 0.5f);
+	constraint->hingeParams.maxCosAngle = stdMath_Cos(maxAngle * 0.5f);
 
 	pConstrainedThing->constraintParent = pTargetThing;
 	pConstrainedThing->constraintRoot = pThing;
@@ -145,26 +142,6 @@ float sithConstraint_ComputeEffectiveMass(sithConstraint* constraint)
 	return (effectiveMass > 0.0001f) ? (1.0f / effectiveMass) : 0.0001f;
 }
 
-void sithConstraint_ApplyFrictionToRotationalImpulses(
-	const rdVector3* pOmegaRel,
-	float frictionCoefficient,
-	rdVector3* pImpulseA,
-	rdVector3* pImpulseB
-)
-{
-	// Calculate the magnitude of the relative angular velocity
-	if (rdVector_Len3(pOmegaRel) > 0.0f)
-	{
-		// Compute the frictional torque: opposite direction of relative angular velocity
-		rdVector3 frictionTorque;
-		rdVector_Scale3(&frictionTorque, pOmegaRel, frictionCoefficient);
-
-		// Add the frictional torque to the impulse
-		rdVector_Add3Acc(pImpulseA, &frictionTorque);
-		rdVector_Sub3Acc(pImpulseB, &frictionTorque);
-	}
-}
-
 static void sithConstraint_SolveDistanceConstraint(sithConstraintResult* pResult, sithConstraint* pConstraint, float deltaSeconds)
 {
 	// anchor A offset in world space
@@ -209,7 +186,6 @@ static void sithConstraint_SolveDistanceConstraint(sithConstraintResult* pResult
 
 static void sithConstraint_SolveConeConstraint(sithConstraintResult* pResult, sithConstraint* pConstraint, float deltaSeconds)
 {
-
 	// cone axis to world space
 	rdVector3 coneAxis;
 	rdMatrix_TransformVector34(&coneAxis, &pConstraint->coneParams.coneAxis, &pConstraint->targetThing->lookOrientation);
@@ -225,7 +201,6 @@ static void sithConstraint_SolveConeConstraint(sithConstraintResult* pResult, si
 	rdMatrix_TransformVector34(&thingAxis, &pConstraint->coneParams.jointAxis, &pConstraint->constrainedThing->lookOrientation);
 	rdVector_Normalize3Acc(&thingAxis);
 
-#if 1
 	sithThing* bodyA = pConstraint->targetThing;
 	sithThing* bodyB = pConstraint->constrainedThing;
 	
@@ -235,7 +210,6 @@ static void sithConstraint_SolveConeConstraint(sithConstraintResult* pResult, si
 	rdVector_Normalize3Acc(&relativeAxis);
 
 	float dotProduct = rdVector_Dot3(&coneAxis, &thingAxis);
-	dotProduct = stdMath_Clamp(dotProduct, -1.0f, 1.0f); // just in case cuz we're catching problems with NaN
 	if (dotProduct >= pConstraint->coneParams.coneAngleCos)
 	{
 		pResult->C = 0.0f;
@@ -257,65 +231,6 @@ static void sithConstraint_SolveConeConstraint(sithConstraintResult* pResult, si
 	pResult->C = pConstraint->coneParams.coneAngleCos - dotProduct;
 	pResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * pResult->C;
 	pResult->C = stdMath_Clamp(pResult->C, -2.0f, 2.0f);
-
-#else
-	// calculate the angle and test for violation
-	float angle = rdVector_Dot3(&coneAxis, &thingAxis);
-	angle = stdMath_ClipPrecision(angle);
-	if (angle <= pConstraint->coneParams.coneAngleCos)
-	{
-		rdVector3 normal;
-		rdVector_Cross3(&normal, &thingAxis, &coneAxis);
-		rdVector_Normalize3Acc(&normal);
-
-		rdMatrix34 qm;
-		rdMatrix_BuildFromVectorAngle34(&qm, &normal, pConstraint->coneParams.coneAngle);
-		//rdMatrix_Normalize34(&qm);
-
-		//rdQuat q;
-		//rdQuat_BuildFromAxisAngle(&q, &normal, pConstraint->coneParams.coneAngle);
-
-		rdVector3 coneVector;
-		//rdQuat_TransformVector(&coneVector, &q, &coneAxis);
-		rdMatrix_TransformVector34(&coneVector, &coneAxis, &qm);
-		rdVector_Normalize3Acc(&coneVector);
-	
-		rdVector3 hitNormal;
-		rdVector_Cross3(&hitNormal, &coneVector, &coneAxis);
-		rdVector_Cross3(&normal, &hitNormal, &coneVector);
-		rdVector_Normalize3Acc(&normal);
-
-		rdVector3 p1 = coneAnchor;
-		//rdVector_Sub3(&p1, &coneAnchor, &pConstraint->constrainedThing->position);
-	//	rdVector_MultAcc3(&p1, &coneVector, pConstraint->constrainedThing->moveSize);
-		rdVector_Add3Acc(&p1, &coneVector);
-		rdVector_Sub3Acc(&p1, &pConstraint->constrainedThing->position);
-
-		//rdVector_Neg3Acc(&normal);
-
-		rdVector_Copy3(&pConeResult->JvB, &normal);
-		rdVector_Cross3(&pConeResult->JrB, &p1, &normal);
-
-		pConeResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * rdVector_Dot3(&normal, &thingAxis);
-		//pConeResult->C = rdVector_Dot3(&normal, &thingAxis) ;// / (180.0f / M_PI);
-		pConeResult->C = stdMath_ClipPrecision(pConeResult->C);
-
-		rdVector_Neg3Acc(&normal);
-
-		rdVector3 p2 = coneAnchor;
-		//rdVector_Sub3(&p2, &coneAnchor, &pConstraint->targetThing->position);
-		//rdVector_MultAcc3(&p2, &coneVector, pConstraint->targetThing->moveSize);
-		rdVector_Add3Acc(&p2, &coneVector);
-		rdVector_Sub3Acc(&p2, &pConstraint->targetThing->position);
-
-		rdVector_Copy3(&pConeResult->JvA, &normal);
-		rdVector_Cross3(&pConeResult->JrA, &p2, &normal);
-	}
-	else
-	{
-		pConeResult->C = 0.0f;
-	}
-#endif
 }
 
 static void sithConstraint_SolveHingeConstraint(sithConstraintResult* pResult, sithConstraint* pConstraint, float deltaSeconds)
@@ -336,15 +251,15 @@ static void sithConstraint_SolveHingeConstraint(sithConstraintResult* pResult, s
 	rdVector_Cross3(&rotationAxis, &hingeAxisA, &hingeAxisB);
 	rdVector_Normalize3Acc(&rotationAxis);
 
-	if (cosAngle < pConstraint->hingeParams.minAngle)
+	if (cosAngle < pConstraint->hingeParams.minCosAngle)
 	{
 		// Push up towards the minAngle
-		pResult->C = pConstraint->hingeParams.minAngle - cosAngle;
+		pResult->C = pConstraint->hingeParams.minCosAngle - cosAngle;
 	}
-	else if (cosAngle > pConstraint->hingeParams.maxAngle)
+	else if (cosAngle > pConstraint->hingeParams.maxCosAngle)
 	{
 		// Pull down towards the maxAngle
-		pResult->C = cosAngle - pConstraint->hingeParams.maxAngle;
+		pResult->C = cosAngle - pConstraint->hingeParams.maxCosAngle;
 	}
 	else
 	{

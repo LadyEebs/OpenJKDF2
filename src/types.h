@@ -2907,8 +2907,8 @@ typedef struct sithConstraintHingeParams
 {
 	rdVector3 targetAxis;
 	rdVector3 jointAxis;
-	float     minAngle;
-	float     maxAngle;
+	float     minCosAngle;
+	float     maxCosAngle;
 } sithConstraintHingeParams;
 
 // todo: signatures
