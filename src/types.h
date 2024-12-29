@@ -2927,9 +2927,7 @@ typedef struct sithConstraintConeParams
 
 typedef struct sithConstraintHingeParams
 {
-	rdVector3 targetAnchor;
 	rdVector3 targetAxis;
-	rdVector3 constraintAnchor;
 	rdVector3 jointAxis;
 	float     minAngle;
 	float     maxAngle;
