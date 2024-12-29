@@ -1753,11 +1753,11 @@ int sithbPuppet_IsAtRest(sithThing* thing, float deltaSeconds)
 
 		// if any of the bodies are moving past a threshold then we're not at rest
 		float velLenSq = rdVector_Dot3(&pJoint->thing.physicsParams.vel, &pJoint->thing.physicsParams.vel);
-		if(velLenSq > 0.01f)
+		if(velLenSq > 0.001f)
 			return 0;
 
 		float rotVelLenSq = rdVector_Dot3(&pJoint->thing.physicsParams.rotVel, &pJoint->thing.physicsParams.rotVel);
-		if (rotVelLenSq > 0.05f)
+		if (rotVelLenSq > 0.01f)
 			return 0;
 	}
 
