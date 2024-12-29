@@ -2910,7 +2910,9 @@ typedef struct sithConstraintConeParams
 
 typedef struct sithConstraintHingeParams
 {
+	rdVector3 targetAnchor;
 	rdVector3 targetAxis;
+	rdVector3 constraintAnchor;
 	rdVector3 jointAxis;
 	float     minAngle;
 	float     maxAngle;
@@ -3221,6 +3223,7 @@ typedef struct sithThing
 	sithThing* constraintParent;      // thing we're constrained to
 	//sithThing* constrainedThingsNext; // next thing under root
 	//sithThing* constrainedThingsPrev; // prev thing under root
+	rdVector3 jointPivotOffset;
 #endif
     // TODO split these into a struct
     uint32_t attach_flags;
