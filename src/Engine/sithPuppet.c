@@ -1483,8 +1483,10 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_RFOOT, JOINTTYPE_RCALF, 0, 0, -45.0, 5.0f);
 	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_LFOOT, JOINTTYPE_LCALF, 0, 0, -45.0, 5.0f);
 	
-	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RHAND, JOINTTYPE_RFOREARM, 0, 0, 35.0f);
-	sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LHAND, JOINTTYPE_LFOREARM, 0, 0, 35.0f);
+	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_RHAND, JOINTTYPE_RFOREARM, 0, 0, -45.0, 35.0f);
+	sithPuppet_AddHingeConstraint(pThing, JOINTTYPE_LHAND, JOINTTYPE_LFOREARM, 0, 0, -45.0, 35.0f);
+	//sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RHAND, JOINTTYPE_RFOREARM, 0, 0, 35.0f);
+	//sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LHAND, JOINTTYPE_LFOREARM, 0, 0, 35.0f);
 	//sithPuppet_AddConeConstraint(pThing, JOINTTYPE_RCALF, JOINTTYPE_RTHIGH, 2, 1, 20.0f);
 	//sithPuppet_AddConeConstraint(pThing, JOINTTYPE_LCALF, JOINTTYPE_LTHIGH, 2, 1, 20.0f);
 
