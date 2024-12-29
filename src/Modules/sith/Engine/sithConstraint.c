@@ -6,6 +6,10 @@
 #include "Primitives/rdMath.h"
 #include "Primitives/rdQuat.h"
 
+#include "Primitives/rdSprite.h"
+#include "Primitives/rdPolyline.h"
+#include "Engine/rdThing.h"
+
 #ifdef PUPPET_PHYSICS
 
 extern float jkPlayer_puppetAngBias;
@@ -504,6 +508,113 @@ void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
 		{
 			pThing->physicsParams.physflags |= SITH_PF_RESTING;
 		}
+	}
+}
+
+static void sithConstraint_DrawDistance(sithConstraint* pConstraint)
+{
+	rdVector3 targetAnchor;
+	pConstraint->targetThing->lookOrientation.scale = pConstraint->targetThing->position;
+	rdMatrix_TransformPoint34(&targetAnchor, &pConstraint->distanceParams.targetAnchor, &pConstraint->targetThing->lookOrientation);
+	rdVector_Zero3(&pConstraint->targetThing->lookOrientation.scale);
+
+	rdVector3 constrainedAnchor;
+	pConstraint->constrainedThing->lookOrientation.scale = pConstraint->constrainedThing->position;
+	rdMatrix_TransformPoint34(&constrainedAnchor, &pConstraint->distanceParams.constraintAnchor, &pConstraint->constrainedThing->lookOrientation);
+	rdVector_Zero3(&pConstraint->constrainedThing->lookOrientation.scale);
+
+	for (int i = 0; i < 2; ++i)
+	{
+		rdSprite debugSprite;
+		rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, i == 0 ? "saberred0.mat" : "saberblue0.mat", 0.005f, 0.005f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &rdroid_zeroVector3);
+
+		rdThing debug;
+		rdThing_NewEntry(&debug, pConstraint->parentThing);
+		rdThing_SetSprite3(&debug, &debugSprite);
+		rdMatrix34 mat;
+		rdMatrix_BuildTranslate34(&mat, i == 0 ? &targetAnchor : &constrainedAnchor);
+
+		rdSprite_Draw(&debug, &mat);
+
+		rdSprite_FreeEntry(&debugSprite);
+		rdThing_FreeEntry(&debug);
+	}
+}
+
+static void sithConstraint_DrawCone(sithConstraint* pConstraint)
+{
+	rdVector3 coneAxis;
+	rdMatrix_TransformVector34(&coneAxis, &pConstraint->coneParams.coneAxis, &pConstraint->targetThing->lookOrientation);
+	rdVector_Normalize3Acc(&coneAxis);
+
+	rdVector3 coneAnchor;
+	rdMatrix_TransformVector34(&coneAnchor, &pConstraint->coneParams.coneAnchor, &pConstraint->targetThing->lookOrientation);
+	rdVector_Add3Acc(&coneAnchor, &pConstraint->targetThing->position);
+
+	rdVector3 thingAxis;
+	rdMatrix_TransformVector34(&thingAxis, &pConstraint->coneParams.jointAxis, &pConstraint->constrainedThing->lookOrientation);
+
+	for (int i = 0; i < 2; ++i)
+	{
+		const char* mat0;
+		const char* mat1;
+		if (i == 0)
+		{
+			mat0 = "saberyellow0.mat";
+			mat1 = "saberyellow1.mat";
+		}
+		else if (i == 1)
+		{
+			mat0 = "saberred0.mat";
+			mat1 = "saberred1.mat";
+		}
+
+		float len = 0.01f;
+		float sizex = 0.002f;
+		float sizey = 0.002f;
+		rdVector3 lookPos;
+		rdVector_Add3(&lookPos, &coneAnchor, i == 0 ? &coneAxis : &thingAxis);
+
+		if (i == 0)
+		{
+			sizey = 0.05f * (pConstraint->coneParams.coneAngle / 180.0f);
+			len = 0.01f;
+		}
+
+		rdPolyLine debugLine;
+		_memset(&debugLine, 0, sizeof(rdPolyLine));
+		if (rdPolyLine_NewEntry(&debugLine, "dbgragoll", mat1, mat0, len, sizex, sizey, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_PERSPECTIVE, 1.0f))
+		{
+			rdThing debug;
+			rdThing_NewEntry(&debug, pConstraint->parentThing);
+			rdThing_SetPolyline(&debug, &debugLine);
+
+			rdMatrix34 look;
+			rdMatrix_LookAt(&look, &coneAnchor, &lookPos, 0.0f);
+
+			rdPolyLine_Draw(&debug, &look);
+
+			rdPolyLine_FreeEntry(&debugLine);
+			rdThing_FreeEntry(&debug);
+		}
+	}
+}
+
+void sithConstraint_Draw(sithConstraint* pConstraint)
+{
+	switch (pConstraint->type)
+	{
+		case SITH_CONSTRAINT_DISTANCE:
+			sithConstraint_DrawDistance(pConstraint);
+			break;
+		case SITH_CONSTRAINT_CONE:
+			sithConstraint_DrawCone(pConstraint);
+			break;
+		case SITH_CONSTRAINT_HINGE:
+			// todo
+			break;
+		default:
+			break;
 	}
 }
 
