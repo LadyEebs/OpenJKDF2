@@ -370,7 +370,7 @@ void sithConstraint_SatisfyConstraints(sithThing* thing, int iterations, float d
 		sithConstraint* c = thing->constraints;
 		while (c)
 		{
-			if(stdMath_Fabs(c->result.C) < 0.001)
+			if(stdMath_Fabs(c->result.C) < 0.001f)
 			{
 				c = c->next;
 				continue;
@@ -385,7 +385,7 @@ void sithConstraint_SatisfyConstraints(sithThing* thing, int iterations, float d
 				rdVector_Dot3(&c->result.JvB, &bodyB->physicsParams.vel) +
 				rdVector_Dot3(&c->result.JrB, &bodyB->physicsParams.rotVel);
 			Jv = stdMath_ClipPrecision(Jv);
-			if (stdMath_Fabs(Jv) < 0.001)
+			if (stdMath_Fabs(Jv) < 0.001f)
 			{
 				c = c->next;
 				continue;
@@ -396,7 +396,7 @@ void sithConstraint_SatisfyConstraints(sithThing* thing, int iterations, float d
 			deltaLambda *= 0.8; // todo: what's a good damping value?
 			deltaLambda = stdMath_ClipPrecision(deltaLambda);
 
-			if(stdMath_Fabs(deltaLambda) < 0.0001)
+			if(stdMath_Fabs(deltaLambda) < 0.0005f)
 			{
 				c = c->next;
 				continue;
@@ -436,11 +436,11 @@ void sithConstraint_SatisfyConstraints(sithThing* thing, int iterations, float d
 
 void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
 {
+	if (pThing->physicsParams.physflags & SITH_PF_RESTING)
+		return;
+
 	if (pThing->constraints && pThing->sector)
-	{
-		if (pThing->physicsParams.atRest)
-			return;
-		
+	{		
 		// try to skip satisfying constraints if everything is mostly resting
 		int atRest = 1;
 
@@ -467,7 +467,7 @@ void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
 			constraint->result.C = stdMath_ClipPrecision(constraint->result.C);
 			constraint->effectiveMass = sithConstraint_ComputeEffectiveMass(constraint);
 
-			if(stdMath_Fabs(constraint->result.C) > 0.001)
+			if(stdMath_Fabs(constraint->result.C) > 0.005f)
 				atRest = 0;
 
 			constraint = constraint->next;
@@ -477,28 +477,32 @@ void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
 		{
 			int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 10 : 1;
 			sithConstraint_SatisfyConstraints(pThing, iterations, deltaSeconds);
+
+			// apply friction as impulses
+			constraint = pThing->constraints;
+			while (constraint)
+			{
+				float invMassA = 1.0f / constraint->targetThing->physicsParams.mass;
+				float invMassB = 1.0f / constraint->constrainedThing->physicsParams.mass;
+				float totalInvMass = invMassA + invMassB;
+
+				rdVector3 omegaRel;
+				rdVector_Sub3(&omegaRel, &constraint->targetThing->physicsParams.rotVel, &constraint->constrainedThing->physicsParams.rotVel);
+				rdVector_Scale3Acc(&omegaRel, jkPlayer_puppetFriction / totalInvMass);
+
+				rdVector3 impulseA, impulseB;
+				rdVector_Scale3(&impulseA, &omegaRel, -invMassA);
+				rdVector_Scale3(&impulseB, &omegaRel,  invMassB);
+
+				rdVector_Add3Acc(&constraint->targetThing->physicsParams.rotVel, &impulseA);
+				rdVector_Add3Acc(&constraint->constrainedThing->physicsParams.rotVel, &impulseB);
+
+				constraint = constraint->next;
+			}
 		}
-
-		// apply friction as impulses
-		constraint = pThing->constraints;
-		while (constraint)
+		else
 		{
-			float invMassA = 1.0f / constraint->targetThing->physicsParams.mass;
-			float invMassB = 1.0f / constraint->constrainedThing->physicsParams.mass;
-			float totalInvMass = invMassA + invMassB;
-
-			rdVector3 omegaRel;
-			rdVector_Sub3(&omegaRel, &constraint->targetThing->physicsParams.rotVel, &constraint->constrainedThing->physicsParams.rotVel);
-			rdVector_Scale3Acc(&omegaRel, jkPlayer_puppetFriction / totalInvMass);
-
-			rdVector3 impulseA, impulseB;
-			rdVector_Scale3(&impulseA, &omegaRel, -invMassA);
-			rdVector_Scale3(&impulseB, &omegaRel,  invMassB);
-
-			rdVector_Add3Acc(&constraint->targetThing->physicsParams.rotVel, &impulseA);
-			rdVector_Add3Acc(&constraint->constrainedThing->physicsParams.rotVel, &impulseB);
-
-			constraint = constraint->next;
+			pThing->physicsParams.physflags |= SITH_PF_RESTING;
 		}
 	}
 }

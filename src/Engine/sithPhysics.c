@@ -250,10 +250,11 @@ void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactP
 
 	rdVector_Add3Acc(&pThing->physicsParams.rotVel, &angAccel);
 
+	pThing->physicsParams.physflags &= ~SITH_PF_RESTING;
 	if (pThing->constraintRoot)
 	{
 		if (rdVector_Len3(&angAccel) > 0.1)
-			pThing->constraintRoot->physicsParams.atRest = 0;
+			pThing->constraintRoot->physicsParams.physflags &= ~SITH_PF_RESTING;
 	}
 }
 
@@ -277,10 +278,11 @@ void sithPhysics_ThingApplyForce(sithThing *pThing, rdVector3 *forceVec)
         pThing->physicsParams.physflags |= SITH_PF_HAS_FORCE;
 
 #ifdef PUPPET_PHYSICS
+		pThing->physicsParams.physflags &= ~SITH_PF_RESTING;
 		if(pThing->constraintRoot)
 		{
 			if (rdVector_Len3(forceVec) * invMass > 0.1)
-				pThing->constraintRoot->physicsParams.atRest = 0;
+				pThing->constraintRoot->physicsParams.physflags &= ~SITH_PF_RESTING;
 		}
 #endif
     }

@@ -1710,6 +1710,8 @@ void sithPuppet_UpdateJoints(sithThing* pThing, float deltaSeconds)
 
 void sithPuppet_StopAll(sithThing* pThing)
 {
+	sithPhysics_ThingStop(pThing);
+	
 	uint64_t jointBits = pThing->animclass->physicsJointBits;
 	while (jointBits != 0)
 	{
@@ -1723,14 +1725,48 @@ void sithPuppet_StopAll(sithThing* pThing)
 
 int sithbPuppet_IsAtRest(sithThing* thing, float deltaSeconds)
 {
-	if (thing->physicsParams.atRest > 0)
+	if (thing->physicsParams.physflags & SITH_PF_RESTING)
 		return 1;
-	return 0;
+
+	// if the root joint isn't attached, assume in free fall
+	int rootJoint = thing->animclass->root < 0 ? JOINTTYPE_HIP : thing->animclass->root;
+	sithPuppetJoint* pJoint = &thing->puppet->physics->joints[rootJoint];
+	if(!pJoint->thing.attach_flags)
+		return 0;
+
+	// if we haven't been visible for a while, just rest
+	//int iterations = bShowInvisibleThings - thing->isVisible;
+	//if (iterations > 100)
+	//	return 1;
+
+	uint64_t jointBits = thing->animclass->physicsJointBits;
+	while (jointBits != 0)
+	{
+		int jointIdx = stdMath_FindLSB64(jointBits);
+		jointBits ^= 1ull << jointIdx;
+
+		sithPuppetJoint* pJoint = &thing->puppet->physics->joints[jointIdx];
+		
+		// if any of the bodies is in free fall then we're not at rest
+		//if (pJoint->thing.attach_flags == 0)
+		//	return 0;
+
+		// if any of the bodies are moving past a threshold then we're not at rest
+		float velLenSq = rdVector_Dot3(&pJoint->thing.physicsParams.vel, &pJoint->thing.physicsParams.vel);
+		if(velLenSq > 0.01f)
+			return 0;
+
+		float rotVelLenSq = rdVector_Dot3(&pJoint->thing.physicsParams.rotVel, &pJoint->thing.physicsParams.rotVel);
+		if (rotVelLenSq > 0.05f)
+			return 0;
+	}
+
+	return 1;
 }
 
 void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds)
 {
-	if (thing->physicsParams.atRest > 0)
+	if (thing->physicsParams.physflags & SITH_PF_RESTING)
 	{
 		++sithPuppet_restingPuppets;
 		return;
@@ -1746,9 +1782,9 @@ void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds)
 	rdVector_Copy3(&thing->position, &pJoint->thing.position);
 	sithThing_MoveToSector(thing, pJoint->thing.sector, 0);
 
-	thing->physicsParams.atRest = sithbPuppet_IsAtRest(thing, deltaSeconds);
-	if (thing->physicsParams.atRest)
+	if (sithbPuppet_IsAtRest(thing, deltaSeconds))
 	{
+		thing->physicsParams.physflags |= SITH_PF_RESTING;
 		sithPuppet_StopAll(thing);
 	}
 }

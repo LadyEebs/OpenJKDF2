@@ -3184,7 +3184,6 @@ typedef struct sithThingPhysParams
 	rdVector3  rotVel; // world space angular velocity accumulation, as opposed to angVel (which is local euler angles)
 	rdMatrix34 lastOrient;
 	rdVector3  lastPos;
-	int   atRest;
 #endif
 } sithThingPhysParams;
 
