@@ -1145,6 +1145,7 @@ int sithCollision_DebrisDebrisCollide(sithThing *thing1, sithThing *thing2, sith
     return 1;
 }
 
+// eebs: pretty sure this is where the annoying player bouncing on walls comes from
 int sithCollision_CollideHurt(sithThing *a1, rdVector3 *a2, float a3, int a4)
 {
     int result; // eax
@@ -1152,13 +1153,7 @@ int sithCollision_CollideHurt(sithThing *a1, rdVector3 *a2, float a3, int a4)
     double v19; // st7
     double v22; // st7
     double v26; // st7
-    double v31; // st6
-    double v32; // st7
-    double v33; // st5
     double v35; // st7
-    double v36; // st7
-    double v39; // st7
-    double v40; // st7
     float v43; // [esp+8h] [ebp-4h]
     float a1a; // [esp+10h] [ebp+4h]
     float amount; // [esp+14h] [ebp+8h]
@@ -1171,8 +1166,8 @@ int sithCollision_CollideHurt(sithThing *a1, rdVector3 *a2, float a3, int a4)
         return 0;
     v43 = 1.9;
     if ( (a1->physicsParams.physflags & SITH_PF_SURFACEBOUNCE) == 0 )
-        v43 = 1.0001;
-    if ( a3 == 0.0 && sithCollision_dword_8B4BE4 )
+        v43 = 1.0001; // this seems to be the scalar controlling how far we bounce on collide (maybe restitution?)
+    if ( a3 == 0.0 && sithCollision_dword_8B4BE4 ) // I guess this is for successive collisions?
     {
         if ( amount <= 0.0 )
         {
@@ -1180,13 +1175,16 @@ int sithCollision_CollideHurt(sithThing *a1, rdVector3 *a2, float a3, int a4)
         }
         else
         {
-            v10 = -rdVector_Dot3(&a1->physicsParams.vel, a2);
-            rdVector_MultAcc3(&a1->field_268, a2, amount);
+			// this section is adding a lot to the velocity, I wonder if that's why we bounce?
+			// perhaps we should cut back v43 for successive collisions?
+
+            v10 = -rdVector_Dot3(&a1->physicsParams.vel, a2); // current vel
+            rdVector_MultAcc3(&a1->field_268, a2, amount); // todo: verify, we use unclipped amount? is that correct?
             if ( v10 > 0.0 )
             {
-                rdVector_MultAcc3(&a1->physicsParams.vel, a2, v10);
+                rdVector_MultAcc3(&a1->physicsParams.vel, a2, v10); 
             }
-            v19 = -rdVector_Dot3(a2, &sithCollision_collideHurtIdk);
+            v19 = -rdVector_Dot3(a2, &sithCollision_collideHurtIdk); // difference from the first collision?
             rdVector_MultAcc3(&sithCollision_collideHurtIdk, a2, v19);
             rdVector_Normalize3Acc(&sithCollision_collideHurtIdk);
             v22 = -rdVector_Dot3(&a1->physicsParams.vel, &sithCollision_collideHurtIdk);
@@ -1204,31 +1202,24 @@ int sithCollision_CollideHurt(sithThing *a1, rdVector3 *a2, float a3, int a4)
     }
     else
     {
-        v31 = a1->physicsParams.vel.y * a2->y;
-        v32 = a1->physicsParams.vel.x * a2->x;
-        v33 = a1->physicsParams.vel.z * a2->z;
         sithCollision_dword_8B4BE4 = 1;
-        sithCollision_collideHurtIdk.x = a2->x;
-        sithCollision_collideHurtIdk.y = a2->y;
-        sithCollision_collideHurtIdk.z = a2->z;
-        v35 = -(v32 + v33 + v31);
+        sithCollision_collideHurtIdk = *a2;
+        v35 = -rdVector_Dot3(&a1->physicsParams.vel, a2);
         if ( v35 > 0.0 )
         {
-            v36 = v43 * v35;
-            rdVector_MultAcc3(&a1->physicsParams.vel, a2, v36);
+            rdVector_MultAcc3(&a1->physicsParams.vel, a2, v43 * v35);
             if ( !a4 && v35 > 2.5 )
             {
-                v39 = (v35 - 2.5) * (v35 - 2.5) * 45.0;
-                //printf("%f %f, %f %f %f\n", v39, v35, a1->physicsParams.vel.x, a1->physicsParams.vel.y, a1->physicsParams.vel.z);
-                if ( v39 > 1.0 )
+                float damage = (v35 - 2.5) * (v35 - 2.5) * 45.0;
+                //printf("%f %f, %f %f %f\n", damage, v35, a1->physicsParams.vel.x, a1->physicsParams.vel.y, a1->physicsParams.vel.z);
+                if (damage > 1.0 )
                 {
                     sithSoundClass_PlayModeRandom(a1, SITH_SC_HITDAMAGED);
-                    sithThing_Damage(a1, a1, v39, SITH_DAMAGE_FALL, -1);
+                    sithThing_Damage(a1, a1, damage, SITH_DAMAGE_FALL, -1);
                 }
             }
         }
-        v40 = v43 * a1a;
-        rdVector_MultAcc3(&a1->field_268, a2, v40);
+        rdVector_MultAcc3(&a1->field_268, a2, v43 * a1a);
         result = 1;
     }
     return result;
