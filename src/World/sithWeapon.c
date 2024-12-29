@@ -858,7 +858,6 @@ int sithWeapon_Collide(sithThing *physicsThing, sithThing *collidedThing, sithCo
 			joint = sithPuppet_FindHitLoc(collidedThing, &hitPos);
 #endif
             sithThing_Damage(collidedThing, physicsThing, physicsThing->weaponParams.damage, physicsThing->weaponParams.damageClass, joint);
-#ifdef PUPPET_PHYSICS
 			if (collidedThing->moveType == SITH_MT_PHYSICS && !MOTS_ONLY_FLAG(collidedThing->type == SITH_THING_COG))
 			{
 				float force = physicsThing->weaponParams.force;
@@ -869,14 +868,15 @@ int sithWeapon_Collide(sithThing *physicsThing, sithThing *collidedThing, sithCo
 				rdVector3 tmp2;
 				rdVector_Scale3(&tmp2, &physicsThing->lookOrientation.lvec, force);
 				sithPhysics_ThingApplyForce(collidedThing, &tmp2);
+#ifdef PUPPET_PHYSICS
 				if(collidedThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
 				{
 					rdVector3 contact = collidedThing->position;
 					rdVector_MultAcc3(&contact, &a4->hitNorm, -collidedThing->moveSize);
 					sithPhysics_ThingApplyRotForce(collidedThing, &contact, &tmp2);
 				}
-			}
 #endif
+			}
         }
         if (physicsThing->weaponParams.typeflags & SITH_WF_EXPLODE_ON_THING_HIT)
         {
