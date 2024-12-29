@@ -1076,8 +1076,8 @@ int sithPuppet_FindHitLoc(sithThing* pReceiverThing, rdVector3* pPos)
 
 void sithPuppet_AddDistanceConstraint(sithThing* pThing, int joint, int target)
 {
-	int hasJoint = pThing->animclass->jointBits & (1ull << joint);
-	int hasTarget = pThing->animclass->jointBits & (1ull << target);
+	uint64_t hasJoint = pThing->animclass->jointBits & (1ull << joint);
+	uint64_t hasTarget = pThing->animclass->jointBits & (1ull << target);
 	if (!hasJoint || !hasTarget)
 		return;
 
@@ -1160,8 +1160,8 @@ void sithPuppet_AddDistanceConstraint(sithThing* pThing, int joint, int target)
 
 void sithPuppet_AddConeConstraint(sithThing* pThing, int joint, int target, const rdVector3* axis, float angle)
 {
-	int hasJoint = pThing->animclass->jointBits & (1ull << joint);
-	int hasTarget = pThing->animclass->jointBits & (1ull << target);
+	uint64_t hasJoint = pThing->animclass->jointBits & (1ull << joint);
+	uint64_t hasTarget = pThing->animclass->jointBits & (1ull << target);
 	if (!hasJoint || !hasTarget)
 		return;
 
@@ -1219,8 +1219,8 @@ void sithPuppet_AddConeConstraint(sithThing* pThing, int joint, int target, cons
 
 void sithPuppet_AddHingeConstraint(sithThing* pThing, int joint, int target, const rdVector3* axis, float minAngle, float maxAngle)
 {
-	int hasJoint = pThing->animclass->jointBits & (1ull << joint);
-	int hasTarget = pThing->animclass->jointBits & (1ull << target);
+	uint64_t hasJoint = pThing->animclass->jointBits & (1ull << joint);
+	uint64_t hasTarget = pThing->animclass->jointBits & (1ull << target);
 	if (!hasJoint || !hasTarget)
 		return;
 
@@ -1489,6 +1489,12 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 	{
 		while (constraints)
 		{
+			if (constraints->constrainedJoint < 0 || constraints->targetJoint < 0)
+			{
+				constraints = constraints->next;
+				continue;
+			}
+
 			switch (constraints->type)
 			{
 			case SITH_CONSTRAINT_DISTANCE:
