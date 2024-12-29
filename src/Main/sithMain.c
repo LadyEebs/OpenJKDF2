@@ -43,9 +43,6 @@
 #if defined(DECAL_RENDERING) || defined(RENDER_DROID2)
 #include "World/sithDecal.h"
 #endif
-#ifdef RAGDOLLS
-#include "Engine/sithRagdoll.h"
-#endif
 #ifdef POLYLINE_EXT
 #include "World/sithPolyline.h"
 #endif
@@ -84,9 +81,6 @@ int sithMain_Startup(HostServices *commonFuncs)
 #if defined(DECAL_RENDERING) || defined(RENDER_DROID2)
 	is_started = sithDecal_Startup() & is_started;
 #endif
-#ifdef RAGDOLLS
-	is_started = sithRagdoll_Startup() & is_started;
-#endif
 #ifdef POLYLINE_EXT
 	sithPolyline_Startup();
 #endif
@@ -121,9 +115,6 @@ void sithMain_Shutdown()
     //sithWeapon
 #ifdef POLYLINE_EXT
 	sithPolyline_Shutdown();
-#endif
-#ifdef RAGDOLLS
-	sithRagdoll_Shutdown();
 #endif
 #if defined(DECAL_RENDERING) || defined(RENDER_DROID2)
 	sithDecal_Shutdown();

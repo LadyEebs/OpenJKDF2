@@ -82,7 +82,7 @@ static jkGuiElement jkGuiGeneral_aElementsAdvanced[22] = {
     { ELEMENT_CHECKBOX,    0,            0, "GUIEXT_INCONSISTENT_PHYS",          0, {20, 190, 300, 40},  1, 0, "GUIEXT_INCONSISTENT_PHYS_HINT",          0, 0, 0, {0}, 0},
     { ELEMENT_CHECKBOX,    0,            0, "GUIEXT_CORPSE_DESPAWN",          0, {20, 150, 300, 40},  1, 0, "GUIEXT_CORPSE_DESPAWN_HINT",          0, 0, 0, {0}, 0},
     { ELEMENT_CHECKBOX,    0,            0, "GUIEXT_50HZ_MIDAIR_PHYS",          0, {20, 230, 300, 40},  1, 0, "GUIEXT_50HZ_MIDAIR_PHYS_HINT",          0, 0, 0, {0}, 0},
-#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
+#ifdef PUPPET_PHYSICS
 	{ ELEMENT_CHECKBOX,    0,            0, "GUIEXT_RAGDOLL_PHYS",          0, {20, 270, 300, 40},  1, 0, "GUIEXT_RAGDOLL_PHYS_HINT",          0, 0, 0, {0}, 0},
 #endif
     
@@ -128,7 +128,7 @@ int jkGuiGeneral_ShowAdvanced()
     jkGuiGeneral_aElementsAdvanced[9].selectedTextEntry = jkPlayer_bJankyPhysics;
     jkGuiGeneral_aElementsAdvanced[10].selectedTextEntry = jkPlayer_bKeepCorpses;
     jkGuiGeneral_aElementsAdvanced[11].selectedTextEntry = jkPlayer_bUseOldPlayerPhysics;
-#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
+#ifdef PUPPET_PHYSICS
 	jkGuiGeneral_aElementsAdvanced[12].selectedTextEntry = jkPlayer_ragdolls;
 #endif
     
@@ -145,7 +145,7 @@ int jkGuiGeneral_ShowAdvanced()
             jkPlayer_bJankyPhysics = jkGuiGeneral_aElementsAdvanced[9].selectedTextEntry;
             jkPlayer_bKeepCorpses = jkGuiGeneral_aElementsAdvanced[10].selectedTextEntry;
             jkPlayer_bUseOldPlayerPhysics = jkGuiGeneral_aElementsAdvanced[11].selectedTextEntry;
-#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
+#ifdef PUPPET_PHYSICS
 			jkPlayer_ragdolls = jkGuiGeneral_aElementsAdvanced[12].selectedTextEntry;
 #endif
 

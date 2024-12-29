@@ -15,9 +15,6 @@
 #include "General/stdMath.h"
 #include "Primitives/rdMath.h"
 #include "jk.h"
-#ifdef RAGDOLLS
-#include "Primitives/rdRagdoll.h"
-#endif
 
 static int sithCollision_initted = 0;
 
@@ -55,21 +52,6 @@ int sithCollision_Startup()
 	sithCollision_RegisterCollisionHandler(SITH_THING_PLAYER, SITH_THING_CORPSE, sithCollision_DebrisDebrisCollide, 0);
 	sithCollision_RegisterCollisionHandler(SITH_THING_ACTOR, SITH_THING_CORPSE, sithCollision_DebrisDebrisCollide, 0);
 	sithCollision_RegisterCollisionHandler(SITH_THING_WEAPON, SITH_THING_CORPSE, sithWeapon_Collide, 0);
-#endif
-
-#ifdef RAGDOLLS
-	sithCollision_RegisterCollisionHandler(SITH_THING_CORPSE, SITH_THING_PLAYER, sithCorpse_Collide, 0);
-	sithCollision_RegisterCollisionHandler(SITH_THING_CORPSE, SITH_THING_ACTOR, sithCorpse_Collide, 0);
-	sithCollision_RegisterCollisionHandler(SITH_THING_CORPSE, SITH_THING_WEAPON, sithCorpse_Collide, 0);
-
-	sithCollision_RegisterCollisionHandler(SITH_THING_PLAYER, SITH_THING_CORPSE, sithCorpse_Collide, 0);
-	sithCollision_RegisterCollisionHandler(SITH_THING_ACTOR, SITH_THING_CORPSE, sithCorpse_Collide, 0);
-
-	// actual weapon collision looks better but it's actually kinda annoying during gameplay
-	// because the projectiles collide with the things bounding sphere, often in mid-air while trying
-	// to shoot at other targets behind the body
-	sithCollision_RegisterCollisionHandler(SITH_THING_WEAPON, SITH_THING_CORPSE, sithWeapon_Collide, 0);
-	//sithCollision_RegisterCollisionHandler(SITH_THING_WEAPON, SITH_THING_CORPSE, sithCorpse_Collide, 0);
 #endif
 
     sithCollision_initted = 1;
@@ -274,7 +256,7 @@ float sithCollision_UpdateSectorThingCollision(sithSector *pSector, sithThing *s
               && v7->collide
               && (v7->thingflags & (SITH_TF_DISABLED|SITH_TF_WILLBEREMOVED)) == 0
               && ((flags & SITH_RAYCAST_ONLY_COG_THINGS) == 0 || v7->type == SITH_THING_COG)
-			#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
+			#ifdef PUPPET_PHYSICS
 			  && ((flags & SITH_RAYCAST_IGNORE_CORPSES) == 0 || v7->type != SITH_THING_CORPSE)
 			  && (!v7->constraintParent || v7->constraintParent != v8)
 			#endif
@@ -286,13 +268,8 @@ float sithCollision_UpdateSectorThingCollision(sithSector *pSector, sithThing *s
                 {
                     if ( sithCollision_collisionHandlers[12 * v8->type + v7->type].handler )
                     {
-					#ifdef RAGDOLLS
-						if (((v8->thingflags & SITH_TF_DEAD) == 0 || v8->rdthing.pRagdoll)
-							&& ((v7->thingflags & SITH_TF_DEAD) == 0 || v7->rdthing.pRagdoll)
-					#else
                         if ( (v8->thingflags & SITH_TF_DEAD) == 0
                           && (v7->thingflags & SITH_TF_DEAD) == 0
-					#endif
                           && (v8->type != SITH_THING_WEAPON
                            || (v8->actorParams.typeflags & SITH_AF_CAN_ROTATE_HEAD) == 0
                            || ((v13 = v8->prev_thing) == 0 || (v14 = v7->prev_thing) == 0 || v13 != v14 || v8->child_signature != v7->child_signature)
@@ -301,12 +278,7 @@ float sithCollision_UpdateSectorThingCollision(sithSector *pSector, sithThing *s
                            || (v7->actorParams.typeflags & SITH_AF_CAN_ROTATE_HEAD) == 0
                            || ((v15 = v7->prev_thing) == 0 || (v16 = v8->prev_thing) == 0 || v15 != v16 || v7->child_signature != v8->child_signature)
                            && (v15 != v8 || v7->child_signature != v8->signature)) 
-#ifdef RAGDOLLS
-							// don't collide ragdolls with parent object
-							&& (!v8->rdthing.pRagdoll || v8->prev_thing == 0 || v7->prev_thing == 0 || v8->prev_thing != v7->prev_thing || v8->child_signature != v7->child_signature)
-							&& (!v7->rdthing.pRagdoll || v7->prev_thing == 0 || v8->prev_thing == 0 || v7->prev_thing != v8->prev_thing || v7->child_signature != v8->child_signature)
-#endif
-#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
+#ifdef PUPPET_PHYSICS
 							&& ((flags & SITH_RAYCAST_IGNORE_CORPSES) == 0 || v8->type != SITH_THING_CORPSE)
 							&& (!v8->constraintParent || v8->constraintParent != v7)
 #endif
@@ -1409,69 +1381,3 @@ int sithCollision_DebrisPlayerCollide(sithThing *thing, sithThing *thing2, sithC
     }
     return 0;
 }
-
-
-#ifdef RAGDOLLS
-void sithCollide_CollideRagdoll(sithThing* thing, sithThing* thing2, rdVector3* norm)
-{
-	if (thing->rdthing.pRagdoll && thing->physicsParams.mass != 0)// && thing->parentThing != thing2)
-	{
-		float velDiff = rdVector_Dot3(&thing->physicsParams.vel, norm) - rdVector_Dot3(&thing2->physicsParams.vel, norm);
-		velDiff = stdMath_ClipPrecision(velDiff);
-		if (velDiff <= 0.0)
-			return;
-
-		if ((thing->physicsParams.physflags & SITH_PF_SURFACEBOUNCE) == 0)
-			velDiff = velDiff * 0.5;
-
-		rdVector3 force;
-		rdVector_Scale3(&force, &thing2->physicsParams.vel, velDiff);
-		sithPhysics_ThingRagdollApplyForce(thing, &force, &thing2->position, thing2->collideSize);
-	}
-}
-
-int sithCorpse_Collide(sithThing* thing1, sithThing* thing2, sithCollisionSearchEntry* searchEntry, int isInverse)
-{
-	sithThing* t1; // esi
-	sithThing* t2; // edi
-	if (isInverse)
-	{
-		t1 = thing2;
-		t2 = thing1;
-	}
-	else
-	{
-		t1 = thing1;
-		t2 = thing2;
-	}
-
-	if ((t1->thingflags & SITH_TF_CAPTURED) != 0 && (t1->thingflags & SITH_TF_INVULN) == 0)
-		sithCog_SendMessageFromThing(t1, t2, SITH_MESSAGE_TOUCHED);
-	if ((t2->thingflags & SITH_TF_CAPTURED) != 0 && (t2->thingflags & SITH_TF_INVULN) == 0)
-		sithCog_SendMessageFromThing(t2, t1, SITH_MESSAGE_TOUCHED);
-
-	// reactivate the ragdolls and apply forces
-	if (t1->rdthing.pRagdoll)
-	{
-		if (t1->physicsParams.mass != 0)
-		{
-			rdVector3 negHit;
-			rdVector_Neg3(&negHit, &searchEntry->hitNorm);
-			sithCollide_CollideRagdoll(t1, t2, &negHit);
-		}
-	}
-
-	if (t2->rdthing.pRagdoll)
-	{
-		if (t2->physicsParams.mass != 0)
-			sithCollide_CollideRagdoll(t2, t1, &searchEntry->hitNorm);
-	}
-
-	// don't stop players
-	//if(t1->type == SITH_THING_PLAYER)
-		return 0;
-		
-	// for everything else, do typical full-object physics too
-	//return sithCollision_DebrisDebrisCollide(thing1, thing2, searchEntry, isInverse);
-}
-#endif

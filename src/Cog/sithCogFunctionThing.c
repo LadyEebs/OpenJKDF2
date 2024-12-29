@@ -24,10 +24,6 @@
 #include "Main/Main.h"
 #include "jk.h"
 
-#ifdef RAGDOLLS
-#include "Primitives/rdRagdoll.h"
-#endif
-
 void sithCogFunctionThing_createThingAtPos_nr_Mots(sithCog *ctx, int idk, sithThing* pThingIn);
 void sithCogFunctionThing_createThingAtPos_nr(sithCog *ctx, int idk);
 
@@ -1938,16 +1934,6 @@ void sithCogFunctionThing_DismemberJoint(sithCog* ctx)
 				//	rdVector3 kickVec = { 0.0f, 0.7f, 1.4f };
 				//	rdVector_Copy3(&pLimb->physicsParams.vel, &kickVec);
 				//	rdPuppet_BuildJointMatrices(&pLimb->rdthing, &pLimb->lookOrientation);
-
-#ifdef RAGDOLLS
-					//if(rdthing->model3->pSkel)
-					//{
-					//pLimb->moveType = SITH_MT_RAGDOLL;
-					//pLimb->collide = SITH_COLLIDE_SPHERE_TREE;
-					//pLimb->treeSize = pLimb->collideSize;
-					//rdRagdoll_NewEntry(&pLimb->rdthing, &rdroid_zeroVector3);// &pLimb->physicsParams.vel);
-					//}
-#endif
 				}
 
 				// restore

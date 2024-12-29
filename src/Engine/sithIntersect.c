@@ -11,9 +11,6 @@
 #include "Engine/sithCollision.h"
 #include "Primitives/rdMath.h"
 #include "jk.h"
-#ifdef RAGDOLLS
-#include "Primitives/rdRagdoll.h"
-#endif
 
 extern int sithCollision_bDebugCollide;
 
@@ -117,7 +114,7 @@ int sithIntersect_CollideThings(sithThing *pThing, const rdVector3 *a2, const rd
     int bIsTreeCollide = 0;
     float collideSize = a6->collideSize;
     float rangeSize = range;
-#ifndef RAGDOLLS // allow tree collision for ragdolls so we can do mesh-sphere collision
+#ifndef PUPPET_PHYSICS // allow tree collision for ragdolls so we can do mesh-sphere collision
     if (Main_bMotsCompat)
 #endif
 	{
@@ -141,7 +138,7 @@ int sithIntersect_CollideThings(sithThing *pThing, const rdVector3 *a2, const rd
     }
 
     if (!bFaceCollision
-#ifdef RAGDOLLS
+#ifdef PUPPET_PHYSICS
 		&& !bIsTreeCollide
 #else
 		&& MOTS_ONLY_COND(!bIsTreeCollide)
@@ -156,7 +153,7 @@ int sithIntersect_CollideThings(sithThing *pThing, const rdVector3 *a2, const rd
     }
 
     if (a6->collide == SITH_COLLIDE_FACE
-#ifdef RAGDOLLS
+#ifdef PUPPET_PHYSICS
 		|| (a6->collide == SITH_COLLIDE_SPHERE_TREE)
 #else
 		|| MOTS_ONLY_FLAG(a6->collide == SITH_COLLIDE_SPHERE_TREE)
@@ -176,7 +173,7 @@ int sithIntersect_CollideThings(sithThing *pThing, const rdVector3 *a2, const rd
         v39 = 1;
     }
 
-#ifdef RAGDOLLS
+#ifdef PUPPET_PHYSICS
 	if (bIsTreeCollide)
 #else
     if (MOTS_ONLY_FLAG(bIsTreeCollide))
@@ -265,10 +262,6 @@ int sithIntersect_TreeIntersection(rdHierarchyNode *paNodes,rdVector3 *pPoseVec,
             uVar3 = prVar1->geosetSelect;
         }
         local_70 = prVar1->geosets[uVar3].meshes[paNodes->meshIdx].radius * 0.75;
-	#ifdef RAGDOLLS
-		if (v11->rdthing.pRagdoll && paNodes->skelJoint != -1)
-			local_70 = prVar1->pSkel->paJoints[paNodes->skelJoint].radius;
-	#endif
 
 		// Added: perpendicular check to ref dir
 		float dot = pRefDir ? rdVector_Dot3(pRefDir, &v11->rdthing.hierarchyNodeMatrices[paNodes->idx].lvec) : 0.0f;

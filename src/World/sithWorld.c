@@ -32,9 +32,6 @@
 #if defined(DECAL_RENDERING) || defined(RENDER_DROID2)
 #include "World/sithDecal.h"
 #endif
-#ifdef RAGDOLLS
-#include "Engine/sithRagdoll.h"
-#endif
 #ifdef POLYLINE_EXT
 #include "World/sithPolyline.h"
 #endif
@@ -111,9 +108,6 @@ int sithWorld_Startup()
     sithWorld_SetSectionParser("soundclass", sithSoundClass_Load);
 #ifdef JKM_LIGHTING
     sithWorld_SetSectionParser("archlighting", sithArchLighting_ParseSection); // MOTS added
-#endif
-#ifdef RAGDOLLS
-	sithWorld_SetSectionParser("ragdolls", sithRagdoll_Load);
 #endif
 #ifdef POLYLINE_EXT
 	sithWorld_SetSectionParser("polylines", sithPolyline_Load);
@@ -556,10 +550,6 @@ void sithWorld_FreeEntry(sithWorld *pWorld)
     if (pWorld->aArchlights) {
         sithArchLighting_Free(pWorld);
     }
-#endif
-#ifdef RAGDOLLS
-	if (pWorld->ragdolls)
-		sithRagdoll_Free(pWorld);
 #endif
 #ifdef POLYLINE_EXT
 	if(pWorld->polylines)

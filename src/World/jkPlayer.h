@@ -188,14 +188,12 @@ extern int jkPlayer_aimLock;
 #if defined(DECAL_RENDERING) || defined(RENDER_DROID2)
 extern int jkPlayer_enableDecals;
 #endif
-#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
+#ifdef PUPPET_PHYSICS
 extern int jkPlayer_ragdolls;
 extern int jkPlayer_debugRagdolls;
-#ifdef PUPPET_PHYSICS
 extern float jkPlayer_puppetAngBias;
 extern float jkPlayer_puppetPosBias;
 extern float jkPlayer_puppetFriction;
-#endif
 #endif
 
 #define FOV_MIN (40)

@@ -14,10 +14,6 @@
 #include "Primitives/rdPrimit3.h"
 #include "Primitives/rdDebug.h"
 
-#ifdef RAGDOLLS
-#include "Primitives/rdRagdoll.h"
-#endif
-
 model3Loader_t rdModel3_RegisterLoader(model3Loader_t loader)
 {
     model3Loader_t result = pModel3Loader;
@@ -62,7 +58,7 @@ rdModel3* rdModel3_New(char *path)
     return 0;
 }
 
-#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
+#ifdef PUPPET_PHYSICS
 // todo: pulled from rdThing_AccumulateMatrices, which only uses the thing to access the matrix and amputated joints
 // could just pass those in to a shared function instead (currently ommitted amputated joints)
 void rdModel3_AccumulateMatrices(rdMatrix34* matrices, rdHierarchyNode* node, rdMatrix34* acc)
@@ -509,9 +505,6 @@ int rdModel3_Load(char *model_fpath, rdModel3 *model)
     {
         node = &model->hierarchyNodes[idx];
         node->idx = idx;
-	#ifdef RAGDOLLS
-		node->skelJoint = -1;
-	#endif
         if ( !stdConffile_ReadLine()
           || _sscanf(
                  stdConffile_aLine,
@@ -570,7 +563,7 @@ int rdModel3_Load(char *model_fpath, rdModel3 *model)
 
     rdModel3_CalcNumParents(model); // MOTS added
 
-#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
+#ifdef PUPPET_PHYSICS
 	rdModel3_CalculateMeshRadii(model);
 
 	// generate base pose matrices
@@ -902,7 +895,7 @@ void rdModel3_FreeEntry(rdModel3 *model)
     if (model->materials )
         rdroid_pHS->free(model->materials);
 
-#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
+#ifdef PUPPET_PHYSICS
 	if(model->paBasePoseMatrices)
 		rdroid_pHS->free(model->paBasePoseMatrices);
 #endif

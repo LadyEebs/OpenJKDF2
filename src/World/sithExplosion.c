@@ -9,9 +9,6 @@
 #include "Engine/sithPhysics.h"
 #include "Primitives/rdMath.h"
 #include "jk.h"
-#ifdef RAGDOLLS
-#include "Primitives/rdRagdoll.h"
-#endif
 
 void sithExplosion_CreateThing(sithThing *explosion)
 {
@@ -104,21 +101,16 @@ void sithExplosion_UpdateForce(sithThing *explosion)
                     {
                         rdVector_Scale3(&a2, &i->hitNorm, -(a1a * force));
                         sithPhysics_ThingApplyForce(v4, &a2);
+#ifdef PUPPET_PHYSICS
 						if(v4->physicsParams.physflags & SITH_PF_ANGIMPULSE)
 						{
 							rdVector3 contact = v4->position;
 							rdVector_MultAcc3(&contact, &i->hitNorm, -v4->moveSize);
 							sithPhysics_ThingApplyRotForce(v4, &contact, &a2);
 						}
-
-                    }
-#ifdef RAGDOLLS
-					else if ( force != 0.0 && v4->moveType == SITH_MT_RAGDOLL && v4->rdthing.pRagdoll && v4->physicsParams.mass != 0)
-					{
-						rdVector_Scale3(&a2, &i->hitNorm, -(a1a * force));
-						sithPhysics_ThingRagdollApplyForce(v4, &a2, &explosion->position, range);
-					}
 #endif
+                    }
+
                     if ( damage != 0.0 )
                     {
                         sithThing_Damage(v4, explosion, a1a * damage, explosion->explosionParams.damageClass, -1);

@@ -47,7 +47,7 @@ void sithPlayerActions_Activate(sithThing *thing)
             a6 = thing->moveSize - -0.1;
 
 			int searchFlags = /*SITH_THING_ACTOR*/SITH_RAYCAST_IGNORE_ADJOINS;
-		#ifdef RAGDOLLS
+		#ifdef PUPPET_PHYSICS
 			searchFlags |= SITH_RAYCAST_IGNORE_CORPSES;
 		#endif
             sithCollision_SearchRadiusForThings(v4, thing, &thingPos, &out.lvec, a6, 0.025, searchFlags);

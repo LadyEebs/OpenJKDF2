@@ -30,10 +30,6 @@
 #include "Platform/std3D.h"
 #include "stdPlatform.h"
 
-#ifdef RAGDOLLS
-#include "Primitives/rdRagdoll.h"
-#endif
-
 #if defined(DECAL_RENDERING) || defined(RENDER_DROID2)
 #include "World/sithDecal.h"
 #endif
@@ -77,122 +73,6 @@ void sithRender_GetSaberLightColor(rdVector3* outColor, sithThing* thing)
 	rdVector_Set3(outColor, 1.0f, 1.0f, 1.0f);
 	if (thing->playerInfo && thing->playerInfo->polyline.tipFace.material)
 		rdMaterial_GetFillColor(outColor, thing->playerInfo->polyline.tipFace.material, thing->sector->colormap, 0, -1);
-}
-#endif
-
-#ifdef RAGDOLLS
-void sithRender_DrawRagdollDebug(sithThing* pThing)
-{
-	if (pThing->rdthing.type == RD_THINGTYPE_MODEL && pThing->rdthing.model3 && pThing != sithCamera_currentCamera->primaryFocus)
-	{
-		if (jkPlayer_debugRagdolls == 1 && pThing->rdthing.pRagdoll)
-		{
-			if (pThing->rdthing.pRagdoll)
-			{
-				for (int i = 0; i < pThing->rdthing.pRagdoll->numParticles; ++i)
-				{
-					rdRagdollParticle* pParticle = &pThing->rdthing.pRagdoll->paParticles[i];
-
-					rdSprite debugSprite;
-					rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, "sabergreen0.mat", pParticle->radius, pParticle->radius, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &rdroid_zeroVector3);
-
-					rdThing debug;
-					rdThing_NewEntry(&debug, pThing);
-					rdThing_SetSprite3(&debug, &debugSprite);
-					rdMatrix34 mat;
-					rdMatrix_BuildTranslate34(&mat, &pParticle->pos);
-
-					rdSprite_Draw(&debug, &mat);
-
-					rdSprite_FreeEntry(&debugSprite);
-					rdThing_FreeEntry(&debug);
-				}
-			}
-		}
-
-		if (jkPlayer_debugRagdolls == 2 && pThing->rdthing.model3->pSkel)
-		{
-			rdModel3* model = pThing->rdthing.model3;
-			rdRagdollSkeleton* skel = model->pSkel;
-			for (int i = 0; i < skel->numJoints; ++i)
-			{
-				float radius0 = 0.0007f;
-				float radius1 = 0.0007f;
-
-				rdRagdollJoint* joint = &skel->paJoints[i];
-				rdRagdollTri* tri = &skel->paTris[joint->tri];
-
-				for (int k = 2, j = 0; j < 3; k = j++)
-				{
-					rdRagdollVert* v0 = &model->pSkel->paVerts[tri->vert[j]];
-					rdRagdollVert* v1 = &model->pSkel->paVerts[tri->vert[k]];
-
-					rdVector3 p0;
-					rdVector_Add3(&p0, &pThing->rdthing.hierarchyNodeMatrices[v0->node].scale, &v0->offset);
-
-					rdVector3 p1;
-					rdVector_Add3(&p1, &pThing->rdthing.hierarchyNodeMatrices[v1->node].scale, &v1->offset);
-
-					rdPolyLine debugLine;
-					_memset(&debugLine, 0, sizeof(rdPolyLine));
-					if (rdPolyLine_NewEntry(&debugLine, "dbgragoll", "saberyellow1.mat", "saberyellow0.mat", rdVector_Dist3(&p0, &p1), radius0, radius1, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_PERSPECTIVE, 1.0f))
-					{
-						rdThing debug;
-						rdThing_NewEntry(&debug, pThing);
-						rdThing_SetPolyline(&debug, &debugLine);
-
-						rdMatrix34 look;
-						rdMatrix_LookAt(&look, &p0, &p1, 0.0f);
-
-						rdPolyLine_Draw(&debug, &look);
-
-						rdPolyLine_FreeEntry(&debugLine);
-						rdThing_FreeEntry(&debug);
-					}
-				}
-			}
-		}
-
-		if (jkPlayer_debugRagdolls == 3 && pThing->rdthing.hierarchyNodeMatrices && pThing->rdthing.model3 && pThing->rdthing.model3->pSkel && pThing->rdthing.pRagdoll)
-		{
-			rdRagdollSkeleton* skel = pThing->rdthing.model3->pSkel;
-			for (int i = 0; i < skel->numDist; ++i)
-			{
-				rdRagdollDistConstraint* constraint = &skel->paDistConstraints[i];
-				rdRagdollVert* v0 = &skel->paVerts[constraint->vert[0]];
-				rdRagdollVert* v1 = &skel->paVerts[constraint->vert[1]];
-
-				rdHierarchyNode* hnode0 = &pThing->rdthing.model3->hierarchyNodes[v0->node];
-				rdHierarchyNode* hnode1 = &pThing->rdthing.model3->hierarchyNodes[v1->node];
-
-				rdVector3 p0;
-				rdVector_Add3(&p0, &pThing->rdthing.hierarchyNodeMatrices[v0->node].scale, &v0->offset);
-
-				rdVector3 p1;
-				rdVector_Add3(&p1, &pThing->rdthing.hierarchyNodeMatrices[v1->node].scale, &v1->offset);
-
-				float radius0 = 0.0015f;
-				float radius1 = 0.0015f;
-
-				rdPolyLine debugLine;
-				_memset(&debugLine, 0, sizeof(rdPolyLine));
-				if (rdPolyLine_NewEntry(&debugLine, "dbgragoll", "saberblue1.mat", "saberblue0.mat", pThing->rdthing.pRagdoll->paDistConstraintDists[i], radius0, radius1, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_PERSPECTIVE, 1.0f))
-				{
-					rdThing debug;
-					rdThing_NewEntry(&debug, pThing);
-					rdThing_SetPolyline(&debug, &debugLine);
-
-					rdMatrix34 look;
-					rdMatrix_LookAt(&look, &p0, &p1, 0.0f);
-
-					rdPolyLine_Draw(&debug, &look);
-
-					rdPolyLine_FreeEntry(&debugLine);
-					rdThing_FreeEntry(&debug);
-				}
-			}
-		}
-	}
 }
 #endif
 
@@ -2738,20 +2618,7 @@ int sithRender_RenderThing(sithThing *pThing)
 
     pThing->isVisible = bShowInvisibleThings;
     pThing->lookOrientation.scale = pThing->position;
-#ifdef RAGDOLLS
-	// ragdoll debug draw
-	if (pThing->rdthing.type == RD_THINGTYPE_MODEL && pThing->rdthing.model3 && ((jkPlayer_debugRagdolls == 1 || jkPlayer_debugRagdolls == 3) && pThing->rdthing.pRagdoll
-		|| (jkPlayer_debugRagdolls == 2) && pThing->rdthing.model3->pSkel)
-	)
-	{
-		ret = 1;
-		if (pThing->rdthing.frameTrue != rdroid_frameTrue)
-		{
-			rdPuppet_BuildJointMatrices(&pThing->rdthing, &pThing->lookOrientation);
-		}
-	}
-	else
-#endif
+
 #ifdef PUPPET_PHYSICS
 	int showPhysicsJoints = (jkPlayer_debugRagdolls && pThing->animclass && pThing->puppet && pThing->puppet->physics);
 	if (showPhysicsJoints)
@@ -2775,11 +2642,6 @@ int sithRender_RenderThing(sithThing *pThing)
 #endif
 			sithRender_weaponRenderHandle(pThing);
     }
-#endif
-
-#ifdef RAGDOLLS
-	if(jkPlayer_debugRagdolls)
-		sithRender_DrawRagdollDebug(pThing);
 #endif
 
     if (pThing->type == SITH_THING_EXPLOSION && (pThing->explosionParams.typeflags & SITHEXPLOSION_FLAG_FLASH_BLINDS_THINGS))

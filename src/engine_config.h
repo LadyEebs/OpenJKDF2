@@ -11,7 +11,6 @@
 // Gameplay features
 #define FP_LEGS              // Draws legs in first person
 #define DYNAMIC_POV          // POV enhancements, such as the weapon following the autoaim target, muzzle flashes, sway improvements
-//#define RAGDOLLS             // .af support and SITH_MT_RAGDOLL physics type for experimental verlet ragdolls
 #define LIGHTSABER_TRAILS    // visual enhancement for lightsabers, draws extra tris to simulate lightsaber trails/motion blur
 #define LIGHTSABER_MARKS     // visual enhancement for lightsabers, draws impact decals with saber collision, requires DECAL_RENDERING
 //#define LIGHTSABER_GLOW    // visual enhancement for lightsabers, draws a sprite-based glow similar to Jedi Outcast/Academy
@@ -80,10 +79,6 @@
 #endif
 
 #ifdef PUPPET_PHYSICS
-
-#ifdef RAGDOLLS
-#undef RAGDOLLS // mutually exclusive with the old ragdolls
-#endif
 
 #ifndef REGIONAL_DAMAGE
 #define REGIONAL_DAMAGE // make sure this on

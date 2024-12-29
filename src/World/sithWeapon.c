@@ -179,13 +179,6 @@ void sithWeapon_sub_4D35E0(sithThing *weapon)
 					}
 #endif
                 }
-			#ifdef RAGDOLLS
-				else if (weapon->weaponParams.force != 0.0 && damageReceiver->moveType == SITH_MT_RAGDOLL && damageReceiver->rdthing.pRagdoll && damageReceiver->physicsParams.mass != 0.0)
-				{
-					rdVector_Scale3(&tmp2, &weaponPos_, weapon->weaponParams.force);
-					sithPhysics_ThingRagdollApplyForce(damageReceiver, &tmp2, &weapon->position, weapon->weaponParams.range);
-				}
-			#endif
             }
         }
         else if ( (searchRes->hitType & SITHCOLLISION_WORLD) != 0 )
@@ -392,15 +385,6 @@ void sithWeapon_sub_4D3920(sithThing *weapon)
 					}
 					#endif
                 }
-#ifdef RAGDOLLS
-				else if (receiveThing->moveType == SITH_MT_RAGDOLL && receiveThing->rdthing.pRagdoll && receiveThing->physicsParams.mass != 0.0)
-				{
-					tmp2.x = weapon->weaponParams.force * lookOrient.x;
-					tmp2.y = weapon->weaponParams.force * lookOrient.y;
-					tmp2.z = weapon->weaponParams.force * lookOrient.z;
-					sithPhysics_ThingRagdollApplyForce(receiveThing, &tmp2, &weapon->position, weapon->weaponParams.range);
-				}
-#endif
             }
         }
         else if ( (searchRes->hitType & SITHCOLLISION_WORLD) != 0 )
@@ -907,13 +891,6 @@ int sithWeapon_Collide(sithThing *physicsThing, sithThing *collidedThing, sithCo
             // Gun splat spawning
             sithWeapon_RemoveAndExplode(physicsThing, physicsThing->weaponParams.fleshHitTemplate);
             //printf("Splat: %x\n", physicsThing->thingIdx);
-#ifdef RAGDOLLS
-			// kick the ragdoll
-			if (collidedThing->moveType == SITH_MT_RAGDOLL && collidedThing->rdthing.pRagdoll && collidedThing->physicsParams.mass != 0.0)
-			{
-				sithPhysics_ThingRagdollApplyForce(collidedThing, &vel, NULL, 0.0f);// &physicsThing->position, physicsThing->weaponParams.range);
-			}
-#endif
             return 1;
         }
         if (!(physicsThing->weaponParams.typeflags & SITH_WF_ATTACH_TO_THING))

@@ -31,11 +31,6 @@ void sithPhysics_ThingPhysPlayer(sithThing *player, float deltaSeconds);
 void sithPhysics_ThingPhysUnderwater(sithThing *pThing, float deltaSeconds);
 void sithPhysics_ThingPhysAttached(sithThing *pThing, float deltaSeconds);
 
-#ifdef RAGDOLLS
-void sithPhysics_ThingPhysRagdoll(sithThing* pThing, float deltaSeconds);
-void sithPhysics_ThingRagdollApplyForce(sithThing* pThing, rdVector3* forceVec, rdVector3* sourcePos, float range);
-#endif
-
 #ifdef PUPPET_PHYSICS
 void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactPoint, const rdVector3* impulse);
 #endif

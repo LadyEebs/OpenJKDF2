@@ -18,11 +18,6 @@
 #include "Dss/sithDSSThing.h"
 #include "jk.h"
 
-#ifdef RAGDOLLS
-#include "Engine/sithRagdoll.h"
-#include "Primitives/rdRagdoll.h"
-#endif
-
 void sithActor_SetMaxHeathForDifficulty(sithThing *thing)
 {
     if ( jkPlayer_setDiff )
@@ -367,64 +362,6 @@ void sithActor_SpawnDeadBodyMaybe(sithThing *thing, sithThing *a3, int a4, int j
 					{
 						sithActor_Remove(thing);
 					}
-				#endif
-				#ifdef RAGDOLLS
-					int removeAsap = (jkPlayer_ragdolls == 2); // immediately remove and ragdoll
-					
-					// if the actor is moving quickly, immediately ragdoll
-					float vellen = rdVector_Len3(&thing->physicsParams.vel);
-					if (vellen > 1.0f)
-						removeAsap = 1;
-
-					// check for collisions with nearby objects, if anything is close, immediately ragdoll to avoid clipping
-					// ignore anything we're attached to since that's always going to collide
-					if(!removeAsap)
-					{
-						rdVector3 velnorm;
-						rdVector_Normalize3(&velnorm, &thing->physicsParams.vel);
-						sithCollision_SearchRadiusForThings(thing->sector, thing, &thing->position, &velnorm, vellen, thing->collideSize, 0);
-						for (sithCollisionSearchEntry* i = sithCollision_NextSearchResult(); i; i = sithCollision_NextSearchResult())
-						{
-							if(i->hitType & SITHCOLLISION_WORLD)
-							{
-								if(!(thing->attach_flags & SITH_ATTACH_WORLDSURFACE) || thing->attachedSurface != i->surface)
-								{
-									removeAsap = 1;
-									break;
-								}
-							}
-							if (i->hitType & SITHCOLLISION_THING)
-							{
-								if (!(thing->attach_flags & SITH_ATTACH_THING) || thing->attachedThing != i->receiver)
-								{
-									removeAsap = 1;
-									break;
-								}
-							}
-						}
-						sithCollision_SearchClose(); 
-					}
-					
-					if (!removeAsap)
-					{
-						int deathMs = 1000;
-						if (thing->animclass && thing->puppet)
-						{
-							// use length of death anim before ragdolling/turning to corpse
-							int anim = thing->actorParams.health >= -10.0 ? SITH_ANIM_DEATH2 : SITH_ANIM_DEATH;
-							sithAnimclassMode* mode = &thing->animclass->modes[thing->puppet->majorMode];
-							rdKeyframe* key = mode->keyframe[anim].keyframe;
-							if(key)
-							{
-								deathMs = ((float)key->numFrames / key->fps) * 1000.0f * 0.5f;
-							}
-						}
-						thing->lifeLeftMs = deathMs;
-					}
-					else
-					{
-						sithActor_Remove(thing);
-					}
 				#else
                     thing->lifeLeftMs = 1000;
 				#endif
@@ -645,16 +582,6 @@ void sithActor_Remove(sithThing *thing)
 #ifdef PUPPET_PHYSICS
 	thing->collide = SITH_COLLIDE_NONE;
 //	thing->physicsParams.physflags |= SITH_PF_8000000;
-#endif
-#ifdef RAGDOLLS
-	if(thing->rdthing.model3 && thing->rdthing.model3->pSkel)
-	{
-		thing->moveType = SITH_MT_RAGDOLL;
-		thing->collide = SITH_COLLIDE_SPHERE_TREE;
-		thing->treeSize = thing->collideSize;
-		rdRagdoll_NewEntry(&thing->rdthing, &thing->physicsParams.vel);
-		//sithPuppet_resetidk(thing);
-	}
 #endif
 }
 

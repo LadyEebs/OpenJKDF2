@@ -449,7 +449,7 @@ enum SithRaycastType
     SITH_RAYCAST_ONLY_COG_THINGS = 0x2000, // only SITH_THING_COG things
     RAYCAST_4000 = 0x4000,
     RAYCAST_8000 = 0x8000,
-#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
+#ifdef PUPPET_PHYSICS
 	SITH_RAYCAST_IGNORE_CORPSES = 0x10000,
 #endif
 };
@@ -1216,9 +1216,6 @@ enum MOVETYPE
     SITH_MT_NONE = 0x0,
     SITH_MT_PHYSICS = 0x1,
     SITH_MT_PATH = 0x2,
-#ifdef RAGDOLLS
-	SITH_MT_RAGDOLL = 0x3,
-#endif
 };
 
 enum THING_PHYSFLAGS

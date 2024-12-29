@@ -77,14 +77,12 @@ int jkPlayer_enableShadows = 1;
 int jkPlayer_enableDecals = 1;
 #endif
 
-#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
+#ifdef PUPPET_PHYSICS
 int jkPlayer_ragdolls = 1;
 int jkPlayer_debugRagdolls = 0;
-#ifdef PUPPET_PHYSICS
 float jkPlayer_puppetAngBias = 0.001f;
 float jkPlayer_puppetPosBias = 0.1f;
 float jkPlayer_puppetFriction = 0.05f;
-#endif
 #endif
 #endif
 
@@ -240,14 +238,12 @@ void jkPlayer_StartupVars()
 #if defined(DECAL_RENDERING) || defined(RENDER_DROID2)
 	sithCvar_RegisterFlex("r_enableDecals",             1.0,                        &jkPlayer_enableDecals,             CVARFLAG_LOCAL | CVARFLAG_RESETHUD);
 #endif
-#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
+#ifdef PUPPET_PHYSICS
 	sithCvar_RegisterInt("g_ragdolls", 1, &jkPlayer_ragdolls, CVARFLAG_LOCAL | CVARFLAG_UPDATABLE_DEFAULT);
 	sithCvar_RegisterInt("r_debugRagdolls", 0, &jkPlayer_debugRagdolls, CVARFLAG_UPDATABLE_DEFAULT);
-#ifdef PUPPET_PHYSICS
 	sithCvar_RegisterFlex("g_puppetAngBias", 0.001f, &jkPlayer_puppetAngBias, CVARFLAG_UPDATABLE_DEFAULT);
 	sithCvar_RegisterFlex("g_puppetPosBias", 0.1f, &jkPlayer_puppetPosBias, CVARFLAG_UPDATABLE_DEFAULT);
 	sithCvar_RegisterFlex("g_puppetFriction", 0.05f, &jkPlayer_puppetFriction, CVARFLAG_UPDATABLE_DEFAULT);
-#endif
 #endif
     sithCvar_RegisterBool("hud_setCrosshairOnLightsaber", 1,                        &jkPlayer_setCrosshairOnLightsaber, CVARFLAG_LOCAL);
     sithCvar_RegisterBool("hud_setCrosshairOnFist",     1,                          &jkPlayer_setCrosshairOnFist,       CVARFLAG_LOCAL);
@@ -316,14 +312,12 @@ void jkPlayer_ResetVars()
 	jkPlayer_enableDecals = 1;
 #endif
 
-#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
+#ifdef PUPPET_PHYSICS
 	jkPlayer_ragdolls = 1;
 	jkPlayer_debugRagdolls = 0;
-#ifdef PUPPET_PHYSICS
 	jkPlayer_puppetAngBias = 0.001f;
 	jkPlayer_puppetPosBias = 0.1f;
 	jkPlayer_puppetFriction = 0.05f;
-#endif
 #endif
 #endif
 
@@ -722,7 +716,7 @@ void jkPlayer_WriteConf(wchar_t *name)
 #ifdef DYNAMIC_POV
 		stdJSON_SaveBool(ext_fpath, "aimLock", jkPlayer_aimLock);
 #endif
-#ifdef RAGDOLLS
+#ifdef PUPPET_PHYSICS
 		stdJSON_SaveBool(ext_fpath, "ragdolls", jkPlayer_ragdolls);
 #endif
 
@@ -836,7 +830,7 @@ void jkPlayer_ParseLegacyExt()
 			jkPlayer_enable32Bit = 1;
 	}
 
-#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
+#ifdef PUPPET_PHYSICS
 	if (stdConffile_ReadLine())
 	{
 		if (_sscanf(stdConffile_aLine, "ragdolls %f", &jkPlayer_ragdolls) != 1)
@@ -968,7 +962,7 @@ int jkPlayer_ReadConf(wchar_t *name)
 
         jkPlayer_setCrosshairOnLightsaber = stdJSON_GetBool(ext_fpath, "setCrosshairOnLightsaber", jkPlayer_setCrosshairOnLightsaber);
         jkPlayer_setCrosshairOnFist = stdJSON_GetBool(ext_fpath, "setCrosshairOnFist", jkPlayer_setCrosshairOnFist);
-#if defined(RAGDOLLS) || defined(PUPPET_PHYSICS)
+#ifdef PUPPET_PHYSICS
 		jkPlayer_ragdolls = stdJSON_GetInt(ext_fpath, "ragdolls", jkPlayer_ragdolls);
 #endif
 #ifdef DYNAMIC_POV

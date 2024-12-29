@@ -19,10 +19,6 @@
 #include "General/stdMath.h"
 #include "Engine/sithIntersect.h"
 
-#ifdef RAGDOLLS
-#include "Primitives/rdRagdoll.h"
-#endif
-
 #include "jk.h"
 
 #ifdef LIGHTSABER_TRAILS

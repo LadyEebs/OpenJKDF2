@@ -291,13 +291,7 @@ void sithThing_TickAll(float deltaSeconds, int deltaMs)
             }
             if ( sithThing_handler && pThingIter->jkFlags )
                 sithThing_handler(pThingIter);
-#ifdef RAGDOLLS
-			if (pThingIter->moveType == SITH_MT_RAGDOLL)
-			{
-				sithPhysics_ThingPhysRagdoll(pThingIter, deltaSeconds);
-			}
-			else
-#endif
+
             if ( pThingIter->moveType == SITH_MT_PHYSICS )
             {
                 sithPhysics_ThingTick(pThingIter, deltaSeconds);
@@ -308,15 +302,11 @@ void sithThing_TickAll(float deltaSeconds, int deltaMs)
             }
             sithThing_TickPhysics(pThingIter, deltaSeconds);
 
-#ifdef RAGDOLLS
-			if (pThingIter->moveType != SITH_MT_RAGDOLL || !jkPlayer_ragdolls)
-#endif
             sithPuppet_Tick(pThingIter, deltaSeconds);
 
 #ifdef PUPPET_PHYSICS
 			sithConstraint_SolveConstraints(pThingIter, deltaSeconds);
 #endif
-
             continue;
         }
 
