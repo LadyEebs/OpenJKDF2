@@ -334,7 +334,6 @@ void rdPuppet_BuildJointMatrices(rdThing *thing, rdMatrix34 *matrix)
             rdVector_Add3Acc(&a3, &v15->rot);
 
 #ifdef PUPPET_PHYSICS
-			// todo: how do we scale this with time correctly? deltaSeconds is too much...
 			rdVector_Neg3(&thing->paHierarchyNodeVelocities[v80], &a4);
 			rdVector_Neg3(&thing->paHierarchyNodeAngularVelocities[v80], &a3);
 #endif
