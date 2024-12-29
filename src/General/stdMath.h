@@ -106,8 +106,8 @@ static inline uint8_t stdMath_ClampU8(uint8_t val, uint8_t valMin, uint8_t valMa
 
 int stdMath_FindLSB64(uint64_t value);
 
-void stdMath_Sin(float angle);
-void stdMath_Cos(float angle);
+float stdMath_Sin(float angle);
+float stdMath_Cos(float angle);
 
 extern const float aSinTable[4096];
 extern const float aTanTable[4096];
