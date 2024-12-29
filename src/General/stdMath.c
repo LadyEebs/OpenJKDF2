@@ -931,3 +931,17 @@ int stdMath_FindLSB64(uint64_t value)
 	return ffsll(value) - 1;
 #endif
 }
+
+void stdMath_Sin(float angle)
+{
+	float s, c;
+	stdMath_SinCos(angle, &s, &c);
+	return s;
+}
+
+void stdMath_Cos(float angle)
+{
+	float s, c;
+	stdMath_SinCos(angle, &s, &c);
+	return c;
+}
