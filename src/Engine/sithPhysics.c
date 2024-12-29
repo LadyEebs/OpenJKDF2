@@ -174,7 +174,7 @@ void sithPhysics_ThingTick(sithThing *pThing, float deltaSecs)
 
 #ifdef PUPPET_PHYSICS
 	 // the mass to unit ratio is really high so scale the radius to a consistent unit
-	float adjustedSize = pThing->moveSize;// * 10.0f;
+	float adjustedSize = pThing->moveSize * 5.0f;
 	pThing->physicsParams.inertia = (2.0 / 5.0) * pThing->physicsParams.mass * adjustedSize * adjustedSize;
 	pThing->physicsParams.inertia = fmax(pThing->physicsParams.inertia, 0.0001f);
 	if (pThing->puppet && pThing->puppet->physics)
@@ -1106,6 +1106,13 @@ void sithPhysics_ThingPhysAttached(sithThing *pThing, float deltaSeconds)
 	{
 		sithPhysics_ApplyDrag(&pThing->physicsParams.rotVel, pThing->physicsParams.airDrag, 0.0001, deltaSeconds);
 		//rdMath_ClampVectorRange(&pThing->physicsParams.rotVel, -pThing->physicsParams.maxRotVel, pThing->physicsParams.maxRotVel);
+
+		// clip along attachment plane
+		if(!pThing->constraintParent)
+		{
+			float dotProduct = rdVector_Dot3(&pThing->physicsParams.rotVel, &pThing->attachedSufaceInfo->face.normal);
+			rdVector_Scale3(&pThing->physicsParams.rotVel, &pThing->attachedSufaceInfo->face.normal, dotProduct);
+		}
 
 		rdMatrix34 invMat;
 		rdMatrix_InvertOrtho34(&invMat, &pThing->lookOrientation);
