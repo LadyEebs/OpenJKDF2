@@ -53,8 +53,7 @@ extern int sithPuppet_restingPuppets;
 
 void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float deltaSeconds);
 void sithPuppet_StopPhysics(sithThing* pThing);
-void sithPuppet_StopJoints(sithThing* pThing);
-void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds);
+void sithPuppet_TickPhysics(sithThing* thing, float deltaSeconds);
 #endif
 
 //static int (*sithPuppet_Startup)() = (void*)sithPuppet_Startup_ADDR;

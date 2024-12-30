@@ -34,10 +34,9 @@ void sithPhysics_ThingPhysAttached(sithThing *pThing, float deltaSeconds);
 #ifdef PUPPET_PHYSICS
 void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactPoint, const rdVector3* impulse);
 void sithPhysics_ThingWake(sithThing* pThing);
-#endif
-
 void sithPhysics_AnglesToAngularVelocity(rdVector3* result, const rdVector3* eulerPYR, const rdMatrix34* orientation);
 void sithPhysics_AngularVelocityToAngles(rdVector3* result, const rdVector3* angularVelocity, const rdMatrix34* orientation);
+#endif
 
 static void (*_sithPhysics_ThingPhysAttached)(sithThing *pThing, float deltaSeconds) = (void*)sithPhysics_ThingPhysAttached_ADDR;
 

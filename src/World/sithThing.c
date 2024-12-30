@@ -292,6 +292,16 @@ void sithThing_TickAll(float deltaSeconds, int deltaMs)
             if ( sithThing_handler && pThingIter->jkFlags )
                 sithThing_handler(pThingIter);
 
+#ifdef PUPPET_PHYSICS
+			if (pThingIter->moveType == SITH_MT_PUPPET)
+			{
+				if (jkPlayer_ragdolls || pThingIter->type != SITH_THING_CORPSE)
+					sithPuppet_TickPhysics(pThingIter, deltaSeconds);
+				else
+					sithPhysics_ThingTick(pThingIter, deltaSeconds);
+			}
+			else
+#endif
             if ( pThingIter->moveType == SITH_MT_PHYSICS )
             {
                 sithPhysics_ThingTick(pThingIter, deltaSeconds);
@@ -1826,6 +1836,14 @@ int sithThing_LoadThingParam(stdConffileArg *arg, sithThing* pThing, int param)
             return 1;
 #endif
         case THINGPARAM_MOVE:
+#ifdef PUPPET_PHYSICS
+			if (!_strcmp(arg->value, "puppet"))
+			{
+				pThing->moveType = SITH_MT_PUPPET;
+				result = 1;
+			}
+			else
+#endif
             if ( !_strcmp(arg->value, "physics") )
             {
                 pThing->moveType = SITH_MT_PHYSICS;

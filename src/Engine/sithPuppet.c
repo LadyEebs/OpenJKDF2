@@ -403,46 +403,29 @@ void sithPuppet_Tick(sithThing *thing, float deltaSeconds)
     {
         if ( thing->moveType == SITH_MT_PHYSICS )
         {
-		#ifdef PUPPET_PHYSICS
-			// corpses have physicalized animation
-			if((thing->animclass->flags & SITH_PUPPET_PHYSICS) && (thing->type == SITH_THING_CORPSE) && jkPlayer_ragdolls)
-			{
-			//	rdPuppet_ResetTrack(thing->rdthing.puppet, 0);
-			//	rdPuppet_ResetTrack(thing->rdthing.puppet, 1);
-			//	rdPuppet_ResetTrack(thing->rdthing.puppet, 2);
-			//	rdPuppet_ResetTrack(thing->rdthing.puppet, 3);
+			if (thing->puppet->physics)
+				sithPuppet_StopPhysics(thing);
 
-				if(!thing->puppet->physics)
-					sithPuppet_StartPhysics(thing, &thing->physicsParams.vel, deltaSeconds);
-				sithPuppet_UpdatePhysicsAnim(thing, deltaSeconds);
-			}
-			else // otherwise update the animation
-		#endif
+			v3 = sithPuppet_sub_4E4380(thing);
+			v4 = thing->puppet;
+			v5 = v4->playingAnim;
+			if ( v5 )
 			{
-				if (thing->puppet->physics)
-					sithPuppet_StopPhysics(thing);
-
-				v3 = sithPuppet_sub_4E4380(thing);
-				v4 = thing->puppet;
-				v5 = v4->playingAnim;
-				if ( v5 )
+				if ( (v5->flags & 1) != 0 )
 				{
-					if ( (v5->flags & 1) != 0 )
+					v6 = v4->otherTrack;
+					if ( v6 >= 0 )
 					{
-						v6 = v4->otherTrack;
-						if ( v6 >= 0 )
-						{
-							thinga = v3 * deltaSeconds;
-							v8 = thinga;
-							if ( v8 < 0.0 )
-								v8 = -v8;
-							v31 = v8 * 280.0;
-							rdPuppet_AdvanceTrack(thing->rdthing.puppet, v6, v31);
-						}
+						thinga = v3 * deltaSeconds;
+						v8 = thinga;
+						if ( v8 < 0.0 )
+							v8 = -v8;
+						v31 = v8 * 280.0;
+						rdPuppet_AdvanceTrack(thing->rdthing.puppet, v6, v31);
 					}
 				}
-				sithPuppet_FidgetAnim(thing);
 			}
+			sithPuppet_FidgetAnim(thing);
         }
         if ( rdPuppet_UpdateTracks(thing->rdthing.puppet, deltaSeconds) && thing->moveType == SITH_MT_PATH )
         {
@@ -1298,35 +1281,6 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 	rdMatrix_Copy34(&pJointThing->lookOrientation, &pThing->rdthing.hierarchyNodeMatrices[pBodyPart->nodeIdx]);
 	rdVector_Zero3(&pJointThing->lookOrientation.scale);
 
-
-	//rdVector3 worldPivot;
-	//rdMatrix_TransformVector34(&worldPivot, &pNode->pivot, &pThing->rdthing.hierarchyNodeMatrices[pNode->idx]);
-	//rdVector_Sub3Acc(&pJointThing->position, &worldPivot);
-	//
-	//rdVector3 worldParentPivot;
-	//rdMatrix_TransformVector34(&worldParentPivot, &pNode->parent->pivot, &pThing->rdthing.hierarchyNodeMatrices[pNode->parent->idx]);
-	//rdVector_Add3Acc(&pJointThing->position, &worldParentPivot);
-
-
-	rdVector3 pos;
-	rdVector_Copy3(&pos, &pJointThing->position);
-
-	// try to place the body at the center of the bone
-	//int childJoint = sithPuppet_jointChild[jointIdx];
-	//if(childJoint >= 0)
-	//{
-	//	rdVector_Add3Acc(&pos, &pThing->rdthing.hierarchyNodeMatrices[pThing->animclass->bodypart[childJoint].nodeIdx].scale);
-	//	rdVector_Scale3Acc(&pos, 0.5f);
-	//}
-	//else
-	//{
-	//	if (pNode->meshIdx >= 0)
-	//	{
-	//		rdMesh* pMesh = &pThing->rdthing.model3->geosets[0].meshes[pNode->meshIdx];
-	//		rdVector_MultAcc3(&pos, &pJointThing->lookOrientation.uvec, pMesh->maxRadius * 0.5f);
-	//	}
-	//}
-
 	pJointThing->moveSize = pJointThing->collideSize = 0.01f;
 
 	if(pNode->meshIdx >= 0)
@@ -1335,27 +1289,11 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 		//float avgDist = (pMesh->minRadius + pMesh->maxRadius) * 0.5f;
 		pJointThing->moveSize = pMesh->minRadius;
 		pJointThing->collideSize = pMesh->minRadius;// * 0.5;
-
-		// try to place the body at the center
-		//rdVector_MultAcc3(&pos, &pJointThing->lookOrientation.uvec, pMesh->radius * 0.5f);
 	}
-
-
-	//rdMatrix34 invMat;
-	//rdMatrix_InvertOrtho34(&invMat, &pThing->rdthing.hierarchyNodeMatrices[pNode->idx]);
-	//rdVector_Sub3(&pJointThing->jointPivotOffset, &pThing->rdthing.hierarchyNodeMatrices[pNode->idx].scale, &pos);
-	//rdMatrix_TransformVector34Acc(&pJointThing->jointPivotOffset, &invMat);
 
 	pJointThing->jointPivotOffset = pNode->pivot;
 	rdVector_Neg3Acc(&pJointThing->jointPivotOffset);
-
-	//sithCollision_GetSectorLookAt(pThing->sector, &pJointThing->position, &pos, 0.0f);
-	rdVector_Copy3(&pJointThing->position, &pos);
-
-	//rdVector3 pivot;
-	//rdMatrix_TransformVector34(&pivot, &pNode->pivot, &pThing->rdthing.hierarchyNodeMatrices[pBodyPart->nodeIdx]);
-	//rdVector_Add3Acc(&pJoint->thing.position, &pivot);
-
+	
 	if (pBodyPart->flags & JOINTFLAGS_PHYSICS)
 		pJointThing->collide = SITH_COLLIDE_SPHERE;
 	else
@@ -1376,35 +1314,7 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 		// and constrain the hip as a fixed joint and let everything else follow
 		pJointThing->physicsParams.physflags |= SITH_PF_FLOORSTICK;
 
-		//SITH_PF_USEGRAVITY = 0x1,
-		//	SITH_PF_USESTHRUST = 0x2,
-		//	SITH_PF_4 = 0x4,
-		//	SITH_PF_8 = 0x8,
-		//	SITH_PF_SURFACEALIGN = 0x10,
-		//	SITH_PF_SURFACEBOUNCE = 0x20,
-		//	SITH_PF_FLOORSTICK = 0x40,
-		//	SITH_PF_WALLSTICK = 0x80,
-		//	SITH_PF_ATTACHED = 0x100,
-		//	SITH_PF_ROTVEL = 0x200,
-		//	SITH_PF_BANKEDTURNS = 0x400,
-		//	SITH_PF_NOWALLGRAVITY = 0x800,
-		//	SITH_PF_ANGTHRUST = 0x1000,
-		//	SITH_PF_FLY = 0x2000,
-		//	SITH_PF_FEELBLASTFORCE = 0x4000,
-		//	SITH_PF_HAS_FORCE = 0x8000,
-		//	SITH_PF_CROUCHING = 0x10000,
-		//	SITH_PF_DONTROTATEVEL = 0x20000,
-		//	SITH_PF_PARTIALGRAVITY = 0x40000,
-		//	SITH_PF_80000 = 0x80000,
-		//	SITH_PF_WATERSURFACE = 0x100000,
-		//	SITH_PF_200000 = 0x200000,
-		//	SITH_PF_NOTHRUST = 0x400000,
-		//	SITH_PF_800000 = 0x800000,
-		//	SITH_PF_1000000 = 0x1000000, // Jones: minecar
-		//	/ = 0x2000000, // Jones: raft
-		//	SITH_PF_4000000 = 0x4000000, // Jones: jeep
-		//	SITH_PF_8000000 = 0x8000000,
-
+		// todo: do we want to propagate fly flags?
 		if (pThing->physicsParams.physflags & SITH_PF_USEGRAVITY)
 			pJointThing->physicsParams.physflags |= SITH_PF_USEGRAVITY;
 
@@ -1418,8 +1328,6 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 			pJointThing->physicsParams.physflags |= SITH_PF_SURFACEBOUNCE;
 
 		pJointThing->physicsParams.staticDrag = fmax(pJointThing->physicsParams.staticDrag, 0.01f);
-		//pJointThing->physicsParams.airDrag *= 5.0f;
-		//pJointThing->physicsParams.surfaceDrag *= 5.0f;
 
 		rdVector3 vel;
 		rdMatrix_TransformVector34(&vel, &pThing->rdthing.paHierarchyNodeVelocities[pNode->idx], &pThing->rdthing.hierarchyNodeMatrices[pBodyPart->nodeIdx]);
@@ -1430,7 +1338,11 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 	}
 
 	// enter the things sector to start physics
-	sithThing_EnterSector(pJointThing, pThing->sector, 1, 0);
+	//sithThing_EnterSector(pJointThing, pThing->sector, 1, 0);
+
+	// try to place the joint at the sector it's inside of
+	sithSector* pJointSector = sithCollision_GetSectorLookAt(pThing->sector, &pThing->position, &pJointThing->position, 0.0f);
+	sithThing_EnterSector(pJointThing, pJointSector, 1, 0);
 }
 
 void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float deltaSeconds)
@@ -1809,13 +1721,16 @@ static void sithPuppet_UpdatePhysicsParent(sithThing* thing)
 	sithThing_MoveToSector(thing, pJoint->thing.sector, 0);
 }
 
-void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds)
+void sithPuppet_TickPhysics(sithThing* thing, float deltaSeconds)
 {
 	if (thing->physicsParams.physflags & SITH_PF_RESTING)
 	{
 		++sithPuppet_restingPuppets;
 		return;
 	}
+
+	if (!thing->puppet->physics)
+		sithPuppet_StartPhysics(thing, &thing->physicsParams.vel, deltaSeconds);
 
 	++sithPuppet_activePuppets;
 	sithPuppet_UpdateJoints(thing, deltaSeconds);

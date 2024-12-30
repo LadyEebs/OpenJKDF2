@@ -172,12 +172,6 @@ void sithPhysics_ThingTick(sithThing *pThing, float deltaSecs)
 	float adjustedSize = pThing->moveSize * 5.0f;
 	pThing->physicsParams.inertia = (2.0 / 5.0) * pThing->physicsParams.mass * adjustedSize * adjustedSize;
 	pThing->physicsParams.inertia = fmax(pThing->physicsParams.inertia, 0.0001f);
-	if (pThing->puppet && pThing->puppet->physics)
-	{
-		// let the animation system take over
-		return;
-	}
-	else
 #endif
     if (pThing->attach_flags & (SITH_ATTACH_THINGSURFACE | SITH_ATTACH_WORLDSURFACE))
     {
@@ -1372,6 +1366,8 @@ void sithPhysics_ThingPhysAttached(sithThing *pThing, float deltaSeconds)
     }
 }
 
+#ifdef PUPPET_PHYSICS
+
 void sithPhysics_AnglesToAngularVelocity(rdVector3* result, const rdVector3* eulerPYR, const rdMatrix34* orientation)
 {
 	// Local angular velocity in axis terms
@@ -1420,3 +1416,5 @@ void sithPhysics_ThingWake(sithThing* pThing)
 	pThing->physicsParams.physflags &= ~SITH_PF_RESTING;
 	pThing->physicsParams.restTimer = 0.0f;
 }
+
+#endif
