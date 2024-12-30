@@ -635,8 +635,7 @@ void sithCollision_sub_4E7670(sithThing *thing, rdMatrix34 *orient)
         rdVector_Zero3(&i->lookOrientation.scale);
     }
 #ifdef PUPPET_PHYSICS
-	if (thing->moveType == SITH_MT_PHYSICS)
-		thing->physicsParams.physflags &= ~SITH_PF_RESTING;
+	sithPhysics_ThingWake(thing);
 #endif
 
 }
@@ -705,8 +704,7 @@ float sithCollision_UpdateThingCollision(sithThing *pThing, rdVector3 *a2, float
 #ifdef PUPPET_PHYSICS
 	//if (pThing->type == SITH_THING_CORPSE)
 		//flags |= SITH_RAYCAST_IGNORE_CORPSES; // disable collisions between corpse bodies for now
-	if (pThing->moveType == SITH_MT_PHYSICS)
-		pThing->physicsParams.physflags &= ~SITH_PF_RESTING;
+	sithPhysics_ThingWake(pThing);
 #endif
 	direction = *a2;
     v10 = pThing->attachedParentMaybe;

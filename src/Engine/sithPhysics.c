@@ -245,11 +245,11 @@ void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactP
 
 	rdVector_Add3Acc(&pThing->physicsParams.rotVel, &angAccel);
 
-	pThing->physicsParams.physflags &= ~SITH_PF_RESTING;
+	sithPhysics_ThingWake(pThing);
 	if (pThing->constraintRoot)
 	{
 		if (rdVector_Len3(&angAccel) > 0.1)
-			pThing->constraintRoot->physicsParams.physflags &= ~SITH_PF_RESTING;
+			sithPhysics_ThingWake(pThing->constraintRoot);
 	}
 }
 
@@ -273,11 +273,11 @@ void sithPhysics_ThingApplyForce(sithThing *pThing, rdVector3 *forceVec)
         pThing->physicsParams.physflags |= SITH_PF_HAS_FORCE;
 
 #ifdef PUPPET_PHYSICS
-		pThing->physicsParams.physflags &= ~SITH_PF_RESTING;
+		sithPhysics_ThingWake(pThing);
 		if(pThing->constraintRoot)
 		{
 			if (rdVector_Len3(forceVec) * invMass > 0.1)
-				pThing->constraintRoot->physicsParams.physflags &= ~SITH_PF_RESTING;
+				sithPhysics_ThingWake(pThing->constraintRoot);
 		}
 #endif
     }
@@ -1410,4 +1410,13 @@ void sithPhysics_AngularVelocityToAngles(rdVector3* result, const rdVector3* ang
 	result->x = rdVector_Dot3(&localUnitConstraint, &pitchAxisA) * (180.0f / M_PI);  // Pitch
 	result->y = rdVector_Dot3(&localUnitConstraint, &yawAxisA) * (180.0f / M_PI);   // Yaw
 	result->z = rdVector_Dot3(&localUnitConstraint, &rollAxisA) * (180.0f / M_PI);   // Roll
+}
+
+void sithPhysics_ThingWake(sithThing* pThing)
+{
+	if (pThing->moveType != SITH_MT_PHYSICS)
+		return;
+
+	pThing->physicsParams.physflags &= ~SITH_PF_RESTING;
+	pThing->physicsParams.restTimer = 0.0f;
 }

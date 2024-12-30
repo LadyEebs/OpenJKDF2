@@ -1591,7 +1591,7 @@ void sithPuppet_StopPhysics(sithThing* pThing)
 	}
 }
 
-void sithPuppet_UpdateJointMatrices(sithThing* thing)
+static void sithPuppet_UpdateJointMatrices(sithThing* thing)
 {
 	rdMatrix34 invMat;
 	rdMatrix_InvertOrtho34(&invMat, &thing->lookOrientation);
@@ -1613,84 +1613,29 @@ void sithPuppet_UpdateJointMatrices(sithThing* thing)
 		sithPuppetJoint* pJoint = &thing->puppet->physics->joints[jointIdx];
 		rdHierarchyNode* pNode = &thing->rdthing.model3->hierarchyNodes[pBodyPart->nodeIdx];
 
-		//rdMatrix_Copy34(&pJoint->localMat, &pJoint->thing.lookOrientation);
-		//rdVector_Copy3(&pJoint->localMat.scale, &pJoint->thing.position);
-		
-		rdVector3 oldPos = pJoint->localMat.scale;
-		rdQuat q0, q1;
+		// smoothly interpolate the matrix changes as the physics system can be a little jittery
+		const float interpolation = 0.3f; // should maybe be a cvar
+
+		rdVector3 oldPos = pJoint->localMat.scale; // keep this around so we don't lose it
+
+		// interpolate the orientation via quaternion
+		rdQuat q, q0, q1;
 		rdQuat_BuildFrom34(&q0, &pJoint->localMat);
 		rdQuat_BuildFrom34(&q1, &pJoint->thing.lookOrientation);
-	
-		rdQuat q;
-		rdQuat_Slerp(&q, &q0, &q1, 0.3f);
-	
+		rdQuat_Slerp(&q, &q0, &q1, interpolation);
 		rdQuat_ToMatrix(&pJoint->localMat, &q);
-
-		rdVector3 pos = pJoint->thing.position;
 		
-		rdVector3 jointPivotOffset;
-		rdMatrix_TransformVector34(&jointPivotOffset, &pJoint->thing.jointPivotOffset, &pJoint->thing.lookOrientation);
-		rdVector_Add3Acc(&pos, &jointPivotOffset);
-	
-		rdVector_Lerp3(&pJoint->localMat.scale, &oldPos, &pJoint->thing.position, 0.3f);
-		
-	//	pJoint->thing.lookOrientation.scale = pJoint->thing.position;
-	//	
-	//
-	//	rdMatrix34* parentWorldMatrix;
-	//	if(pNode->parent)
-	//		parentWorldMatrix = &thing->rdthing.hierarchyNodeMatrices[pNode->parent->idx];
-	//	else
-	//		parentWorldMatrix = &thing->lookOrientation;
-	//
-	//	// Step 1: Extract the parent's world transform and invert it to bring the node back to local space
-	//	rdMatrix34 parentWorldMatrixInv;
-	//	rdMatrix_InvertOrtho34(&parentWorldMatrixInv, parentWorldMatrix);
-	//
-	//	// Step 2: Apply the parent's inverse transform to the current world matrix (undo parent's transform)
-	//	rdMatrix34 localMatrixTemp;
-	//	rdMatrix_Multiply34(&localMatrixTemp, &parentWorldMatrixInv, &pJoint->thing.lookOrientation);
-	//
-	//	// Step 3: Undo the parent pivot (we subtracted it when going from local to world space, so we add it back)
-	//	if (pNode->parent)
-	//	{
-	//		rdMatrix34 parentPivotMatrix;
-	//		rdVector3 parentPivotNeg = { pNode->parent->pivot.x, pNode->parent->pivot.y, pNode->parent->pivot.z };  // Positive pivot in local space
-	//		rdMatrix_BuildTranslate34(&parentPivotMatrix, &parentPivotNeg);
-	//		rdMatrix_PostMultiply34(&localMatrixTemp, &parentPivotMatrix);
-	//	}
-	//
-	//	// Step 4: Now, the current node's local matrix is stored in localMatrixTemp
-	//	//pJoint->localMat = localMatrixTemp;
-	//
-	//	rdVector3 oldPos = pJoint->localMat.scale;
-	//
-	//	rdQuat q0, q1;
-	//	rdQuat_BuildFrom34(&q0, &pJoint->localMat);
-	//	rdQuat_BuildFrom34(&q1, &localMatrixTemp);
-	//
-	//	rdQuat q;
-	//	rdQuat_Slerp(&q, &q0, &q1, 0.3f);
-	//
-	//	rdQuat_ToMatrix(&pJoint->localMat, &q);
-	//
-	//	// Step 5: The position is extracted from the local transform, adjusting for the joint pivot
-	//	rdVector3 jointPivotNeg = { -pNode->pivot.x, -pNode->pivot.y, -pNode->pivot.z };  // Inverse of joint pivot in local space
-	//	rdMatrix34 localPositionMatrix;
-	//	rdMatrix_BuildTranslate34(&localPositionMatrix, &jointPivotNeg);
-	//	rdMatrix_PostMultiply34(&localPositionMatrix, &localMatrixTemp);
-	//
-	//	rdVector_Lerp3(&pJoint->localMat.scale, &oldPos, &localPositionMatrix.scale, 0.3f);
-	//
-	//	//pJoint->localMat.scale = localPositionMatrix.scale;
-	//
-	//	pJoint->thing.lookOrientation.scale = rdroid_zeroVector3;
+		// interpolate the position + pivot offset
+		rdVector3 pos, pivot;
+		rdMatrix_TransformVector34(&pivot, &pJoint->thing.jointPivotOffset, &pJoint->thing.lookOrientation);
+		rdVector_Add3(&pos, &pJoint->thing.position, &pivot);
+		rdVector_Lerp3(&pJoint->localMat.scale, &oldPos, &pJoint->thing.position, interpolation);
 
 		thing->rdthing.paHiearchyNodeMatrixOverrides[pBodyPart->nodeIdx] = &pJoint->localMat;
 	}
 }
 
-inline void sithPuppet_UpdateJointThing(sithThing* pThing, sithThing* pJointThing, sithBodyPart* pBodyPart, float deltaSeconds)
+static inline void sithPuppet_UpdateJointThing(sithThing* pThing, sithThing* pJointThing, sithBodyPart* pBodyPart, float deltaSeconds)
 {
 	// don't collide if the node is amputated or lower than the root joint
 	// (but update the position for sector traversal)
@@ -1705,7 +1650,7 @@ inline void sithPuppet_UpdateJointThing(sithThing* pThing, sithThing* pJointThin
 	pJointThing->collide = collide;
 }
 
-void sithPuppet_UpdateJoints(sithThing* pThing, float deltaSeconds)
+static void sithPuppet_UpdateJoints(sithThing* pThing, float deltaSeconds)
 {
 	uint64_t jointBits = pThing->animclass->physicsJointBits;
 	while (jointBits != 0)
@@ -1719,7 +1664,7 @@ void sithPuppet_UpdateJoints(sithThing* pThing, float deltaSeconds)
 	}
 }
 
-void sithPuppet_StopAll(sithThing* pThing)
+static void sithPuppet_StopAll(sithThing* pThing)
 {
 	sithPhysics_ThingStop(pThing);
 	
@@ -1734,21 +1679,48 @@ void sithPuppet_StopAll(sithThing* pThing)
 	}
 }
 
-int sithbPuppet_IsAtRest(sithThing* thing, float deltaSeconds)
+static void sithPuppet_UpdateRestingData(sithThing* thing, float deltaSeconds)
 {
+	// already resting
 	if (thing->physicsParams.physflags & SITH_PF_RESTING)
-		return 1;
+		return;
 
-	// if the root joint isn't attached, assume in free fall
-	int rootJoint = thing->animclass->root < 0 ? JOINTTYPE_HIP : thing->animclass->root;
-	sithPuppetJoint* pJoint = &thing->puppet->physics->joints[rootJoint];
-	if(!pJoint->thing.attach_flags)
+	// only update if we're about to start a new test
+	if (thing->physicsParams.restTimer > 0.0)
+		return;
+
+	// start accumulating the timer
+	thing->physicsParams.restTimer += deltaSeconds;
+
+	// update the last position and orientation for comparing
+	uint64_t jointBits = thing->animclass->physicsJointBits;
+	while (jointBits != 0)
+	{
+		int jointIdx = stdMath_FindLSB64(jointBits);
+		jointBits ^= 1ull << jointIdx;
+
+		sithPuppetJoint* pJoint = &thing->puppet->physics->joints[jointIdx];
+		pJoint->thing.physicsParams.lastPos = pJoint->thing.position;
+		pJoint->thing.physicsParams.lastOrient = pJoint->thing.lookOrientation;
+	}
+}
+
+static int sithPuppet_CheckForStillBodies(sithThing* thing, float deltaSeconds)
+{
+	// only test every so often so that we capture changes across a larger time step
+	if (thing->physicsParams.restTimer <= 1.0)
+	{
+		// not ready yet
+		thing->physicsParams.restTimer += deltaSeconds;
 		return 0;
+	}
 
-	// if we haven't been visible for a while, just rest
-	//int iterations = bShowInvisibleThings - thing->isVisible;
-	//if (iterations > 100)
-	//	return 1;
+	// reset the timer for another test
+	thing->physicsParams.restTimer = 0.0f;
+
+	// check for the largest motion of all joints
+	float maxDistSq = 0.0f;
+	float maxAngle = 0.0f;
 
 	uint64_t jointBits = thing->animclass->physicsJointBits;
 	while (jointBits != 0)
@@ -1757,22 +1729,84 @@ int sithbPuppet_IsAtRest(sithThing* thing, float deltaSeconds)
 		jointBits ^= 1ull << jointIdx;
 
 		sithPuppetJoint* pJoint = &thing->puppet->physics->joints[jointIdx];
-		
-		// if any of the bodies is in free fall then we're not at rest
-		//if (pJoint->thing.attach_flags == 0)
-		//	return 0;
 
-		// if any of the bodies are moving past a threshold then we're not at rest
+		// position difference
+		float distSq = rdVector_DistSquared3(&pJoint->thing.physicsParams.lastPos, &pJoint->thing.position);
+		if (maxDistSq < distSq)
+			maxDistSq = distSq;
+
+		// orientation difference
+		rdMatrix34 invLastOrient;
+		rdMatrix_InvertOrtho34(&invLastOrient, &pJoint->thing.physicsParams.lastOrient);
+
+		rdMatrix34 localMat;
+		rdMatrix_Multiply34(&localMat, &invLastOrient, &pJoint->thing.lookOrientation);
+
+		// todo: this seems jank, maybe test PYR?
+		rdVector3 axis;
+		float angle;
+		rdMatrix_ExtractAxisAngle34(&localMat, &axis, &angle);
+		if (maxAngle < angle)
+			maxAngle = angle;
+	}
+
+	// if there wasn't substantial movement among the joints during the rest period, we can rest
+	return (maxDistSq < 0.0001f && maxAngle < 10.0f);
+}
+
+static int sithPuppet_CheckVelocities(sithThing* thing, float deltaSeconds)
+{
+	// must not rest if any of the bodies have significant enough velocity
+	uint64_t jointBits = thing->animclass->physicsJointBits;
+	while (jointBits != 0)
+	{
+		int jointIdx = stdMath_FindLSB64(jointBits);
+		jointBits ^= 1ull << jointIdx;
+
+		sithPuppetJoint* pJoint = &thing->puppet->physics->joints[jointIdx];
+
 		float velLenSq = rdVector_Dot3(&pJoint->thing.physicsParams.vel, &pJoint->thing.physicsParams.vel);
-		if(velLenSq > 0.001f)
+		if (velLenSq > 0.001f)
 			return 0;
 
 		float rotVelLenSq = rdVector_Dot3(&pJoint->thing.physicsParams.rotVel, &pJoint->thing.physicsParams.rotVel);
 		if (rotVelLenSq > 0.01f)
 			return 0;
 	}
-
 	return 1;
+}
+
+static int sithPuppet_IsAtRest(sithThing* thing, float deltaSeconds)
+{
+	if (thing->physicsParams.physflags & SITH_PF_RESTING)
+		return 1;
+
+	// assume in free fall if the root joint isn't attached
+	int rootJoint = thing->animclass->root < 0 ? JOINTTYPE_HIP : thing->animclass->root;
+	sithPuppetJoint* pJoint = &thing->puppet->physics->joints[rootJoint];
+	if(!pJoint->thing.attach_flags)
+		return 0;
+
+	// if all of the joints are still, go to rest
+	if (sithPuppet_CheckForStillBodies(thing, deltaSeconds))
+		return 1;
+
+	// just rest if we haven't been visible for a while
+	//int iterations = bShowInvisibleThings - thing->isVisible;
+	//if (iterations > 100)
+	//	return 1;
+
+	// finally check the velocities, if they're very small we can rest
+	return sithPuppet_CheckVelocities(thing, deltaSeconds);
+}
+
+static void sithPuppet_UpdatePhysicsParent(sithThing* thing)
+{
+	// pin the thing to the root joint
+	int rootJoint = thing->animclass->root < 0 ? JOINTTYPE_HIP : thing->animclass->root;
+	sithPuppetJoint* pJoint = &thing->puppet->physics->joints[rootJoint];
+	rdVector_Copy3(&thing->position, &pJoint->thing.position);
+	sithThing_MoveToSector(thing, pJoint->thing.sector, 0);
 }
 
 void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds)
@@ -1786,14 +1820,9 @@ void sithPuppet_UpdatePhysicsAnim(sithThing* thing, float deltaSeconds)
 	++sithPuppet_activePuppets;
 	sithPuppet_UpdateJoints(thing, deltaSeconds);
 	sithPuppet_UpdateJointMatrices(thing);
-
-	// pin the thing to the root joint
-	int rootJoint = thing->animclass->root < 0 ? JOINTTYPE_HIP : thing->animclass->root;
-	sithPuppetJoint* pJoint = &thing->puppet->physics->joints[rootJoint];
-	rdVector_Copy3(&thing->position, &pJoint->thing.position);
-	sithThing_MoveToSector(thing, pJoint->thing.sector, 0);
-
-	if (sithbPuppet_IsAtRest(thing, deltaSeconds))
+	sithPuppet_UpdatePhysicsParent(thing);
+	sithPuppet_UpdateRestingData(thing, deltaSeconds);
+	if (sithPuppet_IsAtRest(thing, deltaSeconds))
 	{
 		thing->physicsParams.physflags |= SITH_PF_RESTING;
 		sithPuppet_StopAll(thing);

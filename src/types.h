@@ -3157,6 +3157,7 @@ typedef struct sithThingPhysParams
 	float povOffset;
 #endif
 #ifdef PUPPET_PHYSICS
+	float restTimer;
 	// todo: turn angVel into rotVel on load and only use 1
 	float      inertia;
 	rdVector3  rotVel; // world space angular velocity accumulation, as opposed to angVel (which is local euler angles)
