@@ -1410,7 +1410,7 @@ void sithPhysics_AngularVelocityToAngles(rdVector3* result, const rdVector3* ang
 
 void sithPhysics_ThingWake(sithThing* pThing)
 {
-	if (pThing->moveType != SITH_MT_PHYSICS)
+	if (pThing->moveType != SITH_MT_PHYSICS && pThing->moveType != SITH_MT_PUPPET)
 		return;
 
 	pThing->physicsParams.physflags &= ~SITH_PF_RESTING;
