@@ -287,13 +287,10 @@ void sithConstraint_SatisfyConstraints(sithThing* thing, int iterations, float d
 		int allConverged = 1;
 
 		sithConstraint* c = thing->constraints;
-		while (c)
+		for (; c; c = c->next)
 		{
 			if(stdMath_Fabs(c->result.C) < 0.001f)
-			{
-				c = c->next;
 				continue;
-			}
 			
 			sithThing* bodyA = c->targetThing;
 			sithThing* bodyB = c->constrainedThing;
@@ -305,10 +302,7 @@ void sithConstraint_SatisfyConstraints(sithThing* thing, int iterations, float d
 				rdVector_Dot3(&c->result.JrB, &bodyB->physicsParams.rotVel);
 			Jv = stdMath_ClipPrecision(Jv);
 			if (stdMath_Fabs(Jv) < 0.001f)
-			{
-				c = c->next;
 				continue;
-			}
 
 			// Compute corrective impulse
 			float deltaLambda = (c->result.C - Jv) * c->effectiveMass;
@@ -316,10 +310,7 @@ void sithConstraint_SatisfyConstraints(sithThing* thing, int iterations, float d
 			deltaLambda = stdMath_ClipPrecision(deltaLambda);
 
 			if(stdMath_Fabs(deltaLambda) < 0.0005f)
-			{
-				c = c->next;
 				continue;
-			}
 
 			// Add deltaLambda to the current lambda
 			float newLambda = c->lambda + deltaLambda;
@@ -344,8 +335,6 @@ void sithConstraint_SatisfyConstraints(sithThing* thing, int iterations, float d
 			rdVector_Add3Acc(&bodyB->physicsParams.rotVel, &angularImpulseB);
 
 			allConverged = 0;
-
-			c = c->next;
 		}
 
 		if(allConverged)
@@ -358,71 +347,73 @@ void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
 	if (pThing->physicsParams.physflags & SITH_PF_RESTING)
 		return;
 
-	if (pThing->constraints && pThing->sector)
-	{		
-		// try to skip satisfying constraints if everything is mostly resting
-		int atRest = 1;
+	if (!pThing->constraints || !pThing->sector)
+		return;
 
-		float iterationStep = deltaSeconds;
-		sithConstraint* constraint = pThing->constraints;
-		while (constraint)
+	// try to skip satisfying constraints if everything is mostly resting
+	int atRest = 1;
+
+	float iterationStep = deltaSeconds;
+	sithConstraint* constraint = pThing->constraints;
+	for (; constraint; constraint = constraint->next)
+	{
+		memset(&constraint->result, 0, sizeof(sithConstraintResult));
+		if (constraint->flags & SITH_CONSTRAINT_DISABLED)
+			continue;
+
+		constraint->lambda *= 0.9f;
+		switch (constraint->type)
 		{
-			memset(&constraint->result, 0, sizeof(sithConstraintResult));
-			constraint->lambda *= 0.9f;
-			switch (constraint->type)
-			{
-			case SITH_CONSTRAINT_DISTANCE:
-				sithConstraint_SolveDistanceConstraint(&constraint->result, constraint, iterationStep);
-				break;
-			case SITH_CONSTRAINT_CONE:
-				sithConstraint_SolveConeConstraint(&constraint->result, constraint, iterationStep);
-				break;
-			case SITH_CONSTRAINT_HINGE:
-				sithConstraint_SolveHingeConstraint(&constraint->result, constraint, iterationStep);
-				break;
-			default:
-				break;
-			}
-			constraint->result.C = stdMath_ClipPrecision(constraint->result.C);
-			constraint->effectiveMass = sithConstraint_ComputeEffectiveMass(constraint);
-
-			if(stdMath_Fabs(constraint->result.C) > 0.005f)
-				atRest = 0;
-
-			constraint = constraint->next;
+		case SITH_CONSTRAINT_DISTANCE:
+			sithConstraint_SolveDistanceConstraint(&constraint->result, constraint, iterationStep);
+			break;
+		case SITH_CONSTRAINT_CONE:
+			sithConstraint_SolveConeConstraint(&constraint->result, constraint, iterationStep);
+			break;
+		case SITH_CONSTRAINT_HINGE:
+			sithConstraint_SolveHingeConstraint(&constraint->result, constraint, iterationStep);
+			break;
+		default:
+			break;
 		}
+		constraint->result.C = stdMath_ClipPrecision(constraint->result.C);
+		constraint->effectiveMass = sithConstraint_ComputeEffectiveMass(constraint);
 
-		if(!atRest)
+		if(stdMath_Fabs(constraint->result.C) > 0.005f)
+			atRest = 0;
+	}
+
+	if(!atRest)
+	{
+		int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 10 : 1;
+		sithConstraint_SatisfyConstraints(pThing, iterations, deltaSeconds);
+
+		// apply friction as impulses
+		constraint = pThing->constraints;
+		for (; constraint; constraint = constraint->next)
 		{
-			int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 10 : 1;
-			sithConstraint_SatisfyConstraints(pThing, iterations, deltaSeconds);
+			if(constraint->flags & SITH_CONSTRAINT_DISABLED)
+				continue;
 
-			// apply friction as impulses
-			constraint = pThing->constraints;
-			while (constraint)
-			{
-				float invMassA = 1.0f / constraint->targetThing->physicsParams.mass;
-				float invMassB = 1.0f / constraint->constrainedThing->physicsParams.mass;
-				float totalInvMass = invMassA + invMassB;
+			float invMassA = 1.0f / constraint->targetThing->physicsParams.mass;
+			float invMassB = 1.0f / constraint->constrainedThing->physicsParams.mass;
+			float totalInvMass = invMassA + invMassB;
 
-				rdVector3 omegaRel;
-				rdVector_Sub3(&omegaRel, &constraint->targetThing->physicsParams.rotVel, &constraint->constrainedThing->physicsParams.rotVel);
-				rdVector_Scale3Acc(&omegaRel, jkPlayer_puppetFriction / totalInvMass);
+			rdVector3 omegaRel;
+			rdVector_Sub3(&omegaRel, &constraint->targetThing->physicsParams.rotVel, &constraint->constrainedThing->physicsParams.rotVel);
+			rdVector_Scale3Acc(&omegaRel, jkPlayer_puppetFriction / totalInvMass);
 
-				rdVector3 impulseA, impulseB;
-				rdVector_Scale3(&impulseA, &omegaRel, -invMassA);
-				rdVector_Scale3(&impulseB, &omegaRel,  invMassB);
+			rdVector3 impulseA, impulseB;
+			rdVector_Scale3(&impulseA, &omegaRel, -invMassA);
+			rdVector_Scale3(&impulseB, &omegaRel,  invMassB);
 
-				rdVector_Add3Acc(&constraint->targetThing->physicsParams.rotVel, &impulseA);
-				rdVector_Add3Acc(&constraint->constrainedThing->physicsParams.rotVel, &impulseB);
-
-				constraint = constraint->next;
-			}
+			rdVector_Add3Acc(&constraint->targetThing->physicsParams.rotVel, &impulseA);
+			rdVector_Add3Acc(&constraint->constrainedThing->physicsParams.rotVel, &impulseB);
 		}
-		else
-		{
-			pThing->physicsParams.physflags |= SITH_PF_RESTING;
-		}
+	}
+	else
+	{
+		pThing->physicsParams.physflags |= SITH_PF_RESTING;
 	}
 }
 

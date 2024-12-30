@@ -207,17 +207,14 @@ void sithThing_SetHandler(sithThing_handler_t handler)
 #ifdef PUPPET_PHYSICS
 void sithThing_FreeConstraints(sithThing* thing)
 {
-	if (thing->constraints)
+	sithConstraint* constraint = thing->constraints;
+	while (constraint)
 	{
-		sithConstraint* constraint = thing->constraints;
-		while (constraint)
-		{
-			sithConstraint* next = constraint->next;
-			pSithHS->free(constraint);
-			constraint = next;
-		}
-		thing->constraints = 0;
+		sithConstraint* next = constraint->next;
+		pSithHS->free(constraint);
+		constraint = next;
 	}
+	thing->constraints = 0;
 }
 #endif
 
@@ -246,6 +243,11 @@ void sithThing_TickAll(float deltaSeconds, int deltaMs)
 
         if (!(pThingIter->thingflags & SITH_TF_WILLBEREMOVED))
         {
+#ifdef PUPPET_PHYSICS
+			// if this thing was previously using puppet physics make sure we clean up
+			if (pThingIter->moveType != SITH_MT_PUPPET && pThingIter->puppet && pThingIter->puppet->physics)
+				sithPuppet_StopPhysics(pThingIter);
+#endif
 
             if ( pThingIter->lifeLeftMs )
             {

@@ -2721,11 +2721,8 @@ int sithRender_RenderThing(sithThing *pThing)
 		else if (jkPlayer_debugRagdolls == 2)
 		{
 			sithConstraint* constraint = pThing->constraints;
-			while (constraint)
-			{
+			for (; constraint; constraint = constraint->next)
 				sithConstraint_Draw(constraint);
-				constraint = constraint->next;
-			}
 		}
 	}
 #endif

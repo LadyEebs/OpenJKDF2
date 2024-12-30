@@ -2881,6 +2881,11 @@ enum SITH_CONSTRAINT_TYPE
 	SITH_CONSTRAINT_COUNT
 };
 
+enum SITH_CONSTRAINT_FLAGS
+{
+	SITH_CONSTRAINT_DISABLED = 0x1
+};
+
 typedef struct sithConstraintResult
 {
 	rdVector3 JvA, JrA; // jacobians for body A
@@ -2915,6 +2920,7 @@ typedef struct sithConstraintHingeParams
 typedef struct sithConstraint
 {
 	int        type;             // SITH_CONSTRAINT_TYPE
+	int        flags;            // SITH_CONSTRAINT_FLAGS
 	float      lambda;           // the previous lambda calculation
 	float      effectiveMass;    // effective mass of the constraint
 	sithThing* parentThing;      // thing that owns the constraint
