@@ -353,7 +353,7 @@ void sithActor_SpawnDeadBodyMaybe(sithThing *thing, sithThing *a3, int a4, int j
 							rdKeyframe* key = mode->keyframe[anim].keyframe;
 							if (key)
 							{
-								deathMs = ((float)key->numFrames / key->fps) * 1000.0f * 0.25f;
+								deathMs = ((float)key->numFrames / key->fps) * 1000.0f * 0.5f;
 							}
 						}
 						thing->lifeLeftMs = deathMs;
