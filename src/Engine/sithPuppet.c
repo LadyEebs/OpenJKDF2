@@ -1286,8 +1286,8 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 	if(pNode->meshIdx >= 0)
 	{
 		rdMesh* pMesh = &pThing->rdthing.model3->geosets[0].meshes[pNode->meshIdx];
-		//float avgDist = (pMesh->minRadius + pMesh->maxRadius) * 0.5f;
-		pJointThing->moveSize = pMesh->minRadius;
+		float avgDist = (pMesh->minRadius + pMesh->maxRadius) * 0.5f;
+		pJointThing->moveSize = avgDist * 0.8f;
 		pJointThing->collideSize = pMesh->minRadius;// * 0.5;
 	}
 
