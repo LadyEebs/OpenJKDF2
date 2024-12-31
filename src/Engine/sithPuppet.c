@@ -1328,6 +1328,8 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 			pJointThing->physicsParams.physflags |= SITH_PF_SURFACEBOUNCE;
 
 		pJointThing->physicsParams.staticDrag = fmax(pJointThing->physicsParams.staticDrag, 0.01f);
+		pJointThing->physicsParams.surfaceDrag *= 2.0f;
+		pJointThing->physicsParams.airDrag *= 2.0f;
 
 		rdVector3 vel;
 		rdMatrix_TransformVector34(&vel, &pThing->rdthing.paHierarchyNodeVelocities[pNode->idx], &pThing->rdthing.hierarchyNodeMatrices[pBodyPart->nodeIdx]);
