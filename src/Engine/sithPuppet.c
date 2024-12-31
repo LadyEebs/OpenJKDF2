@@ -1195,9 +1195,10 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 
 	pJointThing->moveSize = pJointThing->collideSize = 0.01f;
 
+	rdMesh* pMesh = NULL;
 	if(pNode->meshIdx >= 0)
 	{
-		rdMesh* pMesh = &pThing->rdthing.model3->geosets[0].meshes[pNode->meshIdx];
+		pMesh = &pThing->rdthing.model3->geosets[0].meshes[pNode->meshIdx];
 		float avgDist = (pMesh->minRadius + pMesh->maxRadius) * 0.5f;
 		pJointThing->moveSize = avgDist * 0.8f;
 		pJointThing->collideSize = pMesh->minRadius;// * 0.5;
@@ -1217,7 +1218,7 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 		_memcpy(&pJointThing->physicsParams, &pThing->physicsParams, sizeof(sithThingPhysParams));
 		pJointThing->physicsParams.mass *= pBodyPart->mass;
 		pJointThing->physicsParams.buoyancy *= pBodyPart->buoyancy;
-		pJointThing->physicsParams.height = 0.0f;
+		pJointThing->physicsParams.height = pMesh ? pMesh->maxRadius : 0.0f;
 
 		pJointThing->physicsParams.physflags = SITH_PF_FEELBLASTFORCE;
 		pJointThing->physicsParams.physflags |= SITH_PF_ANGIMPULSE;
