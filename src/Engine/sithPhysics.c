@@ -1095,7 +1095,7 @@ void sithPhysics_ThingPhysAttached(sithThing *pThing, float deltaSeconds)
 #ifdef PUPPET_PHYSICS
 	if (!rdVector_IsZero3(&pThing->physicsParams.rotVel))
 	{
-		sithPhysics_ApplyDrag(&pThing->physicsParams.rotVel, pThing->physicsParams.airDrag, 0.0001, deltaSeconds);
+		sithPhysics_ApplyDrag(&pThing->physicsParams.rotVel, pThing->physicsParams.surfaceDrag, 0.0001, deltaSeconds);
 		//rdMath_ClampVectorRange(&pThing->physicsParams.rotVel, -pThing->physicsParams.maxRotVel, pThing->physicsParams.maxRotVel);
 
 		// clip along attachment plane
