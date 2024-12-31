@@ -39,12 +39,14 @@ uniform textureBlock
 	int   tex_mode;
 	int   uv_mode;
 	int   texgen;
-	uint  numMips;
+	int   numMips;
 
 	vec2 texsize;
 	vec2 uv_offset;
 
 	vec4 texgen_params;
+
+	vec4 padding;
 };
 
 noperspective out vec2 f_uv_affine;

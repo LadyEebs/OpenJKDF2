@@ -208,12 +208,14 @@ typedef struct std3D_TextureUniforms
 	int32_t   tex_mode;
 	int32_t   uv_mode;
 	int32_t   texgen;
-	uint32_t  numMips;
+	int32_t   numMips;
 
 	rdVector2 texsize;
 	rdVector2 uv_offset;
 
 	rdVector4 texgen_params;
+
+	rdVector4 padding;
 } std3D_TextureUniforms;
 GLuint tex_ubo;
 
