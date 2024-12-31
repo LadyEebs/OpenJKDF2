@@ -1628,6 +1628,11 @@ static int sithPuppet_IsAtRest(sithThing* thing, float deltaSeconds)
 	if (thing->physicsParams.physflags & SITH_PF_RESTING)
 		return 1;
 
+	// just rest if we haven't been visible for a long time
+	int frames = bShowInvisibleThings - thing->isVisible;
+	if (frames > 10000)
+		return 1;
+
 	// assume in free fall if the root joint isn't attached
 	int rootJoint = thing->animclass->root < 0 ? JOINTTYPE_HIP : thing->animclass->root;
 	sithPuppetJoint* pJoint = &thing->puppet->physics->joints[rootJoint];
@@ -1637,11 +1642,6 @@ static int sithPuppet_IsAtRest(sithThing* thing, float deltaSeconds)
 	// if all of the joints are still, go to rest
 	if (sithPuppet_CheckForStillBodies(thing, deltaSeconds))
 		return 1;
-
-	// just rest if we haven't been visible for a while
-	//int iterations = bShowInvisibleThings - thing->isVisible;
-	//if (iterations > 100)
-	//	return 1;
 
 	// finally check the velocities, if they're very small we can rest
 	return sithPuppet_CheckVelocities(thing, deltaSeconds);
