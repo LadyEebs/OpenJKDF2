@@ -283,48 +283,40 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 							sithAnimclassConstraint* constraint = (sithAnimclassConstraint*)rdroid_pHS->alloc(sizeof(sithAnimclassConstraint));
 							memset(constraint, 0, sizeof(sithAnimclassConstraint));
 							constraint->type = type;
-							constraint->constrainedJoint = constrainedJoint;
-							constraint->targetJoint = targetJoint;
+							constraint->jointB = constrainedJoint;
+							constraint->jointA = targetJoint;
 							constraint->next = animclass->constraints;
 							animclass->constraints = constraint;
 					
-							switch(type)
+							if (stdConffile_entry.numArgs > 3)
 							{
-							case SITH_CONSTRAINT_CONE:
-								if (stdConffile_entry.numArgs > 4)
-								{
-									if (_sscanf(stdConffile_entry.args[3].key,
-										"(%f/%f/%f)",
-										&constraint->axis.x,
-										&constraint->axis.y,
-										&constraint->axis.z) != 3
+								if (_sscanf(stdConffile_entry.args[3].key,
+											"(%f/%f/%f)",
+											&constraint->axisB.x,
+											&constraint->axisB.y,
+											&constraint->axisB.z) != 3
 									)
-									{
-										return 0;
-									}
-									constraint->maxAngle = constraint->minAngle = atof(stdConffile_entry.args[4].key);
-								}
-								break;
-							case SITH_CONSTRAINT_HINGE:
-								if (stdConffile_entry.numArgs > 5)
 								{
-									if (_sscanf(stdConffile_entry.args[3].key,
-												"(%f/%f/%f)",
-												&constraint->axis.x,
-												&constraint->axis.y,
-												&constraint->axis.z) != 3
-										)
-									{
-										return 0;
-									}
-									constraint->minAngle = atof(stdConffile_entry.args[4].key);
-									constraint->maxAngle = atof(stdConffile_entry.args[5].key);
+									return 0;
 								}
-								break;
-							case SITH_CONSTRAINT_DISTANCE:
-							default:
-								break;
 							}
+							if (stdConffile_entry.numArgs > 4)
+							{
+								if (_sscanf(stdConffile_entry.args[4].key,
+											"(%f/%f/%f)",
+											&constraint->axisA.x,
+											&constraint->axisA.y,
+											&constraint->axisA.z) != 3
+									)
+								{
+									return 0;
+								}
+							}
+							if (stdConffile_entry.numArgs > 5)
+								constraint->minAngle = atof(stdConffile_entry.args[5].key);
+
+							if (stdConffile_entry.numArgs > 6)
+								constraint->maxAngle = atof(stdConffile_entry.args[6].key);
 						}
 					}
 				}

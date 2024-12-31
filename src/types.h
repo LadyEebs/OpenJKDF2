@@ -1387,11 +1387,13 @@ typedef struct sithBodyPart
 #ifdef PUPPET_PHYSICS
 typedef struct sithAnimclassConstraint
 {
-	int type;                 // SITH_CONSTRAINT_TYPE
-	int constrainedJoint;     // JOINTTYPE
-	int targetJoint;          // JOINTTYPE
-	rdVector3 axis;           // optional axis
-	float minAngle, maxAngle; // optional angles
+	int type;			// SITH_CONSTRAINT_TYPE
+	int jointA;			// JOINTTYPE
+	int jointB;			// JOINTTYPE
+	rdVector3 axisA;	// optional axis
+	rdVector3 axisB;	// optional axis
+	float minAngle;		// optional angle
+	float maxAngle;		// optional angle
 	struct sithAnimclassConstraint* next;
 } sithAnimclassConstraint;
 #endif
@@ -2901,7 +2903,6 @@ typedef struct sithConstraintDistanceParams
 
 typedef struct sithConstraintConeParams
 {
-	rdVector3 coneAnchor;
 	rdVector3 coneAxis;
 	rdVector3 jointAxis;
 	float     coneAngle;

@@ -1141,7 +1141,7 @@ void sithPuppet_AddDistanceConstraint(sithThing* pThing, int joint, int target)
 	sithConstraint_AddDistanceConstraint(pThing, jointThing, targetThing, &anchor, &rdroid_zeroVector3, 0.0f);*/
 }
 
-void sithPuppet_AddConeConstraint(sithThing* pThing, int joint, int target, const rdVector3* axis, float angle)
+void sithPuppet_AddConeConstraint(sithThing* pThing, int joint, int target, const rdVector3* axis, const rdVector3* targetAxis, float angle)
 {
 	uint64_t hasJoint = pThing->animclass->jointBits & (1ull << joint);
 	uint64_t hasTarget = pThing->animclass->jointBits & (1ull << target);
@@ -1152,55 +1152,10 @@ void sithPuppet_AddConeConstraint(sithThing* pThing, int joint, int target, cons
 	sithThing* jointThing = &pThing->puppet->physics->joints[joint].thing;
 	
 	rdHierarchyNode* pNode = &pThing->rdthing.model3->hierarchyNodes[pThing->animclass->bodypart[joint].nodeIdx];
-
-	rdMatrix34 invTargetMat;
-	targetThing->lookOrientation.scale = targetThing->position;
-	rdMatrix_InvertOrtho34(&invTargetMat, &targetThing->lookOrientation);
-	targetThing->lookOrientation.scale = rdroid_zeroVector3;
-
-	rdMatrix34 invJointMat;
-	jointThing->lookOrientation.scale = jointThing->position;
-	rdMatrix_InvertOrtho34(&invJointMat, &jointThing->lookOrientation);
-	jointThing->lookOrientation.scale = rdroid_zeroVector3;
-
-	rdVector3 direction;
-	rdVector_Sub3(&direction, &targetThing->position, &jointThing->position);
-	rdVector_Normalize3Acc(&direction);
-
-	rdVector3 contactPointA, contactPointB;
-	rdVector_Scale3(&contactPointA, &direction, targetThing->moveSize);
-	rdVector_Add3Acc(&contactPointA, &targetThing->position);
-
-	rdVector_Scale3(&contactPointB, &direction, -jointThing->moveSize);
-	rdVector_Add3Acc(&contactPointB, &jointThing->position);
-
-	rdVector3 anchor;
-	rdVector_Add3(&anchor, &contactPointA, &contactPointB);
-	rdVector_Scale3Acc(&anchor, 0.5f);
-
-	rdMatrix_TransformPoint34(&contactPointA, &anchor, &invTargetMat);
-	rdMatrix_TransformPoint34(&contactPointB, &anchor, &invJointMat);
-
-	// figure out the cone axis from the pose
-
-//	rdVector3 basePosA = pThing->rdthing.model3->paBasePoseMatrices[pThing->animclass->bodypart[target].nodeIdx].scale;
-//	rdVector3 basePosB = pThing->rdthing.model3->paBasePoseMatrices[pThing->animclass->bodypart[joint].nodeIdx].scale;
-//
-//	rdMatrix34 invParent;
-//	rdMatrix_InvertOrtho34(&invParent, &pThing->rdthing.model3->paBasePoseMatrices[pThing->animclass->bodypart[target].nodeIdx]);
-//
-//	rdVector3 localPos;
-//	rdMatrix_TransformVector34(&localPos, &basePosB, &invParent);
-//
-//	//rdVector_Neg3Acc(&localPos);
-//	rdVector_Normalize3(&coneAxis, &localPos);
-
-	sithConstraint_AddConeConstraint(pThing, jointThing, targetThing, &contactPointA, axis, angle, axis);
+	sithConstraint_AddConeConstraint(pThing, jointThing, targetThing, targetAxis, angle, axis);
 }
 
-
-
-void sithPuppet_AddHingeConstraint(sithThing* pThing, int joint, int target, const rdVector3* axis, float minAngle, float maxAngle)
+void sithPuppet_AddHingeConstraint(sithThing* pThing, int joint, int target, const rdVector3* axis, const rdVector3* targetAxis, float minAngle, float maxAngle)
 {
 	uint64_t hasJoint = pThing->animclass->jointBits & (1ull << joint);
 	uint64_t hasTarget = pThing->animclass->jointBits & (1ull << target);
@@ -1212,50 +1167,7 @@ void sithPuppet_AddHingeConstraint(sithThing* pThing, int joint, int target, con
 
 	rdHierarchyNode* pNode = &pThing->rdthing.model3->hierarchyNodes[pThing->animclass->bodypart[joint].nodeIdx];
 
-	rdMatrix34 invTargetMat;
-	targetThing->lookOrientation.scale = targetThing->position;
-	rdMatrix_InvertOrtho34(&invTargetMat, &targetThing->lookOrientation);
-	targetThing->lookOrientation.scale = rdroid_zeroVector3;
-
-	rdMatrix34 invJointMat;
-	jointThing->lookOrientation.scale = jointThing->position;
-	rdMatrix_InvertOrtho34(&invJointMat, &jointThing->lookOrientation);
-	jointThing->lookOrientation.scale = rdroid_zeroVector3;
-
-	rdVector3 direction;
-	rdVector_Sub3(&direction, &targetThing->position, &jointThing->position);
-	rdVector_Normalize3Acc(&direction);
-
-	rdVector3 contactPointA, contactPointB;
-	rdVector_Scale3(&contactPointA, &direction, targetThing->moveSize);
-	rdVector_Add3Acc(&contactPointA, &targetThing->position);
-
-	rdVector_Scale3(&contactPointB, &direction, -jointThing->moveSize);
-	rdVector_Add3Acc(&contactPointB, &jointThing->position);
-
-	rdVector3 anchor;
-	rdVector_Add3(&anchor, &contactPointA, &contactPointB);
-	rdVector_Scale3Acc(&anchor, 0.5f);
-
-	rdMatrix_TransformPoint34(&contactPointA, &anchor, &invTargetMat);
-	rdMatrix_TransformPoint34(&contactPointB, &anchor, &invJointMat);
-
-	// figure out the cone axis from the pose
-
-//	rdVector3 basePosA = pThing->rdthing.model3->paBasePoseMatrices[pThing->animclass->bodypart[target].nodeIdx].scale;
-//	rdVector3 basePosB = pThing->rdthing.model3->paBasePoseMatrices[pThing->animclass->bodypart[joint].nodeIdx].scale;
-//
-//	rdMatrix34 invParent;
-//	rdMatrix_InvertOrtho34(&invParent, &pThing->rdthing.model3->paBasePoseMatrices[pThing->animclass->bodypart[target].nodeIdx]);
-//
-//	rdVector3 localPos;
-//	rdMatrix_TransformVector34(&localPos, &basePosB, &invParent);
-//
-//	//rdVector_Neg3Acc(&localPos);
-//	rdVector_Normalize3(&coneAxis, &localPos);
-
-
-	sithConstraint_AddHingeConstraint(pThing, jointThing, targetThing, axis, axis, minAngle, maxAngle);
+	sithConstraint_AddHingeConstraint(pThing, jointThing, targetThing, targetAxis, axis, minAngle, maxAngle);
 }
 
 void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithBodyPart* pBodyPart, rdHierarchyNode* pNode, int jointIdx, const rdVector3* pInitialVel)
@@ -1402,19 +1314,19 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 	sithAnimclassConstraint* constraints = pThing->animclass->constraints;
 	for (; constraints; constraints = constraints->next)
 	{
-		if (constraints->constrainedJoint < 0 || constraints->targetJoint < 0)
+		if (constraints->jointA < 0 || constraints->jointB < 0)
 			continue;
 
 		switch (constraints->type)
 		{
 		case SITH_CONSTRAINT_DISTANCE:
-			sithPuppet_AddDistanceConstraint(pThing, constraints->constrainedJoint, constraints->targetJoint);
+			sithPuppet_AddDistanceConstraint(pThing, constraints->jointB, constraints->jointA);
 			break;
 		case SITH_CONSTRAINT_CONE:
-			sithPuppet_AddConeConstraint(pThing, constraints->constrainedJoint, constraints->targetJoint, &constraints->axis, constraints->minAngle);
+			sithPuppet_AddConeConstraint(pThing, constraints->jointB, constraints->jointA, &constraints->axisB, &constraints->axisA, constraints->minAngle);
 			break;
 		case SITH_CONSTRAINT_HINGE:
-			sithPuppet_AddHingeConstraint(pThing, constraints->constrainedJoint, constraints->targetJoint, &constraints->axis, constraints->minAngle, constraints->maxAngle);
+			sithPuppet_AddHingeConstraint(pThing, constraints->jointB, constraints->jointA, &constraints->axisB, &constraints->axisA, constraints->minAngle, constraints->maxAngle);
 			break;
 		default:
 			break;

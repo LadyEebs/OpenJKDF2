@@ -44,7 +44,7 @@ void sithConstraint_AddDistanceConstraint(sithThing* pThing, sithThing* pConstra
 //	pTargetThing->constraints = constraint;
 }
 
-void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pConeAnchor, const rdVector3* pAxis, float angle, const rdVector3* pJointAxis)
+void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pAxis, float angle, const rdVector3* pJointAxis)
 {
 	sithConstraint* constraint = (sithConstraint*)pSithHS->alloc(sizeof(sithConstraint));
 	if (!constraint)
@@ -56,7 +56,6 @@ void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrained
 	constraint->constrainedThing = pConstrainedThing;
 	constraint->targetThing = pTargetThing;
 
-	constraint->coneParams.coneAnchor = *pConeAnchor;
 	constraint->coneParams.coneAxis = *pAxis;
 	constraint->coneParams.coneAngle = angle * 0.5f;
 	constraint->coneParams.coneAngleCos = stdMath_Cos(angle * 0.5f);
@@ -191,11 +190,6 @@ static void sithConstraint_SolveConeConstraint(sithConstraintResult* pResult, si
 	rdMatrix_TransformVector34(&coneAxis, &pConstraint->coneParams.coneAxis, &pConstraint->targetThing->lookOrientation);
 	rdVector_Normalize3Acc(&coneAxis);
 
-	// cone anchor to world space
-	rdVector3 coneAnchor;
-	rdMatrix_TransformVector34(&coneAnchor, &pConstraint->coneParams.coneAnchor, &pConstraint->targetThing->lookOrientation);
-	rdVector_Add3Acc(&coneAnchor, &pConstraint->targetThing->position);
-
 	// joint axis to world space
 	rdVector3 thingAxis;
 	rdMatrix_TransformVector34(&thingAxis, &pConstraint->coneParams.jointAxis, &pConstraint->constrainedThing->lookOrientation);
@@ -235,40 +229,88 @@ static void sithConstraint_SolveConeConstraint(sithConstraintResult* pResult, si
 
 static void sithConstraint_SolveHingeConstraint(sithConstraintResult* pResult, sithConstraint* pConstraint, float deltaSeconds)
 {
-	rdVector3 hingeAxisA, hingeAxisB;
-	
+	rdVector3 hingeAxisA, hingeAxisB;	
 	rdMatrix_TransformVector34(&hingeAxisA, &pConstraint->hingeParams.targetAxis, &pConstraint->targetThing->lookOrientation);
 	rdMatrix_TransformVector34(&hingeAxisB, &pConstraint->hingeParams.jointAxis, &pConstraint->constrainedThing->lookOrientation);
 	
-	float cosAngle = rdVector_Dot3(&hingeAxisA, &hingeAxisB);
-	if (cosAngle >= 0.999f)
+	// Compute the swing violation	
+	/*rdVector3 swingAxis;
+	rdVector_Cross3(&swingAxis, &hingeAxisA, &hingeAxisB); // Axis of misalignment
+	float swingMagnitude = rdVector_Len3(&swingAxis); // Magnitude of misalignment
+
+	if (swingMagnitude > 1e-6f) // Small tolerance to avoid instability
 	{
-		pConstraint->result.C = 0.0f;
-		return;
+		rdVector_Normalize3Acc(&swingAxis);
+
+		// Swing constraint correction
+		float swingError = swingMagnitude; // Magnitude of misalignment
+		pResult->C += swingError;          // Accumulate constraint violation
+		pResult->JrA = swingAxis;          // Swing Jacobian for body A
+		pResult->JrB = swingAxis;          // Swing Jacobian for body B
+		rdVector_Neg3Acc(&pResult->JrA); // Flip direction for body B
 	}
+
+	// Compute relative orientation of the bodies
+	rdMatrix34 invMat;
+	rdMatrix_InvertOrtho34(&invMat, &pConstraint->targetThing->lookOrientation);
+
+	rdMatrix34 relativeRotation;
+	rdMatrix_Multiply34(&relativeRotation, &invMat, &pConstraint->constrainedThing->lookOrientation);
+	
+	// calculate the rotated hinge axis
+	rdVector3 rotatedHingeAxisA, rotatedHingeAxisB;
+	rdMatrix_TransformVector34(&rotatedHingeAxisA, &pConstraint->hingeParams.targetAxis, &relativeRotation);
+	rdMatrix_TransformVector34(&rotatedHingeAxisB, &pConstraint->hingeParams.jointAxis, &relativeRotation);
+
+	// Compute the cosine of the angle between the two hinge axes
+	float twistAngle = rdVector_Dot3(&rotatedHingeAxisA, &rotatedHingeAxisB);
+	
+	// Apply angular limits to the twist angle
+	if (twistAngle < pConstraint->hingeParams.minCosAngle)
+	{
+		// Push up towards the minAngle
+		pResult->C += pConstraint->hingeParams.minCosAngle - twistAngle;
+	}
+	else if (twistAngle > pConstraint->hingeParams.maxCosAngle)
+	{
+		// Pull down towards the maxAngle
+		pResult->C += twistAngle - pConstraint->hingeParams.maxCosAngle;
+	}
+
+	pResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * pResult->C;
+	pResult->C = stdMath_Clamp(pResult->C, -2.0f, 2.0f);
+
+	// Combine swing and twist Jacobians
+	// JrA and JrB already hold contributions from swing; add twist contribution
+	rdVector3 twistAxis = hingeAxisA; // The hinge axis contributes to twist
+	rdVector_MultAcc3(&pResult->JrA, &twistAxis,-twistAngle); // Add twist correction to body A
+	rdVector_MultAcc3(&pResult->JrB, &twistAxis, twistAngle); // Add twist correction to body B
+*/
+
+	float cosAngle = rdVector_Dot3(&hingeAxisA, &hingeAxisB);
+	//if (cosAngle < pConstraint->hingeParams.minCosAngle)
+	//{
+	//	// Push up towards the minAngle
+	//	pResult->C = pConstraint->hingeParams.minCosAngle - cosAngle;
+	//}
+	//else if (cosAngle > pConstraint->hingeParams.maxCosAngle)
+	//{
+	//	// Pull down towards the maxAngle
+	//	pResult->C = cosAngle - pConstraint->hingeParams.maxCosAngle;
+	//}
+	//else
+	//{
+	//	// No correction needed if the angle is within the limits
+	//	pConstraint->result.C = 0.0f;
+	//	return;
+	//}
+	pConstraint->result.C = 1.0f - cosAngle;
+	pResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * pResult->C;
+	pResult->C = stdMath_Clamp(pResult->C, -2.0f, 2.0f);
 
 	rdVector3 rotationAxis;
 	rdVector_Cross3(&rotationAxis, &hingeAxisA, &hingeAxisB);
 	rdVector_Normalize3Acc(&rotationAxis);
-
-	if (cosAngle < pConstraint->hingeParams.minCosAngle)
-	{
-		// Push up towards the minAngle
-		pResult->C = pConstraint->hingeParams.minCosAngle - cosAngle;
-	}
-	else if (cosAngle > pConstraint->hingeParams.maxCosAngle)
-	{
-		// Pull down towards the maxAngle
-		pResult->C = cosAngle - pConstraint->hingeParams.maxCosAngle;
-	}
-	else
-	{
-		// No correction needed if the angle is within the limits
-		pConstraint->result.C = 0.0f;
-		return;
-	}
-	pResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * pResult->C;
-	pResult->C = stdMath_Clamp(pResult->C, -2.0f, 2.0f);
 
 	pResult->JrA = rotationAxis;
 	pResult->JrB = rotationAxis;
@@ -342,7 +384,33 @@ void sithConstraint_SatisfyConstraints(sithThing* thing, int iterations, float d
 	}
 }
 
-void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
+void sithConstraint_ApplyFriction(sithThing* pThing, float deltaSeconds)
+{
+	// apply friction as impulses
+	sithConstraint* constraint = pThing->constraints;
+	for (; constraint; constraint = constraint->next)
+	{
+		if (constraint->flags & SITH_CONSTRAINT_DISABLED)
+			continue;
+
+		float invMassA = 1.0f / constraint->targetThing->physicsParams.mass;
+		float invMassB = 1.0f / constraint->constrainedThing->physicsParams.mass;
+		float totalInvMass = invMassA + invMassB;
+
+		rdVector3 omegaRel;
+		rdVector_Sub3(&omegaRel, &constraint->targetThing->physicsParams.rotVel, &constraint->constrainedThing->physicsParams.rotVel);
+		rdVector_Scale3Acc(&omegaRel, jkPlayer_puppetFriction / totalInvMass);
+
+		rdVector3 impulseA, impulseB;
+		rdVector_Scale3(&impulseA, &omegaRel, -invMassA);
+		rdVector_Scale3(&impulseB, &omegaRel, invMassB);
+
+		rdVector_Add3Acc(&constraint->targetThing->physicsParams.rotVel, &impulseA);
+		rdVector_Add3Acc(&constraint->constrainedThing->physicsParams.rotVel, &impulseB);
+	}
+}
+
+void sithConstraint_TickConstraints(sithThing* pThing, float deltaSeconds)
 {
 	if (pThing->physicsParams.physflags & SITH_PF_RESTING)
 		return;
@@ -387,29 +455,7 @@ void sithConstraint_SolveConstraints(sithThing* pThing, float deltaSeconds)
 	{
 		int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 10 : 1;
 		sithConstraint_SatisfyConstraints(pThing, iterations, deltaSeconds);
-
-		// apply friction as impulses
-		constraint = pThing->constraints;
-		for (; constraint; constraint = constraint->next)
-		{
-			if(constraint->flags & SITH_CONSTRAINT_DISABLED)
-				continue;
-
-			float invMassA = 1.0f / constraint->targetThing->physicsParams.mass;
-			float invMassB = 1.0f / constraint->constrainedThing->physicsParams.mass;
-			float totalInvMass = invMassA + invMassB;
-
-			rdVector3 omegaRel;
-			rdVector_Sub3(&omegaRel, &constraint->targetThing->physicsParams.rotVel, &constraint->constrainedThing->physicsParams.rotVel);
-			rdVector_Scale3Acc(&omegaRel, jkPlayer_puppetFriction / totalInvMass);
-
-			rdVector3 impulseA, impulseB;
-			rdVector_Scale3(&impulseA, &omegaRel, -invMassA);
-			rdVector_Scale3(&impulseB, &omegaRel,  invMassB);
-
-			rdVector_Add3Acc(&constraint->targetThing->physicsParams.rotVel, &impulseA);
-			rdVector_Add3Acc(&constraint->constrainedThing->physicsParams.rotVel, &impulseB);
-		}
+		sithConstraint_ApplyFriction(pThing, deltaSeconds);
 	}
 	else
 	{
@@ -453,10 +499,6 @@ static void sithConstraint_DrawCone(sithConstraint* pConstraint)
 	rdMatrix_TransformVector34(&coneAxis, &pConstraint->coneParams.coneAxis, &pConstraint->targetThing->lookOrientation);
 	rdVector_Normalize3Acc(&coneAxis);
 
-	rdVector3 coneAnchor;
-	rdMatrix_TransformVector34(&coneAnchor, &pConstraint->coneParams.coneAnchor, &pConstraint->targetThing->lookOrientation);
-	rdVector_Add3Acc(&coneAnchor, &pConstraint->targetThing->position);
-
 	rdVector3 thingAxis;
 	rdMatrix_TransformVector34(&thingAxis, &pConstraint->coneParams.jointAxis, &pConstraint->constrainedThing->lookOrientation);
 
@@ -479,7 +521,7 @@ static void sithConstraint_DrawCone(sithConstraint* pConstraint)
 		float sizex = 0.002f;
 		float sizey = 0.002f;
 		rdVector3 lookPos;
-		rdVector_Add3(&lookPos, &coneAnchor, i == 0 ? &coneAxis : &thingAxis);
+		rdVector_Add3(&lookPos, &pConstraint->targetThing->position, i == 0 ? &coneAxis : &thingAxis);
 
 		if (i == 0)
 		{
@@ -496,7 +538,7 @@ static void sithConstraint_DrawCone(sithConstraint* pConstraint)
 			rdThing_SetPolyline(&debug, &debugLine);
 
 			rdMatrix34 look;
-			rdMatrix_LookAt(&look, &coneAnchor, &lookPos, 0.0f);
+			rdMatrix_LookAt(&look, &pConstraint->targetThing->position, &lookPos, 0.0f);
 
 			rdPolyLine_Draw(&debug, &look);
 
