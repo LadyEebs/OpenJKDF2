@@ -8,6 +8,8 @@
 
 //#define HW_VBUFFER // temp stuff, trying to move vbuffer to GPU and use fbos in there so we can render to them
 
+#define JOB_SYSTEM           // multithreaded job system
+
 // Gameplay features
 #define FP_LEGS              // Draws legs in first person
 #define DYNAMIC_POV          // POV enhancements, such as the weapon following the autoaim target, muzzle flashes, sway improvements

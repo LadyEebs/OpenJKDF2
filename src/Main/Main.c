@@ -68,6 +68,9 @@
 #include "Dss/jkDSS.h"
 #include "Main/InstallHelper.h"
 #include "sithCvar.h"
+#ifdef JOB_SYSTEM
+#include "Modules/std/stdJob.h"
+#endif
 
 #include "Platform/Common/stdHttp.h"
 #include "Platform/Common/stdUpdater.h"
@@ -360,6 +363,10 @@ int Main_Startup(const char *cmdline)
     stdStartup(&hs); // Added
     InstallHelper_SetCwd(); // Added
 
+#ifdef JOB_SYSTEM
+	stdJob_Startup(); // Added
+#endif
+
     wuRegistry_Startup(HKEY_LOCAL_MACHINE, "Software\\LucasArts Entertainment Company\\JediKnight\\v1.0", "0.1");
     //stdStartup(&hs); // Moved
 
@@ -513,6 +520,10 @@ void Main_Shutdown()
     Windows_Shutdown();
     jkRes_Shutdown();
     jkGob_Shutdown();
+
+#ifdef JOB_SYSTEM
+	stdJob_Shutdown(); // Added
+#endif
     stdShutdown();
     if ( Main_logLevel == 1 )
     {
