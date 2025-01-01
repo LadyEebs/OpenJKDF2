@@ -19,18 +19,30 @@
 #include <stdatomic.h> // Requires C11 or later...
 #endif
 
+typedef struct stdJob
+{
+	stdJob_function_t function;         // The actual job function
+#ifdef _WIN32
+	HANDLE            completionEvent;  // Event to signal job completion on Windows
+#else
+	pthread_mutex_t   completionMutex;  // Mutex to protect completion flag
+	pthread_cond_t    completionCond;   // Condition variable to signal job completion
+#endif
+	volatile int      isCompleted;      // Completion flag (1 = completed, 0 = not completed)
+} stdJob;
+
 typedef struct stdRingBuffer
 {
-	stdJob_function_t* buffer;
-	uint32_t           size;
-	uint32_t           front;
-	uint32_t           back;
+	stdJob*          buffer;
+	uint32_t         size;
+	uint32_t         front;
+	uint32_t         back;
 #ifdef _WIN32
-	CRITICAL_SECTION   lock;     // Mutex for thread safety
-	HANDLE             notEmpty; // Event to signal buffer is not empty
+	CRITICAL_SECTION lock;     // Mutex for thread safety
+	HANDLE           notEmpty; // Event to signal buffer is not empty
 #else
-	pthread_mutex_t    lock;     // Mutex for thread safety (POSIX)
-	pthread_cond_t     notEmpty; // Condition variable to signal buffer is not empty
+	pthread_mutex_t  lock;     // Mutex for thread safety (POSIX)
+	pthread_cond_t   notEmpty; // Condition variable to signal buffer is not empty
 #endif
 } stdRingBuffer;
 
@@ -65,7 +77,7 @@ stdJobSystem stdJob_jobSystem;
 
 void stdJob_InitRingBuffer(stdRingBuffer* rb, uint32_t size)
 {
-	rb->buffer = (stdJob_function_t*)std_pHS->alloc(size * sizeof(stdJob_function_t));
+	rb->buffer = (stdJob*)std_pHS->alloc(size * sizeof(stdJob));
 	if (!rb->buffer)
 	{
 		stdPrintf(std_pHS->errorPrint, ".\\General\\stdJob.c", __LINE__, "Failed to allocate ring buffer\n");
@@ -74,12 +86,24 @@ void stdJob_InitRingBuffer(stdRingBuffer* rb, uint32_t size)
 	rb->size = size;
 	rb->front = 0;
 	rb->back = 0;
+
+	// Initialize synchronization resources for each job
 #ifdef _WIN32
 	InitializeCriticalSection(&rb->lock);
 	rb->notEmpty = CreateEvent(NULL, FALSE, FALSE, NULL);
+	// Create a completion event for each job
+	for (uint32_t i = 0; i < size; ++i)
+		rb->buffer[i].completionEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 #else
 	pthread_mutex_init(&rb->lock, NULL);
 	pthread_cond_init(&rb->notEmpty, NULL);
+	
+	// Initialize mutex and condition variable for each job
+	for (uint32_t i = 0; i < size; ++i)
+	{
+		pthread_mutex_init(&rb->buffer[i].completionMutex, NULL);
+		pthread_cond_init(&rb->buffer[i].completionCond, NULL);
+	}
 #endif
 }
 
@@ -96,7 +120,8 @@ int stdJob_PushRingBuffer(stdRingBuffer* rb, stdJob_function_t job)
 	uint32_t next_back = (rb->back + 1) % rb->size;
 	if (next_back != rb->front) // Check if buffer is not full
 	{
-		rb->buffer[rb->back] = job;
+		rb->buffer[rb->back].function = job;
+		rb->buffer[rb->back].isCompleted = 0;
 		rb->back = next_back;
 		result = 1;
 
@@ -115,7 +140,7 @@ int stdJob_PushRingBuffer(stdRingBuffer* rb, stdJob_function_t job)
 	return result;
 }
 
-int stdJob_PopRingBuffer(stdRingBuffer* rb, stdJob_function_t* job)
+int stdJob_PopRingBuffer(stdRingBuffer* rb, stdJob** job)
 {
 	int result = 0;
 
@@ -138,7 +163,7 @@ int stdJob_PopRingBuffer(stdRingBuffer* rb, stdJob_function_t* job)
 
 	if (rb->front != rb->back) // Buffer is not empty
 	{
-		*job = rb->buffer[rb->front];
+		*job = &rb->buffer[rb->front];
 		rb->front = (rb->front + 1) % rb->size;
 		result = 1;
 	}
@@ -154,6 +179,19 @@ int stdJob_PopRingBuffer(stdRingBuffer* rb, stdJob_function_t* job)
 
 void stdJob_FreeRingBuffer(stdRingBuffer* rb)
 {
+	// Clean up synchronization resources for each job
+	for (uint32_t i = rb->front; i != rb->back; i = (i + 1) % rb->size)
+	{
+		stdJob* job = &rb->buffer[i];
+#ifdef _WIN32
+		if(job->completionEvent)
+			CloseHandle(job->completionEvent); // Cleanup Windows event
+#else
+		pthread_mutex_destroy(&job->completionMutex); // Cleanup POSIX mutex
+		pthread_cond_destroy(&job->completionCond);   // Cleanup POSIX condition variable
+#endif
+	}
+
 	if(rb->buffer)
 	{
 		std_pHS->free(rb->buffer);
@@ -213,10 +251,22 @@ uint64_t stdJob_GetFinishedLabel()
 #endif
 }
 
-// Adjust stdJob_IsBusy and stdJob_Wait to use atomic operations
 int stdJob_IsBusy()
 {
 	return stdJob_GetFinishedLabel() < stdJob_GetCurrentLabel();
+}
+
+void stdJob_Complete(stdJob* job)
+{
+#ifdef _WIN32
+	SetEvent(job->completionEvent);  // Signal completion for Windows
+#else
+	pthread_mutex_lock(&job->completionMutex);
+	pthread_cond_signal(&job->completionCond); // Notify completion in POSIX
+	pthread_mutex_unlock(&job->completionMutex);
+#endif
+	job->isCompleted = 1;
+	stdJob_IncrementFinishedLabel();
 }
 
 #ifdef _WIN32
@@ -227,13 +277,13 @@ void* stdJob_WorkerThread(void* param)
 {
 #endif
 	stdJobSystem* jobs = (stdJobSystem*)param;
-	stdJob_function_t job;
+	stdJob* job = NULL;
 	while (1)
 	{
 		if (stdJob_PopRingBuffer(&jobs->jobPool, &job))
 		{
-			job(); // Execute job
-			stdJob_IncrementFinishedLabel();
+			job->function(); // Execute job
+			stdJob_Complete(job);
 		}
 		else
 		{
@@ -377,7 +427,7 @@ void stdJob_Wait()
 	}
 }
 
-void stdJob_Execute(stdJob_function_t job)
+uint32_t stdJob_Execute(stdJob_function_t job)
 {
 	stdJob_IncrementCurrentLabel();
 	while (!stdJob_PushRingBuffer(&stdJob_jobSystem.jobPool, job))
@@ -393,6 +443,26 @@ void stdJob_Execute(stdJob_function_t job)
 	SetEvent(stdJob_jobSystem.wakeEvent); // Notify worker threads on Windows
 #else
 	pthread_cond_signal(&stdJob_jobSystem.wakeCondition); // Notify worker threads in POSIX
+#endif
+
+	return (stdJob_jobSystem.jobPool.back + stdJob_jobSystem.jobPool.size - 1) % stdJob_jobSystem.jobPool.size;
+}
+
+void stdJob_WaitForHandle(uint32_t handle)
+{
+	if (handle == UINT32_MAX)
+		return;
+
+	stdJob* job = &stdJob_jobSystem.jobPool.buffer[handle];
+#ifdef _WIN32
+	WaitForSingleObject(job->completionEvent, INFINITE);
+#else
+	pthread_mutex_lock(&job->completionMutex);
+	while (!job->isCompleted)
+	{
+		pthread_cond_wait(&job->completionCond, &job->completionMutex);
+	}
+	pthread_mutex_unlock(&job->completionMutex);
 #endif
 }
 
