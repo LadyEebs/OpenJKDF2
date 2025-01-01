@@ -297,7 +297,7 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 											&constraint->axisB.z) != 3
 									)
 								{
-									return 0;
+									continue;
 								}
 							}
 							if (stdConffile_entry.numArgs > 4)
@@ -309,7 +309,7 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 											&constraint->axisA.z) != 3
 									)
 								{
-									return 0;
+									continue;
 								}
 							}
 							if (stdConffile_entry.numArgs > 5)
