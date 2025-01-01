@@ -35,6 +35,9 @@
 #ifdef POLYLINE_EXT
 #include "World/sithPolyline.h"
 #endif
+#ifdef JOB_SYSTEM
+#include "Modules/std/stdJob.h"
+#endif
 
 // MOTS added
 static sithWorld_ChecksumHandler_t sithWorld_checksumExtraFunc;
@@ -265,6 +268,14 @@ sithWorld* sithWorld_New()
     return result;
 }
 
+#if defined(JOB_SYSTEM) && defined(RGB_AMBIENT)
+void sithWorld_ComputeSectorRGBAmbients(uint32_t jobIdx, uint32_t groupIdx)
+{
+	sithSector* sector = &sithWorld_pLoading->sectors[jobIdx];
+	sithWorld_ComputeSectorRGBAmbient(sector);
+}
+#endif
+
 int sithWorld_NewEntry(sithWorld *pWorld)
 {
     sithAdjoin *v1; // ebp
@@ -359,83 +370,17 @@ int sithWorld_NewEntry(sithWorld *pWorld)
                 }
             }
 #ifdef RGB_AMBIENT
-			// JED doesn't export colored ambient, so generate it on load
+			// JED doesn't export colored ambient, so compute it on load
+		#ifdef JOB_SYSTEM
+			stdJob_Dispatch(pWorld->numSectors, 16, sithWorld_ComputeSectorRGBAmbients);
+			stdJob_Wait();
+		#else
 			for (int i = 0; i < pWorld->numSectors; i++)
 			{
 				sithSector* sector = &pWorld->sectors[i];
-				rdVector_Zero3(&sector->ambientRGB); // rgb flat ambient (replaces ambient light intensity)
-				rdAmbient_Zero(&sector->ambientSH); // rgb directional ambient
-
-				//rdVector_Set3(&sector->ambientRGB, sector->ambientLight, sector->ambientLight, sector->ambientLight);
-				//continue;
-
-				double sflight = 0.0;
-				float total = 0.00001f;
-				for (int j = 0; j < pWorld->sectors[i].numSurfaces; j++)
-				{
-					sithSurface* surface = &pWorld->sectors[i].surfaces[j];
-				
-					// ignore invisible surfaces
-					if (surface->surfaceInfo.face.geometryMode == RD_GEOMODE_NOTRENDERED)
-						continue;
-
-					// ignore adjoins
-					if(surface->adjoin && !(surface->adjoin->flags & SITHSURF_ADJOIN_VISIBLE))
-						continue;
-						
-					// ignore surfaces with no material
-					if (!surface->surfaceInfo.face.material)
-						continue;
-
-					total += surface->surfaceInfo.face.numVertices;
-
-					float el = stdMath_Clamp(surface->surfaceInfo.face.extraLight, 0.0f, 1.0f);
-					sflight += el;
-
-					float minlight = el;
-					if ((surface->surfaceInfo.face.geometryMode != RD_GEOMODE_NOTRENDERED) && surface->surfaceInfo.face.lightingMode == RD_LIGHTMODE_FULLYLIT)
-						minlight = 1.0f;
-
-					int emissiveLightLevel = 0;
-					if ((surface->surfaceFlags & SITH_SURFACE_HORIZON_SKY) || (surface->surfaceFlags & SITH_SURFACE_CEILING_SKY))
-						emissiveLightLevel = -1;
-
-					//rdVector3 emissive;
-					//if((surface->surfaceInfo.face.geometryMode != RD_GEOMODE_NOTRENDERED) && rdMaterial_GetFillColor(&emissive, surface->surfaceInfo.face.material, pWorld->sectors[i].colormap, 0, emissiveLightLevel))
-					//	rdAmbient_Acc(&sector->ambientSH, &emissive, &surface->surfaceInfo.face.normal);
-
-					for (int k = 0; k < surface->surfaceInfo.face.numVertices; ++k)
-					{
-						rdVector3 col;
-						col.x = stdMath_Clamp(surface->surfaceInfo.intensities[k + surface->surfaceInfo.face.numVertices * 1], minlight, 1.0f);
-						col.y = stdMath_Clamp(surface->surfaceInfo.intensities[k + surface->surfaceInfo.face.numVertices * 2], minlight, 1.0f);
-						col.z = stdMath_Clamp(surface->surfaceInfo.intensities[k + surface->surfaceInfo.face.numVertices * 3], minlight, 1.0f);
-						rdVector_Add3Acc(&sector->ambientRGB, &col);
-
-						// we get more directionality by using the vertex to sector center instead of surface normal
-						rdVector3* vertex = &sithWorld_pCurrentWorld->vertices[surface->surfaceInfo.face.vertexPosIdx[k]];
-						rdVector3 dirToCenter;
-						rdVector_Sub3(&dirToCenter, vertex, &pWorld->sectors[i].center);
-						rdVector_Normalize3Acc(&dirToCenter);
-
-						rdAmbient_Acc(&sector->ambientSH, &col, &dirToCenter);
-					}
-				}
-				//sflight /= (float)pWorld->sectors[i].numSurfaces;
-				rdVector_InvScale3Acc(&sector->ambientRGB, total);
-			#ifdef RENDER_DROID2
-				rdAmbient_Scale(&sector->ambientSH, 4.0f / total); // integration over sphere
-			#else
-				rdAmbient_Scale(&sector->ambientSH, 4.0f * M_PI / total); // integration over sphere
-				rdAmbient_UpdateDominantDirection(&sector->ambientSH);
-			#endif
-
-				// normalize the color values to the avg intensity and apply the sector ambient light scalar
-				//rdVector3 lum = {0.33, 0.55, 0.11};
-				//float avg = fmin(1.0f, rdVector_Dot3(&sector->ambientRGB, &lum) + 1e-5f);
-				//rdVector_Scale3Acc(&sector->ambientRGB, fmin(1.0f, sector->ambientLight) / avg);
-				//rdAmbient_Scale(&sector->ambientSH, fmin(1.0f, sector->ambientLight) / avg);
+				sithWorld_ComputeSectorRGBAmbient(sector);
 			}
+		#endif
 #endif
             if ( !sithWorld_Verify(pWorld) )
                 return 0;
