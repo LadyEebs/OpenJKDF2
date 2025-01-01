@@ -25,94 +25,59 @@ extern float jkPlayer_puppetAngBias;
 extern float jkPlayer_puppetPosBias;
 extern float jkPlayer_puppetFriction;
 
-void sithConstraint_AddDistanceConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pTargetAnchor, const rdVector3* pConstrainedAnchor, float distance)
+void sithConstraint_InitConstraint(sithConstraint* pConstraint, int type, sithThing* pParentThing, sithThing* pConstrainedThing, sithThing* pTargetThing)
 {
-	sithConstraint* constraint = (sithConstraint*)pSithHS->alloc(sizeof(sithConstraint));
-	if (!constraint)
-		return;
-	memset(constraint, 0, sizeof(sithConstraint));
+	pConstraint->type = type;
+	pConstraint->flags = 0;
+	pConstraint->parentThing = pParentThing;
+	pConstraint->constrainedThing = pConstrainedThing;
+	pConstraint->targetThing = pTargetThing;
 
-	constraint->type = SITH_CONSTRAINT_DISTANCE;
-	constraint->parentThing = pThing;
-	constraint->constrainedThing = pConstrainedThing;
-	constraint->targetThing = pTargetThing;
-	constraint->distanceParams.targetAnchor = *pTargetAnchor;
-	constraint->distanceParams.constraintAnchor = *pConstrainedAnchor;
+	pConstraint->next = pParentThing->constraints;
+	pParentThing->constraints = pConstraint;
 	
 	pConstrainedThing->constraintParent = pTargetThing;
-	pConstrainedThing->constraintRoot = pThing;
+	pConstrainedThing->constraintRoot = pParentThing;
+}
 
- 	constraint->next = pThing->constraints;
-	pThing->constraints = constraint;
+void sithConstraint_AddDistanceConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pTargetAnchor, const rdVector3* pConstrainedAnchor, float distance)
+{
+	sithBallSocketConstraint* constraint = (sithBallSocketConstraint*)pSithHS->alloc(sizeof(sithBallSocketConstraint));
+	if (!constraint)
+		return;
+	memset(constraint, 0, sizeof(sithBallSocketConstraint));
+	sithConstraint_InitConstraint(&constraint->base, SITH_CONSTRAINT_DISTANCE, pThing, pConstrainedThing, pTargetThing);
 
-	// new
-//	constraint->thing = pConstrainedThing;
-//	constraint->thing->constraintParent = pTargetThing;
-//	
-//	constraint->next = pTargetThing->constraints;
-//	pTargetThing->constraints = constraint;
+	constraint->targetAnchor = *pTargetAnchor;
+	constraint->constraintAnchor = *pConstrainedAnchor;
 }
 
 void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pAxis, float angle, const rdVector3* pJointAxis)
 {
-	sithConstraint* constraint = (sithConstraint*)pSithHS->alloc(sizeof(sithConstraint));
+	sithConeLimitConstraint* constraint = (sithConeLimitConstraint*)pSithHS->alloc(sizeof(sithConeLimitConstraint));
 	if (!constraint)
 		return;
-	memset(constraint, 0, sizeof(sithConstraint));
+	memset(constraint, 0, sizeof(sithConeLimitConstraint));
+	sithConstraint_InitConstraint(&constraint->base, SITH_CONSTRAINT_CONE, pThing, pConstrainedThing, pTargetThing);
 
-	constraint->type = SITH_CONSTRAINT_CONE;
-	constraint->parentThing = pThing;
-	constraint->constrainedThing = pConstrainedThing;
-	constraint->targetThing = pTargetThing;
-
-	constraint->coneParams.coneAxis = *pAxis;
-	constraint->coneParams.coneAngle = angle * 0.5f;
-	constraint->coneParams.coneAngleCos = stdMath_Cos(angle * 0.5f);
-	constraint->coneParams.jointAxis = *pJointAxis;
-
-	pConstrainedThing->constraintParent = pTargetThing;
-	pConstrainedThing->constraintRoot = pThing;
-
-	constraint->next = pThing->constraints;
-	pThing->constraints = constraint;
-
-	// new
-//	constraint->thing = pConstrainedThing;
-//	constraint->thing->constraintParent = pTargetThing;
-//
-//	constraint->next = pTargetThing->constraints;
-//	pTargetThing->constraints = constraint;
+	constraint->coneAxis = *pAxis;
+	constraint->coneAngle = angle * 0.5f;
+	constraint->coneAngleCos = stdMath_Cos(angle * 0.5f);
+	constraint->jointAxis = *pJointAxis;
 }
 
 void sithConstraint_AddHingeConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pTargetAxis, const rdVector3* pJointAxis, float minAngle, float maxAngle)
 {
-	sithConstraint* constraint = (sithConstraint*)pSithHS->alloc(sizeof(sithConstraint));
+	sithHingeLimitConstraint* constraint = (sithHingeLimitConstraint*)pSithHS->alloc(sizeof(sithHingeLimitConstraint));
 	if (!constraint)
 		return;
-	memset(constraint, 0, sizeof(sithConstraint));
+	memset(constraint, 0, sizeof(sithHingeLimitConstraint));
+	sithConstraint_InitConstraint(&constraint->base, SITH_CONSTRAINT_HINGE, pThing, pConstrainedThing, pTargetThing);
 
-	constraint->type = SITH_CONSTRAINT_HINGE;
-	constraint->parentThing = pThing;
-	constraint->constrainedThing = pConstrainedThing;
-	constraint->targetThing = pTargetThing;
-
-	constraint->hingeParams.targetAxis = *pTargetAxis;
-	constraint->hingeParams.jointAxis = *pJointAxis;
-	constraint->hingeParams.minCosAngle = stdMath_Cos(minAngle * 0.5f);
-	constraint->hingeParams.maxCosAngle = stdMath_Cos(maxAngle * 0.5f);
-
-	pConstrainedThing->constraintParent = pTargetThing;
-	pConstrainedThing->constraintRoot = pThing;
-
-	constraint->next = pThing->constraints;
-	pThing->constraints = constraint;
-
-	// new
-//	constraint->thing = pConstrainedThing;
-//	constraint->thing->constraintParent = pTargetThing;
-//
-//	constraint->next = pTargetThing->constraints;
-//	pTargetThing->constraints = constraint;
+	constraint->targetAxis = *pTargetAxis;
+	constraint->jointAxis = *pJointAxis;
+	constraint->minCosAngle = stdMath_Cos(minAngle * 0.5f);
+	constraint->maxCosAngle = stdMath_Cos(maxAngle * 0.5f);
 }
 
 void sithConstraint_RemoveConstraint(sithConstraint* pConstraint)
@@ -150,20 +115,23 @@ float sithConstraint_ComputeEffectiveMass(sithConstraint* constraint)
 	return (effectiveMass > 0.0001f) ? (1.0f / effectiveMass) : 0.0001f;
 }
 
-static void sithConstraint_SolveDistanceConstraint(sithConstraintResult* pResult, sithConstraint* pConstraint, float deltaSeconds)
+static void sithConstraint_SolveDistanceConstraint(sithConstraintResult* pResult, sithBallSocketConstraint* pConstraint, float deltaSeconds)
 {
+	sithThing* bodyA = pConstraint->base.targetThing;
+	sithThing* bodyB = pConstraint->base.constrainedThing;
+
 	// anchor A offset in world space
 	rdVector3 offsetA;
-	rdMatrix_TransformVector34(&offsetA, &pConstraint->distanceParams.targetAnchor, &pConstraint->targetThing->lookOrientation);
+	rdMatrix_TransformVector34(&offsetA, &pConstraint->targetAnchor, &bodyA->lookOrientation);
 
 	// anchor B offset in world space
 	rdVector3 offsetB;
-	rdMatrix_TransformVector34(&offsetB, &pConstraint->distanceParams.constraintAnchor, &pConstraint->constrainedThing->lookOrientation);
+	rdMatrix_TransformVector34(&offsetB, &pConstraint->constraintAnchor, &bodyB->lookOrientation);
 
 	// anchor positions in world space
 	rdVector3 anchorA, anchorB;
-	rdVector_Add3(&anchorA, &offsetA, &pConstraint->targetThing->position);
-	rdVector_Add3(&anchorB, &offsetB, &pConstraint->constrainedThing->position);
+	rdVector_Add3(&anchorA, &offsetA, &bodyA->position);
+	rdVector_Add3(&anchorB, &offsetB, &bodyB->position);
 
 	// vector between the anchors and the distance
 	rdVector3 constraint, unitConstraint;
@@ -192,20 +160,20 @@ static void sithConstraint_SolveDistanceConstraint(sithConstraintResult* pResult
 	rdVector_Cross3(&pResult->JrB, &offsetB, &unitConstraint);
 }
 
-static void sithConstraint_SolveConeConstraint(sithConstraintResult* pResult, sithConstraint* pConstraint, float deltaSeconds)
+static void sithConstraint_SolveConeConstraint(sithConstraintResult* pResult, sithConeLimitConstraint* pConstraint, float deltaSeconds)
 {
+	sithThing* bodyA = pConstraint->base.targetThing;
+	sithThing* bodyB = pConstraint->base.constrainedThing;
+
 	// cone axis to world space
 	rdVector3 coneAxis;
-	rdMatrix_TransformVector34(&coneAxis, &pConstraint->coneParams.coneAxis, &pConstraint->targetThing->lookOrientation);
+	rdMatrix_TransformVector34(&coneAxis, &pConstraint->coneAxis, &bodyA->lookOrientation);
 	rdVector_Normalize3Acc(&coneAxis);
 
 	// joint axis to world space
 	rdVector3 thingAxis;
-	rdMatrix_TransformVector34(&thingAxis, &pConstraint->coneParams.jointAxis, &pConstraint->constrainedThing->lookOrientation);
+	rdMatrix_TransformVector34(&thingAxis, &pConstraint->jointAxis, &bodyB->lookOrientation);
 	rdVector_Normalize3Acc(&thingAxis);
-
-	sithThing* bodyA = pConstraint->targetThing;
-	sithThing* bodyB = pConstraint->constrainedThing;
 	
 	rdVector3 relativeAxis;
 	//rdVector_Cross3(&relativeAxis, &coneAxis, &thingAxis);
@@ -213,7 +181,7 @@ static void sithConstraint_SolveConeConstraint(sithConstraintResult* pResult, si
 	rdVector_Normalize3Acc(&relativeAxis);
 
 	float dotProduct = rdVector_Dot3(&coneAxis, &thingAxis);
-	if (dotProduct >= pConstraint->coneParams.coneAngleCos)
+	if (dotProduct >= pConstraint->coneAngleCos)
 	{
 		pResult->C = 0.0f;
 		return;
@@ -231,19 +199,22 @@ static void sithConstraint_SolveConeConstraint(sithConstraintResult* pResult, si
 	pResult->JvB = rdroid_zeroVector3;
 	pResult->JrA = JwA;
 	pResult->JrB = JwB;
-	pResult->C = pConstraint->coneParams.coneAngleCos - dotProduct;
+	pResult->C = pConstraint->coneAngleCos - dotProduct;
 	pResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * pResult->C;
 	pResult->C = stdMath_Clamp(pResult->C, -2.0f, 2.0f);
 }
 
-static void sithConstraint_SolveHingeConstraint(sithConstraintResult* pResult, sithConstraint* pConstraint, float deltaSeconds)
+static void sithConstraint_SolveHingeConstraint(sithConstraintResult* pResult, sithHingeLimitConstraint* pConstraint, float deltaSeconds)
 {
+	sithThing* bodyA = pConstraint->base.targetThing;
+	sithThing* bodyB = pConstraint->base.constrainedThing;
+
 	rdVector_Zero3(&pResult->JvA);
 	rdVector_Zero3(&pResult->JvB);
 
 	rdVector3 hingeAxisA, hingeAxisB;	
-	rdMatrix_TransformVector34(&hingeAxisA, &pConstraint->hingeParams.targetAxis, &pConstraint->targetThing->lookOrientation);
-	rdMatrix_TransformVector34(&hingeAxisB, &pConstraint->hingeParams.jointAxis, &pConstraint->constrainedThing->lookOrientation);
+	rdMatrix_TransformVector34(&hingeAxisA, &pConstraint->targetAxis, &bodyA->lookOrientation);
+	rdMatrix_TransformVector34(&hingeAxisB, &pConstraint->jointAxis, &bodyB->lookOrientation);
 
 	float cosAngle = rdVector_Dot3(&hingeAxisA, &hingeAxisB);
 	pResult->C = 1.0f - cosAngle;
@@ -415,13 +386,13 @@ void sithConstraint_SolveConstraint(sithThing* pThing, sithConstraint* pConstrai
 	switch (pConstraint->type)
 	{
 	case SITH_CONSTRAINT_DISTANCE:
-		sithConstraint_SolveDistanceConstraint(&pConstraint->result, pConstraint, deltaSeconds);
+		sithConstraint_SolveDistanceConstraint(&pConstraint->result, (sithBallSocketConstraint*)pConstraint, deltaSeconds);
 		break;
 	case SITH_CONSTRAINT_CONE:
-		sithConstraint_SolveConeConstraint(&pConstraint->result, pConstraint, deltaSeconds);
+		sithConstraint_SolveConeConstraint(&pConstraint->result, (sithConeLimitConstraint*)pConstraint, deltaSeconds);
 		break;
 	case SITH_CONSTRAINT_HINGE:
-		sithConstraint_SolveHingeConstraint(&pConstraint->result, pConstraint, deltaSeconds);
+		sithConstraint_SolveHingeConstraint(&pConstraint->result, (sithHingeLimitConstraint*)pConstraint, deltaSeconds);
 		break;
 	default:
 		break;
@@ -465,17 +436,20 @@ void sithConstraint_TickConstraints(sithThing* pThing, float deltaSeconds)
 	sithConstraint_ApplyFriction(pThing, deltaSeconds);
 }
 
-static void sithConstraint_DrawDistance(sithConstraint* pConstraint)
+static void sithConstraint_DrawDistance(sithBallSocketConstraint* pConstraint)
 {
+	sithThing* bodyA = pConstraint->base.targetThing;
+	sithThing* bodyB = pConstraint->base.constrainedThing;
+
 	rdVector3 targetAnchor;
-	pConstraint->targetThing->lookOrientation.scale = pConstraint->targetThing->position;
-	rdMatrix_TransformPoint34(&targetAnchor, &pConstraint->distanceParams.targetAnchor, &pConstraint->targetThing->lookOrientation);
-	rdVector_Zero3(&pConstraint->targetThing->lookOrientation.scale);
+	bodyA->lookOrientation.scale = bodyA->position;
+	rdMatrix_TransformPoint34(&targetAnchor, &pConstraint->targetAnchor, &bodyA->lookOrientation);
+	rdVector_Zero3(&bodyA->lookOrientation.scale);
 
 	rdVector3 constrainedAnchor;
-	pConstraint->constrainedThing->lookOrientation.scale = pConstraint->constrainedThing->position;
-	rdMatrix_TransformPoint34(&constrainedAnchor, &pConstraint->distanceParams.constraintAnchor, &pConstraint->constrainedThing->lookOrientation);
-	rdVector_Zero3(&pConstraint->constrainedThing->lookOrientation.scale);
+	bodyB->lookOrientation.scale = bodyB->position;
+	rdMatrix_TransformPoint34(&constrainedAnchor, &pConstraint->constraintAnchor, &bodyB->lookOrientation);
+	rdVector_Zero3(&bodyB->lookOrientation.scale);
 
 	for (int i = 0; i < 2; ++i)
 	{
@@ -483,7 +457,7 @@ static void sithConstraint_DrawDistance(sithConstraint* pConstraint)
 		rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, i == 0 ? "saberred0.mat" : "saberblue0.mat", 0.005f, 0.005f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &rdroid_zeroVector3);
 
 		rdThing debug;
-		rdThing_NewEntry(&debug, pConstraint->parentThing);
+		rdThing_NewEntry(&debug, pConstraint->base.parentThing);
 		rdThing_SetSprite3(&debug, &debugSprite);
 		rdMatrix34 mat;
 		rdMatrix_BuildTranslate34(&mat, i == 0 ? &targetAnchor : &constrainedAnchor);
@@ -495,14 +469,17 @@ static void sithConstraint_DrawDistance(sithConstraint* pConstraint)
 	}
 }
 
-static void sithConstraint_DrawCone(sithConstraint* pConstraint)
+static void sithConstraint_DrawCone(sithConeLimitConstraint* pConstraint)
 {
+	sithThing* bodyA = pConstraint->base.targetThing;
+	sithThing* bodyB = pConstraint->base.constrainedThing;
+
 	rdVector3 coneAxis;
-	rdMatrix_TransformVector34(&coneAxis, &pConstraint->coneParams.coneAxis, &pConstraint->targetThing->lookOrientation);
+	rdMatrix_TransformVector34(&coneAxis, &pConstraint->coneAxis, &bodyA->lookOrientation);
 	rdVector_Normalize3Acc(&coneAxis);
 
 	rdVector3 thingAxis;
-	rdMatrix_TransformVector34(&thingAxis, &pConstraint->coneParams.jointAxis, &pConstraint->constrainedThing->lookOrientation);
+	rdMatrix_TransformVector34(&thingAxis, &pConstraint->jointAxis, &bodyB->lookOrientation);
 
 	for (int i = 0; i < 2; ++i)
 	{
@@ -523,11 +500,11 @@ static void sithConstraint_DrawCone(sithConstraint* pConstraint)
 		float sizex = 0.002f;
 		float sizey = 0.002f;
 		rdVector3 lookPos;
-		rdVector_Add3(&lookPos, &pConstraint->targetThing->position, i == 0 ? &coneAxis : &thingAxis);
+		rdVector_Add3(&lookPos, &bodyA->position, i == 0 ? &coneAxis : &thingAxis);
 
 		if (i == 0)
 		{
-			sizey = 0.05f * (pConstraint->coneParams.coneAngle / 180.0f);
+			sizey = 0.05f * (pConstraint->coneAngle / 180.0f);
 			len = 0.01f;
 		}
 
@@ -536,11 +513,11 @@ static void sithConstraint_DrawCone(sithConstraint* pConstraint)
 		if (rdPolyLine_NewEntry(&debugLine, "dbgragoll", mat1, mat0, len, sizex, sizey, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_PERSPECTIVE, 1.0f))
 		{
 			rdThing debug;
-			rdThing_NewEntry(&debug, pConstraint->parentThing);
+			rdThing_NewEntry(&debug, pConstraint->base.parentThing);
 			rdThing_SetPolyline(&debug, &debugLine);
 
 			rdMatrix34 look;
-			rdMatrix_LookAt(&look, &pConstraint->targetThing->position, &lookPos, 0.0f);
+			rdMatrix_LookAt(&look, &bodyA->position, &lookPos, 0.0f);
 
 			rdPolyLine_Draw(&debug, &look);
 

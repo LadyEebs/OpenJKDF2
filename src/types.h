@@ -2897,47 +2897,44 @@ typedef struct sithConstraintResult
 	rdVector3 linearImpulseB, angularImpulseB; // computed impulses for bodyB
 } sithConstraintResult;
 
-typedef struct sithConstraintDistanceParams
-{
-	rdVector3 targetAnchor;
-	rdVector3 constraintAnchor;
-} sithConstraintDistanceParams;
-
-typedef struct sithConstraintConeParams
-{
-	rdVector3 coneAxis;
-	rdVector3 jointAxis;
-	float     coneAngle;
-	float     coneAngleCos;
-} sithConstraintConeParams;
-
-typedef struct sithConstraintHingeParams
-{
-	rdVector3 targetAxis;
-	rdVector3 jointAxis;
-	float     minCosAngle;
-	float     maxCosAngle;
-} sithConstraintHingeParams;
-
 // todo: signatures
 typedef struct sithConstraint
 {
-	int                  type;             // SITH_CONSTRAINT_TYPE
-	int                  flags;            // SITH_CONSTRAINT_FLAGS
-	float                lambda;           // the previous lambda calculation
-	float                effectiveMass;    // effective mass of the constraint
-	sithThing*           parentThing;      // thing that owns the constraint
-	sithThing*           constrainedThing; // the thing to be constrained
-	sithThing*           targetThing;      // the thing to constrain to
-	sithConstraintResult result;           // jacobian/constraint error and impulses
-	union
-	{
-		sithConstraintDistanceParams distanceParams;
-		sithConstraintConeParams     coneParams;
-		sithConstraintHingeParams    hingeParams;
-	};
-	struct sithConstraint* next;
+	int                    type;             // SITH_CONSTRAINT_TYPE
+	int                    flags;            // SITH_CONSTRAINT_FLAGS
+	float                  lambda;           // the previous lambda calculation
+	float                  effectiveMass;    // effective mass of the constraint
+	sithThing*             parentThing;      // thing that owns the constraint
+	sithThing*             constrainedThing; // the thing to be constrained
+	sithThing*             targetThing;      // the thing to constrain to
+	sithConstraintResult   result;           // jacobian/constraint error and impulses
+	struct sithConstraint* next;             // next constraint
 } sithConstraint;
+
+typedef struct sithBallSocketConstraint
+{
+	sithConstraint base;
+	rdVector3      targetAnchor;
+	rdVector3      constraintAnchor;
+} sithBallSocketConstraint;
+
+typedef struct sithConeLimitConstraint
+{
+	sithConstraint base;
+	rdVector3      coneAxis;
+	rdVector3      jointAxis;
+	float          coneAngle;
+	float          coneAngleCos;
+} sithConeLimitConstraint;
+
+typedef struct sithHingeLimitConstraint
+{
+	sithConstraint base;
+	rdVector3      targetAxis;
+	rdVector3      jointAxis;
+	float          minCosAngle;
+	float          maxCosAngle;
+} sithHingeLimitConstraint;
 
 #endif
 
