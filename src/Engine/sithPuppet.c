@@ -1057,7 +1057,7 @@ int sithPuppet_FindHitLoc(sithThing* pReceiverThing, rdVector3* pPos)
 
 #include "Modules/sith/Engine/sithConstraint.h"
 
-void sithPuppet_AddDistanceConstraint(sithThing* pThing, int joint, int target)
+void sithPuppet_AddBallSocketConstraint(sithThing* pThing, int joint, int target)
 {
 	uint64_t hasJoint = pThing->animclass->jointBits & (1ull << joint);
 	uint64_t hasTarget = pThing->animclass->jointBits & (1ull << target);
@@ -1087,7 +1087,7 @@ void sithPuppet_AddDistanceConstraint(sithThing* pThing, int joint, int target)
 	targetThing->lookOrientation.scale = rdroid_zeroVector3;
 	jointThing->lookOrientation.scale = rdroid_zeroVector3;
 
-	sithConstraint_AddDistanceConstraint(pThing, jointThing, targetThing, &anchorA, &anchorB, 0.0f);
+	sithConstraint_AddBallSocketConstraint(pThing, jointThing, targetThing, &anchorA, &anchorB, 0.0f);
 
 	/*
 	rdVector3 direction;
@@ -1320,8 +1320,8 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 
 		switch (constraints->type)
 		{
-		case SITH_CONSTRAINT_DISTANCE:
-			sithPuppet_AddDistanceConstraint(pThing, constraints->jointB, constraints->jointA);
+		case SITH_CONSTRAINT_BALLSOCKET:
+			sithPuppet_AddBallSocketConstraint(pThing, constraints->jointB, constraints->jointA);
 			break;
 		case SITH_CONSTRAINT_CONE:
 			sithPuppet_AddConeConstraint(pThing, constraints->jointB, constraints->jointA, &constraints->axisB, &constraints->axisA, constraints->minAngle);

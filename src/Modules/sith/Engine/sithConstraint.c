@@ -40,13 +40,13 @@ void sithConstraint_InitConstraint(sithConstraint* pConstraint, int type, sithTh
 	pConstrainedThing->constraintRoot = pParentThing;
 }
 
-void sithConstraint_AddDistanceConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pTargetAnchor, const rdVector3* pConstrainedAnchor, float distance)
+void sithConstraint_AddBallSocketConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pTargetAnchor, const rdVector3* pConstrainedAnchor, float distance)
 {
 	sithBallSocketConstraint* constraint = (sithBallSocketConstraint*)pSithHS->alloc(sizeof(sithBallSocketConstraint));
 	if (!constraint)
 		return;
 	memset(constraint, 0, sizeof(sithBallSocketConstraint));
-	sithConstraint_InitConstraint(&constraint->base, SITH_CONSTRAINT_DISTANCE, pThing, pConstrainedThing, pTargetThing);
+	sithConstraint_InitConstraint(&constraint->base, SITH_CONSTRAINT_BALLSOCKET, pThing, pConstrainedThing, pTargetThing);
 
 	constraint->targetAnchor = *pTargetAnchor;
 	constraint->constraintAnchor = *pConstrainedAnchor;
@@ -115,7 +115,7 @@ float sithConstraint_ComputeEffectiveMass(sithConstraint* constraint)
 	return (effectiveMass > 0.0001f) ? (1.0f / effectiveMass) : 0.0001f;
 }
 
-static void sithConstraint_SolveDistanceConstraint(sithConstraintResult* pResult, sithBallSocketConstraint* pConstraint, float deltaSeconds)
+static void sithConstraint_SolveBallSocketConstraint(sithConstraintResult* pResult, sithBallSocketConstraint* pConstraint, float deltaSeconds)
 {
 	sithThing* bodyA = pConstraint->base.targetThing;
 	sithThing* bodyB = pConstraint->base.constrainedThing;
@@ -385,8 +385,8 @@ void sithConstraint_SolveConstraint(sithThing* pThing, sithConstraint* pConstrai
 	pConstraint->lambda *= 0.9f;
 	switch (pConstraint->type)
 	{
-	case SITH_CONSTRAINT_DISTANCE:
-		sithConstraint_SolveDistanceConstraint(&pConstraint->result, (sithBallSocketConstraint*)pConstraint, deltaSeconds);
+	case SITH_CONSTRAINT_BALLSOCKET:
+		sithConstraint_SolveBallSocketConstraint(&pConstraint->result, (sithBallSocketConstraint*)pConstraint, deltaSeconds);
 		break;
 	case SITH_CONSTRAINT_CONE:
 		sithConstraint_SolveConeConstraint(&pConstraint->result, (sithConeLimitConstraint*)pConstraint, deltaSeconds);
@@ -436,7 +436,7 @@ void sithConstraint_TickConstraints(sithThing* pThing, float deltaSeconds)
 	sithConstraint_ApplyFriction(pThing, deltaSeconds);
 }
 
-static void sithConstraint_DrawDistance(sithBallSocketConstraint* pConstraint)
+static void sithConstraint_DrawBallSocket(sithBallSocketConstraint* pConstraint)
 {
 	sithThing* bodyA = pConstraint->base.targetThing;
 	sithThing* bodyB = pConstraint->base.constrainedThing;
@@ -531,8 +531,8 @@ void sithConstraint_Draw(sithConstraint* pConstraint)
 {
 	switch (pConstraint->type)
 	{
-		case SITH_CONSTRAINT_DISTANCE:
-			sithConstraint_DrawDistance(pConstraint);
+		case SITH_CONSTRAINT_BALLSOCKET:
+			sithConstraint_DrawBallSocket(pConstraint);
 			break;
 		case SITH_CONSTRAINT_CONE:
 			sithConstraint_DrawCone(pConstraint);
