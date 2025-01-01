@@ -667,7 +667,7 @@ int sithWorld_Verify(sithWorld *pWorld)
     }
     if ( !pWorld->sprites && pWorld->numSpritesLoaded )
     {
-        stdPrintf(pSithHS->errorPrint, ".\\World\\sithWorld.c", 1251, "Problem with spriates array, should not be NULL.\n", 0, 0, 0, 0);
+        stdPrintf(pSithHS->errorPrint, ".\\World\\sithWorld.c", 1251, "Problem with sprites array, should not be NULL.\n", 0, 0, 0, 0);
         return 0;
     }
     if ( !pWorld->models && pWorld->numModelsLoaded )
