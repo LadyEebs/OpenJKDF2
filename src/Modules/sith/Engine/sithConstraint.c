@@ -271,10 +271,10 @@ static void sithConstraint_SolveHingeConstraint(sithConstraintResult* pResult, s
 	//	// Pull down towards the maxAngle
 	//	pResult->C += twistAngle - pConstraint->hingeParams.maxCosAngle;
 	//}
-	//
-	//pResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * pResult->C;
-	//pResult->C = stdMath_Clamp(pResult->C, -2.0f, 2.0f);
-	//
+	
+	pResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * pResult->C;
+	pResult->C = stdMath_Clamp(pResult->C, -2.0f, 2.0f);
+	
 	//// Combine swing and twist Jacobians
 	//// JrA and JrB already hold contributions from swing; add twist contribution
 	//rdVector3 twistAxis = hingeAxisA; // The hinge axis contributes to twist
