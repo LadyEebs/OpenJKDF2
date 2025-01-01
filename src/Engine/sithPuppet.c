@@ -1218,7 +1218,7 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 		_memcpy(&pJointThing->physicsParams, &pThing->physicsParams, sizeof(sithThingPhysParams));
 		pJointThing->physicsParams.mass *= pBodyPart->mass;
 		pJointThing->physicsParams.buoyancy *= pBodyPart->buoyancy;
-		pJointThing->physicsParams.height = pMesh ? pMesh->maxRadius : 0.0f;
+		pJointThing->physicsParams.height = 0.0f;// pMesh ? pMesh->maxRadius : 0.0f;
 
 		pJointThing->physicsParams.physflags = SITH_PF_FEELBLASTFORCE;
 		pJointThing->physicsParams.physflags |= SITH_PF_ANGIMPULSE;
