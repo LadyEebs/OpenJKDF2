@@ -1513,7 +1513,7 @@ static int sithPuppet_CheckForStillBodies(sithThing* thing, float deltaSeconds)
 	}
 
 	// if there wasn't substantial movement among the joints during the rest period, we can rest
-	return (maxDistSq < 0.0005f && maxAngle < 10.0f);
+	return (maxDistSq < 0.0005f && maxAngle < 15.0f);
 }
 
 static int sithPuppet_CheckVelocities(sithThing* thing, float deltaSeconds)
