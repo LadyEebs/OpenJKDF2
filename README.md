@@ -37,7 +37,7 @@ Gameplay:
 - Muzzle flashes (new cog verb + muzzle hierarchy + keyframe markers to activate)
 - Dynamic POV animation, crosshair and autoaim (gun follows aim targets, crosshair reacts to geometry/blockers and better represents trajectory, gun moves dynamically when player moves, requires using new verbs to leverage)
 - Extra static.jkl loading, allows stacking up to 4 extra static.jkls (mod stacking)
-- Experimental ragdolls (new .af file for articulated figure definition, new physics mode using particle verlet integration)
+- Physicalized puppet animation and physics constraints (ex. ragdolls, includes new data in .pup files)
 - Polyline upgrades and rendering fixes (new .pln file to specify a polyline def that can be assigned to a thing via template params the same as models and sprites)
 - Regional damage and lightsaber limb dismemberment (with new params to damaged and killed cog messages)
 - Gameplay system cogs (currently only g_combat.cog) that can be used to perform shared game logic (ex. regional damage and dismemberment)
