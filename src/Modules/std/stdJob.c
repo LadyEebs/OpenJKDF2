@@ -22,6 +22,7 @@
 typedef struct stdJob
 {
 	stdJob_function_t function;         // The actual job function
+	void*             args;             // arguments for the function
 #ifdef _WIN32
 	HANDLE            completionEvent;  // Event to signal job completion on Windows
 #else
@@ -66,11 +67,11 @@ typedef struct stdJobSystem
 
 typedef struct stdJobGroupArgs
 {
+	void          (*job)(uint32_t, uint32_t);
 	stdJobSystem* jobs;
-	uint32_t jobCount;
-	uint32_t groupSize;
-	void (*job)(uint32_t, uint32_t);
-	uint32_t groupIndex;
+	uint32_t      jobCount;
+	uint32_t      groupSize;
+	uint32_t      groupIndex;
 } stdJobGroupArgs;
 
 stdJobSystem stdJob_jobSystem;
@@ -83,6 +84,7 @@ void stdJob_InitRingBuffer(stdRingBuffer* rb, uint32_t size)
 		stdPrintf(std_pHS->errorPrint, ".\\General\\stdJob.c", __LINE__, "Failed to allocate ring buffer\n");
 		exit(EXIT_FAILURE);
 	}
+	memset(rb->buffer, 0, size * sizeof(stdJob));
 	rb->size = size;
 	rb->front = 0;
 	rb->back = 0;
@@ -107,7 +109,7 @@ void stdJob_InitRingBuffer(stdRingBuffer* rb, uint32_t size)
 #endif
 }
 
-int stdJob_PushRingBuffer(stdRingBuffer* rb, stdJob_function_t job)
+int stdJob_PushRingBuffer(stdRingBuffer* rb, stdJob_function_t job, void* args)
 {
 	int result = 0;
 
@@ -121,6 +123,7 @@ int stdJob_PushRingBuffer(stdRingBuffer* rb, stdJob_function_t job)
 	if (next_back != rb->front) // Check if buffer is not full
 	{
 		rb->buffer[rb->back].function = job;
+		rb->buffer[rb->back].args = args;
 		rb->buffer[rb->back].isCompleted = 0;
 		rb->back = next_back;
 		result = 1;
@@ -183,6 +186,11 @@ void stdJob_FreeRingBuffer(stdRingBuffer* rb)
 	for (uint32_t i = rb->front; i != rb->back; i = (i + 1) % rb->size)
 	{
 		stdJob* job = &rb->buffer[i];
+		if(job->args)
+		{
+			std_pHS->free(job->args);
+			job->args = NULL;
+		}
 #ifdef _WIN32
 		if(job->completionEvent)
 			CloseHandle(job->completionEvent); // Cleanup Windows event
@@ -282,7 +290,12 @@ void* stdJob_WorkerThread(void* param)
 	{
 		if (stdJob_PopRingBuffer(&jobs->jobPool, &job))
 		{
-			job->function(); // Execute job
+			job->function(job->args); // Execute job
+			if (job->args)
+			{
+				std_pHS->free(job->args);
+				job->args = NULL;
+			}
 			stdJob_Complete(job);
 		}
 		else
@@ -385,7 +398,7 @@ void stdJob_Startup()
 #endif
 
 	stdPlatform_Printf("Kicking off test job\n");
-	stdJob_Execute(stdJob_TestJob);
+	stdJob_Execute(stdJob_TestJob, NULL);
 }
 
 void stdJob_Shutdown()
@@ -427,10 +440,10 @@ void stdJob_Wait()
 	}
 }
 
-uint32_t stdJob_Execute(stdJob_function_t job)
+uint32_t stdJob_Execute(stdJob_function_t job, void* args)
 {
 	stdJob_IncrementCurrentLabel();
-	while (!stdJob_PushRingBuffer(&stdJob_jobSystem.jobPool, job))
+	while (!stdJob_PushRingBuffer(&stdJob_jobSystem.jobPool, job, args))
 	{
 #ifdef _WIN32
 		SetEvent(stdJob_jobSystem.wakeEvent); // Signal workers on Windows to check for jobs
@@ -476,7 +489,7 @@ void stdJob_ExecuteGroup(void* param)
 	for (uint32_t i = groupJobOffset; i < groupJobEnd; ++i)
 		args->job(i, args->groupIndex);
 
-	std_pHS->free(args);
+	//std_pHS->free(args);
 }
 
 void stdJob_Dispatch(uint32_t jobCount, uint32_t groupSize, void (*job)(uint32_t, uint32_t))
@@ -495,7 +508,6 @@ void stdJob_Dispatch(uint32_t jobCount, uint32_t groupSize, void (*job)(uint32_t
 			stdPrintf(std_pHS->errorPrint, ".\\General\\stdJob.c", __LINE__, "Memory allocation failed for job group arguments\n");
 			exit(EXIT_FAILURE);
 		}
-
 		args->jobs = &stdJob_jobSystem;
 		args->jobCount = jobCount;
 		args->groupSize = groupSize;
@@ -503,7 +515,7 @@ void stdJob_Dispatch(uint32_t jobCount, uint32_t groupSize, void (*job)(uint32_t
 		args->groupIndex = groupIndex;
 
 		stdJob_function_t jobGroup = stdJob_ExecuteGroup;
-		while (!stdJob_PushRingBuffer(&stdJob_jobSystem.jobPool, jobGroup))
+		while (!stdJob_PushRingBuffer(&stdJob_jobSystem.jobPool, jobGroup, args))
 		{
 #ifdef _WIN32
 			SetEvent(stdJob_jobSystem.wakeEvent); // Notify worker threads on Windows
