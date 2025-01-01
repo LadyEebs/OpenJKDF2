@@ -9,8 +9,17 @@
 #include "Primitives/rdSprite.h"
 #include "Primitives/rdPolyline.h"
 #include "Engine/rdThing.h"
+#ifdef JOB_SYSTEM
+#include "Modules/std/stdJob.h"
+#endif
 
 #ifdef PUPPET_PHYSICS
+
+#ifdef JOB_SYSTEM
+#define USE_JOBS 0 // not faster atm
+#else
+#define USE_JOBS 0
+#endif
 
 extern float jkPlayer_puppetAngBias;
 extern float jkPlayer_puppetPosBias;
@@ -282,67 +291,91 @@ static void sithConstraint_SolveHingeConstraint(sithConstraintResult* pResult, s
 	//rdVector_MultAcc3(&pResult->JrB, &twistAxis,  twistAngle); // Add twist correction to body B
 }
 
+void sithConstraint_ApplyImpulses(sithThing* pThing)
+{
+	sithConstraint* constraint = pThing->constraints;
+	for (; constraint; constraint = constraint->next)
+	{
+		if (constraint->flags & SITH_CONSTRAINT_DISABLED)
+			continue;
+
+		rdVector_Add3Acc(&constraint->targetThing->physicsParams.vel, &constraint->result.linearImpulseA);
+		rdVector_Add3Acc(&constraint->targetThing->physicsParams.rotVel, &constraint->result.angularImpulseA);
+
+		rdVector_Add3Acc(&constraint->constrainedThing->physicsParams.vel, &constraint->result.linearImpulseB);
+		rdVector_Add3Acc(&constraint->constrainedThing->physicsParams.rotVel, &constraint->result.angularImpulseB);
+	}
+}
+
+int sithConstraint_SatisfyConstraint(sithThing* thing, sithConstraint* c, float deltaSeconds)
+{
+	if (stdMath_Fabs(c->result.C) < 0.001f)
+		return 0;
+
+	sithThing* bodyA = c->targetThing;
+	sithThing* bodyB = c->constrainedThing;
+
+	// Compute J * v
+	float Jv = rdVector_Dot3(&c->result.JvA, &bodyA->physicsParams.vel) +
+		rdVector_Dot3(&c->result.JrA, &bodyA->physicsParams.rotVel) +
+		rdVector_Dot3(&c->result.JvB, &bodyB->physicsParams.vel) +
+		rdVector_Dot3(&c->result.JrB, &bodyB->physicsParams.rotVel);
+	Jv = stdMath_ClipPrecision(Jv);
+	if (stdMath_Fabs(Jv) < 0.001f)
+		return 0;
+
+	// Compute corrective impulse
+	float deltaLambda = (c->result.C - Jv) * c->effectiveMass;
+	deltaLambda *= 0.8; // todo: what's a good damping value?
+	deltaLambda = stdMath_ClipPrecision(deltaLambda);
+
+	if (stdMath_Fabs(deltaLambda) < 0.0005f)
+		return 0;
+
+	// Add deltaLambda to the current lambda
+	float newLambda = c->lambda + deltaLambda;
+	//newLambda = stdMath_Clamp(newLambda, -100.0f, 100.0f);//c->lambdaMin, c->lambdaMax);
+	deltaLambda = newLambda - c->lambda;
+	c->lambda = newLambda;
+
+	// Apply impulse to body A
+	rdVector_Scale3(&c->result.linearImpulseA, &c->result.JvA, deltaLambda / c->targetThing->physicsParams.mass);
+	rdVector_Scale3(&c->result.angularImpulseA, &c->result.JrA, deltaLambda / c->targetThing->physicsParams.inertia);
+
+	// Apply impulse to body B
+	rdVector_Scale3(&c->result.linearImpulseB, &c->result.JvB, deltaLambda / c->constrainedThing->physicsParams.mass);
+	rdVector_Scale3(&c->result.angularImpulseB, &c->result.JrB, deltaLambda / c->constrainedThing->physicsParams.inertia);
+
+	return 1;
+}
+
+#if USE_JOBS
+void sithConstraint_SatisfyConstraintJob(void* arg)
+{
+	sithConstraint* c = (sithConstraint*)arg;
+	sithConstraint_SatisfyConstraint(c->parentThing, c, sithTime_deltaSeconds);
+}
+#endif
+
 // Projected Gauss-Seidel
 void sithConstraint_SatisfyConstraints(sithThing* thing, int iterations, float deltaSeconds)
 {
+	// each iteration is dependent on the previous result, so we can't thread that part
 	for (int iter = 0; iter < iterations; iter++)
 	{
-		// try to bail early if we've converged enough
-		int allConverged = 1;
-
 		sithConstraint* c = thing->constraints;
 		for (; c; c = c->next)
 		{
-			if(stdMath_Fabs(c->result.C) < 0.001f)
-				continue;
-			
-			sithThing* bodyA = c->targetThing;
-			sithThing* bodyB = c->constrainedThing;
-
-			// Compute J * v
-			float Jv = rdVector_Dot3(&c->result.JvA, &bodyA->physicsParams.vel) +
-				rdVector_Dot3(&c->result.JrA, &bodyA->physicsParams.rotVel) +
-				rdVector_Dot3(&c->result.JvB, &bodyB->physicsParams.vel) +
-				rdVector_Dot3(&c->result.JrB, &bodyB->physicsParams.rotVel);
-			Jv = stdMath_ClipPrecision(Jv);
-			if (stdMath_Fabs(Jv) < 0.001f)
-				continue;
-
-			// Compute corrective impulse
-			float deltaLambda = (c->result.C - Jv) * c->effectiveMass;
-			deltaLambda *= 0.8; // todo: what's a good damping value?
-			deltaLambda = stdMath_ClipPrecision(deltaLambda);
-
-			if(stdMath_Fabs(deltaLambda) < 0.0005f)
-				continue;
-
-			// Add deltaLambda to the current lambda
-			float newLambda = c->lambda + deltaLambda;
-			//newLambda = stdMath_Clamp(newLambda, -100.0f, 100.0f);//c->lambdaMin, c->lambdaMax);
-			deltaLambda = newLambda - c->lambda;
-			c->lambda = newLambda;
-
-			// Apply impulse to body A
-			rdVector3 linearImpulseA, angularImpulseA;
-			rdVector_Scale3(&linearImpulseA, &c->result.JvA, deltaLambda / c->targetThing->physicsParams.mass);
-			rdVector_Scale3(&angularImpulseA, &c->result.JrA, deltaLambda / c->targetThing->physicsParams.inertia);
-
-			// Apply impulse to body B
-			rdVector3 linearImpulseB, angularImpulseB;
-			rdVector_Scale3(&linearImpulseB, &c->result.JvB, deltaLambda / c->constrainedThing->physicsParams.mass);
-			rdVector_Scale3(&angularImpulseB, &c->result.JrB, deltaLambda / c->constrainedThing->physicsParams.inertia);
-
-			rdVector_Add3Acc(&bodyA->physicsParams.vel, &linearImpulseA);
-			rdVector_Add3Acc(&bodyA->physicsParams.rotVel, &angularImpulseA);
-
-			rdVector_Add3Acc(&bodyB->physicsParams.vel, &linearImpulseB);
-			rdVector_Add3Acc(&bodyB->physicsParams.rotVel, &angularImpulseB);
-
-			allConverged = 0;
+		#if USE_JOBS
+			stdJob_Execute(sithConstraint_SatisfyConstraintJob, c);
+		#else
+			sithConstraint_SatisfyConstraint(thing, c, deltaSeconds);
+		#endif
 		}
-
-		if(allConverged)
-			break;
+	#if USE_JOBS
+		stdJob_Wait();
+	#endif
+		sithConstraint_ApplyImpulses(thing);
 	}
 }
 
@@ -372,6 +405,39 @@ void sithConstraint_ApplyFriction(sithThing* pThing, float deltaSeconds)
 	}
 }
 
+void sithConstraint_SolveConstraint(sithThing* pThing, sithConstraint* pConstraint, float deltaSeconds)
+{
+	memset(&pConstraint->result, 0, sizeof(sithConstraintResult));
+	if (pConstraint->flags & SITH_CONSTRAINT_DISABLED)
+		return;
+
+	pConstraint->lambda *= 0.9f;
+	switch (pConstraint->type)
+	{
+	case SITH_CONSTRAINT_DISTANCE:
+		sithConstraint_SolveDistanceConstraint(&pConstraint->result, pConstraint, deltaSeconds);
+		break;
+	case SITH_CONSTRAINT_CONE:
+		sithConstraint_SolveConeConstraint(&pConstraint->result, pConstraint, deltaSeconds);
+		break;
+	case SITH_CONSTRAINT_HINGE:
+		sithConstraint_SolveHingeConstraint(&pConstraint->result, pConstraint, deltaSeconds);
+		break;
+	default:
+		break;
+	}
+	pConstraint->result.C = stdMath_ClipPrecision(pConstraint->result.C);
+	pConstraint->effectiveMass = sithConstraint_ComputeEffectiveMass(pConstraint);
+}
+
+#if USE_JOBS
+void sithConstraint_SolveConstraintJob(void* arg)
+{
+	sithConstraint* pConstraint = (sithConstraint*)arg;
+	sithConstraint_SolveConstraint(pConstraint->parentThing, pConstraint, sithTime_deltaSeconds);
+}
+#endif
+
 void sithConstraint_TickConstraints(sithThing* pThing, float deltaSeconds)
 {
 	if (pThing->physicsParams.physflags & SITH_PF_RESTING)
@@ -380,49 +446,23 @@ void sithConstraint_TickConstraints(sithThing* pThing, float deltaSeconds)
 	if (!pThing->constraints || !pThing->sector)
 		return;
 
-	// try to skip satisfying constraints if everything is mostly resting
-	int atRest = 1;
-
-	float iterationStep = deltaSeconds;
-	sithConstraint* constraint = pThing->constraints;
-	for (; constraint; constraint = constraint->next)
+	sithConstraint* pConstraint = pThing->constraints;
+	for (; pConstraint; pConstraint = pConstraint->next)
 	{
-		memset(&constraint->result, 0, sizeof(sithConstraintResult));
-		if (constraint->flags & SITH_CONSTRAINT_DISABLED)
-			continue;
-
-		constraint->lambda *= 0.9f;
-		switch (constraint->type)
-		{
-		case SITH_CONSTRAINT_DISTANCE:
-			sithConstraint_SolveDistanceConstraint(&constraint->result, constraint, iterationStep);
-			break;
-		case SITH_CONSTRAINT_CONE:
-			sithConstraint_SolveConeConstraint(&constraint->result, constraint, iterationStep);
-			break;
-		case SITH_CONSTRAINT_HINGE:
-			sithConstraint_SolveHingeConstraint(&constraint->result, constraint, iterationStep);
-			break;
-		default:
-			break;
-		}
-		constraint->result.C = stdMath_ClipPrecision(constraint->result.C);
-		constraint->effectiveMass = sithConstraint_ComputeEffectiveMass(constraint);
-
-		if(stdMath_Fabs(constraint->result.C) > 0.005f)
-			atRest = 0;
+	#if USE_JOBS
+		stdJob_Execute(sithConstraint_SolveConstraintJob, pConstraint);
+	#else
+		sithConstraint_SolveConstraint(pThing, pConstraint, deltaSeconds);
+	#endif
 	}
 
-	if(!atRest)
-	{
-		int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 10 : 1;
-		sithConstraint_SatisfyConstraints(pThing, iterations, deltaSeconds);
-		sithConstraint_ApplyFriction(pThing, deltaSeconds);
-	}
-	else
-	{
-		pThing->physicsParams.physflags |= SITH_PF_RESTING;
-	}
+#if USE_JOBS
+	stdJob_Wait();
+#endif
+	
+	int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 10 : 1;
+	sithConstraint_SatisfyConstraints(pThing, iterations, deltaSeconds);
+	sithConstraint_ApplyFriction(pThing, deltaSeconds);
 }
 
 static void sithConstraint_DrawDistance(sithConstraint* pConstraint)

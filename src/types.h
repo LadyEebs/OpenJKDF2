@@ -2890,9 +2890,11 @@ enum SITH_CONSTRAINT_FLAGS
 
 typedef struct sithConstraintResult
 {
-	rdVector3 JvA, JrA; // jacobians for body A
-	rdVector3 JvB, JrB; // jacobians for body B
-	float C; // constraint error
+	float     C;                               // constraint error
+	rdVector3 JvA, JrA;                        // jacobians for body A
+	rdVector3 JvB, JrB;                        // jacobians for body B
+	rdVector3 linearImpulseA, angularImpulseA; // computed impulses for bodyA
+	rdVector3 linearImpulseB, angularImpulseB; // computed impulses for bodyB
 } sithConstraintResult;
 
 typedef struct sithConstraintDistanceParams
@@ -2920,14 +2922,14 @@ typedef struct sithConstraintHingeParams
 // todo: signatures
 typedef struct sithConstraint
 {
-	int        type;             // SITH_CONSTRAINT_TYPE
-	int        flags;            // SITH_CONSTRAINT_FLAGS
-	float      lambda;           // the previous lambda calculation
-	float      effectiveMass;    // effective mass of the constraint
-	sithThing* parentThing;      // thing that owns the constraint
-	sithThing* constrainedThing; // the thing to be constrained
-	sithThing* targetThing;      // the thing to constrain to
-	sithConstraintResult result; // jacobian/constraint error result
+	int                  type;             // SITH_CONSTRAINT_TYPE
+	int                  flags;            // SITH_CONSTRAINT_FLAGS
+	float                lambda;           // the previous lambda calculation
+	float                effectiveMass;    // effective mass of the constraint
+	sithThing*           parentThing;      // thing that owns the constraint
+	sithThing*           constrainedThing; // the thing to be constrained
+	sithThing*           targetThing;      // the thing to constrain to
+	sithConstraintResult result;           // jacobian/constraint error and impulses
 	union
 	{
 		sithConstraintDistanceParams distanceParams;
