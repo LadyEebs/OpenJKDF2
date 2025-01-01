@@ -229,84 +229,15 @@ static void sithConstraint_SolveConeConstraint(sithConstraintResult* pResult, si
 
 static void sithConstraint_SolveHingeConstraint(sithConstraintResult* pResult, sithConstraint* pConstraint, float deltaSeconds)
 {
+	rdVector_Zero3(&pResult->JvA);
+	rdVector_Zero3(&pResult->JvB);
+
 	rdVector3 hingeAxisA, hingeAxisB;	
 	rdMatrix_TransformVector34(&hingeAxisA, &pConstraint->hingeParams.targetAxis, &pConstraint->targetThing->lookOrientation);
 	rdMatrix_TransformVector34(&hingeAxisB, &pConstraint->hingeParams.jointAxis, &pConstraint->constrainedThing->lookOrientation);
-	
-	// Compute the swing violation	
-	/*rdVector3 swingAxis;
-	rdVector_Cross3(&swingAxis, &hingeAxisA, &hingeAxisB); // Axis of misalignment
-	float swingMagnitude = rdVector_Len3(&swingAxis); // Magnitude of misalignment
-
-	if (swingMagnitude > 1e-6f) // Small tolerance to avoid instability
-	{
-		rdVector_Normalize3Acc(&swingAxis);
-
-		// Swing constraint correction
-		float swingError = swingMagnitude; // Magnitude of misalignment
-		pResult->C += swingError;          // Accumulate constraint violation
-		pResult->JrA = swingAxis;          // Swing Jacobian for body A
-		pResult->JrB = swingAxis;          // Swing Jacobian for body B
-		rdVector_Neg3Acc(&pResult->JrA); // Flip direction for body B
-	}
-
-	// Compute relative orientation of the bodies
-	rdMatrix34 invMat;
-	rdMatrix_InvertOrtho34(&invMat, &pConstraint->targetThing->lookOrientation);
-
-	rdMatrix34 relativeRotation;
-	rdMatrix_Multiply34(&relativeRotation, &invMat, &pConstraint->constrainedThing->lookOrientation);
-	
-	// calculate the rotated hinge axis
-	rdVector3 rotatedHingeAxisA, rotatedHingeAxisB;
-	rdMatrix_TransformVector34(&rotatedHingeAxisA, &pConstraint->hingeParams.targetAxis, &relativeRotation);
-	rdMatrix_TransformVector34(&rotatedHingeAxisB, &pConstraint->hingeParams.jointAxis, &relativeRotation);
-
-	// Compute the cosine of the angle between the two hinge axes
-	float twistAngle = rdVector_Dot3(&rotatedHingeAxisA, &rotatedHingeAxisB);
-	
-	// Apply angular limits to the twist angle
-	if (twistAngle < pConstraint->hingeParams.minCosAngle)
-	{
-		// Push up towards the minAngle
-		pResult->C += pConstraint->hingeParams.minCosAngle - twistAngle;
-	}
-	else if (twistAngle > pConstraint->hingeParams.maxCosAngle)
-	{
-		// Pull down towards the maxAngle
-		pResult->C += twistAngle - pConstraint->hingeParams.maxCosAngle;
-	}
-
-	pResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * pResult->C;
-	pResult->C = stdMath_Clamp(pResult->C, -2.0f, 2.0f);
-
-	// Combine swing and twist Jacobians
-	// JrA and JrB already hold contributions from swing; add twist contribution
-	rdVector3 twistAxis = hingeAxisA; // The hinge axis contributes to twist
-	rdVector_MultAcc3(&pResult->JrA, &twistAxis,-twistAngle); // Add twist correction to body A
-	rdVector_MultAcc3(&pResult->JrB, &twistAxis, twistAngle); // Add twist correction to body B
-*/
 
 	float cosAngle = rdVector_Dot3(&hingeAxisA, &hingeAxisB);
-	//if (cosAngle < pConstraint->hingeParams.minCosAngle)
-	//{
-	//	// Push up towards the minAngle
-	//	pResult->C = pConstraint->hingeParams.minCosAngle - cosAngle;
-	//}
-	//else if (cosAngle > pConstraint->hingeParams.maxCosAngle)
-	//{
-	//	// Pull down towards the maxAngle
-	//	pResult->C = cosAngle - pConstraint->hingeParams.maxCosAngle;
-	//}
-	//else
-	//{
-	//	// No correction needed if the angle is within the limits
-	//	pConstraint->result.C = 0.0f;
-	//	return;
-	//}
-	pConstraint->result.C = 1.0f - cosAngle;
-	pResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * pResult->C;
-	pResult->C = stdMath_Clamp(pResult->C, -2.0f, 2.0f);
+	pResult->C = 1.0f - cosAngle;
 
 	rdVector3 rotationAxis;
 	rdVector_Cross3(&rotationAxis, &hingeAxisA, &hingeAxisB);
@@ -316,8 +247,39 @@ static void sithConstraint_SolveHingeConstraint(sithConstraintResult* pResult, s
 	pResult->JrB = rotationAxis;
 	rdVector_Neg3Acc(&pResult->JrA);
 
-	rdVector_Zero3(&pResult->JvA);
-	rdVector_Zero3(&pResult->JvB);
+	// Compute relative orientation of the bodies
+	//rdMatrix34 invMat;
+	//rdMatrix_InvertOrtho34(&invMat, &pConstraint->targetThing->lookOrientation);
+	//
+	//rdMatrix34 relativeRotation;
+	//rdMatrix_Multiply34(&relativeRotation, &invMat, &pConstraint->constrainedThing->lookOrientation);
+	//
+	//// calculate the rotated hinge axis
+	//rdVector3 rotatedHingeAxisA, rotatedHingeAxisB;
+	//rdMatrix_TransformVector34(&rotatedHingeAxisA, &pConstraint->hingeParams.targetAxis, &relativeRotation);
+	//rdMatrix_TransformVector34(&rotatedHingeAxisB, &pConstraint->hingeParams.jointAxis, &relativeRotation);
+	//
+	//// Compute the cosine of the angle between the two hinge axes
+	//float twistAngle = rdVector_Dot3(&rotatedHingeAxisA, &rotatedHingeAxisB);
+	//if (twistAngle < pConstraint->hingeParams.minCosAngle)
+	//{
+	//	// Push up towards the minAngle
+	//	pResult->C += pConstraint->hingeParams.minCosAngle - twistAngle;
+	//}
+	//else if (twistAngle > pConstraint->hingeParams.maxCosAngle)
+	//{
+	//	// Pull down towards the maxAngle
+	//	pResult->C += twistAngle - pConstraint->hingeParams.maxCosAngle;
+	//}
+	//
+	//pResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * pResult->C;
+	//pResult->C = stdMath_Clamp(pResult->C, -2.0f, 2.0f);
+	//
+	//// Combine swing and twist Jacobians
+	//// JrA and JrB already hold contributions from swing; add twist contribution
+	//rdVector3 twistAxis = hingeAxisA; // The hinge axis contributes to twist
+	//rdVector_MultAcc3(&pResult->JrA, &twistAxis, -twistAngle); // Add twist correction to body A
+	//rdVector_MultAcc3(&pResult->JrB, &twistAxis,  twistAngle); // Add twist correction to body B
 }
 
 // Projected Gauss-Seidel
