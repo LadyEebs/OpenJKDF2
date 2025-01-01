@@ -1102,7 +1102,16 @@ void sithPhysics_ThingPhysAttached(sithThing *pThing, float deltaSeconds)
 		if(!pThing->constraintParent)
 		{
 			float dotProduct = rdVector_Dot3(&pThing->physicsParams.rotVel, &pThing->attachedSufaceInfo->face.normal);
-			rdVector_Scale3(&pThing->physicsParams.rotVel, &pThing->attachedSufaceInfo->face.normal, dotProduct);
+			if (possibly_undef_2 >= 1.0)
+			{
+				rdVector_Scale3(&pThing->physicsParams.rotVel, &pThing->attachedSufaceInfo->face.normal, dotProduct);
+			}
+			else
+			{
+				rdVector_Scale3(&out, &pThing->attachedSufaceInfo->face.normal, dotProduct);
+				rdVector_Scale3Acc(&pThing->physicsParams.rotVel, 1.0 - possibly_undef_2);
+				rdVector_MultAcc3(&pThing->physicsParams.rotVel, &out, possibly_undef_2);
+			}
 		}
 
 		rdMatrix34 invMat;
