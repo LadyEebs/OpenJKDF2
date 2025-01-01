@@ -186,11 +186,7 @@ void stdJob_FreeRingBuffer(stdRingBuffer* rb)
 	for (uint32_t i = rb->front; i != rb->back; i = (i + 1) % rb->size)
 	{
 		stdJob* job = &rb->buffer[i];
-		if(job->args)
-		{
-			std_pHS->free(job->args);
-			job->args = NULL;
-		}
+		job->args = NULL;
 #ifdef _WIN32
 		if(job->completionEvent)
 			CloseHandle(job->completionEvent); // Cleanup Windows event
@@ -291,11 +287,7 @@ void* stdJob_WorkerThread(void* param)
 		if (stdJob_PopRingBuffer(&jobs->jobPool, &job))
 		{
 			job->function(job->args); // Execute job
-			if (job->args)
-			{
-				std_pHS->free(job->args);
-				job->args = NULL;
-			}
+			job->args = NULL;
 			stdJob_Complete(job);
 		}
 		else
@@ -489,7 +481,7 @@ void stdJob_ExecuteGroup(void* param)
 	for (uint32_t i = groupJobOffset; i < groupJobEnd; ++i)
 		args->job(i, args->groupIndex);
 
-	//std_pHS->free(args);
+	std_pHS->free(args);
 }
 
 void stdJob_Dispatch(uint32_t jobCount, uint32_t groupSize, void (*job)(uint32_t, uint32_t))
