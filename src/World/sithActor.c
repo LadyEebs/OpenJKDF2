@@ -581,7 +581,8 @@ void sithActor_Remove(sithThing *thing)
     sithPhysics_FindFloor(thing, 0);
 #ifdef PUPPET_PHYSICS
 	thing->collide = SITH_COLLIDE_NONE;
-	thing->moveType = SITH_MT_PUPPET;
+	if (thing->animclass && thing->animclass->flags & JOINTFLAGS_PHYSICS)
+		thing->moveType = SITH_MT_PUPPET;
 #endif
 }
 
