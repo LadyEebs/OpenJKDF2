@@ -14,6 +14,7 @@
 #include "World/jkPlayer.h"
 #include "World/sithActor.h"
 #include "World/sithTemplate.h"
+#include "World/sithWorld.h"
 #include "Main/sithCommand.h"
 #include "Dss/sithMulti.h"
 #include "Main/Main.h"
@@ -392,6 +393,26 @@ int jkQuakeConsole_AutocompleteTemplates()
         }
     }
     
+#ifdef STATIC_JKL_EXT
+	for (int k = 0; k < ARRAY_SIZE(sithWorld_pStaticWorlds); ++k)
+	{
+		if (sithWorld_pStaticWorlds[k] && sithWorld_pStaticWorlds[k]->templates)
+		{
+			for (int i = 0; i < sithWorld_pStaticWorlds[k]->numTemplatesLoaded; i++)
+			{
+				char* pName = sithWorld_pStaticWorlds[k]->templates[i].template_name;
+				if (!strncmp(jkQuakeConsole_pTabPos, pName, strlen(jkQuakeConsole_pTabPos))) {
+					bPrintOnce = 1;
+
+					if (jkQuakeConsole_sortTmpIdx < JKQUAKECONSOLE_SORTED_LIMIT) {
+						jkQuakeConsole_aSortTmp[jkQuakeConsole_sortTmpIdx++] = pName;
+					}
+				}
+			}
+		}
+	}
+#endif
+
     if (!sithWorld_pCurrentWorld || !sithWorld_pCurrentWorld->templates) return bPrintOnce;
     
     for (int i = 0; i < sithWorld_pCurrentWorld->numTemplatesLoaded; i++)
