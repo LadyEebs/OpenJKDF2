@@ -1104,6 +1104,10 @@ void main(void)
 	//	roughness = mix(0.05, roughness, min(smoothness * threshold, 1.0));
 		//specularColor = mix(min(avgAlbedo * 2.0, vec3(1.0)), specularColor, min(smoothness * threshold, 1.0));
 	#endif
+
+		// for metals do some hacky stuff to make them look a bit more view-dependent
+		//vec3 reflVec = reflect(-localViewDir, surfaceNormals);
+		//diffuseColor.xyz *= pow(max(dot(reflVec, surfaceNormals), 0.0), 8.0) * 0.5 + 0.5;
 #endif
 
 	if(numDecals > 0u)
