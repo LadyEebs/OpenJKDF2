@@ -50,7 +50,7 @@ void sithCollision_sub_4E77A0(sithThing *thing, rdMatrix34 *a2);
 int sithCollision_DebrisPlayerCollide(sithThing *thing, sithThing *thing2, sithCollisionSearchEntry *searchEnt, int isSolid);
 
 // Added
-sithThing* sithCollision_GetThingLookat(sithThing* sector, sithThing* sender, const rdVector3* position, const rdVector3* dir, float dist);
+sithThing* sithCollision_GetThingLookat(sithSector* sector, sithThing* sender, const rdVector3* position, const rdVector3* dir, float dist);
 
 #if 0
 static int (*_sithCollision_Startup)() = (void*)sithCollision_Startup_ADDR;
