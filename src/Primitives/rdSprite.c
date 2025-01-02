@@ -208,6 +208,18 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	rdSetGlowIntensity(0.8f);
 
 	int oldZ = rdroid_curZBufferMethod;
+
+	float alpha = 1.0f;
+	if ((sprite->face.type & RD_FF_TEX_TRANSLUCENT) != 0)
+	{
+		alpha = 90.0f / 255.0f;
+		rdSetBlendEnabled(RD_TRUE);
+	}
+	else
+	{
+		rdSetBlendEnabled(RD_FALSE);
+	}
+
 	rdSetZBufferMethod(RD_ZBUFFER_READ_NOWRITE);
 
 	rdTexOffseti(sprite->face.clipIdk.x, sprite->face.clipIdk.y);
