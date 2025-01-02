@@ -926,72 +926,72 @@ void sithWorld_ResetSectorRuntimeAlteredVars(sithWorld *pWorld)
 }
 
 // MOTS altered
-void sithWorld_GetMemorySize(sithWorld *pWorld, int *outAllocated, int *outQuantity)
+void sithWorld_GetMemorySize(sithWorld *pWorld, sithWorld_MemoryCounters* outAllocated, sithWorld_MemoryCounters* outQuantity)
 {
-    _memset(outAllocated, 0, sizeof(int) * 0x11);
-    _memset(outQuantity, 0, sizeof(int) * 0x11);
-    outQuantity[0] = pWorld->numMaterialsLoaded;
+    _memset(outAllocated, 0, sizeof(sithWorld_MemoryCounters));
+    _memset(outQuantity, 0, sizeof(sithWorld_MemoryCounters));
+    outQuantity->materials = pWorld->numMaterialsLoaded;
     for (int i = 0; i < pWorld->numMaterialsLoaded; i++)
     {
-        outAllocated[0] += sithMaterial_GetMemorySize(&pWorld->materials[i]);
+        outAllocated->materials += sithMaterial_GetMemorySize(&pWorld->materials[i]);
     }
-    outQuantity[1] = pWorld->numVertices;
-    outAllocated[1] = 0x34 * pWorld->numVertices;               // TODO: what is this size?
-    outQuantity[2] = pWorld->numVertexUVs;
-    outAllocated[2] = sizeof(rdVector2) * pWorld->numVertexUVs;
-    outQuantity[3] = pWorld->numSurfaces;
+    outQuantity->vertices = pWorld->numVertices;
+    outAllocated->vertices = 0x34 * pWorld->numVertices;               // TODO: what is this size?
+    outQuantity->vertexUVs = pWorld->numVertexUVs;
+    outAllocated->vertexUVs = sizeof(rdVector2) * pWorld->numVertexUVs;
+    outQuantity->surfaces = pWorld->numSurfaces;
     for (int i = 0; i < pWorld->numSurfaces; i++)
     {
-        outAllocated[3] += sizeof(rdVector3) * pWorld->surfaces[i].surfaceInfo.face.numVertices + sizeof(sithSurface);
+        outAllocated->surfaces += sizeof(rdVector3) * pWorld->surfaces[i].surfaceInfo.face.numVertices + sizeof(sithSurface);
     }
-    outQuantity[4] = pWorld->numAdjoinsLoaded;
-    outAllocated[4] = sizeof(sithAdjoin) * pWorld->numAdjoinsLoaded;
-    outQuantity[5] = pWorld->numSectors;
+    outQuantity->adjoins = pWorld->numAdjoinsLoaded;
+    outAllocated->adjoins = sizeof(sithAdjoin) * pWorld->numAdjoinsLoaded;
+    outQuantity->sectors = pWorld->numSectors;
     for (int i = 0; i < pWorld->numSectors; i++)
     {
-        outAllocated[5] += 4 * pWorld->sectors[i].numVertices + sizeof(sithSector); // TODO bug?
+        outAllocated->sectors += 4 * pWorld->sectors[i].numVertices + sizeof(sithSector); // TODO bug?
     }
-    outQuantity[6] = pWorld->numSoundsLoaded;
+    outQuantity->sounds = pWorld->numSoundsLoaded;
     for (int i = 0; i < pWorld->numSoundsLoaded; i++)
     {
-        outAllocated[6] += pWorld->sounds[i].bufferBytes + sizeof(sithSound);
+        outAllocated->sounds += pWorld->sounds[i].bufferBytes + sizeof(sithSound);
     }
-    outQuantity[8] = pWorld->numCogScriptsLoaded;
+    outQuantity->cogScripts = pWorld->numCogScriptsLoaded;
     for (int i = 0; i < pWorld->numCogScriptsLoaded; i++)
     {
-        outAllocated[8] += 4 * (7 * pWorld->cogScripts[i].pSymbolTable->entry_cnt + pWorld->cogScripts[i].numIdk) + 0x1DD0; // TODO verify struct sizes here...
+        outAllocated->cogScripts += 4 * (7 * pWorld->cogScripts[i].pSymbolTable->entry_cnt + pWorld->cogScripts[i].numIdk) + 0x1DD0; // TODO verify struct sizes here...
     }
-    outQuantity[7] = pWorld->numCogsLoaded;
+    outQuantity->cogs = pWorld->numCogsLoaded;
     for (int i = 0; i < pWorld->numCogsLoaded; i++)
     {
-        outAllocated[7] += 28 * pWorld->cogs[i].pSymbolTable->entry_cnt + 0x14DC; // TODO verify struct sizes
+        outAllocated->cogs += 28 * pWorld->cogs[i].pSymbolTable->entry_cnt + 0x14DC; // TODO verify struct sizes
     }
-    outQuantity[10] = pWorld->numModelsLoaded;
+    outQuantity->models = pWorld->numModelsLoaded;
     for (int i = 0; i < pWorld->numModelsLoaded; i++)
     {
-        outAllocated[10] += sithModel_GetMemorySize(&pWorld->models[i]);
+        outAllocated->models += sithModel_GetMemorySize(&pWorld->models[i]);
     }
-    outQuantity[11] = pWorld->numKeyframesLoaded;
+    outQuantity->keyframes = pWorld->numKeyframesLoaded;
     for (int i = 0; i < pWorld->numKeyframesLoaded; i++)
     {
-        outAllocated[11] += sizeof(rdJoint) * (pWorld->keyframes[i].numJoints2 + 3);
+        outAllocated->keyframes += sizeof(rdJoint) * (pWorld->keyframes[i].numJoints2 + 3);
         for (int j = 0; j < pWorld->keyframes[i].numJoints2; j++)
         {
-            outAllocated[11] += sizeof(rdAnimEntry) * pWorld->keyframes[i].paJoints[j].numAnimEntries;
+            outAllocated->keyframes += sizeof(rdAnimEntry) * pWorld->keyframes[i].paJoints[j].numAnimEntries;
         }
     }
-    outQuantity[12] = pWorld->numAnimClassesLoaded;
-    outAllocated[12] = sizeof(sithAnimclass) * pWorld->numAnimClassesLoaded;
-    outQuantity[13] = pWorld->numSpritesLoaded;
-    outAllocated[13] = sizeof(rdSprite) * pWorld->numSpritesLoaded;
+    outQuantity->animclasses = pWorld->numAnimClassesLoaded;
+    outAllocated->animclasses = sizeof(sithAnimclass) * pWorld->numAnimClassesLoaded;
+    outQuantity->sprites = pWorld->numSpritesLoaded;
+    outAllocated->sprites = sizeof(rdSprite) * pWorld->numSpritesLoaded;
     for (int i = 0; i < pWorld->numSpritesLoaded; i++)
     {
-        outAllocated[13] += sizeof(rdTri) * pWorld->sprites[i].face.numVertices;
+        outAllocated->sprites += sizeof(rdTri) * pWorld->sprites[i].face.numVertices;
     }
-    outQuantity[14] = pWorld->numTemplatesLoaded;
-    outQuantity[15] = pWorld->numThingsLoaded;
-    outAllocated[14] = sizeof(sithThing) * pWorld->numTemplatesLoaded;
-    outAllocated[15] = sizeof(sithThing) * pWorld->numThingsLoaded;
+    outQuantity->templates = pWorld->numTemplatesLoaded;
+    outQuantity->things = pWorld->numThingsLoaded;
+    outAllocated->templates = sizeof(sithThing) * pWorld->numTemplatesLoaded;
+    outAllocated->things = sizeof(sithThing) * pWorld->numThingsLoaded;
 }
 
 

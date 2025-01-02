@@ -17,6 +17,7 @@
 #include "World/sithTemplate.h"
 #include "Main/jkQuakeConsole.h"
 #include "General/stdJSON.h"
+#include "World/sithWorld.h"
 #include "jk.h"
 
 #define sithCommand_CmdMatList ((void*)sithCommand_CmdMatList_ADDR)
@@ -404,80 +405,68 @@ int sithCommand_CmdFly(stdDebugConsoleCmd *pCmd, const char *pArgStr)
 
 int sithCommand_CmdMem(stdDebugConsoleCmd *pCmd, const char *pArgStr)
 {
-    sithWorld *v2; // eax
-    signed int result; // eax
-    int v4; // esi
-    int v5; // esi
-    int v6; // esi
-    int v7; // esi
-    int v8; // esi
-    int v9; // esi
-    int v10; // esi
-    int bytesMaterials; // [esp+4h] [ebp-88h] BYREF
-    int v12; // [esp+8h] [ebp-84h]
-    int v13; // [esp+Ch] [ebp-80h]
-    int v14; // [esp+10h] [ebp-7Ch]
-    int v15; // [esp+14h] [ebp-78h]
-    int v16; // [esp+18h] [ebp-74h]
-    int v17; // [esp+20h] [ebp-6Ch]
-    int v18; // [esp+24h] [ebp-68h]
-    int bytesModels; // [esp+2Ch] [ebp-60h]
-    int v20; // [esp+30h] [ebp-5Ch]
-    int qtyMaterials[6]; // [esp+48h] [ebp-44h] BYREF
-    int qtySounds; // [esp+60h] [ebp-2Ch]
-    int v23; // [esp+64h] [ebp-28h]
-    int v24; // [esp+68h] [ebp-24h]
-    int qtyModels; // [esp+70h] [ebp-1Ch]
-    int v26; // [esp+74h] [ebp-18h]
-
-    v2 = sithWorld_pCurrentWorld;
+    sithWorld* pWorld = sithWorld_pCurrentWorld;
     if ( pArgStr )
-        v2 = sithWorld_pStatic;
-    if ( v2 )
+		pWorld = sithWorld_pStatic;
+
+    if (pWorld)
     {
-#ifndef LINUX_TMP
-        sithWorld_GetMemorySize(v2, &bytesMaterials, qtyMaterials);
-#endif
-        _sprintf(std_genBuffer, "%5d Materials        %8d bytes.", qtyMaterials[0], bytesMaterials);
+		sithWorld_MemoryCounters allocated, quantity;
+        sithWorld_GetMemorySize(pWorld, &allocated, &quantity);
+
+		int totalBytes = 0;
+
+        _sprintf(std_genBuffer, "%5d Materials        %8d bytes.", quantity.materials, allocated.materials);
         sithConsole_Print(std_genBuffer);
-        v4 = bytesMaterials;
-        _sprintf(std_genBuffer, "%5d Models           %8d bytes.", qtyModels, bytesModels);
+		totalBytes += allocated.materials;
+
+        _sprintf(std_genBuffer, "%5d Models           %8d bytes.", quantity.models, allocated.models);
         sithConsole_Print(std_genBuffer);
-        v5 = bytesModels + v4;
-        _sprintf(std_genBuffer, "%5d Sounds", qtySounds);
+        totalBytes += allocated.models;
+        
+		_sprintf(std_genBuffer, "%5d Sounds", quantity.sounds);
         sithConsole_Print(std_genBuffer);
-        _sprintf(std_genBuffer, "%5d Keyframes        %8d bytes.", v26, v20);
+
+        _sprintf(std_genBuffer, "%5d Keyframes        %8d bytes.", quantity.keyframes, allocated.keyframes);
         sithConsole_Print(std_genBuffer);
-        v6 = v20 + v5;
-        _sprintf(std_genBuffer, "%5d World Vertices   %8d bytes.", qtyMaterials[1], v12);
+		totalBytes += allocated.keyframes;
+
+		_sprintf(std_genBuffer, "%5d World Vertices   %8d bytes.", quantity.vertices, allocated.vertices);
         sithConsole_Print(std_genBuffer);
-        v7 = v12 + v6;
-        _sprintf(std_genBuffer, "%5d World TexVerts   %8d bytes.", qtyMaterials[2], v13);
+		totalBytes += allocated.vertices;
+        
+		_sprintf(std_genBuffer, "%5d World TexVerts   %8d bytes.", quantity.vertexUVs, allocated.vertexUVs);
         sithConsole_Print(std_genBuffer);
-        v8 = v13 + v7;
-        _sprintf(std_genBuffer, "%5d Surfaces         %8d bytes.", qtyMaterials[3], v14);
+        totalBytes += allocated.vertexUVs;
+        
+		_sprintf(std_genBuffer, "%5d Surfaces         %8d bytes.", quantity.surfaces, allocated.surfaces);
         sithConsole_Print(std_genBuffer);
-        v9 = v14 + v8;
-        _sprintf(std_genBuffer, "%5d Sectors          %8d bytes.", qtyMaterials[5], v16);
+        totalBytes += allocated.surfaces;
+        
+		_sprintf(std_genBuffer, "%5d Sectors          %8d bytes.", quantity.sectors, allocated.sectors);
         sithConsole_Print(std_genBuffer);
-        v10 = v16 + v9;
-        _sprintf(std_genBuffer, "%5d Cog Scripts\t\t%8d bytes.", v24, v18);
+        totalBytes += allocated.sectors;
+        
+		_sprintf(std_genBuffer, "%5d Cog Scripts\t\t%8d bytes.", quantity.cogScripts, allocated.cogScripts);
         sithConsole_Print(std_genBuffer);
-        _sprintf(std_genBuffer, "%5d Cogs             %8d bytes.", v23, v17);
+
+        _sprintf(std_genBuffer, "%5d Cogs             %8d bytes.", quantity.cogs, allocated.cogs);
         sithConsole_Print(std_genBuffer);
-        _sprintf(std_genBuffer, "%5d Adjoins          %8d bytes.", qtyMaterials[4], v15);
+
+        _sprintf(std_genBuffer, "%5d Adjoins          %8d bytes.", quantity.adjoins, allocated.adjoins);
         sithConsole_Print(std_genBuffer);
-        _sprintf(std_genBuffer, "Total Memory Used:   %8d bytes.", v15 + v10);
+		totalBytes += allocated.adjoins;
+
+        _sprintf(std_genBuffer, "Total Memory Used:   %8d bytes.", totalBytes);
         sithConsole_Print(std_genBuffer);
+
         sithConsole_Print("(Total does not include sounds & cogs)");
-        result = 1;
+       
+	   return 1;
     }
-    else
-    {
-        sithConsole_Print("No world.");
-        result = 0;
-    }
-    return result;
+
+	sithConsole_Print("No world.");
+	return 0;
 }
 
 int sithCommand_CmdDynamicMem(stdDebugConsoleCmd *pCmd, const char *pArgStr)

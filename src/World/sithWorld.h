@@ -60,8 +60,7 @@ void sithWorld_ResetSectorRuntimeAlteredVars(sithWorld *pWorld);
 
 void sithWorld_SetChecksumExtraFunc(sithWorld_ChecksumHandler_t handler); // MOTS added
 
-//TODO list
-// sithWorld_GetMemorySize
+void sithWorld_GetMemorySize(sithWorld* pWorld, sithWorld_MemoryCounters* outAllocated, sithWorld_MemoryCounters* outQuantity);
 
 
 //static int (*sithWorld_NewEntry)(sithWorld *pWorld) = (void*)sithWorld_NewEntry_ADDR;
