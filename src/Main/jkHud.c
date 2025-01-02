@@ -1220,7 +1220,11 @@ void jkHud_DrawGPU()
 		uint8_t b = 0xFF;
 		if(jkPlayer_crosshairTarget && (jkPlayer_crosshairTarget->type == SITH_THING_ACTOR || jkPlayer_crosshairTarget->type == SITH_THING_PLAYER))
 		{
-			if (!(jkPlayer_crosshairTarget->actorParams.typeflags & SITH_AF_NOTARGET))
+			int isFriendly = (jkPlayer_crosshairTarget->actorParams.typeflags & SITH_AF_NOTARGET);
+			if(sithNet_isMulti)
+				isFriendly |= sithPlayer_sub_4C9060(sithPlayer_pLocalPlayerThing, jkPlayer_crosshairTarget);
+
+			if (!isFriendly)
 				g = b = 0;
 			else
 				r = b = 0;
