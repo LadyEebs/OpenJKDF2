@@ -191,7 +191,10 @@ extern int jkPlayer_enableDecals;
 #endif
 #ifdef PUPPET_PHYSICS
 extern int jkPlayer_ragdolls;
-extern int jkPlayer_debugRagdolls;
+extern int jkPlayer_puppetShowBodies;
+extern int jkPlayer_puppetShowJoints;
+extern int jkPlayer_puppetShowJointNames;
+extern int jkPlayer_puppetShowConstraints;
 extern float jkPlayer_puppetAngBias;
 extern float jkPlayer_puppetPosBias;
 extern float jkPlayer_puppetFriction;

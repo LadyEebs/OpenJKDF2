@@ -543,4 +543,11 @@ void sithConstraint_Draw(sithConstraint* pConstraint)
 	}
 }
 
+void sithConstraint_DebugDrawConstraints(sithThing* pThing)
+{
+	sithConstraint* constraint = pThing->constraints;
+	for (; constraint; constraint = constraint->next)
+		sithConstraint_Draw(constraint);
+}
+
 #endif

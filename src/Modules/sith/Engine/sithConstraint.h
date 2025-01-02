@@ -12,5 +12,6 @@ void sithConstraint_AddHingeConstraint(sithThing* pThing, sithThing* pConstraine
 void sithConstraint_RemoveConstraint(sithConstraint* pConstraint);
 
 void sithConstraint_Draw(sithConstraint* pConstraint);
+void sithConstraint_DebugDrawConstraints(sithThing* pThing);
 
 #endif

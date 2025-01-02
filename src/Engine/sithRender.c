@@ -32,6 +32,7 @@
 
 #ifdef PUPPET_PHYSICS
 #include "Modules/sith/Engine/sithConstraint.h"
+#include "Engine/sithPuppet.h"
 #endif
 
 #if defined(DECAL_RENDERING) || defined(RENDER_DROID2)
@@ -2623,12 +2624,6 @@ int sithRender_RenderThing(sithThing *pThing)
     pThing->isVisible = bShowInvisibleThings;
     pThing->lookOrientation.scale = pThing->position;
 
-#ifdef PUPPET_PHYSICS
-	int showPhysicsJoints = (jkPlayer_debugRagdolls && pThing->animclass && pThing->puppet && pThing->puppet->physics);
-	//if (showPhysicsJoints)
-	//	ret = 1;
-	//else
-#endif
     ret = rdThing_Draw(&pThing->rdthing, &pThing->lookOrientation);
     rdVector_Zero3(&pThing->lookOrientation.scale);
 #ifdef QOL_IMPROVEMENTS
@@ -2662,69 +2657,17 @@ int sithRender_RenderThing(sithThing *pThing)
     }
 
 #ifdef PUPPET_PHYSICS
-	if (showPhysicsJoints)
-	{
-		if (jkPlayer_debugRagdolls == 1)
-		{
-			// could actually do all this by giving the joint things themselves some draw data
-			uint64_t jointBits = pThing->animclass->physicsJointBits;
-			while (jointBits != 0)
-			{
-				int jointIdx = stdMath_FindLSB64(jointBits);
-				jointBits ^= 1ull << jointIdx;
-		
-				sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
-				rdVector3 offset = { 0, -pJoint->thing.moveSize, 0 };
-				
-				// body
-				{
+	if (jkPlayer_puppetShowConstraints)
+		sithConstraint_DebugDrawConstraints(pThing);
 
-					rdSprite debugSprite;
-					rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, "saberblue0.mat", pJoint->thing.moveSize * 2.0f, pJoint->thing.moveSize * 2.0f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &offset);
-				
-					rdThing debug;
-					rdThing_NewEntry(&debug, pThing);
-					rdThing_SetSprite3(&debug, &debugSprite);
-					rdMatrix34 mat;
-					rdMatrix_BuildTranslate34(&mat, &pJoint->thing.position);
-				
-					rdSprite_Draw(&debug, &mat);
-				
-					rdSprite_FreeEntry(&debugSprite);
-					rdThing_FreeEntry(&debug);
-				}
-					
-				// joint pivot
-				{
-					rdVector3 jointPivotOffset;
-					rdMatrix_TransformVector34(&jointPivotOffset, &pJoint->thing.jointPivotOffset, &pJoint->thing.lookOrientation);
-						
-					rdVector3 pos;
-					rdVector_Add3(&pos, &pJoint->thing.position, &jointPivotOffset);
-					
-					rdSprite debugSprite;
-					rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, "sabergreen0.mat", 0.005f, 0.005f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &offset);
-					
-					rdThing debug;
-					rdThing_NewEntry(&debug, pThing);
-					rdThing_SetSprite3(&debug, &debugSprite);
-					rdMatrix34 mat;
-					rdMatrix_BuildTranslate34(&mat, &pos);
-					
-					rdSprite_Draw(&debug, &mat);
-					
-					rdSprite_FreeEntry(&debugSprite);
-					rdThing_FreeEntry(&debug);
-				}
-			}
-		}
-		else if (jkPlayer_debugRagdolls == 2)
-		{
-			sithConstraint* constraint = pThing->constraints;
-			for (; constraint; constraint = constraint->next)
-				sithConstraint_Draw(constraint);
-		}
-	}
+	if (jkPlayer_puppetShowJoints)
+		sithPuppet_DebugDrawPhysicsJoints(pThing);
+
+	if (jkPlayer_puppetShowBodies)
+		sithPuppet_DebugDrawPhysicsBodies(pThing);
+
+	if (jkPlayer_puppetShowJointNames)
+		sithPuppet_DebugDrawJointNames(pThing);
 #endif
 
 	// position debug

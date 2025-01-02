@@ -20,6 +20,8 @@
 #include "sithPhysics.h"
 #include "General/stdMath.h"
 
+#include "General/stdFont.h"
+
 #include <math.h>
 
 static const char* sithPuppet_animNames[43+2] = {
@@ -1615,6 +1617,117 @@ void sithPuppet_TickPhysics(sithThing* thing, float deltaSeconds)
 	{
 		thing->physicsParams.physflags |= SITH_PF_RESTING;
 		sithPuppet_StopAll(thing);
+	}
+}
+
+void sithPuppet_DebugDrawJointNames(sithThing* pThing)
+{
+	if (!pThing->animclass || !pThing->puppet)
+		return;
+
+	// ignore play in POV view
+	if ((sithCamera_currentCamera->cameraPerspective & 0xFC) == 0 && pThing == sithCamera_currentCamera->primaryFocus)
+		return;
+
+	uint64_t jointBits = pThing->animclass->jointBits;
+	while (jointBits != 0)
+	{
+		int jointIdx = stdMath_FindLSB64(jointBits);
+		jointBits ^= 1ull << jointIdx;
+
+		// version using the joint physics
+		/*sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
+		
+		rdVector3 jointPivotOffset;
+		rdMatrix_TransformVector34(&jointPivotOffset, &pJoint->thing.jointPivotOffset, &pJoint->thing.lookOrientation);
+
+		rdVector3 pos;
+		rdVector_Add3(&pos, &pJoint->thing.position, &jointPivotOffset);*/
+
+		// version using the mesh hierarchy, works without physics
+		int nodeIdx = pThing->animclass->bodypart[jointIdx].nodeIdx;
+		rdVector3 pos = pThing->rdthing.hierarchyNodeMatrices[nodeIdx].scale;
+
+		rdVector3 viewPos;
+		rdMatrix_TransformPoint34(&viewPos, &pos, &rdCamera_pCurCamera->view_matrix);
+
+		int clipResult = rdClip_SphereInFrustrum(rdCamera_pCurCamera->pClipFrustum, &viewPos, 0.05f);
+		if (clipResult == 2)
+			continue;
+
+		rdVector3 projPos;
+		rdCamera_pCurCamera->fnProject(&projPos, &viewPos);
+
+		const char* jointName = sithPuppet_jointNames[jointIdx];
+		stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, jointName, 1, jkPlayer_hudScale);
+	}
+}
+
+void sithPuppet_DebugDrawPhysicsBodies(sithThing* pThing)
+{
+	if (!pThing->animclass || !pThing->puppet || !pThing->puppet->physics)
+		return;
+
+	// could actually do all this by giving the joint things themselves some draw data
+	uint64_t jointBits = pThing->animclass->physicsJointBits;
+	while (jointBits != 0)
+	{
+		int jointIdx = stdMath_FindLSB64(jointBits);
+		jointBits ^= 1ull << jointIdx;
+
+		sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
+		rdVector3 offset = { 0, -pJoint->thing.moveSize, 0 };
+
+		rdSprite debugSprite;
+		rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, "saberblue0.mat", pJoint->thing.moveSize * 2.0f, pJoint->thing.moveSize * 2.0f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &offset);
+
+		rdThing debug;
+		rdThing_NewEntry(&debug, pThing);
+		rdThing_SetSprite3(&debug, &debugSprite);
+		rdMatrix34 mat;
+		rdMatrix_BuildTranslate34(&mat, &pJoint->thing.position);
+
+		rdSprite_Draw(&debug, &mat);
+
+		rdSprite_FreeEntry(&debugSprite);
+		rdThing_FreeEntry(&debug);
+	}
+}
+
+void sithPuppet_DebugDrawPhysicsJoints(sithThing* pThing)
+{
+	if (!pThing->animclass || !pThing->puppet || !pThing->puppet->physics)
+		return;
+
+	// could actually do all this by giving the joint things themselves some draw data
+	uint64_t jointBits = pThing->animclass->physicsJointBits;
+	while (jointBits != 0)
+	{
+		int jointIdx = stdMath_FindLSB64(jointBits);
+		jointBits ^= 1ull << jointIdx;
+
+		sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
+		rdVector3 offset = { 0, -pJoint->thing.moveSize, 0 };
+
+		rdVector3 jointPivotOffset;
+		rdMatrix_TransformVector34(&jointPivotOffset, &pJoint->thing.jointPivotOffset, &pJoint->thing.lookOrientation);
+
+		rdVector3 pos;
+		rdVector_Add3(&pos, &pJoint->thing.position, &jointPivotOffset);
+
+		rdSprite debugSprite;
+		rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, "sabergreen0.mat", 0.005f, 0.005f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &offset);
+
+		rdThing debug;
+		rdThing_NewEntry(&debug, pThing);
+		rdThing_SetSprite3(&debug, &debugSprite);
+		rdMatrix34 mat;
+		rdMatrix_BuildTranslate34(&mat, &pos);
+
+		rdSprite_Draw(&debug, &mat);
+
+		rdSprite_FreeEntry(&debugSprite);
+		rdThing_FreeEntry(&debug);
 	}
 }
 

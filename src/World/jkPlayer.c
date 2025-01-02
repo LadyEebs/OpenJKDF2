@@ -80,7 +80,10 @@ int jkPlayer_enableDecals = 1;
 
 #ifdef PUPPET_PHYSICS
 int jkPlayer_ragdolls = 1;
-int jkPlayer_debugRagdolls = 0;
+int jkPlayer_puppetShowBodies = 0;
+int jkPlayer_puppetShowJoints = 0;
+int jkPlayer_puppetShowJointNames = 0;
+int jkPlayer_puppetShowConstraints = 0;
 float jkPlayer_puppetAngBias = 0.001f;
 float jkPlayer_puppetPosBias = 0.1f;
 float jkPlayer_puppetFriction = 0.05f;
@@ -242,10 +245,13 @@ void jkPlayer_StartupVars()
 #endif
 #ifdef PUPPET_PHYSICS
 	sithCvar_RegisterInt("g_ragdolls", 1, &jkPlayer_ragdolls, CVARFLAG_LOCAL | CVARFLAG_UPDATABLE_DEFAULT);
-	sithCvar_RegisterInt("r_debugRagdolls", 0, &jkPlayer_debugRagdolls, CVARFLAG_UPDATABLE_DEFAULT);
-	sithCvar_RegisterFlex("g_puppetAngBias", 0.001f, &jkPlayer_puppetAngBias, CVARFLAG_UPDATABLE_DEFAULT);
-	sithCvar_RegisterFlex("g_puppetPosBias", 0.1f, &jkPlayer_puppetPosBias, CVARFLAG_UPDATABLE_DEFAULT);
-	sithCvar_RegisterFlex("g_puppetFriction", 0.05f, &jkPlayer_puppetFriction, CVARFLAG_UPDATABLE_DEFAULT);
+	sithCvar_RegisterInt("r_puppetShowBodies", 0, &jkPlayer_puppetShowBodies, CVARFLAG_UPDATABLE_DEFAULT);
+	sithCvar_RegisterInt("r_puppetShowJoints", 0, &jkPlayer_puppetShowJoints, CVARFLAG_UPDATABLE_DEFAULT);
+	sithCvar_RegisterInt("r_puppetShowJointNames", 0, &jkPlayer_puppetShowJointNames, CVARFLAG_UPDATABLE_DEFAULT);
+	sithCvar_RegisterInt("r_puppetShowConstraints", 0, &jkPlayer_puppetShowConstraints, CVARFLAG_UPDATABLE_DEFAULT);
+	sithCvar_RegisterFlex("g_puppetAngBias", 0.3f, &jkPlayer_puppetAngBias, CVARFLAG_UPDATABLE_DEFAULT);
+	sithCvar_RegisterFlex("g_puppetPosBias", 0.5f, &jkPlayer_puppetPosBias, CVARFLAG_UPDATABLE_DEFAULT);
+	sithCvar_RegisterFlex("g_puppetFriction", 0.1f, &jkPlayer_puppetFriction, CVARFLAG_UPDATABLE_DEFAULT);
 #endif
     sithCvar_RegisterBool("hud_setCrosshairOnLightsaber", 1,                        &jkPlayer_setCrosshairOnLightsaber, CVARFLAG_LOCAL);
     sithCvar_RegisterBool("hud_setCrosshairOnFist",     1,                          &jkPlayer_setCrosshairOnFist,       CVARFLAG_LOCAL);
@@ -316,10 +322,13 @@ void jkPlayer_ResetVars()
 
 #ifdef PUPPET_PHYSICS
 	jkPlayer_ragdolls = 1;
-	jkPlayer_debugRagdolls = 0;
-	jkPlayer_puppetAngBias = 0.001f;
-	jkPlayer_puppetPosBias = 0.1f;
-	jkPlayer_puppetFriction = 0.05f;
+	jkPlayer_puppetShowBodies = 0;
+	jkPlayer_puppetShowJoints = 0;
+	jkPlayer_puppetShowJointNames = 0;
+	jkPlayer_puppetShowConstraints= 0;
+	jkPlayer_puppetAngBias = 0.3f;
+	jkPlayer_puppetPosBias = 0.5f;
+	jkPlayer_puppetFriction = 0.1f;
 #endif
 #endif
 
