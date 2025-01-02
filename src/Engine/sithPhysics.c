@@ -169,7 +169,7 @@ void sithPhysics_ThingTick(sithThing *pThing, float deltaSecs)
 
 #ifdef PUPPET_PHYSICS
 	 // the mass to unit ratio is really high so scale the radius to a consistent unit
-	float adjustedSize = pThing->moveSize * 5.0f;
+	float adjustedSize = pThing->moveSize * 2.0f;
 	pThing->physicsParams.inertia = (2.0 / 5.0) * pThing->physicsParams.mass * adjustedSize * adjustedSize;
 	pThing->physicsParams.inertia = fmax(pThing->physicsParams.inertia, 0.0001f);
 #endif
