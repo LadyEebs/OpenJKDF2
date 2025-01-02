@@ -1370,3 +1370,34 @@ int sithCollision_DebrisPlayerCollide(sithThing *thing, sithThing *thing2, sithC
     }
     return 0;
 }
+
+sithThing* sithCollision_GetThingLookat(sithSector* sector, sithThing* sender, const rdVector3* position, const rdVector3* dir, float dist)
+{
+	sithThing* result = NULL;
+
+	rdVector3 hitPos;
+	rdVector_Copy3(&hitPos, position);
+	rdVector_MultAcc3(&hitPos, dir, dist);
+
+	sithSector* v4 = sithCollision_GetSectorLookAt(sector, &position, &hitPos, 0.0);
+	if (v4)
+	{
+		sithCollisionSearchEntry* searchResult; // eax
+
+		int searchFlags = 0;
+		sithCollision_SearchRadiusForThings(v4, NULL, position, dir, dist, 0.005f, searchFlags);
+		for (searchResult = sithCollision_NextSearchResult(); searchResult; searchResult = sithCollision_NextSearchResult())
+		{
+			if ((searchResult->hitType & SITHCOLLISION_THING) != 0)
+			{
+				if (searchResult->receiver != sender)
+				{
+					result = searchResult->receiver;
+					break;
+				}
+			}
+		}
+		sithCollision_SearchClose();
+	}
+	return result;
+}
