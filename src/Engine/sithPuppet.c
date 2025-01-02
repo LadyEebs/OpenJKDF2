@@ -1622,7 +1622,7 @@ void sithPuppet_TickPhysics(sithThing* thing, float deltaSeconds)
 
 void sithPuppet_DebugDrawJointNames(sithThing* pThing)
 {
-	if (!pThing->animclass || !pThing->puppet)
+	if (pThing->rdthing.type != RD_THINGTYPE_MODEL || !pThing->animclass || !pThing->puppet)
 		return;
 
 	// ignore play in POV view
@@ -1669,7 +1669,7 @@ void sithPuppet_DebugDrawJointNames(sithThing* pThing)
 
 void sithPuppet_DebugDrawPhysicsBodies(sithThing* pThing)
 {
-	if (!pThing->animclass || !pThing->puppet || !pThing->puppet->physics)
+	if (pThing->rdthing.type != RD_THINGTYPE_MODEL || !pThing->animclass || !pThing->puppet || !pThing->puppet->physics)
 		return;
 
 	// could actually do all this by giving the joint things themselves some draw data
@@ -1700,7 +1700,7 @@ void sithPuppet_DebugDrawPhysicsBodies(sithThing* pThing)
 
 void sithPuppet_DebugDrawPhysicsJoints(sithThing* pThing)
 {
-	if (!pThing->animclass || !pThing->puppet || !pThing->puppet->physics)
+	if (pThing->rdthing.type != RD_THINGTYPE_MODEL || !pThing->animclass || !pThing->puppet || !pThing->puppet->physics)
 		return;
 
 	// could actually do all this by giving the joint things themselves some draw data
