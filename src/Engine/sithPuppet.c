@@ -1294,6 +1294,7 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 	if (pThing->rdthing.paHierarchyNodeMatricesPrev) // todo: only do this when needed
 		_memcpy(pThing->rdthing.paHierarchyNodeMatricesPrev, pThing->rdthing.hierarchyNodeMatrices, sizeof(rdMatrix34) * pThing->rdthing.model3->numHierarchyNodes);
 
+	// todo: do we really need all the joints or just the physicalized ones?
 	uint64_t jointBits = pThing->animclass->jointBits;
 	while (jointBits != 0)
 	{
