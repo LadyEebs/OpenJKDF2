@@ -370,7 +370,9 @@ void sithPlayer_sub_4C9150(sithThing *player, sithThing *killedBy)
     player->thingflags |= SITH_TF_DEAD;
     player->actorParams.typeflags &= ~SITH_AF_BLEEDS;
 #ifdef PUPPET_PHYSICS
-	player->type = SITH_THING_CORPSE;
+	//player->collide = SITH_COLLIDE_NONE;
+	//if (player->animclass && player->animclass->flags & JOINTFLAGS_PHYSICS)
+	//	player->moveType = SITH_MT_PUPPET;
 #endif
     sithPhysics_ThingStop(player);
     sithWeapon_SyncPuppet(player);
