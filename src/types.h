@@ -2396,6 +2396,27 @@ typedef struct sithWorld
 #endif
 } sithWorld;
 
+typedef struct sithWorld_MemoryCounters
+{
+	int materials;
+	int vertices;
+	int vertexUVs;
+	int surfaces;
+	int adjoins;
+	int sectors;
+	int sounds;
+	int cogs;
+	int cogScripts;
+	int unk9; // 9th value is never set?
+	int models;
+	int keyframes;
+	int animclasses;
+	int sprites;
+	int templates;
+	int things;
+	int unk16; // the original function used a 17 size array?
+} sithWorld_MemoryCounters;
+
 typedef struct sDwLaser
 {
     uint32_t field_0;
