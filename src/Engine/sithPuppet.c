@@ -1648,6 +1648,10 @@ void sithPuppet_DebugDrawJointNames(sithThing* pThing)
 		int nodeIdx = pThing->animclass->bodypart[jointIdx].nodeIdx;
 		rdVector3 pos = pThing->rdthing.hierarchyNodeMatrices[nodeIdx].scale;
 
+		rdVector3 jointPivotOffset;
+		rdMatrix_TransformVector34(&jointPivotOffset, &pThing->rdthing.model3->hierarchyNodes[nodeIdx].pivot, &pThing->rdthing.hierarchyNodeMatrices[nodeIdx]);
+		rdVector_Add3Acc(&pos, &jointPivotOffset);
+
 		rdVector3 viewPos;
 		rdMatrix_TransformPoint34(&viewPos, &pos, &rdCamera_pCurCamera->view_matrix);
 
@@ -1707,7 +1711,7 @@ void sithPuppet_DebugDrawPhysicsJoints(sithThing* pThing)
 		jointBits ^= 1ull << jointIdx;
 
 		sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
-		rdVector3 offset = { 0, -pJoint->thing.moveSize, 0 };
+		rdVector3 offset = { 0, -pJoint->thing.moveSize * 0.5f, 0 };
 
 		rdVector3 jointPivotOffset;
 		rdMatrix_TransformVector34(&jointPivotOffset, &pJoint->thing.jointPivotOffset, &pJoint->thing.lookOrientation);
