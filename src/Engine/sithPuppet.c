@@ -1200,8 +1200,8 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 	{
 		pMesh = &pThing->rdthing.model3->geosets[0].meshes[pNode->meshIdx];
 		float avgDist = (pMesh->minRadius + pMesh->maxRadius) * 0.5f;
-		pJointThing->moveSize = avgDist * 0.8f;
-		pJointThing->collideSize = pMesh->minRadius;// * 0.5;
+		pJointThing->moveSize = avgDist;
+		pJointThing->collideSize = avgDist;
 	}
 
 	pJointThing->jointPivotOffset = pNode->pivot;
