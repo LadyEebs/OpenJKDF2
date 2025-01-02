@@ -1625,7 +1625,7 @@ void sithPuppet_DebugDrawJointNames(sithThing* pThing)
 	if (pThing->rdthing.type != RD_THINGTYPE_MODEL || !pThing->animclass || !pThing->puppet)
 		return;
 
-	// ignore play in POV view
+	// ignore player in POV view
 	if ((sithCamera_currentCamera->cameraPerspective & 0xFC) == 0 && pThing == sithCamera_currentCamera->primaryFocus)
 		return;
 
