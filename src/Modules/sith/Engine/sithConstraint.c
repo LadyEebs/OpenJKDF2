@@ -61,8 +61,8 @@ void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrained
 	sithConstraint_InitConstraint(&constraint->base, SITH_CONSTRAINT_CONE, pThing, pConstrainedThing, pTargetThing);
 
 	constraint->coneAxis = *pAxis;
-	constraint->coneAngle = angle * 0.5f;
-	constraint->coneAngleCos = stdMath_Cos(angle * 0.5f);
+	constraint->coneAngle = angle;
+	constraint->coneAngleCos = stdMath_Cos(angle);
 	constraint->jointAxis = *pJointAxis;
 }
 
@@ -449,10 +449,12 @@ static void sithConstraint_DrawBallSocket(sithBallSocketConstraint* pConstraint)
 	rdMatrix_TransformPoint34(&constrainedAnchor, &pConstraint->constraintAnchor, &bodyB->lookOrientation);
 	rdVector_Zero3(&bodyB->lookOrientation.scale);
 
+	rdVector3 offset = { 0, -bodyB->moveSize, 0 };
+
 	for (int i = 0; i < 2; ++i)
 	{
 		rdSprite debugSprite;
-		rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, i == 0 ? "saberred0.mat" : "saberblue0.mat", 0.005f, 0.005f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &rdroid_zeroVector3);
+		rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, i == 0 ? "saberred0.mat" : "saberblue0.mat", 0.005f, 0.005f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &offset);
 
 		rdThing debug;
 		rdThing_NewEntry(&debug, pConstraint->base.parentThing);
@@ -503,7 +505,7 @@ static void sithConstraint_DrawCone(sithConeLimitConstraint* pConstraint)
 		if (i == 0)
 		{
 			sizey = 0.05f * (pConstraint->coneAngle / 180.0f);
-			len = 0.01f;
+			len = 0.05f;
 		}
 
 		rdPolyLine debugLine;
