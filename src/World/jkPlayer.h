@@ -183,6 +183,7 @@ extern int jkPlayer_bHasLoadedSettingsOnce;
 #ifdef DYNAMIC_POV
 extern rdVector3 jkPlayer_crosshairPos;
 extern int jkPlayer_aimLock;
+extern sithThing* jkPlayer_crosshairTarget;
 #endif
 
 #if defined(DECAL_RENDERING) || defined(RENDER_DROID2)

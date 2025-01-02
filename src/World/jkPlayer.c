@@ -34,6 +34,7 @@
 #include "Main/sithCvar.h"
 #ifdef DYNAMIC_POV
 #include "World/sithSprite.h"
+#include "Engine/sithCollision.h"
 #endif
 
 
@@ -103,6 +104,7 @@ static rdVector3 jkPlayer_weaponWallAngles = {-40.0f, 25.0f, -10.0f };
 
 rdVector3 jkPlayer_crosshairPos;
 int jkPlayer_aimLock = 0;
+sithThing* jkPlayer_crosshairTarget = NULL;
 
 static int jkPlayer_drawMuzzleFlash = 0;
 static int jkPlayer_muzzleFlashNode = -1;
@@ -329,6 +331,7 @@ void jkPlayer_ResetVars()
 	rdVector_Zero3(&jkPlayer_pushAngles);
 	rdVector_Zero3(&jkPlayer_muzzleOffset);
 	rdVector_Zero3(&jkPlayer_crosshairPos);
+	jkPlayer_crosshairTarget = NULL;
 	jkPlayer_idleWaggleSpeed = 0.0f;
 	jkPlayer_idleWaggleSmooth = 0.0f;
 	jkPlayer_aimLock = 0;
@@ -1302,18 +1305,19 @@ void jkPlayer_DrawPov()
 		rdMatrix_PreTranslate34(&invLook, &player->actorParams.eyeOffset); // add eye offset
 		rdMatrix_TransformVector34(&aimVector, &player->lookOrientation.lvec, &invLook);
 
-		if (!jkPlayer_aimLock)
+		//if (!jkPlayer_aimLock)
 		{
 			int hasTarget = 0;
 
 			// calculate a coarse auto-aim for some sense of where the weapon is pointing 
 			// since projectiles still come from the fireoffset, we don't want it to wander too far or be precise
 			rdMatrix34 autoAimMat;
-			sithThing* pTarget = NULL;
+			jkPlayer_crosshairTarget = NULL;
 			if((sithWeapon_bAutoAim & 1) != 0 && !sithNet_isMulti)
-				pTarget = sithWeapon_ProjectileAutoAim(&autoAimMat, player, &sithCamera_currentCamera->viewMat, &player->position, jkPlayer_povAutoAimFov, jkPlayer_povAutoAimDist);
-
-			if(!pTarget)
+				jkPlayer_crosshairTarget = sithWeapon_ProjectileAutoAim(&autoAimMat, player, &sithCamera_currentCamera->viewMat, &player->position, jkPlayer_povAutoAimFov, jkPlayer_povAutoAimDist);
+			
+			rdVector3 targetVector;
+			if(!jkPlayer_crosshairTarget)
 			{
 				// no target, do a sector/thing ray cast to adjust the crosshair distance
 				rdVector3 hitPos;
@@ -1322,22 +1326,22 @@ void jkPlayer_DrawPov()
 				sithSector* sector = sithCollision_GetSectorLookAt(player->sector, &player->position, &hitPos, 0.0);
 				if (sector)
 				{
-					rdVector_Sub3(&aimVector, &hitPos, &player->position);
+					rdVector_Sub3(&targetVector, &hitPos, &player->position);
 					rdMatrix_LookAt(&autoAimMat, &player->position, &hitPos, 0.0);
 					hasTarget = 1;
 				}
 			}
 			else
 			{
-				rdVector_Sub3(&aimVector, &pTarget->position, &player->position);
+				rdVector_Sub3(&targetVector, &jkPlayer_crosshairTarget->position, &player->position);
 				hasTarget = 1;
 			}
 
-			if(hasTarget)
+			if(hasTarget && !jkPlayer_aimLock)
 			{
 				// apply inverse of the original look orient to get a local transform
 				rdMatrix_PostMultiply34(&autoAimMat, &invOrient);
-				rdMatrix_TransformVector34Acc(&aimVector, &invOrient);
+				rdMatrix_TransformVector34(&aimVector, &targetVector, &invOrient);
 				rdVector_Zero3(&autoAimMat.scale);
 
 				// if we're very close to a wall or blocker, lower the weapon
@@ -1371,6 +1375,10 @@ void jkPlayer_DrawPov()
 		jkSaber_aimVector.x = (aimVector.x - jkSaber_aimVector.x) * 8.0f * min(sithTime_deltaSeconds, 0.02f) + jkSaber_aimVector.x;
 		jkSaber_aimVector.y = (aimVector.y - jkSaber_aimVector.y) * 8.0f * min(sithTime_deltaSeconds, 0.02f) + jkSaber_aimVector.y;
 		jkSaber_aimVector.z = (aimVector.z - jkSaber_aimVector.z) * 8.0f * min(sithTime_deltaSeconds, 0.02f) + jkSaber_aimVector.z;
+
+		// if we didn't end up with a target for auto aiming, check for what we're pointing at
+		if (!jkPlayer_crosshairTarget)
+			jkPlayer_crosshairTarget = sithCollision_GetThingLookat(player->sector, player, &player->position, &sithCamera_currentCamera->viewMat.lvec, 64.0f);
 #endif
         rdMatrix_PreMultiply34(&viewMat, &jkSaber_rotateMat);
 
