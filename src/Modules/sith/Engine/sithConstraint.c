@@ -76,8 +76,8 @@ void sithConstraint_AddHingeConstraint(sithThing* pThing, sithThing* pConstraine
 
 	constraint->targetAxis = *pTargetAxis;
 	constraint->jointAxis = *pJointAxis;
-	constraint->minCosAngle = stdMath_Cos(minAngle * 0.5f);
-	constraint->maxCosAngle = stdMath_Cos(maxAngle * 0.5f);
+	constraint->minCosAngle = minAngle;//stdMath_Cos(minAngle * 0.5f);
+	constraint->maxCosAngle = maxAngle;//stdMath_Cos(maxAngle * 0.5f);
 }
 
 void sithConstraint_RemoveConstraint(sithConstraint* pConstraint)
@@ -115,8 +115,10 @@ float sithConstraint_ComputeEffectiveMass(sithConstraint* constraint)
 	return (effectiveMass > 0.0001f) ? (1.0f / effectiveMass) : 0.0001f;
 }
 
-static void sithConstraint_SolveBallSocketConstraint(sithConstraintResult* pResult, sithBallSocketConstraint* pConstraint, float deltaSeconds)
+static void sithConstraint_SolveBallSocketConstraint(sithBallSocketConstraint* pConstraint, float deltaSeconds)
 {
+	sithConstraintResult* pResult = &pConstraint->base.result;
+
 	sithThing* bodyA = pConstraint->base.targetThing;
 	sithThing* bodyB = pConstraint->base.constrainedThing;
 
@@ -160,8 +162,10 @@ static void sithConstraint_SolveBallSocketConstraint(sithConstraintResult* pResu
 	rdVector_Cross3(&pResult->JrB, &offsetB, &unitConstraint);
 }
 
-static void sithConstraint_SolveConeConstraint(sithConstraintResult* pResult, sithConeLimitConstraint* pConstraint, float deltaSeconds)
+static void sithConstraint_SolveConeConstraint(sithConeLimitConstraint* pConstraint, float deltaSeconds)
 {
+	sithConstraintResult* pResult = &pConstraint->base.result;
+
 	sithThing* bodyA = pConstraint->base.targetThing;
 	sithThing* bodyB = pConstraint->base.constrainedThing;
 
@@ -204,8 +208,10 @@ static void sithConstraint_SolveConeConstraint(sithConstraintResult* pResult, si
 	pResult->C = stdMath_Clamp(pResult->C, -2.0f, 2.0f);
 }
 
-static void sithConstraint_SolveHingeConstraint(sithConstraintResult* pResult, sithHingeLimitConstraint* pConstraint, float deltaSeconds)
+static void sithConstraint_SolveHingeConstraint(sithHingeLimitConstraint* pConstraint, float deltaSeconds)
 {
+	sithConstraintResult* pResult = &pConstraint->base.result;
+	
 	sithThing* bodyA = pConstraint->base.targetThing;
 	sithThing* bodyB = pConstraint->base.constrainedThing;
 
@@ -227,39 +233,28 @@ static void sithConstraint_SolveHingeConstraint(sithConstraintResult* pResult, s
 	pResult->JrB = rotationAxis;
 	rdVector_Neg3Acc(&pResult->JrA);
 
-	// Compute relative orientation of the bodies
-	//rdMatrix34 invMat;
-	//rdMatrix_InvertOrtho34(&invMat, &pConstraint->targetThing->lookOrientation);
-	//
-	//rdMatrix34 relativeRotation;
-	//rdMatrix_Multiply34(&relativeRotation, &invMat, &pConstraint->constrainedThing->lookOrientation);
-	//
-	//// calculate the rotated hinge axis
-	//rdVector3 rotatedHingeAxisA, rotatedHingeAxisB;
-	//rdMatrix_TransformVector34(&rotatedHingeAxisA, &pConstraint->hingeParams.targetAxis, &relativeRotation);
-	//rdMatrix_TransformVector34(&rotatedHingeAxisB, &pConstraint->hingeParams.jointAxis, &relativeRotation);
-	//
-	//// Compute the cosine of the angle between the two hinge axes
-	//float twistAngle = rdVector_Dot3(&rotatedHingeAxisA, &rotatedHingeAxisB);
-	//if (twistAngle < pConstraint->hingeParams.minCosAngle)
-	//{
-	//	// Push up towards the minAngle
-	//	pResult->C += pConstraint->hingeParams.minCosAngle - twistAngle;
-	//}
-	//else if (twistAngle > pConstraint->hingeParams.maxCosAngle)
-	//{
-	//	// Pull down towards the maxAngle
-	//	pResult->C += twistAngle - pConstraint->hingeParams.maxCosAngle;
-	//}
+//	float dotA = rdVector_Dot3(&rotationAxis, &hingeAxisA);
+//	float dotB = rdVector_Dot3(&rotationAxis, &hingeAxisB);
+//	float twistAngle = stdMath_ArcTan3(dotA, dotB);
+//	if (twistAngle < pConstraint->minCosAngle)
+//	{
+//		// Push up towards the minAngle
+//		pResult->C += (pConstraint->minCosAngle - twistAngle) * (M_PI / 180.0f);
+//	}
+//	else if (twistAngle > pConstraint->maxCosAngle)
+//	{
+//		// Pull down towards the maxAngle
+//		pResult->C += (twistAngle - pConstraint->maxCosAngle) * (M_PI / 180.0f);
+//	}
+//	
+//	rdVector3 twistAxis = hingeAxisA; // The hinge axis contributes to twist
+//	rdVector_MultAcc3(&pResult->JrA, &twistAxis, -twistAngle * (M_PI / 180.0f)); // Add twist correction to body A
+//	rdVector_MultAcc3(&pResult->JrB, &twistAxis,  twistAngle * (M_PI / 180.0f)); // Add twist correction to body B
+//	rdVector_Normalize3Acc(&pResult->JrA);
+//	rdVector_Normalize3Acc(&pResult->JrB);
 	
 	pResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * pResult->C;
 	pResult->C = stdMath_Clamp(pResult->C, -2.0f, 2.0f);
-	
-	//// Combine swing and twist Jacobians
-	//// JrA and JrB already hold contributions from swing; add twist contribution
-	//rdVector3 twistAxis = hingeAxisA; // The hinge axis contributes to twist
-	//rdVector_MultAcc3(&pResult->JrA, &twistAxis, -twistAngle); // Add twist correction to body A
-	//rdVector_MultAcc3(&pResult->JrB, &twistAxis,  twistAngle); // Add twist correction to body B
 }
 
 void sithConstraint_ApplyImpulses(sithThing* pThing)
@@ -268,6 +263,9 @@ void sithConstraint_ApplyImpulses(sithThing* pThing)
 	for (; constraint; constraint = constraint->next)
 	{
 		if (constraint->flags & SITH_CONSTRAINT_DISABLED)
+			continue;
+		
+		if (constraint->result.C == 0.0f)
 			continue;
 
 		rdVector_Add3Acc(&constraint->targetThing->physicsParams.vel, &constraint->result.linearImpulseA);
@@ -278,7 +276,7 @@ void sithConstraint_ApplyImpulses(sithThing* pThing)
 	}
 }
 
-int sithConstraint_SatisfyConstraint(sithThing* thing, sithConstraint* c, float deltaSeconds)
+int sithConstraint_SatisfyConstraint(sithConstraint* c, float deltaSeconds)
 {
 	if (stdMath_Fabs(c->result.C) < 0.001f)
 		return 0;
@@ -324,7 +322,7 @@ int sithConstraint_SatisfyConstraint(sithThing* thing, sithConstraint* c, float 
 void sithConstraint_SatisfyConstraintJob(void* arg)
 {
 	sithConstraint* c = (sithConstraint*)arg;
-	sithConstraint_SatisfyConstraint(c->parentThing, c, sithTime_deltaSeconds);
+	sithConstraint_SatisfyConstraint(c, sithTime_deltaSeconds);
 }
 #endif
 
@@ -340,7 +338,7 @@ void sithConstraint_SatisfyConstraints(sithThing* thing, int iterations, float d
 		#if USE_JOBS
 			stdJob_Execute(sithConstraint_SatisfyConstraintJob, c);
 		#else
-			sithConstraint_SatisfyConstraint(thing, c, deltaSeconds);
+			sithConstraint_SatisfyConstraint(c, deltaSeconds);
 		#endif
 		}
 	#if USE_JOBS
@@ -376,7 +374,7 @@ void sithConstraint_ApplyFriction(sithThing* pThing, float deltaSeconds)
 	}
 }
 
-void sithConstraint_SolveConstraint(sithThing* pThing, sithConstraint* pConstraint, float deltaSeconds)
+void sithConstraint_SolveConstraint(sithConstraint* pConstraint, float deltaSeconds)
 {
 	memset(&pConstraint->result, 0, sizeof(sithConstraintResult));
 	if (pConstraint->flags & SITH_CONSTRAINT_DISABLED)
@@ -386,13 +384,13 @@ void sithConstraint_SolveConstraint(sithThing* pThing, sithConstraint* pConstrai
 	switch (pConstraint->type)
 	{
 	case SITH_CONSTRAINT_BALLSOCKET:
-		sithConstraint_SolveBallSocketConstraint(&pConstraint->result, (sithBallSocketConstraint*)pConstraint, deltaSeconds);
+		sithConstraint_SolveBallSocketConstraint((sithBallSocketConstraint*)pConstraint, deltaSeconds);
 		break;
 	case SITH_CONSTRAINT_CONE:
-		sithConstraint_SolveConeConstraint(&pConstraint->result, (sithConeLimitConstraint*)pConstraint, deltaSeconds);
+		sithConstraint_SolveConeConstraint((sithConeLimitConstraint*)pConstraint, deltaSeconds);
 		break;
 	case SITH_CONSTRAINT_HINGE:
-		sithConstraint_SolveHingeConstraint(&pConstraint->result, (sithHingeLimitConstraint*)pConstraint, deltaSeconds);
+		sithConstraint_SolveHingeConstraint((sithHingeLimitConstraint*)pConstraint, deltaSeconds);
 		break;
 	default:
 		break;
@@ -405,7 +403,7 @@ void sithConstraint_SolveConstraint(sithThing* pThing, sithConstraint* pConstrai
 void sithConstraint_SolveConstraintJob(void* arg)
 {
 	sithConstraint* pConstraint = (sithConstraint*)arg;
-	sithConstraint_SolveConstraint(pConstraint->parentThing, pConstraint, sithTime_deltaSeconds);
+	sithConstraint_SolveConstraint(pConstraint, sithTime_deltaSeconds);
 }
 #endif
 
@@ -423,7 +421,7 @@ void sithConstraint_TickConstraints(sithThing* pThing, float deltaSeconds)
 	#if USE_JOBS
 		stdJob_Execute(sithConstraint_SolveConstraintJob, pConstraint);
 	#else
-		sithConstraint_SolveConstraint(pThing, pConstraint, deltaSeconds);
+		sithConstraint_SolveConstraint(pConstraint, deltaSeconds);
 	#endif
 	}
 
