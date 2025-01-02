@@ -447,7 +447,7 @@ int sithCommand_CmdMem(stdDebugConsoleCmd *pCmd, const char *pArgStr)
         sithConsole_Print(std_genBuffer);
         totalBytes += allocated.sectors;
         
-		_sprintf(std_genBuffer, "%5d Cog Scripts\t\t%8d bytes.", quantity.cogScripts, allocated.cogScripts);
+		_sprintf(std_genBuffer, "%5d Cog Scripts		%8d bytes.", quantity.cogScripts, allocated.cogScripts);
         sithConsole_Print(std_genBuffer);
 
         _sprintf(std_genBuffer, "%5d Cogs             %8d bytes.", quantity.cogs, allocated.cogs);
