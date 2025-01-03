@@ -1379,14 +1379,13 @@ sithThing* sithCollision_GetThingLookat(sithSector* sector, sithThing* sender, c
 	rdVector_Copy3(&hitPos, position);
 	rdVector_MultAcc3(&hitPos, dir, dist);
 
-	sithSector* v4 = sithCollision_GetSectorLookAt(sector, &position, &hitPos, 0.0);
-	if (v4)
+	sithSector* lookatSector = sithCollision_GetSectorLookAt(sector, &position, &hitPos, 0.0);
+	if (lookatSector)
 	{
-		sithCollisionSearchEntry* searchResult; // eax
+		sithCollision_SearchRadiusForThings(lookatSector, sender, position, dir, dist, 0.005f, 0);
 
-		int searchFlags = 0;
-		sithCollision_SearchRadiusForThings(v4, NULL, position, dir, dist, 0.005f, searchFlags);
-		for (searchResult = sithCollision_NextSearchResult(); searchResult; searchResult = sithCollision_NextSearchResult())
+		sithCollisionSearchEntry* searchResult = sithCollision_NextSearchResult();
+		for (; searchResult; searchResult = sithCollision_NextSearchResult())
 		{
 			if ((searchResult->hitType & SITHCOLLISION_THING) != 0)
 			{
@@ -1403,5 +1402,6 @@ sithThing* sithCollision_GetThingLookat(sithSector* sector, sithThing* sender, c
 		}
 		sithCollision_SearchClose();
 	}
+
 	return result;
 }
