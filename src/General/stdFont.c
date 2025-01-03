@@ -1943,3 +1943,13 @@ LABEL_26:
     }
     return (blit_y - orig_blit_y) + INT_FLOAT_SCALED(a5a.height, scale);//v9 - blit_x;
 }
+
+int stdFont_GetHeight(stdFont* font)
+{
+	if(font && font->bitmap && font->bitmap->mipSurfaces)
+	{
+		stdVBuffer* vbuffer = *font->bitmap->mipSurfaces;
+		return vbuffer->format.height;
+	}
+	return 0;
+}

@@ -48,6 +48,9 @@ unsigned int stdFont_DrawMultilineCenteredGPU(stdFont *font, unsigned int blit_x
 unsigned int stdFont_DrawMultilineCenteredHeight(stdFont *font, unsigned int blit_x, int blit_y, int a5, const wchar_t *a6, int alpha_maybe, float scale);
 //static int (*stdFont_DrawAscii)(stdVBuffer *a1, stdFont *a2, unsigned int blit_x, int blit_y, int x_max, char *str, int alpha_maybe) = (void*)stdFont_DrawAscii_ADDR;
 
+// Added
+int stdFont_GetHeight(stdFont* font);
+
 //static int (*stdFont_Draw4)(stdVBuffer *a1, stdFont *font, int xPos, int yPos, int a5, int a6, int a7, wchar_t *text, int alpha_maybe) = (void*)stdFont_Draw4_ADDR;
 //static void (*stdFont_Free)(stdFont *font) = (void*)stdFont_Free_ADDR;
 //static stdFont* (*stdFont_Load)(char *fpath, int a2, int a3) = (void*)stdFont_Load_ADDR;
