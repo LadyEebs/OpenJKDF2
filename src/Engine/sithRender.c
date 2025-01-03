@@ -94,9 +94,48 @@ void sithRender_DebugDrawThingName(sithThing* pThing)
 		rdVector3 projPos;
 		rdCamera_pCurCamera->fnProject(&projPos, &viewPos);
 
-		char thingName[128];
-		snprintf(&thingName, 128, "%d: %s", pThing->thingIdx, pThing->template_name);
-		stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, thingName, 1, jkPlayer_hudScale);
+		char tmpText[256];
+		snprintf(&tmpText, 256, "%d: %s", pThing->thingIdx, pThing->template_name);
+		stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, tmpText, 1, jkPlayer_hudScale);
+
+		// also draw cog information if desired
+		if (jkPlayer_showThingNames > 1)
+		{
+			if (pThing->thingflags & SITH_TF_CAPTURED)
+			{
+				int fontHeight = stdFont_GetHeight(jkHud_pMsgFontSft) + jkHud_pMsgFontSft->marginY;
+
+				if(pThing->class_cog)
+				{
+					projPos.y += fontHeight * jkPlayer_hudScale;
+					stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, "class cog:", 1, jkPlayer_hudScale);
+					projPos.y += fontHeight * jkPlayer_hudScale;
+					snprintf(&tmpText, 256, "\t%d: %s", pThing->class_cog->selfCog, pThing->class_cog->cogscript_fpath);
+					stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, tmpText, 1, jkPlayer_hudScale);
+				}
+				if (pThing->capture_cog)
+				{
+					projPos.y += fontHeight * jkPlayer_hudScale;
+					stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, "capture cog:", 1, jkPlayer_hudScale);
+					projPos.y += fontHeight * jkPlayer_hudScale;
+					snprintf(&tmpText, 256, "\t%d: %s", pThing->capture_cog->selfCog, pThing->capture_cog->cogscript_fpath);
+					stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, tmpText, 1, jkPlayer_hudScale);
+				}
+
+				projPos.y += fontHeight * jkPlayer_hudScale;
+				stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, "used in cogs:", 1, jkPlayer_hudScale);
+				for (int i = 0; i < sithCog_numThingLinks; i++)
+				{
+					sithCogThingLink* v15 = &sithCog_aThingLinks[i];
+					if (v15->thing == pThing && v15->signature == pThing->signature)
+					{
+						projPos.y += fontHeight * jkPlayer_hudScale;
+						snprintf(&tmpText, 256, "\t%d: % s", v15->cog->selfCog, v15->cog->cogscript_fpath);
+						stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, tmpText, 1, jkPlayer_hudScale);
+					}
+				}
+			}
+		}
 	}
 }
 
