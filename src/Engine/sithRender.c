@@ -40,6 +40,8 @@
 #endif
 
 #ifdef QOL_IMPROVEMENTS
+#include "General/stdFont.h"
+
 #if 0
 static rdThing* lightDebugThing = NULL;
 static rdModel3* lightDebugThing_model3 = NULL;
@@ -80,6 +82,23 @@ void sithRender_GetSaberLightColor(rdVector3* outColor, sithThing* thing)
 		rdMaterial_GetFillColor(outColor, thing->playerInfo->polyline.tipFace.material, thing->sector->colormap, 0, -1);
 }
 #endif
+
+void sithRender_DebugDrawThingName(sithThing* pThing)
+{
+	rdVector3 viewPos;
+	rdMatrix_TransformPoint34(&viewPos, &pThing->position, &rdCamera_pCurCamera->view_matrix);
+
+	int clipResult = rdClip_SphereInFrustrum(rdCamera_pCurCamera->pClipFrustum, &viewPos, 0.05f);
+	if (clipResult != 2)
+	{
+		rdVector3 projPos;
+		rdCamera_pCurCamera->fnProject(&projPos, &viewPos);
+
+		char thingName[128];
+		snprintf(&thingName, 128, "%d: %s", pThing->thingIdx, pThing->template_name);
+		stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, thingName, 1, jkPlayer_hudScale);
+	}
+}
 
 void sithRender_RenderDebugLight(float intensity, rdVector3* pos)
 {
@@ -2668,6 +2687,11 @@ int sithRender_RenderThing(sithThing *pThing)
 
 	if (jkPlayer_puppetShowJointNames)
 		sithPuppet_DebugDrawJointNames(pThing);
+#endif
+
+#ifdef QOL_IMPROVEMENTS
+	if (jkPlayer_showThingNames)
+		sithRender_DebugDrawThingName(pThing);
 #endif
 
 	// position debug

@@ -57,6 +57,7 @@ float jkPlayer_ssaaMultiple = 1.0;
 float jkPlayer_gamma = 1.0;
 int jkPlayer_lodBias = 0;
 int jkPlayer_mipBias = 0;
+int jkPlayer_showThingNames = 0;
 int jkPlayer_bEnableJkgm = 1;
 int jkPlayer_bEnableTexturePrecache = 1;
 int jkPlayer_bKeepCorpses = 0;
@@ -245,12 +246,13 @@ void jkPlayer_StartupVars()
 #if defined(DECAL_RENDERING) || defined(RENDER_DROID2)
 	sithCvar_RegisterFlex("r_enableDecals",             1.0,                        &jkPlayer_enableDecals,             CVARFLAG_LOCAL | CVARFLAG_RESETHUD);
 #endif
+	sithCvar_RegisterBool("r_showThingNames", 0, &jkPlayer_showThingNames, CVARFLAG_UPDATABLE_DEFAULT);
 #ifdef PUPPET_PHYSICS
 	sithCvar_RegisterInt("g_ragdolls", 1, &jkPlayer_ragdolls, CVARFLAG_LOCAL | CVARFLAG_UPDATABLE_DEFAULT);
-	sithCvar_RegisterInt("r_showPuppetRigidBodies", 0, &jkPlayer_puppetShowBodies, CVARFLAG_UPDATABLE_DEFAULT);
-	sithCvar_RegisterInt("r_showPuppetPhysicsJoints", 0, &jkPlayer_puppetShowJoints, CVARFLAG_UPDATABLE_DEFAULT);
-	sithCvar_RegisterInt("r_showPuppetJointNames", 0, &jkPlayer_puppetShowJointNames, CVARFLAG_UPDATABLE_DEFAULT);
-	sithCvar_RegisterInt("r_showPuppetPhysicsConstraints", 0, &jkPlayer_puppetShowConstraints, CVARFLAG_UPDATABLE_DEFAULT);
+	sithCvar_RegisterBool("r_showPuppetRigidBodies", 0, &jkPlayer_puppetShowBodies, CVARFLAG_UPDATABLE_DEFAULT);
+	sithCvar_RegisterBool("r_showPuppetPhysicsJoints", 0, &jkPlayer_puppetShowJoints, CVARFLAG_UPDATABLE_DEFAULT);
+	sithCvar_RegisterBool("r_showPuppetJointNames", 0, &jkPlayer_puppetShowJointNames, CVARFLAG_UPDATABLE_DEFAULT);
+	sithCvar_RegisterBool("r_showPuppetPhysicsConstraints", 0, &jkPlayer_puppetShowConstraints, CVARFLAG_UPDATABLE_DEFAULT);
 	sithCvar_RegisterFlex("g_puppetAngBias", 0.3f, &jkPlayer_puppetAngBias, CVARFLAG_UPDATABLE_DEFAULT);
 	sithCvar_RegisterFlex("g_puppetPosBias", 0.5f, &jkPlayer_puppetPosBias, CVARFLAG_UPDATABLE_DEFAULT);
 	sithCvar_RegisterFlex("g_puppetFriction", 0.1f, &jkPlayer_puppetFriction, CVARFLAG_UPDATABLE_DEFAULT);
