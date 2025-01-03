@@ -167,6 +167,7 @@ extern float jkPlayer_crosshairScale;
 extern float jkPlayer_canonicalCogTickrate;
 extern float jkPlayer_canonicalPhysTickrate;
 extern int jkPlayer_lodBias;
+extern int jkPlayer_mipBias;
 
 extern int jkPlayer_bEnableJkgm;
 extern int jkPlayer_bEnableTexturePrecache;

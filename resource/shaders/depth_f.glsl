@@ -106,7 +106,7 @@ float compute_mip_bias(float z_min)
 		mipmap_level += bayerIndex[coord.x & 3][coord.y & 3];
 	}
 
-	return mipmap_level;
+	return mipmap_level + mipDistances.w;
 }
 
 float luminance(vec3 c_rgb)

@@ -49,6 +49,7 @@ int sithCommand_CmdKick(stdDebugConsoleCmd *pCmd, const char *pArgStr);
 int sithCommand_CmdThingNpc(stdDebugConsoleCmd *pCmd, const char *pArgStr);
 int sithCommand_CmdBind(stdDebugConsoleCmd *pCmd, const char *pArgStr);
 int sithCommand_CmdUnbind(stdDebugConsoleCmd *pCmd, const char *pArgStr);
+int sithCommand_CmdVidRestart(stdDebugConsoleCmd *pCmd, const char *pArgStr);
 
 // Added
 void sithCommand_StartupBinds();

@@ -56,6 +56,7 @@ int jkPlayer_enable32Bit = 1;
 float jkPlayer_ssaaMultiple = 1.0;
 float jkPlayer_gamma = 1.0;
 int jkPlayer_lodBias = 0;
+int jkPlayer_mipBias = 0;
 int jkPlayer_bEnableJkgm = 1;
 int jkPlayer_bEnableTexturePrecache = 1;
 int jkPlayer_bKeepCorpses = 0;
@@ -228,6 +229,7 @@ void jkPlayer_StartupVars()
     sithCvar_RegisterBool("r_bEnableJkgm",              1,                          &jkPlayer_bEnableJkgm,              CVARFLAG_LOCAL|CVARFLAG_READONLY);
     sithCvar_RegisterBool("r_bEnableTexturePrecache",   1,                          &jkPlayer_bEnableTexturePrecache,   CVARFLAG_LOCAL|CVARFLAG_READONLY);
 	sithCvar_RegisterInt("r_lodbias",					0,							&jkPlayer_lodBias,					CVARFLAG_LOCAL);
+	sithCvar_RegisterInt("r_mipbias",					0,							&jkPlayer_mipBias,					CVARFLAG_LOCAL);
 	sithCvar_RegisterBool("g_bKeepCorpses",             0,                          &jkPlayer_bKeepCorpses,             CVARFLAG_LOCAL);
     sithCvar_RegisterBool("menu_bFastMissionText",      0,                          &jkPlayer_bFastMissionText,         CVARFLAG_LOCAL);
     sithCvar_RegisterBool("g_bUseOldPlayerPhysics",     0,                          &jkPlayer_bUseOldPlayerPhysics,     CVARFLAG_LOCAL);
@@ -710,6 +712,7 @@ void jkPlayer_WriteConf(wchar_t *name)
         stdJSON_SaveFloat(ext_fpath, "gamma", jkPlayer_gamma);
 		stdJSON_SaveInt(ext_fpath, "colordepth", jkPlayer_enable32Bit);
 		stdJSON_SaveInt(ext_fpath, "lodbias", jkPlayer_lodBias);
+		stdJSON_SaveInt(ext_fpath, "mipbias", jkPlayer_mipBias);
 
         stdJSON_SaveBool(ext_fpath, "bEnableJkgm", jkPlayer_bEnableJkgm);
         stdJSON_SaveBool(ext_fpath, "bEnableTexturePrecache", jkPlayer_bEnableTexturePrecache);
@@ -959,6 +962,7 @@ int jkPlayer_ReadConf(wchar_t *name)
         jkPlayer_gamma = stdJSON_GetFloat(ext_fpath, "gamma", jkPlayer_gamma);
 		jkPlayer_enable32Bit = stdJSON_GetInt(ext_fpath, "colordepth", jkPlayer_enable32Bit);
 		jkPlayer_lodBias = stdJSON_GetInt(ext_fpath, "lodbias", jkPlayer_lodBias);
+		jkPlayer_mipBias = stdJSON_GetInt(ext_fpath, "mipbias", jkPlayer_mipBias);
 
         jkPlayer_bEnableJkgm = stdJSON_GetBool(ext_fpath, "bEnableJkgm", jkPlayer_bEnableJkgm);
         jkPlayer_bEnableTexturePrecache = stdJSON_GetBool(ext_fpath, "bEnableTexturePrecache", jkPlayer_bEnableTexturePrecache);

@@ -94,6 +94,7 @@ void sithCommand_Startup()
     sithConsole_RegisterDevCmd(sithCommand_CmdThingNpc, "thing", 0);
     sithConsole_RegisterDevCmd(sithCommand_CmdBind, "bind", 0);
     sithConsole_RegisterDevCmd(sithCommand_CmdUnbind, "unbind", 0);
+	sithConsole_RegisterDevCmd(sithCommand_CmdVidRestart, "vid_restart", 0);
 
     sithCommand_StartupBinds();
 #endif
@@ -960,4 +961,10 @@ void sithCommand_RemoveBind(uint16_t key)
     }
 
     sithCommand_SaveBinds();
+}
+
+int sithCommand_CmdVidRestart(stdDebugConsoleCmd* pCmd, const char* pArgStr)
+{
+	std3D_UpdateSettings();
+	return 1;
 }

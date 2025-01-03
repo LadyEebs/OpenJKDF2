@@ -4198,6 +4198,9 @@ void std3D_UpdateSharedUniforms()
 	float mipScale = 1.0 / rdCamera_GetMipmapScalar();
 	rdVector_Set4(&uniforms.mipDistances, mipScale * rdroid_aMipDistances.x, mipScale * rdroid_aMipDistances.y, mipScale * rdroid_aMipDistances.z, mipScale * rdroid_aMipDistances.w);
 
+	// this one isn't really used so let's store the bias in it
+	uniforms.mipDistances.w = (float)jkPlayer_mipBias;
+
 	glBindBuffer(GL_UNIFORM_BUFFER, shared_ubo);
 	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(std3D_SharedUniforms), &uniforms);
 }
