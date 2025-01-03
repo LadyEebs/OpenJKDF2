@@ -1390,7 +1390,11 @@ sithThing* sithCollision_GetThingLookat(sithSector* sector, sithThing* sender, c
 		{
 			if ((searchResult->hitType & SITHCOLLISION_THING) != 0)
 			{
-				if (searchResult->receiver != sender)
+				int isValid = searchResult->receiver != sender;
+				if (sender)
+					isValid = isValid && sithCollision_HasLos(sender, searchResult->receiver, 0);
+
+				if (isValid)
 				{
 					result = searchResult->receiver;
 					break;
