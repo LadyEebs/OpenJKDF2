@@ -84,7 +84,6 @@ void sithRender_GetSaberLightColor(rdVector3* outColor, sithThing* thing)
 }
 #endif
 
-// todo: we might want to call this even for things with geomode 0
 void sithRender_DebugDrawThingName(sithThing* pThing)
 {
 	rdVector3 viewPos;
