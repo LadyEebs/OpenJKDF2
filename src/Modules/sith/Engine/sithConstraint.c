@@ -335,15 +335,15 @@ void sithConstraint_SatisfyConstraints(sithThing* thing, int iterations, float d
 		sithConstraint* c = thing->constraints;
 		for (; c; c = c->next)
 		{
-		#if USE_JOBS
+#if USE_JOBS
 			stdJob_Execute(sithConstraint_SatisfyConstraintJob, c);
-		#else
+#else
 			sithConstraint_SatisfyConstraint(c, deltaSeconds);
-		#endif
+#endif
 		}
-	#if USE_JOBS
+#if USE_JOBS
 		stdJob_Wait();
-	#endif
+#endif
 		sithConstraint_ApplyImpulses(thing);
 	}
 }
@@ -418,18 +418,25 @@ void sithConstraint_TickConstraints(sithThing* pThing, float deltaSeconds)
 	sithConstraint* pConstraint = pThing->constraints;
 	for (; pConstraint; pConstraint = pConstraint->next)
 	{
-	#if USE_JOBS
+#if USE_JOBS
 		stdJob_Execute(sithConstraint_SolveConstraintJob, pConstraint);
-	#else
+#else
 		sithConstraint_SolveConstraint(pConstraint, deltaSeconds);
-	#endif
+#endif
 	}
 
 #if USE_JOBS
 	stdJob_Wait();
 #endif
-	
-	int iterations = (pThing->isVisible + 1) == bShowInvisibleThings ? 10 : 1;
+
+	int iterations = 2; // 2 iterations by default
+	if ((pThing->isVisible + 1) == bShowInvisibleThings) // thing is visible, use more iterations
+	{
+		// reduce iteration count by distance
+		float dist = rdVector_Dist3(&pThing->position, &sithCamera_currentCamera->vec3_1);
+		iterations = 10 - stdMath_Clamp(dist, 0.0f, 5.0f);
+	}
+
 	sithConstraint_SatisfyConstraints(pThing, iterations, deltaSeconds);
 	sithConstraint_ApplyFriction(pThing, deltaSeconds);
 }
