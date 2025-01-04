@@ -287,9 +287,9 @@ void sithRender_DebugDrawThingName(sithThing* pThing)
 					snprintf(tmpText, 1024, "flags: 0x%x", pThing->actor->flags);
 					stdFont_DrawAsciiGPU(debugFont, projPos.x, projPos.y, 999, tmpText, 1, jkPlayer_hudScale);
 
-					projPos.y += fontHeight * jkPlayer_hudScale;
-					snprintf(tmpText, 1024, "moods: %d/%d/%d", pThing->actor->mood0, pThing->actor->mood1, pThing->actor->mood2);
-					stdFont_DrawAsciiGPU(debugFont, projPos.x, projPos.y, 999, tmpText, 1, jkPlayer_hudScale);
+					//projPos.y += fontHeight * jkPlayer_hudScale;
+					//snprintf(tmpText, 1024, "moods: %d/%d/%d", pThing->actor->mood0, pThing->actor->mood1, pThing->actor->mood2);
+					//stdFont_DrawAsciiGPU(debugFont, projPos.x, projPos.y, 999, tmpText, 1, jkPlayer_hudScale);
 
 					projPos.y += fontHeight * jkPlayer_hudScale;
 					snprintf(tmpText, 1024, "next update: %d ms", pThing->actor->nextUpdate - sithTime_curMs);
