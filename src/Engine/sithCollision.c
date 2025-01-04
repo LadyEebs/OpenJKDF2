@@ -988,6 +988,11 @@ int sithCollision_DefaultHitHandler(sithThing *thing, sithSurface *surface, sith
     {
         if ( a1a > 1.0 )
             a1a = 1.0;
+#ifdef PUPPET_PHYSICS
+		if (thing->type == SITH_THING_CORPSE)
+			sithSoundClass_PlayThingSoundclass(thing->constraintRoot ? thing->constraintRoot : thing, SITH_SC_CORPSEHIT, a1a);
+		else
+#endif
         if ( (surface->surfaceFlags & SITH_SURFACE_METAL) != 0 )
         {
             sithSoundClass_PlayThingSoundclass(v3, SITH_SC_HITMETAL, a1a);
@@ -1132,8 +1137,8 @@ int sithCollision_DebrisDebrisCollide(sithThing *thing1, sithThing *thing2, sith
     if ( sender > 1.0 )
         sender = 1.0;
 #ifdef PUPPET_PHYSICS
-	if (v5->type == SITH_THING_CORPSE && v5->prev_thing)
-		sithSoundClass_PlayThingSoundclass(v5->prev_thing, SITH_SC_CORPSEHIT, sender);
+	if (v4->type == SITH_THING_CORPSE)
+		sithSoundClass_PlayThingSoundclass(v4->constraintRoot ? v4->constraintRoot : v4, SITH_SC_CORPSEHIT, sender);
 	else
 #endif
     if ( (v5->thingflags & SITH_TF_METAL) != 0 )
