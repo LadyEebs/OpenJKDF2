@@ -94,23 +94,23 @@ void sithRender_DebugDrawThingName(sithThing* pThing)
 		rdVector3 projPos;
 		rdCamera_pCurCamera->fnProject(&projPos, &viewPos);
 
-		char tmpText[256];
-		snprintf(&tmpText, 256, "%d: %s", pThing->thingIdx, pThing->template_name);
+		char tmpText[1024];
+		snprintf(&tmpText, 1024, "%d: %s", pThing->thingIdx, pThing->template_name);
 		stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, tmpText, 1, jkPlayer_hudScale);
 
-		// also draw cog information if desired
-		if (jkPlayer_showThingNames > 1)
+		// draw cog information
+		if (jkPlayer_showThingInfo > 1)
 		{
-			if (pThing->thingflags & SITH_TF_CAPTURED)
-			{
-				int fontHeight = stdFont_GetHeight(jkHud_pMsgFontSft) + jkHud_pMsgFontSft->marginY;
+			int fontHeight = stdFont_GetHeight(jkHud_pMsgFontSft) + jkHud_pMsgFontSft->marginY;
 
+			if (jkPlayer_showThingInfo == 3 && pThing->thingflags & SITH_TF_CAPTURED)
+			{
 				if(pThing->class_cog)
 				{
 					projPos.y += fontHeight * jkPlayer_hudScale;
 					stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, "class cog:", 1, jkPlayer_hudScale);
 					projPos.y += fontHeight * jkPlayer_hudScale;
-					snprintf(&tmpText, 256, "\t%d: %s", pThing->class_cog->selfCog, pThing->class_cog->cogscript_fpath);
+					snprintf(&tmpText, 1024, "\t%d: %s", pThing->class_cog->selfCog, pThing->class_cog->cogscript_fpath);
 					stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, tmpText, 1, jkPlayer_hudScale);
 				}
 				if (pThing->capture_cog)
@@ -118,7 +118,7 @@ void sithRender_DebugDrawThingName(sithThing* pThing)
 					projPos.y += fontHeight * jkPlayer_hudScale;
 					stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, "capture cog:", 1, jkPlayer_hudScale);
 					projPos.y += fontHeight * jkPlayer_hudScale;
-					snprintf(&tmpText, 256, "\t%d: %s", pThing->capture_cog->selfCog, pThing->capture_cog->cogscript_fpath);
+					snprintf(&tmpText, 1024, "\t%d: %s", pThing->capture_cog->selfCog, pThing->capture_cog->cogscript_fpath);
 					stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, tmpText, 1, jkPlayer_hudScale);
 				}
 
@@ -130,9 +130,72 @@ void sithRender_DebugDrawThingName(sithThing* pThing)
 					if (v15->thing == pThing && v15->signature == pThing->signature)
 					{
 						projPos.y += fontHeight * jkPlayer_hudScale;
-						snprintf(&tmpText, 256, "\t%d: % s", v15->cog->selfCog, v15->cog->cogscript_fpath);
+						snprintf(&tmpText, 1024, "\t%d: % s", v15->cog->selfCog, v15->cog->cogscript_fpath);
 						stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, tmpText, 1, jkPlayer_hudScale);
 					}
+				}
+			}
+			else if (jkPlayer_showThingInfo == 4 && pThing->moveType == SITH_MT_PHYSICS)
+			{
+				projPos.y += fontHeight * jkPlayer_hudScale;
+				snprintf(&tmpText, 1024, "mass:\t% .3f", pThing->physicsParams.mass);
+				stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, tmpText, 1, jkPlayer_hudScale);
+
+#ifdef PUPPET_PHYSICS
+				if (pThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+				{
+					projPos.y += fontHeight * jkPlayer_hudScale;
+					snprintf(&tmpText, 1024, "inertia:\t% .3f", pThing->physicsParams.inertia);
+					stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, tmpText, 1, jkPlayer_hudScale);
+				}
+#endif
+
+				projPos.y += fontHeight * jkPlayer_hudScale;
+				snprintf(&tmpText, 1024, "vel:\t(% .3f / % .3f / % .3f)", pThing->physicsParams.vel.x, pThing->physicsParams.vel.y, pThing->physicsParams.vel.z);
+				stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, tmpText, 1, jkPlayer_hudScale);
+				
+				projPos.y += fontHeight * jkPlayer_hudScale;
+#ifdef PUPPET_PHYSICS
+				if (pThing->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+					snprintf(&tmpText, 1024, "rotvel:\t(% .3f / % .3f / % .3f)", pThing->physicsParams.rotVel.x, pThing->physicsParams.rotVel.y, pThing->physicsParams.rotVel.z);
+				else
+					snprintf(&tmpText, 1024, "angvel:\t(% .3f / % .3f / % .3f)", pThing->physicsParams.angVel.x, pThing->physicsParams.angVel.y, pThing->physicsParams.angVel.z);
+#endif
+				stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, tmpText, 1, jkPlayer_hudScale);
+#ifdef PUPPET_PHYSICS
+				// draw joint things as well
+				if (pThing->animclass && pThing->animclass->flags & SITH_PUPPET_PHYSICS && pThing->puppet->physics)
+				{
+					uint64_t jointBits = pThing->animclass->physicsJointBits;
+					while (jointBits != 0)
+					{
+						int jointIdx = stdMath_FindLSB64(jointBits);
+						jointBits ^= 1ull << jointIdx;
+						sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
+						sithRender_DebugDrawThingName(&pJoint->thing);
+					}
+				}
+#endif
+			}
+			else if (jkPlayer_showThingInfo == 5 && pThing->controlType == SITH_CT_AI)
+			{
+				if (pThing->actor)
+				{
+					projPos.y += fontHeight * jkPlayer_hudScale;
+					snprintf(tmpText, 1024,"ai class: %s", pThing->actor->pAIClass->fpath);
+					stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, tmpText, 1, jkPlayer_hudScale);
+					
+					projPos.y += fontHeight * jkPlayer_hudScale;
+					snprintf(tmpText, 1024, "flags: 0x%x", pThing->actor->flags);
+					stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, tmpText, 1, jkPlayer_hudScale);
+
+					projPos.y += fontHeight * jkPlayer_hudScale;
+					snprintf(tmpText, 1024, "moods: %d/%d/%d", pThing->actor->mood0, pThing->actor->mood1, pThing->actor->mood2);
+					stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, tmpText, 1, jkPlayer_hudScale);
+
+					projPos.y += fontHeight * jkPlayer_hudScale;
+					snprintf(tmpText, 1024, "next update: %d ms", pThing->actor->nextUpdate - sithTime_curMs);
+					stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, tmpText, 1, jkPlayer_hudScale);
 				}
 			}
 		}
@@ -2729,7 +2792,7 @@ int sithRender_RenderThing(sithThing *pThing)
 #endif
 
 #ifdef QOL_IMPROVEMENTS
-	if (jkPlayer_showThingNames)
+	if (jkPlayer_showThingInfo)
 		sithRender_DebugDrawThingName(pThing);
 #endif
 

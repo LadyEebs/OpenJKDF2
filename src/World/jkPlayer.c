@@ -57,7 +57,7 @@ float jkPlayer_ssaaMultiple = 1.0;
 float jkPlayer_gamma = 1.0;
 int jkPlayer_lodBias = 0;
 int jkPlayer_mipBias = 0;
-int jkPlayer_showThingNames = 0;
+int jkPlayer_showThingInfo = 0;
 int jkPlayer_bEnableJkgm = 1;
 int jkPlayer_bEnableTexturePrecache = 1;
 int jkPlayer_bKeepCorpses = 0;
@@ -246,7 +246,7 @@ void jkPlayer_StartupVars()
 #if defined(DECAL_RENDERING) || defined(RENDER_DROID2)
 	sithCvar_RegisterFlex("r_enableDecals",             1.0,                        &jkPlayer_enableDecals,             CVARFLAG_LOCAL | CVARFLAG_RESETHUD);
 #endif
-	sithCvar_RegisterInt("r_showThingNames", 0, &jkPlayer_showThingNames, CVARFLAG_UPDATABLE_DEFAULT);
+	sithCvar_RegisterInt("r_showThingInfo", 0, &jkPlayer_showThingInfo, CVARFLAG_UPDATABLE_DEFAULT);
 #ifdef PUPPET_PHYSICS
 	sithCvar_RegisterInt("g_ragdolls", 1, &jkPlayer_ragdolls, CVARFLAG_LOCAL | CVARFLAG_UPDATABLE_DEFAULT);
 	sithCvar_RegisterBool("r_showPuppetRigidBodies", 0, &jkPlayer_puppetShowBodies, CVARFLAG_UPDATABLE_DEFAULT);

@@ -21,6 +21,7 @@
 #include "General/stdMath.h"
 
 #include "General/stdFont.h"
+#include "General/stdString.h"
 
 #include <math.h>
 
@@ -1188,6 +1189,8 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 	pJointThing->prev_thing = pThing;
 	pJointThing->child_signature = pThing->signature;
 
+	stdString_SafeStrCopy(pJointThing->template_name, sithPuppet_jointNames[jointIdx], 32);
+
 	// initialize the position velocity using the animation frames
 	rdVector_Copy3(&pJointThing->position, &pThing->rdthing.hierarchyNodeMatrices[pBodyPart->nodeIdx].scale);
 
@@ -1516,7 +1519,7 @@ static int sithPuppet_CheckForStillBodies(sithThing* thing, float deltaSeconds)
 	}
 
 	// if there wasn't substantial movement among the joints during the rest period, we can rest
-	return (maxDistSq < 0.0005f && maxAngle < 15.0f);
+	return (maxDistSq < 0.001f && maxAngle < 15.0f);
 }
 
 static int sithPuppet_CheckVelocities(sithThing* thing, float deltaSeconds)
