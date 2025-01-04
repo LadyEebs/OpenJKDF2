@@ -31,6 +31,7 @@ rdParticle* rdParticle_New(int numVertices, float size, rdMaterial *material, in
 
 int rdParticle_NewEntry(rdParticle *particle, int numVertices, float size, rdMaterial *material, int lightingMode, int allocateVertices)
 {
+	particle->name[0] = '\0';
     particle->material = material;
     particle->diameter = size;
     particle->radius = size * 0.5;
@@ -70,6 +71,7 @@ rdParticle* rdParticle_Clone(rdParticle *particle)
     if (clonedPart)
     {
         rdParticle_NewEntry(clonedPart, particle->numVertices, particle->diameter, particle->material, particle->lightingMode, 1);
+		stdString_SafeStrCopy(clonedPart->name, particle->name, 0x20);
         _memcpy(clonedPart->vertices, particle->vertices, sizeof(rdVector3) * particle->numVertices);
         _memcpy(clonedPart->vertexCel, particle->vertexCel, sizeof(int) * particle->numVertices);
     }

@@ -71,6 +71,24 @@ const char* sithThing_aTypes[NUM_THING_TYPES] = {
     "--invalid--"
 };
 
+// Added
+const char* sithThing_aMoveTypes[SITH_MT_NUM_MOVE_TYPES] =
+{
+	"none",
+	"physics",
+	"path",
+	"puppet",
+};
+
+// Added
+const char* sithThing_aCollideTypes[SITH_COLLIDE_NUM_COLLIDE] =
+{
+	"none",
+	"sphere",
+	"tree",
+	"face",
+};
+
 const char* sithThing_aParams[NUM_THING_PARAMS] = {
     "type",
     "collide",

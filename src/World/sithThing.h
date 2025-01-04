@@ -58,6 +58,10 @@
 #define sithThing_netidk2_ADDR (0x004CF690)
 #define sithThing_Release_ADDR (0x004E0740)
 
+extern const char* sithThing_aTypes[13];
+extern const char* sithThing_aMoveTypes[SITH_MT_NUM_MOVE_TYPES];
+extern const char* sithThing_aCollideTypes[SITH_COLLIDE_NUM_COLLIDE];
+
 int sithThing_Startup();
 int sithThing_Shutdown();
 void sithThing_SetHandler(sithThing_handler_t handler);
