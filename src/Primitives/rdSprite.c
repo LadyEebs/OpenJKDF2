@@ -35,7 +35,7 @@ int rdSprite_NewEntry(rdSprite *sprite, char *spritepath, int type, char *materi
     sprite->type = type;
     sprite->height = height;
     sprite->offset = *offset;
-    sprite->face.type = RD_FF_DOUBLE_SIDED;
+    sprite->face.type = RD_FF_DOUBLE_SIDED | RD_FF_TEX_CLAMP_X | RD_FF_TEX_CLAMP_Y;
     sprite->face.geometryMode = geometryMode;
     sprite->face.lightingMode = lightMode;
     sprite->face.textureMode = textureMode;
@@ -222,20 +222,29 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 
 	rdSetZBufferMethod(RD_ZBUFFER_READ_NOWRITE);
 
+	rdTexClampMode(RD_FF_TEX_CLAMP_X, RD_FF_TEX_CLAMP_Y);
+
 	rdTexOffseti(sprite->face.clipIdk.x, sprite->face.clipIdk.y);
 
-	rdSprite_inVerts[0].x = sprite->offset.x - sprite->halfWidth + vertex_out.x;
+	float halfWidth = sprite->halfWidth * thing->spriteScale;
+	float halfHeight = sprite->halfHeight * thing->spriteScale;
+
+	rdSprite_inVerts[0].x = sprite->offset.x - halfWidth + vertex_out.x;
 	rdSprite_inVerts[1].y = sprite->offset.y + vertex_out.y;
-	rdSprite_inVerts[1].z = sprite->offset.z - sprite->halfHeight + vertex_out.z;
-	rdSprite_inVerts[2].x = sprite->halfWidth + sprite->offset.x + vertex_out.x;
+	rdSprite_inVerts[1].z = sprite->offset.z - halfHeight + vertex_out.z;
+	rdSprite_inVerts[2].x = halfWidth + sprite->offset.x + vertex_out.x;
 	rdSprite_inVerts[2].y = sprite->offset.y + vertex_out.y;
-	rdSprite_inVerts[2].z = sprite->offset.z + sprite->halfHeight + vertex_out.z;
+	rdSprite_inVerts[2].z = sprite->offset.z + halfHeight + vertex_out.z;
 	rdSprite_inVerts[0].y = sprite->offset.y + vertex_out.y;
-	rdSprite_inVerts[0].z = sprite->offset.z - sprite->halfHeight + vertex_out.z;
-	rdSprite_inVerts[3].x = sprite->offset.x - sprite->halfWidth + vertex_out.x;
-	rdSprite_inVerts[1].x = sprite->halfWidth + sprite->offset.x + vertex_out.x;
+	rdSprite_inVerts[0].z = sprite->offset.z - halfHeight + vertex_out.z;
+	rdSprite_inVerts[3].x = sprite->offset.x - halfWidth + vertex_out.x;
+	rdSprite_inVerts[1].x = halfWidth + sprite->offset.x + vertex_out.x;
 	rdSprite_inVerts[3].y = sprite->offset.y + vertex_out.y;
-	rdSprite_inVerts[3].z = sprite->offset.z + sprite->halfHeight + vertex_out.z;
+	rdSprite_inVerts[3].z = sprite->offset.z + halfHeight + vertex_out.z;
+
+	float s, c;
+	if (thing->spriteRot != 0.0)
+		stdMath_SinCos(thing->spriteRot, &s, &c);
 
 	if (rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
 	{
@@ -244,8 +253,23 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 			rdColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 			if (sprite->vertexUVs)
 			{
-				rdVector3* uv = &sprite->vertexUVs[i];
-				rdTexCoord2i(uv->x, uv->y);
+				rdVector2 uv = sprite->vertexUVs[i];
+				// todo: make this transform a rdroid thing
+				if (thing->spriteRot != 0.0)
+				{
+					stdVBuffer* v24 = sprite->face.material->texinfos[0]->texture_ptr->texture_struct[0];
+
+					rdVector2 uvCentered;
+					uvCentered.x = uv.x - (float)v24->format.width / 2.0f;
+					uvCentered.y = uv.y - (float)v24->format.height / 2.0f;
+
+					uv.x = c * uvCentered.x - s * uvCentered.y;
+					uv.y = s * uvCentered.x + c * uvCentered.y;
+
+					uv.x += (float)v24->format.width / 2.0f;
+					uv.y += (float)v24->format.height / 2.0f;
+				}
+				rdTexCoord2i(uv.x, uv.y);
 			}
 			rdVertex(&rdSprite_inVerts[i]);
 		}
@@ -258,6 +282,7 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	rdMatrixMode(RD_MATRIX_VIEW);
 	rdLoadMatrix(&viewMatrix);
 	rdSetZBufferMethod(oldZ);
+	rdTexClampMode(0, 0);
 
 	rdSetGlowIntensity(0.4f);
 

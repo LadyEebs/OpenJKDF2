@@ -1042,19 +1042,29 @@ void jkPlayer_PovModelCallback(sithThing* thing, int track, uint32_t markerId)
 			int celCount = thing->playerInfo->povSprite.sprite3->face.material->num_texinfo;
 			thing->playerInfo->povSprite.wallCel = min(_frand() * celCount, celCount - 1);
 		}
+
+		// random orient
+		thing->playerInfo->povSprite.spriteRot = _frand() * 360.0f;
 	}
 }
 
 void jkPlayer_SetPovSprite(jkPlayerInfo* info, rdSprite* sprite)
 {
-	if (info->povSprite.type != 1 || info->povSprite.sprite3 != sprite)
+	if (info->povSprite.type != RD_THINGTYPE_SPRITE3 || info->povSprite.sprite3 != sprite)
 	{
 		rdThing_FreeEntry(&info->povSprite);
 		rdThing_NewEntry(&info->povSprite, info->actorThing);
 		if (sprite)
 			rdThing_SetSprite3(&info->povSprite, sprite);
 	}
+	info->povSprite.spriteScale = 1.0f;
 	jkPlayer_drawMuzzleFlash = 0;
+}
+
+void jkPlayer_SetPovSpriteScale(jkPlayerInfo* info, float scale)
+{
+	if (info->povSprite.type == RD_THINGTYPE_SPRITE3 && info->povSprite.sprite3)
+		info->povSprite.spriteScale = scale;
 }
 #endif
 

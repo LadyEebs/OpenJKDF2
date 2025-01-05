@@ -107,6 +107,7 @@ void jkPlayer_SetIdleWaggle(sithThing* player, rdVector3 *waggleVec, float waggl
 void jkPlayer_GetMuzzleOffset(sithThing* player, rdVector3* muzzleOffset);
 void jkPlayer_SetPovAutoAim(sithThing* player, float fov, float dist);
 void jkPlayer_SetPovSprite(jkPlayerInfo* info, rdSprite* sprite);
+void jkPlayer_SetPovSpriteScale(jkPlayerInfo* info, float scale);
 #else
 void jkPlayer_SetWaggle(sithThing* player, rdVector3* waggleVec, float waggleMag);
 #endif

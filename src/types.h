@@ -2553,6 +2553,8 @@ typedef struct rdThing
     rdVector3* hierarchyNodes2;
     int* amputatedJoints;
 	int rootJoint; // added
+	float spriteScale; // added
+	float spriteRot; // added
 #ifdef FP_LEGS
 	int hiddenJoint;
 	int hideWeaponMesh;

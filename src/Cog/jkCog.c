@@ -703,6 +703,17 @@ void jkCog_SetPovSprite(sithCog* ctx)
 			jkPlayer_SetPovSprite(pActorThing->playerInfo, pSprite);
 	}
 }
+
+void jkCog_SetPovSpriteScale(sithCog* ctx)
+{
+	float scale = sithCogExec_PopFlex(ctx);
+	sithThing* pActorThing = sithCogExec_PopThing(ctx);
+	if (pActorThing)
+	{
+		if (pActorThing->type == SITH_THING_ACTOR || pActorThing->type == SITH_THING_PLAYER)
+			jkPlayer_SetPovSpriteScale(pActorThing->playerInfo, scale);
+	}
+}
 #endif
 
 void jkCog_GetChoice(sithCog *ctx)
@@ -1231,6 +1242,7 @@ void jkCog_RegisterVerbs()
 	sithCogScript_RegisterVerb(sithCog_pSymbolTable, jkCog_GetMuzzleOffset, "jkgetmuzzleoffset");
 	sithCogScript_RegisterVerb(sithCog_pSymbolTable, jkCog_SetPovAutoAim, "jksetpovautoaim");
 	sithCogScript_RegisterVerb(sithCog_pSymbolTable, jkCog_SetPovSprite, "jksetpovsprite");
+	sithCogScript_RegisterVerb(sithCog_pSymbolTable, jkCog_SetPovSpriteScale, "jksetpovspritescale");
 #endif
 
 #ifdef REGIONAL_DAMAGE
