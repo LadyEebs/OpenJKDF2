@@ -687,12 +687,24 @@ void rdTexCoord2f(float u, float v)
 	rdroid_vertexTexCoordState.w = 1;
 }
 
+void std3D_GetValidDimension(unsigned int inW, unsigned int inH, unsigned int* outW, unsigned int* outH);
+
 void rdTexCoord2i(float u, float v)
 {
 	if(rdroid_textureState.pTexture)
 	{
-		rdroid_vertexTexCoordState.x = (float)u / rdroid_textureState.pTexture->width;
-		rdroid_vertexTexCoordState.y = (float)v / rdroid_textureState.pTexture->height;
+		uint32_t out_width, out_height;
+		std3D_GetValidDimension(
+			rdroid_textureState.pTexture->width,
+			rdroid_textureState.pTexture->height,
+			&out_width,
+			&out_height);
+
+		float w_s = (float)rdroid_textureState.pTexture->width / (float)out_width;
+		float h_s = (float)rdroid_textureState.pTexture->height / (float)out_height;
+
+		rdroid_vertexTexCoordState.x = w_s * (float)u / rdroid_textureState.pTexture->width;
+		rdroid_vertexTexCoordState.y = h_s * (float)v / rdroid_textureState.pTexture->height;
 	}
 	else
 	{
@@ -729,7 +741,6 @@ void rdNormal(const rdVector3* pNormal)
 }
 
 // Texture
-void std3D_GetValidDimension(unsigned int inW, unsigned int inH, unsigned int* outW, unsigned int* outH);
 int rdBindTexture(rdTexture* pTexture)
 {
 	if (!pTexture)
@@ -743,12 +754,6 @@ int rdBindTexture(rdTexture* pTexture)
 
 	rdroid_stateBits.alphaTest = (pTexture->alpha_en & 1) ? RD_COMPARE_LESS : RD_COMPARE_ALWAYS;
 
-	uint32_t out_width, out_height;
-	std3D_GetValidDimension(
-		pTexture->texture_struct[0]->format.width,
-		pTexture->texture_struct[0]->format.height,
-		&out_width,
-		&out_height);
 	rdroid_textureState.numMips = pTexture->num_mipmaps;
 
 	return 1;
@@ -803,13 +808,6 @@ int rdBindMaterial(rdMaterial* pMaterial, int cel)
 			rdroid_materialState.emissive &= 0xFF000000;
 			rdroid_materialState.displacement = 0.0f;
 		}
-
-		uint32_t out_width, out_height;
-		std3D_GetValidDimension(
-			sith_tex_sel->texture_struct[0]->format.width,
-			sith_tex_sel->texture_struct[0]->format.height,
-			&out_width,
-			&out_height);
 		rdroid_textureState.numMips = sith_tex_sel->num_mipmaps;
 	}
 
@@ -844,8 +842,18 @@ void rdTexOffseti(float u, float v)
 {
 	if (rdroid_textureState.pTexture)
 	{
-		rdroid_textureState.texOffset.x = (float)u / (float)rdroid_textureState.pTexture->width;
-		rdroid_textureState.texOffset.y = (float)v / (float)rdroid_textureState.pTexture->height;
+		uint32_t out_width, out_height;
+		std3D_GetValidDimension(
+			rdroid_textureState.pTexture->width,
+			rdroid_textureState.pTexture->height,
+			&out_width,
+			&out_height);
+
+		float w_s = (float)rdroid_textureState.pTexture->width / (float)out_width;
+		float h_s = (float)rdroid_textureState.pTexture->height / (float)out_height;
+
+		rdroid_textureState.texOffset.x = w_s *(float)u / (float)rdroid_textureState.pTexture->width;
+		rdroid_textureState.texOffset.y = h_s * (float)v / (float)rdroid_textureState.pTexture->height;
 	}
 	else
 	{
