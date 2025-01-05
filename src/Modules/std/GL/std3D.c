@@ -3214,6 +3214,7 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
         texture->is_16bit = 1;
 		if ((*vbuf)->format.format.bpp == 32)
 		{
+			glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 			if (!is_alpha_tex)
 				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image_8bpp);
 			else
@@ -3221,6 +3222,7 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 		}
 		else
 		{
+			glPixelStorei(GL_UNPACK_ALIGNMENT, 2);
 			if (!is_alpha_tex)
 				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0,  GL_RGB, GL_UNSIGNED_SHORT_5_6_5_REV, image_8bpp);
 			else
@@ -3265,7 +3267,7 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 
         texture->pDataDepthConverted = NULL;
     }
-
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     
     std3D_aLoadedSurfaces[std3D_loadedTexturesAmt] = texture;
     std3D_aLoadedTextures[std3D_loadedTexturesAmt++] = image_texture;
