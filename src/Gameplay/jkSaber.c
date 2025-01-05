@@ -260,7 +260,7 @@ void jkSaber_DrawTrail(rdThing* pThing, jkSaberTrail* pSaberTrail, rdMatrix34* p
 			rdVector_Zero2(&centerUV);
 			for (int j = 0; j < 4; ++j)
 			{
-				rdVector_Add2Acc(&centerUV, &pThing->polyline->extraUVTipMaybe[j]);
+				rdVector_Add2Acc(&centerUV, &pThing->polyline->extraUVFaceMaybe[j]);
 			}
 			rdVector_Scale2Acc(&centerUV, 0.25f);
 
@@ -287,7 +287,7 @@ void jkSaber_DrawTrail(rdThing* pThing, jkSaberTrail* pSaberTrail, rdMatrix34* p
 			pThing->polyline->edgeFace.sortId = 5;
 
 			idxInfo.vertexUVs = uvs;
-			rdPolyLine_DrawFace(pThing, &pThing->polyline->edgeFace, NULL, &idxInfo);
+			rdPolyLine_DrawFace(pThing, &pThing->polyline->tipFace, NULL, &idxInfo);
 		}
 	}
 		
