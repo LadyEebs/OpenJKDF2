@@ -28,6 +28,7 @@ int rdThing_NewEntry(rdThing *thing, sithThing *parent)
     thing->desiredGeoMode = RD_GEOMODE_TEXTURED;
 	thing->rootJoint = 0; // Added
 	thing->spriteScale = 1.0f; // Added
+	thing->spriteRot = 0.0f; // Added
 #ifdef RENDER_DROID2
 	thing->desiredLightMode = RD_LIGHTMODE_SUBSURFACE;
 #elif defined(SPECULAR_LIGHTING)
