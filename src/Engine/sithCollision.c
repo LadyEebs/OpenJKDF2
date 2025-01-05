@@ -975,7 +975,7 @@ int sithCollision_DefaultHitHandler(sithThing *thing, sithSurface *surface, sith
 	}
 #endif
 
-    if ( !sithCollision_CollideHurt(thing, &a3->hitNorm, a3->distance, surface->surfaceFlags & SITH_SURFACE_80) )
+    if ( !sithCollision_CollideHurt(thing, &a3->hitNorm, a3->distance, surface->surfaceFlags & SITH_SURFACE_NO_IMPACT_DAMAGE) )
         return 0;
 
     if ( (surface->surfaceFlags & SITH_SURFACE_COG_LINKED) != 0 && (v3->thingflags & SITH_TF_INVULN) == 0 && surface->surfaceInfo.lastTouchedMs + 500 <= sithTime_curMsAbsolute )
