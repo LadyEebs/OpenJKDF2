@@ -1339,7 +1339,8 @@ void sithThing_AttachToSurface(sithThing* pThing, sithSurface *surface, int a3)
     if ( !a3 && v4 )
     {
         v14 = -rdVector_Dot3(&pThing->physicsParams.vel, &surface->surfaceInfo.face.normal);
-        if ( v14 > 2.5 )
+		// Added: check SITH_SURFACE_NO_IMPACT_DAMAGE, somehow we're getting damaged on those surfaces
+        if ( !(surface->surfaceFlags & SITH_SURFACE_NO_IMPACT_DAMAGE) && v14 > 2.5 )
         {
             sithCollision_FallHurt(pThing, v14);
             if ( pThing->soundclass )
