@@ -112,6 +112,7 @@ void rdResetTextureState()
 	rdroid_textureState.pTexture = NULL;
 	rdroid_textureState.texGenParams.x = rdroid_textureState.texGenParams.y = rdroid_textureState.texGenParams.z = rdroid_textureState.texGenParams.w = 0;
 	rdroid_textureState.texOffset.x = rdroid_textureState.texOffset.y = 0;
+	rdroid_textureState.flags = 0;
 }
 
 void rdResetMaterialState()
@@ -830,6 +831,19 @@ void rdTexGenParams(float p0, float p1, float p2, float p3)
 	rdroid_textureState.texGenParams.y = p1;
 	rdroid_textureState.texGenParams.z = p2;
 	rdroid_textureState.texGenParams.w = p3;
+}
+
+void rdTexClampMode(int modeU, int modeV)
+{
+	if (modeU)
+		rdroid_textureState.flags |= RD_FF_TEX_CLAMP_X;
+	else
+		rdroid_textureState.flags &= ~RD_FF_TEX_CLAMP_X;
+		
+	if (modeV)
+		rdroid_textureState.flags |= RD_FF_TEX_CLAMP_Y;
+	else
+		rdroid_textureState.flags &= ~RD_FF_TEX_CLAMP_Y;
 }
 
 void rdTexOffset(float u, float v)

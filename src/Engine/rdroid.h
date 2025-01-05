@@ -163,6 +163,7 @@ void rdSetDecalMode(rdDecalMode_t mode);
 void rdTexFilterMode(rdTexFilter_t texFilter);
 void rdTexGen(rdTexGen_t texGen);
 void rdTexGenParams(float p0, float p1, float p2, float p3);
+void rdTexClampMode(int modeU, int modeV);
 void rdTexOffset(float u, float v);
 void rdTexOffseti(float u, float v);
 

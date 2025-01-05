@@ -4355,13 +4355,20 @@ void std3D_SetTextureState(std3D_worldStage* pStage, std3D_DrawCallState* pState
 	tex.texgen = pState->stateBits.texGen;
 	tex.numMips = pTexState->numMips;
 	rdVector_Set2(&tex.uv_offset, pTexState->texOffset.x, pTexState->texOffset.y);
-	rdVector_Set4(&tex.texgen_params, pTexState->texGenParams.x, pTexState->texGenParams.y, pTexState->texGenParams.z, pTexState->texGenParams.w);
+	rdVector_Set4(&tex.texgen_params, pTexState->texGenParams.x, pTexState->texGenParams.y, pTexState->texGenParams.z, pTexState->texGenParams.w);		
 
 	if(pTexture)
 	{
 		int tex_id = pTexture->texture_id;
 		glActiveTexture(GL_TEXTURE0 + 0);
 		glBindTexture(GL_TEXTURE_2D, tex_id ? tex_id : blank_tex_white);
+
+		// I can't imagine doing this all the time is very efficient..
+		if (tex_id)
+		{
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, pTexState->flags & RD_FF_TEX_CLAMP_X ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, pTexState->flags & RD_FF_TEX_CLAMP_Y ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+		}
 
 		int emiss_tex_id = pTexture->emissive_texture_id;
 		glActiveTexture(GL_TEXTURE0 + 3);
