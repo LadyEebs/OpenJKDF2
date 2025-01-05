@@ -1034,7 +1034,7 @@ void jkPlayer_PovModelCallback(sithThing* thing, int track, uint32_t markerId)
 	if(thing == playerThings[playerThingIdx].actorThing && markerId == 3)
 	{
 		// enable/disable
-		jkPlayer_drawMuzzleFlash = sithTime_curMs + 50; // 50ms
+		jkPlayer_drawMuzzleFlash = sithTime_curMs + 60; // 60ms
 		
 		// randomize the cel
 		if(thing->playerInfo->povSprite.sprite3 && thing->playerInfo->povSprite.sprite3->face.material)
