@@ -25,7 +25,7 @@
 int jkSaber_trails = 1;
 float jkSaber_trailMinVel = 3.0f;
 float jkSaber_trailMaxVel = 10.0f;
-float jkSaber_trailCutoff = 0.01f;
+float jkSaber_trailCutoff = 0.03f;
 float jkSaber_trailShutter = 50.0f;
 #endif
 
