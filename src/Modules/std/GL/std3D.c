@@ -3250,7 +3250,9 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
     }
     else {
 
-        texture->is_16bit = 0;
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		
+		texture->is_16bit = 0;
         glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, image_8bpp);
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, numMips - 1);
@@ -3267,7 +3269,7 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 
         texture->pDataDepthConverted = NULL;
     }
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     
     std3D_aLoadedSurfaces[std3D_loadedTexturesAmt] = texture;
     std3D_aLoadedTextures[std3D_loadedTexturesAmt++] = image_texture;
@@ -3480,7 +3482,6 @@ int std3D_AddBitmapToTextureCache(stdBitmap *texture, int mipIdx, int is_alpha_t
                 ((uint32_t*)image_data)[tex_index] = val_rgba;
             }
         }
-        
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, tex_width, tex_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
 
         texture->paDataDepthConverted[mipIdx] = image_data;
@@ -3571,7 +3572,7 @@ int std3D_AddBitmapToTextureCache(stdBitmap *texture, int mipIdx, int is_alpha_t
                 ((uint32_t*)image_data)[tex_index] = val_rgba;
             }
         }
-        
+
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
 
         texture->paDataDepthConverted[mipIdx] = image_data;
@@ -3590,7 +3591,7 @@ int std3D_AddBitmapToTextureCache(stdBitmap *texture, int mipIdx, int is_alpha_t
     texture->abLoadedToGPU[mipIdx] = 1;
 
     glBindTexture(GL_TEXTURE_2D, blank_tex);
-    
+
     return 1;
 }
 
