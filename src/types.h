@@ -925,10 +925,11 @@ typedef struct std3D_TextureState
 	rdVector4            texGenParams;
 	rdVector2            texOffset;
 	uint32_t             chromaKeyColor;
+	uint32_t             flags;
 	uint8_t              numMips;
 	uint8_t              alphaRef;
 } std3D_TextureState;
-static_assert(sizeof(std3D_TextureState) == sizeof(uint32_t) * 10, "std3D_TextureState not 4 bytes");
+static_assert(sizeof(std3D_TextureState) == sizeof(uint32_t) * 12, "std3D_TextureState not 48 bytes");
 
 typedef struct std3D_LightingState // todo: pack this
 {
