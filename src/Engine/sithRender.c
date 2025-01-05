@@ -2827,7 +2827,7 @@ int sithRender_RenderThing(sithThing *pThing)
 {
     int ret;
 
-    if (!(pThing->thingflags & SITH_TF_INCAMFOV) && !(g_debugmodeFlags & DEBUGFLAG_NOCLIP)) // Added: don't send sighted stuff in noclip
+    if (!(pThing->thingflags & SITH_TF_SIGHTED) && !(g_debugmodeFlags & DEBUGFLAG_NOCLIP)) // Added: don't send sighted stuff in noclip
     {
         if (pThing->thingflags & SITH_TF_CAPTURED) {
             sithCog_SendMessageFromThing(pThing, 0, SITH_MESSAGE_SIGHTED);
@@ -2837,7 +2837,7 @@ int sithRender_RenderThing(sithThing *pThing)
         {
             pThing->actor->flags &= ~SITHAI_MODE_SLEEPING;
         }
-        pThing->thingflags |= SITH_TF_INCAMFOV;
+        pThing->thingflags |= SITH_TF_SIGHTED;
     }
 
     pThing->isVisible = bShowInvisibleThings;
