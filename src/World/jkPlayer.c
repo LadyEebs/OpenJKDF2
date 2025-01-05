@@ -1437,6 +1437,7 @@ void jkPlayer_DrawPov()
 				static rdLight muzzleLight;
 				rdLight_NewEntry(&muzzleLight);
 				muzzleLight.intensity = playerThings[playerThingIdx].povSprite.sprite3->radius;// * 2.0f;
+				muzzleLight.intensity *= playerThings[playerThingIdx].povSprite.spriteScale;
 #ifdef RGB_THING_LIGHTS
 				rdMaterial_GetFillColor(&muzzleLight.color, playerThings[playerThingIdx].povSprite.sprite3->face.material, player->sector->colormap, playerThings[playerThingIdx].povSprite.wallCel, -1);
 				rdVector_Scale3Acc(&muzzleLight.color, 1.0f / muzzleLight.intensity); // compensate for the low intensity/range
