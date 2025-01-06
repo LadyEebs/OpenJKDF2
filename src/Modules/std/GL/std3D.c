@@ -4036,16 +4036,16 @@ void std3D_AddListVertices(std3D_DrawCall* pDrawCall, rdPrimitiveType_t type, st
 		int tris = numVertices / 3;
 		for (int i = 0; i < tris; ++i)
 		{
-			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i + 0;
-			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i + 1;
-			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i + 2;
+			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i * 3 + 0;
+			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i * 3 + 1;
+			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i * 3 + 2;
 		}
 	}
 	else if (type == RD_PRIMITIVE_TRIANGLE_FAN)
 	{
 		// build indices from a single corner vertex
-		int tris = numVertices - 2;
-		for (int i = 0; i < tris; i++)
+		int verts = numVertices - 2;
+		for (int i = 0; i < verts; i++)
 		{
 			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + 0;
 			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i + 1;
@@ -4055,11 +4055,11 @@ void std3D_AddListVertices(std3D_DrawCall* pDrawCall, rdPrimitiveType_t type, st
 	else if (type == RD_PRIMITIVE_POLYGON)
 	{
 		// build indices through simple triangulation
-		int tris = numVertices - 2;
+		int verts = numVertices - 2;
 		int i1 = 0;
 		int i2 = 1;
 		int i3 = numVertices - 1;
-		for (int i = 0; i < tris; ++i)
+		for (int i = 0; i < verts; ++i)
 		{
 			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i1;
 			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i2;
