@@ -480,21 +480,7 @@ void jkPlayer_Open()
 void jkPlayer_Close()
 {
 #ifdef DYNAMIC_POV
-	rdVector_Zero3(&jkSaber_aimAngles);
-	rdVector_Zero3(&jkSaber_aimVector);
-	rdVector_Zero3(&jkSaber_swayOffset);
-	rdVector_Zero3(&jkPlayer_idleWaggleVec);
-	rdVector_Zero3(&jkPlayer_pushAngles);
-	rdVector_Zero3(&jkPlayer_muzzleOffset);
-	rdVector_Zero3(&jkPlayer_crosshairPos);
 	jkPlayer_crosshairTarget = NULL;
-	jkPlayer_idleWaggleSpeed = 0.0f;
-	jkPlayer_idleWaggleSmooth = 0.0f;
-	jkPlayer_aimLock = 0;
-	jkPlayer_povAutoAimFov = 0.0f;
-	jkPlayer_povAutoAimDist = 0.0f;
-	jkPlayer_drawMuzzleFlash = 0;
-	jkPlayer_muzzleFlashNode = -1;
 #endif
 }
 
