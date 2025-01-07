@@ -20,6 +20,10 @@ static int sithCollision_initted = 0;
 
 int sithCollision_bDebugCollide = 0;
 
+#ifdef PUPPET_PHYSICS
+int sithCollision_PlayerCorpseCollide(sithThing* thing1, sithThing* thing2, sithCollisionSearchEntry* a3, int isInverse);
+#endif
+
 int sithCollision_Startup()
 {
     if ( sithCollision_initted )
@@ -45,12 +49,11 @@ int sithCollision_Startup()
     sithCollision_RegisterHitHandler(SITH_THING_WEAPON, sithWeapon_HitDebug);
 
 #ifdef PUPPET_PHYSICS
-	sithCollision_RegisterCollisionHandler(SITH_THING_CORPSE, SITH_THING_PLAYER, sithCollision_DebrisDebrisCollide, 0);
-	sithCollision_RegisterCollisionHandler(SITH_THING_CORPSE, SITH_THING_CORPSE, sithCollision_DebrisDebrisCollide, 0);
-	sithCollision_RegisterCollisionHandler(SITH_THING_CORPSE, SITH_THING_ACTOR, sithCollision_DebrisDebrisCollide, 0);
-	sithCollision_RegisterCollisionHandler(SITH_THING_CORPSE, SITH_THING_WEAPON, sithCollision_DebrisDebrisCollide, 0);
-	sithCollision_RegisterCollisionHandler(SITH_THING_PLAYER, SITH_THING_CORPSE, sithCollision_DebrisDebrisCollide, 0);
-	sithCollision_RegisterCollisionHandler(SITH_THING_ACTOR, SITH_THING_CORPSE, sithCollision_DebrisDebrisCollide, 0);
+	sithCollision_RegisterCollisionHandler(SITH_THING_CORPSE, SITH_THING_CORPSE, sithCollision_DebrisPlayerCollide, 0);
+	sithCollision_RegisterCollisionHandler(SITH_THING_CORPSE, SITH_THING_COG, sithCollision_DebrisPlayerCollide, 0);
+	sithCollision_RegisterCollisionHandler(SITH_THING_CORPSE, SITH_THING_DEBRIS, sithCollision_DebrisPlayerCollide, 0);
+	sithCollision_RegisterCollisionHandler(SITH_THING_CORPSE, SITH_THING_PLAYER, sithCollision_PlayerCorpseCollide, 0);
+	sithCollision_RegisterCollisionHandler(SITH_THING_CORPSE, SITH_THING_ACTOR, sithCollision_PlayerCorpseCollide, 0);
 	sithCollision_RegisterCollisionHandler(SITH_THING_WEAPON, SITH_THING_CORPSE, sithWeapon_Collide, 0);
 #endif
 
@@ -1081,10 +1084,10 @@ int sithCollision_DebrisDebrisCollide(sithThing *thing1, sithThing *thing2, sith
 
 		rdVector_Scale3(&forceVec, &a2, v6 * senderb);
 
-		if((v4->type != SITH_THING_PLAYER && v5->type == SITH_THING_CORPSE)) // added, corpses don't push players
+		if(!(v4->type == SITH_THING_PLAYER && v5->type == SITH_THING_CORPSE)) // added, corpses don't push players
 			sithPhysics_ThingApplyForce(v4, &forceVec);
 		rdVector_Neg3Acc(&forceVec);
-		if ((v5->type != SITH_THING_PLAYER && v4->type == SITH_THING_CORPSE)) // added, corpses don't push players
+		if (!(v5->type == SITH_THING_PLAYER && v4->type == SITH_THING_CORPSE)) // added, corpses don't push players
 			sithPhysics_ThingApplyForce(v5, &forceVec);
 
 #ifdef PUPPET_PHYSICS
@@ -1410,3 +1413,108 @@ sithThing* sithCollision_GetThingLookat(sithSector* sector, sithThing* sender, c
 
 	return result;
 }
+
+#ifdef PUPPET_PHYSICS
+// only applies force to the second body (corpse)
+int sithCollision_PlayerCorpseCollide(sithThing* thing1, sithThing* thing2, sithCollisionSearchEntry* a3, int isInverse)
+{
+	sithThing* v4; // esi
+	sithThing* v5; // edi
+	double v6; // st6
+	//char v9; // c0
+	double v11; // st7
+	//char v14; // c0
+	double v15; // st7
+	float a3a; // [esp+0h] [ebp-38h]
+	rdVector3 a2; // [esp+14h] [ebp-24h] BYREF
+	rdVector3 forceVec; // [esp+20h] [ebp-18h] BYREF
+	rdVector3 v19; // [esp+2Ch] [ebp-Ch] BYREF
+	float senderb; // [esp+3Ch] [ebp+4h]
+	float sender; // [esp+3Ch] [ebp+4h]
+	float sendera; // [esp+3Ch] [ebp+4h]
+	float a1a; // [esp+40h] [ebp+8h]
+
+	if (1)//isInverse)
+	{
+		v4 = thing2;
+		v5 = thing1;
+	}
+	else
+	{
+		v4 = thing1;
+		v5 = thing2;
+	}
+	a2 = a3->hitNorm;
+
+	if ((v4->thingflags & SITH_TF_CAPTURED) != 0 && (v4->thingflags & SITH_TF_INVULN) == 0)
+		sithCog_SendMessageFromThing(v4, v5, SITH_MESSAGE_TOUCHED);
+	if ((v5->thingflags & SITH_TF_CAPTURED) != 0 && (v4->thingflags & SITH_TF_INVULN) == 0)
+		sithCog_SendMessageFromThing(v5, v4, SITH_MESSAGE_TOUCHED);
+
+	if (v4->moveType != SITH_MT_PHYSICS || v4->physicsParams.mass == 0.0)
+	{
+		if (v5->moveType != SITH_MT_PHYSICS || v5->physicsParams.mass == 0.0)
+			return 0;
+		v11 = rdVector_Dot3(&v4->field_268, &a2);
+		v11 = stdMath_ClipPrecision(v11);
+		if (v11 < 0.0)
+		{
+			sendera = -v11 * 1.0001;
+			rdVector_Neg3(&v19, &a2);
+			v15 = sithCollision_UpdateThingCollision(v5, &v19, sendera, 0);
+			return 0;
+		}
+		return 0;
+	}
+	if (v5->moveType == SITH_MT_PHYSICS && v5->physicsParams.mass != 0.0)
+	{
+		v6 = rdVector_Dot3(&v5->physicsParams.vel, &a2) - rdVector_Dot3(&v4->physicsParams.vel, &a2);
+		v6 = stdMath_ClipPrecision(v6);
+		if (v6 <= 0.0)
+			return 0;
+
+		if ((v5->physicsParams.physflags & SITH_PF_SURFACEBOUNCE) == 0)
+			v6 = v6 * 0.5;
+
+		// (2*mass^2) / (2*mass)
+		senderb = (v5->physicsParams.mass * v4->physicsParams.mass + v5->physicsParams.mass * v4->physicsParams.mass)
+			/ (v5->physicsParams.mass + v4->physicsParams.mass);
+
+		rdVector_Scale3(&forceVec, &a2, -v6 * senderb);
+		sithPhysics_ThingApplyForce(v5, &forceVec);
+
+#ifdef PUPPET_PHYSICS
+		if (v5->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+		{
+			rdVector3 contactB = v5->position;
+			rdVector_MultAcc3(&contactB, &a2, v5->moveSize);
+
+			float invMassA = 1.0f / v4->physicsParams.mass;
+			float invMassB = 1.0f / v5->physicsParams.mass;
+			float restitution = 0.5f;
+			float impulseMagnitude = (1.0f + restitution) * v6;
+			impulseMagnitude /= invMassA + invMassB;
+
+			rdVector3 rotForce;
+			rdVector_Scale3(&rotForce, &a2, impulseMagnitude);
+
+			rdVector_Neg3Acc(&rotForce);
+			if (v5->physicsParams.physflags & SITH_PF_ANGIMPULSE)
+				sithPhysics_ThingApplyRotForce(v5, &contactB, &rotForce);
+		}
+#endif
+
+		return 0;
+	}
+	sender = 0.0f;
+	if (v4->moveType == SITH_MT_PHYSICS) // Added
+		sender = -rdVector_Dot3(&v4->physicsParams.vel, &a2);
+	if (sender <= 0.15000001)
+		return 0;
+	if (sender > 1.0)
+		sender = 1.0;
+	if (v4->type == SITH_THING_CORPSE)
+		sithSoundClass_PlayThingSoundclass(v4->constraintRoot ? v4->constraintRoot : v4, SITH_SC_CORPSEHIT, sender);
+	return 0;
+}
+#endif
