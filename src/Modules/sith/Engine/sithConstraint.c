@@ -21,6 +21,8 @@
 #define USE_JOBS 0
 #endif
 
+#define CONSTRAINT_VEL_LIMIT 50.0f
+
 extern float jkPlayer_puppetAngBias;
 extern float jkPlayer_puppetPosBias;
 extern float jkPlayer_puppetFriction;
@@ -150,7 +152,7 @@ static void sithConstraint_SolveBallSocketConstraint(sithBallSocketConstraint* p
 
 	// add bias for error correction
 	pResult->C = -(jkPlayer_puppetPosBias / deltaSeconds) * pResult->C;
-	pResult->C = stdMath_Clamp(pResult->C, -2.0f, 2.0f);
+	pResult->C = stdMath_Clamp(pResult->C, -CONSTRAINT_VEL_LIMIT, CONSTRAINT_VEL_LIMIT);
 
 	rdVector3 unitConstraintN;
 	rdVector_Neg3(&unitConstraintN, &unitConstraint);
@@ -205,7 +207,7 @@ static void sithConstraint_SolveConeConstraint(sithConeLimitConstraint* pConstra
 	pResult->JrB = JwB;
 	pResult->C = pConstraint->coneAngleCos - dotProduct;
 	pResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * pResult->C;
-	pResult->C = stdMath_Clamp(pResult->C, -2.0f, 2.0f);
+	pResult->C = stdMath_Clamp(pResult->C, -CONSTRAINT_VEL_LIMIT, CONSTRAINT_VEL_LIMIT);
 }
 
 static void sithConstraint_SolveHingeConstraint(sithHingeLimitConstraint* pConstraint, float deltaSeconds)
@@ -254,7 +256,7 @@ static void sithConstraint_SolveHingeConstraint(sithHingeLimitConstraint* pConst
 //	rdVector_Normalize3Acc(&pResult->JrB);
 	
 	pResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * pResult->C;
-	pResult->C = stdMath_Clamp(pResult->C, -2.0f, 2.0f);
+	pResult->C = stdMath_Clamp(pResult->C, -CONSTRAINT_VEL_LIMIT, CONSTRAINT_VEL_LIMIT);
 }
 
 void sithConstraint_ApplyImpulses(sithThing* pThing)
