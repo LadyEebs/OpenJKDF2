@@ -280,7 +280,7 @@ void sithConstraint_ApplyImpulses(sithThing* pThing)
 
 int sithConstraint_SatisfyConstraint(sithConstraint* c, float deltaSeconds)
 {
-	if (stdMath_Fabs(c->result.C) < 0.001f)
+	if (stdMath_Fabs(c->result.C) < 0.0001f)
 		return 0;
 
 	sithThing* bodyA = c->targetThing;
@@ -292,7 +292,7 @@ int sithConstraint_SatisfyConstraint(sithConstraint* c, float deltaSeconds)
 		rdVector_Dot3(&c->result.JvB, &bodyB->physicsParams.vel) +
 		rdVector_Dot3(&c->result.JrB, &bodyB->physicsParams.rotVel);
 	Jv = stdMath_ClipPrecision(Jv);
-	if (stdMath_Fabs(Jv) < 0.001f)
+	if (stdMath_Fabs(Jv) < 0.0001f)
 		return 0;
 
 	// Compute corrective impulse
@@ -300,7 +300,7 @@ int sithConstraint_SatisfyConstraint(sithConstraint* c, float deltaSeconds)
 	deltaLambda *= 0.8; // todo: what's a good damping value?
 	deltaLambda = stdMath_ClipPrecision(deltaLambda);
 
-	if (stdMath_Fabs(deltaLambda) < 0.0005f)
+	if (stdMath_Fabs(deltaLambda) < 0.0001f)
 		return 0;
 
 	// Add deltaLambda to the current lambda
