@@ -1121,8 +1121,8 @@ int sithCollision_DebrisDebrisCollide(sithThing *thing1, sithThing *thing2, sith
 		}
 
 		// if both bodies are corpses don't block
-		if(v4->type == SITH_THING_CORPSE && v5->type == SITH_THING_CORPSE)
-			return 0;
+		//if(v4->type == SITH_THING_CORPSE && v5->type == SITH_THING_CORPSE)
+			//return 0;
 #endif
 
         return sithCollision_CollideHurt(v4, &a2, a3->distance, 0);

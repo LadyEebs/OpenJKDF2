@@ -114,7 +114,18 @@ int sithIntersect_CollideThings(sithThing *pThing, const rdVector3 *a2, const rd
     int bIsTreeCollide = 0;
     float collideSize = a6->collideSize;
     float rangeSize = range;
-#ifndef PUPPET_PHYSICS // allow tree collision for ragdolls so we can do mesh-sphere collision
+
+#ifdef PUPPET_PHYSICS
+	// reject collision if the things are constrained together
+	if (pThing && pThing->constraintParent && pThing->constraintParent == a6
+		|| a6->constraintParent && a6->constraintParent == pThing
+	)
+	{
+		return 0;
+	}
+#endif
+
+#ifndef PUPPET_PHYSICS
     if (Main_bMotsCompat)
 #endif
 	{
@@ -130,6 +141,15 @@ int sithIntersect_CollideThings(sithThing *pThing, const rdVector3 *a2, const rd
             }
         }
     }
+
+#ifdef PUPPET_PHYSICS
+	// shrink the collide size if both bodies belong to the same puppet hierarchy to avoid issues
+	if (pThing && pThing->constraintRoot && a6->constraintRoot && pThing->constraintRoot == a6->constraintRoot)
+	{
+		collideSize *= 0.5f;
+		rangeSize *= 0.5f;
+	}
+#endif
 
     float unkOut;
     if (!sithIntersect_RaySphereIntersection(a2, a3, a4, rangeSize, &a6->position, collideSize, &unkOut, bFaceCollision, raycastFlags))
