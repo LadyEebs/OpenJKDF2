@@ -52,7 +52,7 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #define TEX_SLOT_DEPTH           7
 #define TEX_SLOT_AO              8
 
-#define STD3D_MAX_RENDER_PASSES     2
+#define STD3D_MAX_RENDER_PASSES     3
 
 #define CLUSTER_MAX_LIGHTS          256 // match RDCAMERA_MAX_LIGHTS/SITHREND_NUM_LIGHTS
 #define CLUSTER_MAX_OCCLUDERS       128

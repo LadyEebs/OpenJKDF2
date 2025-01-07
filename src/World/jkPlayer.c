@@ -1235,7 +1235,7 @@ void jkPlayer_DrawPov()
 #ifdef SDL2_RENDER
         // Force weapon to draw in front of scene
 	#ifdef RENDER_DROID2
-		rdRenderPass("jkPlayer_DrawPov", 1, RD_RENDERPASS_CLEAR_DEPTH | (jkPlayer_enableSSAO ? RD_RENDERPASS_AMBIENT_OCCLUSION : 0));
+		rdRenderPass("jkPlayer_DrawPov", 2, RD_RENDERPASS_CLEAR_DEPTH | (jkPlayer_enableSSAO ? RD_RENDERPASS_AMBIENT_OCCLUSION : 0));
 		rdSetDecalMode(RD_DECALS_DISABLED);
 		//if (jkPlayer_enableShadows)
 		//	rdEnable(RD_SHADOWS);

@@ -581,6 +581,87 @@ void sithRender_SetPalette(const void *palette)
     }
 }
 
+void sithRender_DrawSurface(sithSurface* surface);
+
+#ifdef RENDER_DROID2
+void sithRender_DrawBackdrop()
+{
+	if (sithWorld_pCurrentWorld->backdropSector)
+	{
+		rdRenderPass("sithRender_DrawBackdrop", 0, 0);
+
+		rdSetCullFlags(0);
+
+		rdMatrixMode(RD_MATRIX_VIEW);
+		rdIdentity();
+
+		rdMatrix34 viewOriginal = rdCamera_pCurCamera->view_matrix;
+		sithSector* origSector = sithCamera_currentCamera->sector;
+
+		sithSector* centerSector = sithWorld_pCurrentWorld->backdropSector;
+		while (centerSector)
+		{
+			if (!(centerSector->flags & SITH_SECTOR_DRAW_AS_3DO))
+				break;
+			centerSector = centerSector->nextBackdropSector;
+		}
+
+		sithCamera_currentCamera->sector = centerSector;
+
+		rdMatrix34 backdropCamMat = rdCamera_camMatrix;
+		backdropCamMat.scale = centerSector->center;
+		rdMatrix_InvertOrtho34(&rdCamera_pCurCamera->view_matrix, &backdropCamMat);
+
+		rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
+
+		rdMatrixMode(RD_MATRIX_MODEL);
+		rdIdentity();
+
+		sithSector* backdropSector = sithWorld_pCurrentWorld->backdropSector;
+		while (backdropSector)
+		{
+			rdColormap_SetCurrent(backdropSector->colormap);
+
+			sithSurface* surface = backdropSector->surfaces;
+			for (int v75 = 0; v75 < backdropSector->numSurfaces; ++surface, v75++)
+			{
+				if (!surface->surfaceInfo.face.geometryMode)
+					continue;
+				sithRender_DrawSurface(surface);
+			}
+
+			int safeguard = 0;
+			for (sithThing* pThing = backdropSector->thingsList; pThing; pThing = pThing->nextThing)
+			{
+				if (++safeguard >= SITH_MAX_THINGS)
+					break;
+
+				if (pThing->thingflags & (SITH_TF_DISABLED | SITH_TF_INVISIBLE | SITH_TF_WILLBEREMOVED))
+					continue;
+
+				if (pThing->rdthing.type != RD_THINGTYPE_MODEL)
+					continue;
+
+				if (((pThing->rdthing).type == RD_THINGTYPE_MODEL))
+					pThing->rdthing.model3->geosetSelect = 0;
+
+				rdMatrix_TransformPoint34(&pThing->screenPos, &pThing->position, &rdCamera_pCurCamera->view_matrix);
+				pThing->rdthing.clippingIdk = rdClip_SphereInFrustrum(rdCamera_pCurCamera->pClipFrustum, &pThing->screenPos, pThing->rdthing.model3->radius);
+				if (pThing->rdthing.clippingIdk == 2)
+					continue;
+
+				sithRender_RenderThing(pThing);
+			}
+
+			backdropSector = backdropSector->nextBackdropSector;
+		}
+
+		sithCamera_currentCamera->sector = origSector;
+		rdCamera_pCurCamera->view_matrix.scale = viewOriginal.scale;
+	}
+}
+#endif
+
 void sithRender_Draw()
 {
     sithSector *v2; // edi
@@ -654,8 +735,6 @@ void sithRender_Draw()
     rdCamera_ClearLights(rdCamera_pCurCamera);
 
 #ifdef RENDER_DROID2
-	rdRenderPass("sithRender_Draw", 0, jkPlayer_enableSSAO ? RD_RENDERPASS_AMBIENT_OCCLUSION : 0);
-
 	rdSetGlowIntensity(0.4f);
 
 	//if(jkPlayer_enableShadows)
@@ -681,16 +760,23 @@ void sithRender_Draw()
 	tex_h = tex_w * (float)Window_ySize / Window_xSize;
 	rdViewport(0, 0, tex_w, tex_h);
 
-	rdMatrixMode(RD_MATRIX_VIEW);
-	rdIdentity();
-	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
-
 	rdMatrixMode(RD_MATRIX_PROJECTION);
 	rdIdentity();
 	rdPerspective(rdCamera_pCurCamera->fov, rdCamera_pCurCamera->screenAspectRatio, rdCamera_pCurCamera->pClipFrustum->field_0.y, rdCamera_pCurCamera->pClipFrustum->field_0.z);
 
 	rdMatrixMode(RD_MATRIX_MODEL);
 	rdIdentity();
+
+	sithRender_DrawBackdrop();
+
+	rdRenderPass("sithRender_Draw", 1, RD_RENDERPASS_CLEAR_DEPTH | (jkPlayer_enableSSAO ? RD_RENDERPASS_AMBIENT_OCCLUSION : 0));
+
+	rdMatrixMode(RD_MATRIX_VIEW);
+	rdIdentity();
+	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
+
+	rdSetCullFlags(1);
+
 #endif
 
     //printf("------\n");
@@ -1165,6 +1251,15 @@ void sithRender_DrawSurface(sithSurface* surface)
 {
 	if(!surface->surfaceInfo.face.material)
 		return;
+		
+	// sky punches through to the backdrop if there is one
+	if ((surface->surfaceFlags & (SITH_SURFACE_HORIZON_SKY | SITH_SURFACE_CEILING_SKY))
+		&& sithWorld_pCurrentWorld->backdropSector
+		&& sithWorld_pCurrentWorld->backdropSector != surface->parent_sector
+	)
+	{
+		return;
+	}
 
 	int wallCel = surface->surfaceInfo.face.wallCel;
 	rdBindMaterial(surface->surfaceInfo.face.material, wallCel);
@@ -1223,6 +1318,11 @@ void sithRender_DrawSurface(sithSurface* surface)
 		rdTexOffseti(surface->surfaceInfo.face.clipIdk.x, surface->surfaceInfo.face.clipIdk.y);
 	}
 
+	if(surface->parent_sector->flags & SITH_SECTOR_DRAW_AS_3DO)
+		rdSetCullMode(RD_CULL_MODE_FRONT);
+	else
+		rdSetCullMode(RD_CULL_MODE_BACK);
+
 	rdSetTexMode(texMode);
 	rdTexFilterMode((surface->surfaceInfo.face.type & RD_FF_TEX_FILTER_NEAREST) ? RD_TEXFILTER_NEAREST : RD_TEXFILTER_BILINEAR);
 
@@ -1238,8 +1338,14 @@ void sithRender_DrawSurface(sithSurface* surface)
 	rdAmbientLightSH(NULL);
 	//rdAmbientLightSH(&surface->parent_sector->ambientSH);
 
+	int isAlpha = (surface->surfaceInfo.face.type & RD_FF_TEX_TRANSLUCENT) != 0;
+
+	// if this is a ceiling sky and we have a backdrop, render it with alpha as a cloud layer
+	//if ((surface->surfaceFlags & SITH_SURFACE_CEILING_SKY) && sithWorld_pCurrentWorld->backdropSector)
+	//	isAlpha = 1;
+
 	float alpha = 1.0f;
-	if ((surface->surfaceInfo.face.type & RD_FF_TEX_TRANSLUCENT) != 0)
+	if (isAlpha)
 	{
 		alpha = 90.0f / 255.0f;
 		rdSetBlendEnabled(RD_TRUE);
@@ -1303,6 +1409,9 @@ void sithRender_RenderLevelGeometry()
 	for (int i = 0; i < sithRender_numSectors; ++i)
 	{
 		sithSector* pSector = sithRender_aSectors[i];
+		if (pSector->flags & SITH_SECTOR_BACKDROP)
+			continue;
+
 		if (sithRender_lightingIRMode)
 		{
 			rdVector3 ambient;

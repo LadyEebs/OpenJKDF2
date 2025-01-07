@@ -2395,6 +2395,9 @@ typedef struct sithWorld
     sDwLaser* paLasers;
     sDwLaser* pLastLaser;
 #endif
+#ifdef RENDER_DROID2
+	sithSector* backdropSector;
+#endif
 } sithWorld;
 
 typedef struct sithWorld_MemoryCounters
@@ -2804,6 +2807,9 @@ typedef struct sithSector
     uint32_t renderTick;
     uint32_t clipVisited;
     rdClipFrustum* clipFrustum;
+#ifdef RENDER_DROID2
+	sithSector* nextBackdropSector;
+#endif
 } sithSector;
 
 typedef struct sithSectorEntry

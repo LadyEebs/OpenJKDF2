@@ -166,6 +166,15 @@ int sithSector_Load(sithWorld *world, int tmp)
             {
                 sectors->surfaces[v15].parent_sector = sectors;
             }
+
+#ifdef RENDER_DROID2
+			if (sectors->flags & SITH_SECTOR_BACKDROP)
+			{
+				sectors->nextBackdropSector = world->backdropSector;
+				world->backdropSector = sectors;
+			}
+#endif
+
             ++sectors;
             if ( ++v21 >= sectors_amt )
                 return 1;

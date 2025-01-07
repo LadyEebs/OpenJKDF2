@@ -1207,6 +1207,11 @@ typedef enum SITH_SECTOR_FLAG
   SITH_SECTOR_2000 = 0x2000,
   SITH_SECTOR_AUTOMAPVISIBLE = 0x4000,
   SITH_SECTOR_SYNC = 0x8000,
+
+#ifdef RENDER_DROID2
+  SITH_SECTOR_DRAW_AS_3DO = 0x20000000, // used for backdrop decor sectors (different than JEDs preview as 3do, as that gets cleared on export)
+  SITH_SECTOR_BACKDROP = 0x40000000, // only one of these at a time
+#endif
 } SITH_SECTOR_FLAG;
 
 
