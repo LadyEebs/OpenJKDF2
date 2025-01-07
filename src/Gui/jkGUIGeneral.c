@@ -125,7 +125,9 @@ int jkGuiGeneral_ShowAdvanced()
     int v0; // esi
 
     jkGui_sub_412E20(&jkGuiGeneral_menuAdvanced, 100, 104, 100);
+#ifdef FIXED_TIMESTEP_PHYS
     jkGuiGeneral_aElementsAdvanced[9].selectedTextEntry = jkPlayer_bJankyPhysics;
+#endif
     jkGuiGeneral_aElementsAdvanced[10].selectedTextEntry = jkPlayer_bKeepCorpses;
     jkGuiGeneral_aElementsAdvanced[11].selectedTextEntry = jkPlayer_bUseOldPlayerPhysics;
 #ifdef PUPPET_PHYSICS
@@ -142,7 +144,9 @@ int jkGuiGeneral_ShowAdvanced()
 
         if ( v0 != -1 )
         {
-            jkPlayer_bJankyPhysics = jkGuiGeneral_aElementsAdvanced[9].selectedTextEntry;
+#ifdef FIXED_TIMESTEP_PHYS
+			jkPlayer_bJankyPhysics = jkGuiGeneral_aElementsAdvanced[9].selectedTextEntry;
+#endif
             jkPlayer_bKeepCorpses = jkGuiGeneral_aElementsAdvanced[10].selectedTextEntry;
             jkPlayer_bUseOldPlayerPhysics = jkGuiGeneral_aElementsAdvanced[11].selectedTextEntry;
 #ifdef PUPPET_PHYSICS
