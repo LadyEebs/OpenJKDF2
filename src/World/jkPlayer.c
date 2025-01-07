@@ -32,6 +32,7 @@
 #include "General/stdJSON.h"
 #include "Platform/std3D.h"
 #include "Main/sithCvar.h"
+#include "Primitives/rdMath.h"
 #ifdef DYNAMIC_POV
 #include "World/sithSprite.h"
 #include "Engine/sithCollision.h"
@@ -1192,18 +1193,17 @@ void jkPlayer_DrawPov()
 		rdMatrix34 rotateMatNoWaggle;
 		if(!jkPlayer_aimLock)
 		{
-			float timeScale = 1.0f;
-			if (g_debugmodeFlags & DEBUGFLAG_SLOWMO)
-				timeScale = 0.2;
-
 			static rdVector3 lastRotVelNorm = {0,0,0};
+			rdVector3 angVel = player->physicsParams.angVel;
+			rdMath_ClampVectorRange(&angVel, -720.0, 720.0);
+
 			rdVector3 rotVelNorm;
-			rotVelNorm.x = -timeScale * player->physicsParams.angVel.x / player->physicsParams.maxRotVel;
-			rotVelNorm.y = -timeScale * player->physicsParams.angVel.y / player->physicsParams.maxRotVel;
-			rotVelNorm.z = -timeScale * player->physicsParams.angVel.z / player->physicsParams.maxRotVel;
-			jkSaber_rotateVec.x = lastRotVelNorm.x + (rotVelNorm.x - lastRotVelNorm.x) * 0.8f;
-			jkSaber_rotateVec.y = lastRotVelNorm.y + (rotVelNorm.y - lastRotVelNorm.y) * 0.8f;
-			jkSaber_rotateVec.z = lastRotVelNorm.z + (rotVelNorm.z - lastRotVelNorm.z) * 0.8f;
+			rotVelNorm.x = -sithTime_deltaSeconds * angVel.x;
+			rotVelNorm.y = -sithTime_deltaSeconds * angVel.y;
+			rotVelNorm.z = -sithTime_deltaSeconds * angVel.z;
+			jkSaber_rotateVec.x = lastRotVelNorm.x + (rotVelNorm.x - lastRotVelNorm.x) * 0.1f;
+			jkSaber_rotateVec.y = lastRotVelNorm.y + (rotVelNorm.y - lastRotVelNorm.y) * 0.1f;
+			jkSaber_rotateVec.z = lastRotVelNorm.z + (rotVelNorm.z - lastRotVelNorm.z) * 0.1f;
 			lastRotVelNorm = jkSaber_rotateVec;
 
 			// Added: add a small rotation based on pitch
