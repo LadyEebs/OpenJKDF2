@@ -149,7 +149,11 @@ void sithTrackThing_Tick(sithThing *thing, float deltaSeconds)
                             a6 = stdMath_ClipPrecision(rdVector_Normalize3Acc(&a1a));
                             if ( a6 != 0.0 )
                             {
-                                v18 = sithCollision_UpdateThingCollision(thing, &a1a, a6, 0x44);
+								int flags = 0x44;
+#ifdef PUPPET_PHYSICS
+								flags |= SITH_RAYCAST_IGNORE_CORPSES;
+#endif
+                                v18 = sithCollision_UpdateThingCollision(thing, &a1a, a6, flags);
                                 if ( v18 < a6 )
                                 {
                                     rdMatrix_Copy34(&rotMat, &thing->trackParams.moveFrameOrientation);
@@ -184,7 +188,11 @@ void sithTrackThing_Tick(sithThing *thing, float deltaSeconds)
                     deltaSecondsa = stdMath_ClipPrecision(thing->trackParams.lerpSpeed * v22);
                     if ( deltaSecondsa != 0.0 )
                     {
-                        v26 = sithCollision_UpdateThingCollision(thing, &thing->trackParams.vel, deltaSecondsa, 68);
+						int flags = 68;
+					#ifdef PUPPET_PHYSICS
+						flags |= SITH_RAYCAST_IGNORE_CORPSES;
+					#endif
+                        v26 = sithCollision_UpdateThingCollision(thing, &thing->trackParams.vel, deltaSecondsa, flags);
                         a3a = v26;
                         if ( v26 >= deltaSecondsa )
                         {
