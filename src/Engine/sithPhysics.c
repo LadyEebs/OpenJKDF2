@@ -1424,6 +1424,9 @@ void sithPhysics_ThingWake(sithThing* pThing)
 
 	pThing->physicsParams.physflags &= ~SITH_PF_RESTING;
 	pThing->physicsParams.restTimer = 0.0f;
+
+	if (pThing->constraintRoot)
+		sithPhysics_ThingWake(pThing->constraintRoot);
 }
 
 #endif
