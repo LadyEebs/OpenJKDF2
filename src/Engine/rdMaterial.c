@@ -201,7 +201,8 @@ LABEL_21:
         rdroid_pHS->fileRead(
           mat_file__,
           (void *)(*texture_struct)->surface_lock_alloc,
-          (*texture_struct)->format.texture_size_in_bytes);
+         // (*texture_struct)->format.texture_size_in_bytes // fixme: something wrong here
+			format.width * format.height * (format.format.bpp >> 3));
         stdDisplay_VBufferUnlock(*texture_struct);
 #else
         std_pHS->fseek(mat_file__, format.width*format.height*(format.format.colorMode?2:1), SEEK_CUR);
