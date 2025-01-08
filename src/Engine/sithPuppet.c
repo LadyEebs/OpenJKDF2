@@ -1519,7 +1519,7 @@ static int sithPuppet_CheckForStillBodies(sithThing* thing, float deltaSeconds)
 	}
 
 	// if there wasn't substantial movement among the joints during the rest period, we can rest
-	return (maxDistSq < 0.003f && maxAngle < 15.0f);
+	return (maxDistSq < 0.015f && maxAngle < 15.0f);
 }
 
 static int sithPuppet_CheckVelocities(sithThing* thing, float deltaSeconds)
@@ -1534,7 +1534,7 @@ static int sithPuppet_CheckVelocities(sithThing* thing, float deltaSeconds)
 		sithPuppetJoint* pJoint = &thing->puppet->physics->joints[jointIdx];
 
 		float velLenSq = rdVector_Dot3(&pJoint->thing.physicsParams.vel, &pJoint->thing.physicsParams.vel);
-		if (velLenSq > 0.001f)
+		if (velLenSq > 0.005f)
 			return 0;
 
 		float rotVelLenSq = rdVector_Dot3(&pJoint->thing.physicsParams.rotVel, &pJoint->thing.physicsParams.rotVel);

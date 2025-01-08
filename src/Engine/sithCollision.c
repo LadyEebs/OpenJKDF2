@@ -637,10 +637,6 @@ void sithCollision_sub_4E7670(sithThing *thing, rdMatrix34 *orient)
         }
         rdVector_Zero3(&i->lookOrientation.scale);
     }
-#ifdef PUPPET_PHYSICS
-	sithPhysics_ThingWake(thing);
-#endif
-
 }
 
 float sithCollision_UpdateThingCollision(sithThing *pThing, rdVector3 *a2, float a6, int flags)
@@ -707,7 +703,6 @@ float sithCollision_UpdateThingCollision(sithThing *pThing, rdVector3 *a2, float
 #ifdef PUPPET_PHYSICS
 	//if (pThing->type == SITH_THING_CORPSE)
 		//flags |= SITH_RAYCAST_IGNORE_CORPSES; // disable collisions between corpse bodies for now
-	sithPhysics_ThingWake(pThing);
 #endif
 	direction = *a2;
     v10 = pThing->attachedParentMaybe;
@@ -715,6 +710,12 @@ float sithCollision_UpdateThingCollision(sithThing *pThing, rdVector3 *a2, float
     {
         if (v10->attach_flags & SITH_ATTACH_NO_MOVE)
             continue;
+#ifdef PUPPET_PHYSICS
+		// wake the attached thing
+		sithPhysics_ThingWake(v10);
+		if (v10->constraintRoot)
+			sithPhysics_ThingWake(v10->constraintRoot);
+#endif
         v11 = sithCollision_UpdateThingCollision(v10, &direction, a6, 64);
         if ( v11 >= a6 ) continue;
         
