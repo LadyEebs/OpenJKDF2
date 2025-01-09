@@ -2,34 +2,26 @@
 #include "Win95/std.h"
 #include "stdPlatform.h"
 
-#ifdef JOB_SYSTEM
-#pragma once
+#ifdef SDL2_RENDER
 
 #include <stdint.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#else
-#include <pthread.h>
-#include <unistd.h>
-#include <stdatomic.h> // Requires C11 or later...
-#endif
+#include "SDL.h"
+#include "SDL_atomic.h"
+#include "SDL_cpuinfo.h"
+#include "SDL_mutex.h"
+#include "SDL_thread.h"
 
 typedef struct stdJob
 {
 	stdJob_function_t function;         // The actual job function
 	void*             args;             // arguments for the function
-#ifdef _WIN32
-	HANDLE            completionEvent;  // Event to signal job completion on Windows
-#else
-	pthread_mutex_t   completionMutex;  // Mutex to protect completion flag
-	pthread_cond_t    completionCond;   // Condition variable to signal job completion
-#endif
-	volatile int      isCompleted;      // Completion flag (1 = completed, 0 = not completed)
+	SDL_mutex*        completionMutex;  // Mutex to protect completion flag
+	SDL_cond*         completionCond;   // Condition variable to signal job completion
+	SDL_atomic_t      isCompleted;      // Completion flag (1 = completed, 0 = not completed)
 } stdJob;
 
 typedef struct stdRingBuffer
@@ -38,31 +30,19 @@ typedef struct stdRingBuffer
 	uint32_t         size;
 	uint32_t         front;
 	uint32_t         back;
-#ifdef _WIN32
-	CRITICAL_SECTION lock;     // Mutex for thread safety
-	HANDLE           notEmpty; // Event to signal buffer is not empty
-#else
-	pthread_mutex_t  lock;     // Mutex for thread safety (POSIX)
-	pthread_cond_t   notEmpty; // Condition variable to signal buffer is not empty
-#endif
+	SDL_mutex*       lock;     // Mutex for thread safety
+	SDL_cond*        notEmpty; // Condition variable to signal buffer is not empty
 } stdRingBuffer;
 
 typedef struct stdJobSystem
 {
 	uint32_t          numThreads;
 	stdRingBuffer     jobPool;
-#ifdef _WIN32
-	HANDLE*           workerThreads;
-	HANDLE            wakeEvent;
-	volatile LONG     currentLabel;
-	volatile LONG     finishedLabel;
-#else
-	pthread_t*        workerThreads;
-	pthread_mutex_t   wakeMutex;
-	pthread_cond_t    wakeCondition;
-	atomic_uint_fast64_t currentLabel;
-	atomic_uint_fast64_t finishedLabel;
-#endif
+	SDL_Thread**      workerThreads;
+	SDL_mutex*        wakeMutex;
+	SDL_cond*         wakeCondition;
+	SDL_atomic_t      currentLabel;
+	SDL_atomic_t      finishedLabel;
 } stdJobSystem;
 
 typedef struct stdJobGroupArgs
@@ -90,56 +70,37 @@ void stdJob_InitRingBuffer(stdRingBuffer* rb, uint32_t size)
 	rb->back = 0;
 
 	// Initialize synchronization resources for each job
-#ifdef _WIN32
-	InitializeCriticalSection(&rb->lock);
-	rb->notEmpty = CreateEvent(NULL, FALSE, FALSE, NULL);
-	// Create a completion event for each job
-	for (uint32_t i = 0; i < size; ++i)
-		rb->buffer[i].completionEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-#else
-	pthread_mutex_init(&rb->lock, NULL);
-	pthread_cond_init(&rb->notEmpty, NULL);
-	
+	rb->lock = SDL_CreateMutex();
+	rb->notEmpty = SDL_CreateCond();
+
 	// Initialize mutex and condition variable for each job
 	for (uint32_t i = 0; i < size; ++i)
 	{
-		pthread_mutex_init(&rb->buffer[i].completionMutex, NULL);
-		pthread_cond_init(&rb->buffer[i].completionCond, NULL);
+		rb->buffer[i].completionMutex = SDL_CreateMutex();
+		rb->buffer[i].completionCond = SDL_CreateCond();
 	}
-#endif
 }
 
 int stdJob_PushRingBuffer(stdRingBuffer* rb, stdJob_function_t job, void* args)
 {
 	int result = 0;
 
-#ifdef _WIN32
-	EnterCriticalSection(&rb->lock);
-#else
-	pthread_mutex_lock(&rb->lock);
-#endif
+	SDL_LockMutex(rb->lock);
 
 	uint32_t next_back = (rb->back + 1) % rb->size;
 	if (next_back != rb->front) // Check if buffer is not full
 	{
 		rb->buffer[rb->back].function = job;
 		rb->buffer[rb->back].args = args;
-		rb->buffer[rb->back].isCompleted = 0;
+		SDL_AtomicSet(&rb->buffer[rb->back].isCompleted, 0);
 		rb->back = next_back;
 		result = 1;
 
-#ifdef _WIN32
-		SetEvent(rb->notEmpty); // Signal that the buffer is not empty
-#else
-		pthread_cond_signal(&rb->notEmpty); // Signal that the buffer is not empty
-#endif
+		SDL_CondSignal(rb->notEmpty);
 	}
 
-#ifdef _WIN32
-	LeaveCriticalSection(&rb->lock);
-#else
-	pthread_mutex_unlock(&rb->lock);
-#endif
+	SDL_UnlockMutex(rb->lock);
+
 	return result;
 }
 
@@ -147,22 +108,10 @@ int stdJob_PopRingBuffer(stdRingBuffer* rb, stdJob** job)
 {
 	int result = 0;
 
-#ifdef _WIN32
-	EnterCriticalSection(&rb->lock);
-#else
-	pthread_mutex_lock(&rb->lock);
-#endif
+	SDL_LockMutex(rb->lock);
 
 	while (rb->front == rb->back) // Wait if the buffer is empty
-	{
-#ifdef _WIN32
-		LeaveCriticalSection(&rb->lock);
-		WaitForSingleObject(rb->notEmpty, INFINITE);
-		EnterCriticalSection(&rb->lock);
-#else
-		pthread_cond_wait(&rb->notEmpty, &rb->lock);
-#endif
-	}
+		SDL_CondWait(rb->notEmpty, rb->lock);
 
 	if (rb->front != rb->back) // Buffer is not empty
 	{
@@ -171,11 +120,7 @@ int stdJob_PopRingBuffer(stdRingBuffer* rb, stdJob** job)
 		result = 1;
 	}
 
-#ifdef _WIN32
-	LeaveCriticalSection(&rb->lock);
-#else
-	pthread_mutex_unlock(&rb->lock);
-#endif
+	SDL_UnlockMutex(rb->lock);
 
 	return result;
 }
@@ -187,13 +132,8 @@ void stdJob_FreeRingBuffer(stdRingBuffer* rb)
 	{
 		stdJob* job = &rb->buffer[i];
 		job->args = NULL;
-#ifdef _WIN32
-		if(job->completionEvent)
-			CloseHandle(job->completionEvent); // Cleanup Windows event
-#else
-		pthread_mutex_destroy(&job->completionMutex); // Cleanup POSIX mutex
-		pthread_cond_destroy(&job->completionCond);   // Cleanup POSIX condition variable
-#endif
+		SDL_DestroyMutex(job->completionMutex); // Cleanup mutex
+		SDL_DestroyCond(job->completionCond);   // Cleanup condition variable
 	}
 
 	if(rb->buffer)
@@ -201,85 +141,28 @@ void stdJob_FreeRingBuffer(stdRingBuffer* rb)
 		std_pHS->free(rb->buffer);
 		rb->buffer = NULL;
 	}
-#ifdef _WIN32
-	DeleteCriticalSection(&rb->lock);
-	CloseHandle(rb->notEmpty);
-#else
-	pthread_mutex_destroy(&rb->lock);
-	pthread_cond_destroy(&rb->notEmpty);
-#endif
-}
 
-void stdJob_AddToCurrentLabel(uint32_t value)
-{
-#ifdef _WIN32
-	InterlockedAdd(&stdJob_jobSystem.currentLabel, value);
-#else
-	atomic_fetch_add_explicit(&stdJob_jobSystem.currentLabel, value, memory_order_relaxed);
-#endif
-}
-
-void stdJob_IncrementCurrentLabel()
-{
-#ifdef _WIN32
-	InterlockedIncrement(&stdJob_jobSystem.currentLabel);
-#else
-	atomic_fetch_add_explicit(&stdJob_jobSystem.currentLabel, 1, memory_order_relaxed);
-#endif
-}
-
-void stdJob_IncrementFinishedLabel()
-{
-#ifdef _WIN32
-	InterlockedIncrement(&stdJob_jobSystem.finishedLabel);
-#else
-	atomic_fetch_add_explicit(&stdJob_jobSystem.finishedLabel, 1, memory_order_relaxed);
-#endif
-}
-
-uint64_t stdJob_GetCurrentLabel()
-{
-#ifdef _WIN32
-	return InterlockedCompareExchange(&stdJob_jobSystem.currentLabel, 0, 0);
-#else
-	return atomic_load_explicit(&stdJob_jobSystem.currentLabel, memory_order_relaxed);
-#endif
-}
-
-uint64_t stdJob_GetFinishedLabel()
-{
-#ifdef _WIN32
-	return InterlockedCompareExchange(&stdJob_jobSystem.finishedLabel, 0, 0);
-#else
-	return atomic_load_explicit(&stdJob_jobSystem.finishedLabel, memory_order_relaxed);
-#endif
+	SDL_DestroyMutex(rb->lock);
+	SDL_DestroyCond(rb->notEmpty);
 }
 
 int stdJob_IsBusy()
 {
-	return stdJob_GetFinishedLabel() < stdJob_GetCurrentLabel();
+	return SDL_AtomicGet(&stdJob_jobSystem.finishedLabel) < SDL_AtomicGet(&stdJob_jobSystem.currentLabel);
 }
 
 void stdJob_Complete(stdJob* job)
 {
-#ifdef _WIN32
-	SetEvent(job->completionEvent);  // Signal completion for Windows
-#else
-	pthread_mutex_lock(&job->completionMutex);
-	pthread_cond_signal(&job->completionCond); // Notify completion in POSIX
-	pthread_mutex_unlock(&job->completionMutex);
-#endif
-	job->isCompleted = 1;
-	stdJob_IncrementFinishedLabel();
+	SDL_LockMutex(job->completionMutex);
+	SDL_CondSignal(job->completionCond); // Notify completion
+	SDL_UnlockMutex(job->completionMutex);
+
+	SDL_AtomicSet(&job->isCompleted, 1);
+	SDL_AtomicIncRef(&stdJob_jobSystem.finishedLabel);
 }
 
-#ifdef _WIN32
-DWORD WINAPI stdJob_WorkerThread(LPVOID param)
+void stdJob_WorkerThread(void* param)
 {
-#else
-void* stdJob_WorkerThread(void* param)
-{
-#endif
 	stdJobSystem* jobs = (stdJobSystem*)param;
 	stdJob* job = NULL;
 	while (1)
@@ -292,19 +175,11 @@ void* stdJob_WorkerThread(void* param)
 		}
 		else
 		{
-#ifdef _WIN32
-			WaitForSingleObject(jobs->wakeEvent, INFINITE); // Wait on Windows event
-#else
-			pthread_mutex_lock(&jobs->wakeMutex);
-			pthread_cond_wait(&jobs->wakeCondition, &jobs->wakeMutex);
-			pthread_mutex_unlock(&jobs->wakeMutex);
-#endif
+			SDL_LockMutex(jobs->wakeMutex);
+			SDL_CondWait(jobs->wakeCondition, jobs->wakeMutex);
+			SDL_UnlockMutex(jobs->wakeMutex);
 		}
-	}
-#ifdef _WIN32
-	return 0;
-#endif
-}
+	}}
 
 void stdJob_TestJob(void* data)
 {
@@ -313,81 +188,51 @@ void stdJob_TestJob(void* data)
 
 void stdJob_Startup()
 {
-	stdJob_jobSystem.finishedLabel = 0;
-	stdJob_jobSystem.currentLabel = 0;
+	SDL_AtomicSet(&stdJob_jobSystem.finishedLabel, 0);
+	SDL_AtomicSet(&stdJob_jobSystem.currentLabel, 0);
 
-#ifdef _WIN32
-	SYSTEM_INFO sysInfo;
-	GetSystemInfo(&sysInfo);
-	uint32_t numCores = sysInfo.dwNumberOfProcessors;
-#else
-	long cores = sysconf(_SC_NPROCESSORS_ONLN);
-	uint32_t numCores = (cores > 0) ? (uint32_t)cores : 1; // Fallback to 1 if sysconf fails
-#endif
+	int cores = SDL_GetCPUCount();
+	uint32_t numCores = (cores > 0) ? (uint32_t)cores : 1;
+
 	stdPlatform_Printf("Starting job system with %d threads\n", numCores);
 	stdJob_jobSystem.numThreads = numCores > 0 ? numCores : 1;
 
 	stdJob_InitRingBuffer(&stdJob_jobSystem.jobPool, 256);
-#ifdef _WIN32
-	stdJob_jobSystem.workerThreads = (HANDLE*)std_pHS->alloc(stdJob_jobSystem.numThreads * sizeof(HANDLE));
-	if (!stdJob_jobSystem.workerThreads)
-	{
-		stdPrintf(std_pHS->errorPrint, ".\\General\\stdJob.c", __LINE__, "Failed to allocate worker thread handles\n");
-		exit(EXIT_FAILURE);
-	}
 
-	stdJob_jobSystem.wakeEvent = CreateEvent(NULL, FALSE, FALSE, NULL); // Create event for signaling workers
-	if (!stdJob_jobSystem.wakeEvent)
-	{
-		stdPrintf(std_pHS->errorPrint, ".\\General\\stdJob.c", __LINE__, "Failed to create wake event\n");
-		exit(EXIT_FAILURE);
-	}
-
-	for (uint32_t threadID = 0; threadID < stdJob_jobSystem.numThreads; ++threadID)
-	{
-		stdJob_jobSystem.workerThreads[threadID] = CreateThread(NULL, 0, stdJob_WorkerThread, &stdJob_jobSystem, 0, NULL);
-		if (!stdJob_jobSystem.workerThreads[threadID])
-		{
-			stdPrintf(std_pHS->errorPrint, ".\\General\\stdJob.c", __LINE__, "Failed to create worker thread %u\n", threadID);
-			exit(EXIT_FAILURE);
-		}
-
-		// Set thread affinity
-		DWORD_PTR affinityMask = 1ull << threadID;
-		SetThreadAffinityMask(stdJob_jobSystem.workerThreads[threadID], affinityMask);
-		
-		// Set thread name
-		SetThreadDescription(stdJob_jobSystem.workerThreads[threadID], L"stdJobThread");
-	}
-#else
-	stdJob_jobSystem.workerThreads = (pthread_t*)std_pHS->alloc(stdJob_jobSystem.numThreads * sizeof(pthread_t));
+	stdJob_jobSystem.workerThreads = (SDL_Thread**)std_pHS->alloc(stdJob_jobSystem.numThreads * sizeof(SDL_Thread*));
 	if (!stdJob_jobSystem.workerThreads)
 	{
 		stdPrintf(std_pHS->errorPrint, ".\\General\\stdJob.c", __LINE__, "Failed to allocate worker thread handles\n");
 		exit(EXIT_FAILURE);
 	}
 	
-	if (pthread_mutex_init(&stdJob_jobSystem.wakeMutex, NULL) != 0)
+	stdJob_jobSystem.wakeMutex = SDL_CreateMutex();
+	if (!stdJob_jobSystem.wakeMutex)
 	{
-		stdPrintf(std_pHS->errorPrint, ".\\General\\stdJob.c", __LINE__, "Failed to initialize wake mutex\n");
+		stdPrintf(std_pHS->errorPrint, ".\\General\\stdJob.c", __LINE__, "Failed to initialize wake mutex: %s\n", SDL_GetError());
 		exit(EXIT_FAILURE);
 	}
 
-	if (pthread_cond_init(&stdJob_jobSystem.wakeCondition, NULL) != 0)
+	stdJob_jobSystem.wakeCondition = SDL_CreateCond();
+	if (!stdJob_jobSystem.wakeCondition)
 	{
-		stdPrintf(std_pHS->errorPrint, ".\\General\\stdJob.c", __LINE__, "Failed to initialize wake condition variable\n");
+		stdPrintf(std_pHS->errorPrint, ".\\General\\stdJob.c", __LINE__, "Failed to initialize wake condition variable: %s\n", SDL_GetError());
 		exit(EXIT_FAILURE);
 	}
 
 	for (uint32_t threadID = 0; threadID < stdJob_jobSystem.numThreads; ++threadID)
 	{
-		if (pthread_create(&stdJob_jobSystem.workerThreads[threadID], NULL, stdJob_WorkerThread, &stdJob_jobSystem) != 0)
+		stdJob_jobSystem.workerThreads[threadID] = SDL_CreateThread(stdJob_WorkerThread, "stdJobThread", &stdJob_jobSystem);
+		if (!stdJob_jobSystem.workerThreads[threadID])
 		{
-			stdPrintf(std_pHS->errorPrint, ".\\General\\stdJob.c", __LINE__, "Failed to create worker thread %u\n", threadID);
+			stdPrintf(std_pHS->errorPrint, ".\\General\\stdJob.c", __LINE__, "Failed to create worker thread %u: %s\n", threadID, SDL_GetError());
 			exit(EXIT_FAILURE);
 		}
+
+		// Set thread affinity
+		//DWORD_PTR affinityMask = 1ull << threadID;
+		//SetThreadAffinityMask(stdJob_jobSystem.workerThreads[threadID], affinityMask);
 	}
-#endif
 
 	stdPlatform_Printf("Kicking off test job\n");
 	stdJob_Execute(stdJob_TestJob, NULL);
@@ -397,20 +242,12 @@ void stdJob_Shutdown()
 {
 	stdJob_FreeRingBuffer(&stdJob_jobSystem.jobPool);
 
-#ifdef _WIN32
 	for (uint32_t i = 0; i < stdJob_jobSystem.numThreads; ++i)
-		CloseHandle(stdJob_jobSystem.workerThreads[i]);
+		SDL_WaitThread(stdJob_jobSystem.workerThreads[i], NULL); // Wait for thread to finish
 
-	CloseHandle(stdJob_jobSystem.wakeEvent); // Close the event handle
-#else
-	for (uint32_t i = 0; i < stdJob_jobSystem.numThreads; ++i)
-	{
-		pthread_cancel(stdJob_jobSystem.workerThreads[i]); // Terminate thread
-		pthread_join(stdJob_jobSystem.workerThreads[i], NULL); // Wait for thread to finish
-	}
-	pthread_mutex_destroy(&stdJob_jobSystem.wakeMutex);
-	pthread_cond_destroy(&stdJob_jobSystem.wakeCondition);
-#endif
+	SDL_DestroyMutex(stdJob_jobSystem.wakeMutex);
+	SDL_DestroyCond(stdJob_jobSystem.wakeCondition);
+
 	if (stdJob_jobSystem.workerThreads)
 	{
 		std_pHS->free(stdJob_jobSystem.workerThreads);
@@ -422,33 +259,17 @@ void stdJob_Wait()
 {
 	// Polling
 	while (stdJob_IsBusy())
-	{
-#ifdef _WIN32
-		SetEvent(stdJob_jobSystem.wakeEvent); // Signal all workers on Windows to check for jobs
-#else
-		pthread_cond_signal(&stdJob_jobSystem.wakeCondition); // Signal workers in POSIX
-		sched_yield();  // Yield the processor
-#endif
-	}
+		SDL_CondSignal(stdJob_jobSystem.wakeCondition); // Signal workers
 }
 
 uint32_t stdJob_Execute(stdJob_function_t job, void* args)
 {
-	stdJob_IncrementCurrentLabel();
+	SDL_AtomicIncRef(&stdJob_jobSystem.currentLabel);
+
 	while (!stdJob_PushRingBuffer(&stdJob_jobSystem.jobPool, job, args))
-	{
-#ifdef _WIN32
-		SetEvent(stdJob_jobSystem.wakeEvent); // Signal workers on Windows to check for jobs
-#else
-		pthread_cond_signal(&stdJob_jobSystem.wakeCondition); // Signal workers in POSIX
-		sched_yield();
-#endif
-	}
-#ifdef _WIN32
-	SetEvent(stdJob_jobSystem.wakeEvent); // Notify worker threads on Windows
-#else
-	pthread_cond_signal(&stdJob_jobSystem.wakeCondition); // Notify worker threads in POSIX
-#endif
+		SDL_CondSignal(stdJob_jobSystem.wakeCondition); // Signal workers
+
+	SDL_CondSignal(stdJob_jobSystem.wakeCondition); // Notify worker threads
 
 	return (stdJob_jobSystem.jobPool.back + stdJob_jobSystem.jobPool.size - 1) % stdJob_jobSystem.jobPool.size;
 }
@@ -459,16 +280,11 @@ void stdJob_WaitForHandle(uint32_t handle)
 		return;
 
 	stdJob* job = &stdJob_jobSystem.jobPool.buffer[handle];
-#ifdef _WIN32
-	WaitForSingleObject(job->completionEvent, INFINITE);
-#else
-	pthread_mutex_lock(&job->completionMutex);
-	while (!job->isCompleted)
-	{
-		pthread_cond_wait(&job->completionCond, &job->completionMutex);
-	}
-	pthread_mutex_unlock(&job->completionMutex);
-#endif
+
+	SDL_LockMutex(job->completionMutex);
+	while (!SDL_AtomicGet(&job->isCompleted))
+		SDL_CondWait(job->completionCond, job->completionMutex);
+	SDL_UnlockMutex(job->completionMutex);
 }
 
 void stdJob_ExecuteGroup(void* param)
@@ -490,7 +306,7 @@ void stdJob_Dispatch(uint32_t jobCount, uint32_t groupSize, void (*job)(uint32_t
 		return;
 
 	uint32_t groupCount = (jobCount + groupSize - 1) / groupSize;
-	stdJob_AddToCurrentLabel(groupCount);
+	SDL_AtomicAdd(&stdJob_jobSystem.currentLabel, groupCount);
 
 	for (uint32_t groupIndex = 0; groupIndex < groupCount; ++groupIndex)
 	{
@@ -508,21 +324,19 @@ void stdJob_Dispatch(uint32_t jobCount, uint32_t groupSize, void (*job)(uint32_t
 
 		stdJob_function_t jobGroup = stdJob_ExecuteGroup;
 		while (!stdJob_PushRingBuffer(&stdJob_jobSystem.jobPool, jobGroup, args))
-		{
-#ifdef _WIN32
-			SetEvent(stdJob_jobSystem.wakeEvent); // Notify worker threads on Windows
-#else
-			pthread_cond_signal(&stdJob_jobSystem.wakeCondition); // Notify worker threads in POSIX
-			sched_yield();
-#endif
-		}
+			SDL_CondSignal(stdJob_jobSystem.wakeCondition); // Notify worker threads
 
-#ifdef _WIN32
-		SetEvent(stdJob_jobSystem.wakeEvent); // Notify worker threads on Windows
-#else
-		pthread_cond_signal(&stdJob_jobSystem.wakeCondition); // Notify worker threads in POSIX
-#endif
+		SDL_CondSignal(stdJob_jobSystem.wakeCondition); // Notify worker threads
 	}
 }
+
+#else
+
+void     stdJob_Startup() {}
+void     stdJob_Shutdown() {}
+int      stdJob_IsBusy() { return 0; }
+void     stdJob_Wait() {}
+uint32_t stdJob_Execute(stdJob_function_t job, void* args) { return -1; }
+void     stdJob_Dispatch(uint32_t jobCount, uint32_t groupSize, void (*job)(uint32_t, uint32_t)) {}
 
 #endif
