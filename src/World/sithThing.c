@@ -1756,7 +1756,11 @@ int sithThing_ParseArgs(stdConffileArg *arg, sithThing* pThing)
     }
     if ( v2 )
         return 1;
-	if (pThing->moveType == SITH_MT_PHYSICS)
+	if (pThing->moveType == SITH_MT_PHYSICS
+#ifdef PUPPET_PHYSICS
+		|| pThing->moveType == SITH_MT_PUPPET
+#endif
+	)
 	{
 		v8 = sithPhysics_LoadThingParams(arg, pThing, paramIdx);
 	}
