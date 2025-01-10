@@ -275,6 +275,11 @@ void sithActor_SpawnDeadBodyMaybe(sithThing *thing, sithThing *a3, int a4, int j
             }
         }
 
+#ifdef QOL_IMPROVEMENTS
+		if (thing == sithPlayer_pLocalPlayerThing && !sithNet_isMulti && (g_debugmodeFlags & DEBUGFLAG_NODEATH))
+			sithPlayer_debug_loadauto(thing);
+#endif
+
         thing->physicsParams.physflags &= ~SITH_PF_CROUCHING;
         if ( thing->type != SITH_THING_PLAYER )
         {

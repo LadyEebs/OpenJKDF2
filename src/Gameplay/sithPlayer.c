@@ -240,11 +240,68 @@ void sithPlayer_Tick(sithPlayerInfo *playerInfo, float a2)
     }
 }
 
+#ifdef QOL_IMPROVEMENTS
+// Added
+void sithPlayer_debug_RespawnInPlace(sithThing* player)
+{
+	rdPuppet* puppet = player->rdthing.puppet;
+	if (puppet)
+	{
+		if (player->puppet)
+		{
+			if (player->puppet->field_18 >= 0)
+				sithPuppet_StopKey(puppet, player->puppet->field_18, 0.0);
+		}
+	}
+
+	if (!sithNet_isMulti || (player->thingflags & SITH_TF_INVULN) == 0)
+	{
+		sithThing* templateBase = player->templateBase;
+		player->actorParams.msUnderwater = 0; // MOTS added
+		player->actorParams.health = templateBase->actorParams.health;
+		if ((templateBase->physicsParams.physflags & SITH_PF_NOWALLGRAVITY) != 0)
+		{
+			player->physicsParams.physflags &= ~(SITH_PF_ATTACHED | SITH_PF_SURFACEALIGN);
+			player->physicsParams.physflags |= SITH_PF_NOWALLGRAVITY;
+		}
+		sithActor_MoveJointsForEyePYR(player, &rdroid_zeroVector3);
+		if (player == sithPlayer_pLocalPlayerThing)
+		{
+			sithCamera_SetCameraFocus(sithCamera_cameras, player, 0);
+			sithCamera_SetCameraFocus(&sithCamera_cameras[1], player, 0);
+			sithCamera_DoIdleAnimation();
+			stdPalEffect* palEffect = stdPalEffects_GetEffectPointer(sithPlayer_pLocalPlayer->palEffectsIdx1);
+			stdPalEffects_ResetEffect(palEffect);
+		}
+
+		player->thingflags &= ~(SITH_TF_DEAD | SITH_TF_WILLBEREMOVED);
+		player->actorParams.typeflags &= ~SITH_AF_FALLING_TO_DEATH;
+		player->lifeLeftMs = 0;
+		if (!sithNet_isMulti || player == sithPlayer_pLocalPlayerThing)
+		{
+			sithCamera_FollowFocus(sithCamera_currentCamera);
+			sithPhysics_ThingStop(player);
+			sithWeapon_SyncPuppet(player);
+			sithCog_SendSimpleMessageToAll(SITH_MESSAGE_NEWPLAYER, SENDERTYPE_THING, player->thingIdx, SENDERTYPE_THING, player->thingIdx);
+			if (sithComm_multiplayerFlags)
+				sithDSSThing_SendSyncThing(player, -1, 255);
+		}
+	}
+}
+#endif
+
 void sithPlayer_debug_loadauto(sithThing *player)
 {
     char v1[128]; // [esp+4h] [ebp-80h] BYREF
 
-    if ( (g_submodeFlags & 1) != 0 || (g_debugmodeFlags & DEBUGFLAG_IN_EDITOR) != 0 )
+#ifdef QOL_IMPROVEMENTS
+	if ( g_debugmodeFlags & DEBUGFLAG_NODEATH ) // Added
+	{
+		sithPlayer_debug_RespawnInPlace(player);
+	}
+    else
+#endif
+	if ( (g_submodeFlags & 1) != 0 || (g_debugmodeFlags & DEBUGFLAG_IN_EDITOR) != 0 )
     {
         sithPlayer_debug_ToNextCheckpoint(player);
     }

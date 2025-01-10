@@ -97,6 +97,7 @@ void jkDev_Startup()
 #ifdef QOL_IMPROVEMENTS
     jkDev_RegisterCmd(jkDev_CmdNoclip, "noclip", "Noclip", 0);
 	jkDev_RegisterCmd(jkDev_Custom_CmdJumpNextCheckpoint, "checkmate", "", 0);  // cycles to next auto-restart checkpoint
+	jkDev_RegisterCmd(jkDev_CmdDebugFlags3, "necromancer", "Necromancer", 8);
 #endif
 
     jkDev_bInitted = 1;

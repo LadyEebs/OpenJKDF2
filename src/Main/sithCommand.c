@@ -142,6 +142,13 @@ int sithCommand_CheatSetDebugFlags(stdDebugConsoleCmd *pCmd, const char *pArgStr
                 goto LABEL_24;
             v2 = (int*)&v4->actorParams.typeflags;
             v3 = 8;
+			goto LABEL_13;
+	#ifdef QOL_IMPROVEMENTS
+		case 8u:
+			v2 = &g_debugmodeFlags;
+			v3 = DEBUGFLAG_NODEATH;
+			goto LABEL_13;
+	#endif
 LABEL_13:
             if ( pArgStr )
             {

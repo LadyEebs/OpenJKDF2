@@ -408,6 +408,7 @@ typedef enum
 #define DEBUGFLAG_40000                (0x40000)
 #define DEBUGFLAG_80000                (0x80000)
 #define DEBUGFLAG_NOCLIP               (0x40000000)
+#define DEBUGFLAG_NODEATH              (0x80000000)
 
 // hitType
 enum SITHCOLLISION
