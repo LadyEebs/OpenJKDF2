@@ -588,7 +588,10 @@ void sithRender_DrawBackdrop()
 {
 	if (sithWorld_pCurrentWorld->backdropSector)
 	{
+		// todo: this is causing a cluster build, but we don't need it
+		// either disable all clustering for the layer, or give items a renderpass mask
 		rdRenderPass("sithRender_DrawBackdrop", 0, 0);
+		rdDepthRange(0.0f, 0.0f);
 
 		rdSetCullFlags(0);
 
@@ -743,7 +746,6 @@ void sithRender_Draw()
 	//	rdDisable(RD_SHADOWS);
 
 	rdSetDecalMode(jkPlayer_enableDecals ? RD_DECALS_ENABLED : RD_DECALS_DISABLED);
-	rdDepthRange(0.0f, 1.0f);
 	rdDitherMode(jkPlayer_enableDithering ? RD_DITHER_4x4 : RD_DITHER_NONE);
 	rdAmbientFlags((jkPlayer_enableShadows ? RD_AO_OCCLUDERS : 0) | (jkPlayer_enableSSAO ? RD_AO_SCREEN_SPACE : 0));
 	rdClearLights();
@@ -770,6 +772,7 @@ void sithRender_Draw()
 	sithRender_DrawBackdrop();
 
 	rdRenderPass("sithRender_Draw", 1, RD_RENDERPASS_CLEAR_DEPTH | (jkPlayer_enableSSAO ? RD_RENDERPASS_AMBIENT_OCCLUSION : 0));
+	rdDepthRange(0.0f, 1.0f);
 
 	rdMatrixMode(RD_MATRIX_VIEW);
 	rdIdentity();
