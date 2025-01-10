@@ -235,25 +235,62 @@ static void sithConstraint_SolveHingeConstraint(sithHingeLimitConstraint* pConst
 	pResult->JrB = rotationAxis;
 	rdVector_Neg3Acc(&pResult->JrA);
 
-//	float dotA = rdVector_Dot3(&rotationAxis, &hingeAxisA);
-//	float dotB = rdVector_Dot3(&rotationAxis, &hingeAxisB);
-//	float twistAngle = stdMath_ArcTan3(dotA, dotB);
+//	// Compute dynamic reference vectors
+//	rdVector3 refVectorA, refVectorB;
+//	rdVector3 arbitraryVec = { 1.0f, 0.0f, 0.0f };
+//
+//	// Ensure arbitraryVec is not parallel to hingeAxisA
+//	if (stdMath_Fabs(rdVector_Dot3(&hingeAxisA, &arbitraryVec)) > 0.99f)
+//		arbitraryVec = (rdVector3){ 0.0f, 1.0f, 0.0f };
+//
+//	// Compute the first reference vector for hingeAxisA
+//	rdVector_Cross3(&refVectorA, &hingeAxisA, &arbitraryVec);
+//	rdVector_Normalize3Acc(&refVectorA);
+//
+//	// Compute the second reference vector for hingeAxisB (same approach as above)
+//	if (stdMath_Fabs(rdVector_Dot3(&hingeAxisB, &arbitraryVec)) > 0.99f)
+//		arbitraryVec = (rdVector3){ 0.0f, 1.0f, 0.0f };
+//	rdVector_Cross3(&refVectorB, &hingeAxisB, &arbitraryVec);
+//	rdVector_Normalize3Acc(&refVectorB);
+//
+//	// Project the reference vectors onto their respective hinge planes
+//	rdVector3 projRefA, projRefB, temp;
+//
+//	// Project refVectorA onto the plane perpendicular to hingeAxisA
+//	rdVector_Scale3(&temp, &hingeAxisA, rdVector_Dot3(&refVectorA, &hingeAxisA));
+//	rdVector_Sub3(&projRefA, &refVectorA, &temp);
+//	rdVector_Normalize3Acc(&projRefA);
+//
+//	// Project refVectorB onto the plane perpendicular to hingeAxisB
+//	rdVector_Scale3(&temp, &hingeAxisB, rdVector_Dot3(&refVectorB, &hingeAxisB));
+//	rdVector_Sub3(&projRefB, &refVectorB, &temp);
+//	rdVector_Normalize3Acc(&projRefB);
+//
+//	// Compute twist angle
+//	rdVector3 cross;
+//	rdVector_Cross3(&cross, &projRefA, &projRefB);
+//	float dot = rdVector_Dot3(&projRefA, &projRefB);
+//	float twistAngle = stdMath_ArcTan3(rdVector_Len3(&cross), dot);
+//
+//	//float dotA = rdVector_Dot3(&rotationAxis, &hingeAxisA);
+//	//float dotB = rdVector_Dot3(&rotationAxis, &hingeAxisB);
+//	//float twistAngle = stdMath_ArcTan3(dotA, dotB);
+//	float twistError = 0.0f;
 //	if (twistAngle < pConstraint->minCosAngle)
 //	{
 //		// Push up towards the minAngle
-//		pResult->C += (pConstraint->minCosAngle - twistAngle) * (M_PI / 180.0f);
+//		twistError = (pConstraint->minCosAngle - twistAngle) * (M_PI / 180.0f);
 //	}
 //	else if (twistAngle > pConstraint->maxCosAngle)
 //	{
 //		// Pull down towards the maxAngle
-//		pResult->C += (twistAngle - pConstraint->maxCosAngle) * (M_PI / 180.0f);
+//		twistError = (twistAngle - pConstraint->maxCosAngle) * (M_PI / 180.0f);
 //	}
+//	pResult->C += twistError;
 //	
 //	rdVector3 twistAxis = hingeAxisA; // The hinge axis contributes to twist
-//	rdVector_MultAcc3(&pResult->JrA, &twistAxis, -twistAngle * (M_PI / 180.0f)); // Add twist correction to body A
-//	rdVector_MultAcc3(&pResult->JrB, &twistAxis,  twistAngle * (M_PI / 180.0f)); // Add twist correction to body B
-//	rdVector_Normalize3Acc(&pResult->JrA);
-//	rdVector_Normalize3Acc(&pResult->JrB);
+//	rdVector_MultAcc3(&pResult->JrA, &twistAxis, -twistError); // Add twist correction to body A
+//	rdVector_MultAcc3(&pResult->JrB, &twistAxis,  twistError); // Add twist correction to body B
 	
 	pResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * pResult->C;
 	pResult->C = stdMath_Clamp(pResult->C, -CONSTRAINT_VEL_LIMIT, CONSTRAINT_VEL_LIMIT);
