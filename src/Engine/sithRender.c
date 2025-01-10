@@ -656,6 +656,8 @@ void sithRender_DrawBackdrop()
 				sithRender_RenderThing(pThing);
 			}
 
+			sithRender_UpdateLights(backdropSector, 0.0f, 0.0, 0);
+
 			backdropSector = backdropSector->nextBackdropSector;
 		}
 
