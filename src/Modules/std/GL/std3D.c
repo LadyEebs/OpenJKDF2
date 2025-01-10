@@ -29,6 +29,7 @@
 
 #include "General/stdMath.h"
 #include "General/stdHashTable.h"
+#include "Modules/std/stdJob.h"
 
 #ifdef WIN32
 // Force Optimus/AMD to use non-integrated GPUs by default.
@@ -323,6 +324,10 @@ static stdHashTable* decalHashTable = NULL;
 
 int std3D_InsertDecalTexture(rdRect* out, stdVBuffer* vbuf, rdDDrawSurface* pTexture);
 void std3D_PurgeDecalAtlas();
+
+#ifdef JOB_SYSTEM
+#include "SDL_atomic.h"
+#endif
 
 typedef struct std3D_Cluster
 {
@@ -4865,7 +4870,7 @@ void std3D_FlushDrawCalls()
 void std3D_ClearLights()
 {
 	lightsDirty = 1;
-	std3D_renderPasses[0].clustersDirty = std3D_renderPasses[0].clustersDirty = 1;
+	std3D_renderPasses[0].clustersDirty = std3D_renderPasses[1].clustersDirty = std3D_renderPasses[2].clustersDirty = 1;
 	lightUniforms.numLights = 0;
 }
 
@@ -4875,7 +4880,7 @@ int std3D_AddLight(rdLight* light, rdVector3* position)
 		return 0;
 
 	lightsDirty = 1;
-	std3D_renderPasses[0].clustersDirty = std3D_renderPasses[0].clustersDirty = 1;
+	std3D_renderPasses[0].clustersDirty = std3D_renderPasses[1].clustersDirty = std3D_renderPasses[2].clustersDirty = 1;
 
 	std3D_light* light3d = &lightUniforms.tmpLights[lightUniforms.numLights++];
 	light3d->type = light->type;
@@ -4915,14 +4920,14 @@ void std3D_FlushLights()
 void std3D_ClearOccluders()
 {
 	occludersDirty = 1;
-	std3D_renderPasses[0].clustersDirty = std3D_renderPasses[0].clustersDirty = 1;
+	std3D_renderPasses[0].clustersDirty = std3D_renderPasses[1].clustersDirty = std3D_renderPasses[2].clustersDirty = 1;
 	occluderUniforms.numOccluders = 0;
 }
 
 void std3D_ClearDecals()
 {
 	decalsDirty = 1;
-	std3D_renderPasses[0].clustersDirty = std3D_renderPasses[0].clustersDirty = 1;
+	std3D_renderPasses[0].clustersDirty = std3D_renderPasses[1].clustersDirty = std3D_renderPasses[2].clustersDirty = 1;
 	decalUniforms.numDecals= 0;
 
 	// tmp debug
@@ -5241,11 +5246,13 @@ void std3D_AssignItemToClusters(std3D_RenderPass* pRenderPass, int itemIndex, rd
 					uint32_t tile_bucket_index = clusterID * CLUSTER_BUCKETS_PER_CLUSTER;
 
 					// note: updating the cluster bounds is by far the most expensive part of this entire thing, avoid doing it!
+				#ifndef JOB_SYSTEM
 					if (pRenderPass->clusters[clusterID].lastUpdateFrame != pRenderPass->clusterFrustumFrame)
 					{
 						std3D_BuildCluster(&pRenderPass->clusters[clusterID], x, y, z, znear, zfar);
 						pRenderPass->clusters[clusterID].lastUpdateFrame = pRenderPass->clusterFrustumFrame;
 					}
+				#endif
 
 					// todo: spotlight
 					int intersects;
@@ -5258,7 +5265,17 @@ void std3D_AssignItemToClusters(std3D_RenderPass* pRenderPass, int itemIndex, rd
 					{
 						const uint32_t bucket_index = itemIndex / 32;
 						const uint32_t bucket_place = itemIndex % 32;
+						
+						// SDL doesn't have proper atomic bit operations so fucking do it ourselves I guess
+				#ifdef JOB_SYSTEM
+					#ifdef _WIN32
+						_InterlockedOr((long*)&std3D_clusterBits[tile_bucket_index + bucket_index], (1 << bucket_place));
+					#else // hopefully this is ok for Linux?
+						__sync_or_and_fetch(&std3D_clusterBits[tile_bucket_index + bucket_index], (1 << bucket_place));
+					#endif
+				#else
 						std3D_clusterBits[tile_bucket_index + bucket_index] |= (1 << bucket_place);
+				#endif
 					}
 				}
 			}
@@ -5266,10 +5283,95 @@ void std3D_AssignItemToClusters(std3D_RenderPass* pRenderPass, int itemIndex, rd
 	}
 }
 
+#ifdef JOB_SYSTEM
+std3D_RenderPass* std3D_jobRenderPass;
+rdMatrix44* std3D_jobProjectionMat;
+
+void stdJob_BuildClustersJob(uint32_t jobIndex, uint32_t groupIndex)
+{
+	int z = jobIndex / (CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y);
+	int y = (jobIndex % (CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y)) / CLUSTER_GRID_SIZE_X;
+	int x = jobIndex % CLUSTER_GRID_SIZE_X;
+
+	float znear = -std3D_jobProjectionMat->vD.z / (std3D_jobProjectionMat->vB.z + 1.0f);
+	float zfar = -std3D_jobProjectionMat->vD.z / (std3D_jobProjectionMat->vB.z - 1.0f);
+
+	if (std3D_jobRenderPass->clusters[jobIndex].lastUpdateFrame != std3D_jobRenderPass->clusterFrustumFrame)
+	{
+		std3D_BuildCluster(&std3D_jobRenderPass->clusters[jobIndex], x, y, z, znear, zfar);
+		std3D_jobRenderPass->clusters[jobIndex].lastUpdateFrame = std3D_jobRenderPass->clusterFrustumFrame;
+	}
+}
+
+void stdJob_AssignLightsToClustersJob(uint32_t jobIndex, uint32_t groudIndex)
+{
+	if (jobIndex >= lightUniforms.numLights)
+		return;
+
+	float znear = -std3D_jobProjectionMat->vD.z / (std3D_jobProjectionMat->vB.z + 1.0f);
+	float zfar = -std3D_jobProjectionMat->vD.z / (std3D_jobProjectionMat->vB.z - 1.0f);
+
+	std3D_AssignItemToClusters(
+		std3D_jobRenderPass,
+		lightUniforms.firstLight + jobIndex,
+		(rdVector3*)&lightUniforms.tmpLights[jobIndex].position,
+		lightUniforms.tmpLights[jobIndex].falloffMin,
+		std3D_jobProjectionMat,
+		znear,
+		zfar,
+		NULL
+	);
+}
+
+void stdJob_AssignOccludersToClustersJob(uint32_t jobIndex, uint32_t groupIndex)
+{
+	if (jobIndex >= occluderUniforms.numOccluders)
+		return;
+
+	float znear = -std3D_jobProjectionMat->vD.z / (std3D_jobProjectionMat->vB.z + 1.0f);
+	float zfar = -std3D_jobProjectionMat->vD.z / (std3D_jobProjectionMat->vB.z - 1.0f);
+
+	std3D_AssignItemToClusters(
+		std3D_jobRenderPass,
+		occluderUniforms.firstOccluder + jobIndex,
+		(rdVector3*)&occluderUniforms.tmpOccluders[jobIndex].position,
+		occluderUniforms.tmpOccluders[jobIndex].position.w,
+		std3D_jobProjectionMat,
+		znear,
+		zfar,
+		NULL
+	);
+}
+
+void stdJob_AssignDecalsToClustersJob(uint32_t jobIndex, uint32_t groupIndex)
+{
+	if (jobIndex >= decalUniforms.numDecals)
+		return;
+
+	float znear = -std3D_jobProjectionMat->vD.z / (std3D_jobProjectionMat->vB.z + 1.0f);
+	float zfar = -std3D_jobProjectionMat->vD.z / (std3D_jobProjectionMat->vB.z - 1.0f);
+	
+	std3D_AssignItemToClusters(
+		std3D_jobRenderPass,
+		decalUniforms.firstDecal + jobIndex,
+		(rdVector3*)&decalUniforms.tmpDecals[jobIndex].posRad,
+		decalUniforms.tmpDecals[jobIndex].posRad.w,
+		std3D_jobProjectionMat,
+		znear,
+		zfar,
+		&decalUniforms.tmpDecals[jobIndex].decalMatrix);
+}
+#endif
+
 void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 {
 	if(!pRenderPass->clustersDirty)
 		return;
+
+#ifdef JOB_SYSTEM
+	std3D_jobRenderPass = pRenderPass;
+	std3D_jobProjectionMat = pProjection;
+#endif
 
 	pRenderPass->clustersDirty = 0;
 
@@ -5288,26 +5390,49 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 	
 	int64_t time = Linux_TimeUs();
 
+#ifdef JOB_SYSTEM
+	lightUniforms.firstLight = 0;
+	occluderUniforms.firstOccluder = lightUniforms.firstLight + lightUniforms.numLights;
+	decalUniforms.firstDecal = occluderUniforms.firstOccluder + occluderUniforms.numOccluders;
+
+	// build all clusters in parallel
+	stdJob_Dispatch(CLUSTER_GRID_SIZE_XYZ, 64, stdJob_BuildClustersJob);
+	//printf("%lld us to build custers for frame %d\n", Linux_TimeUs() - time, rdroid_frameTrue);
+
+	for (int i = 0; i < ARRAY_SIZE(std3D_clusterBits); ++i)
+		SDL_AtomicSet(&std3D_clusterBits[i], 0);
+
+	// wait for clusters to finish building
+	stdJob_Wait();
+
+	// now assign items to clusters in parallel
+	stdJob_Dispatch(lightUniforms.numLights, 8, stdJob_AssignLightsToClustersJob);
+	stdJob_Dispatch(occluderUniforms.numOccluders, 8, stdJob_AssignOccludersToClustersJob);
+	stdJob_Dispatch(decalUniforms.numDecals, 8, stdJob_AssignDecalsToClustersJob);
+
+	// wait on the result before uploading to GPU
+	stdJob_Wait();
+#else
 	// clean slate
 	memset(std3D_clusterBits, 0, sizeof(std3D_clusterBits));
 
 	// assign lights
-	int64_t lighTime = Linux_TimeUs();
 	lightUniforms.firstLight = 0;
+	int64_t lighTime = Linux_TimeUs();
 	for (int i = 0; i < lightUniforms.numLights; ++i)
 	{
 		std3D_AssignItemToClusters(pRenderPass, lightUniforms.firstLight + i, (rdVector3*)&lightUniforms.tmpLights[i].position, lightUniforms.tmpLights[i].falloffMin, pProjection, znear, zfar, NULL);
 	}
-	//printf("\t%lld us to assign lights to custers for frame %d with draw layer %d\n", Linux_TimeUs() - lighTime, rdroid_frameTrue, drawLayer);
+	printf("\t%lld us to assign lights to custers for frame %d\n", Linux_TimeUs() - lighTime, rdroid_frameTrue);
 
 	// assign occluders
-	int64_t occluderTime = Linux_TimeUs();
 	occluderUniforms.firstOccluder = lightUniforms.firstLight + lightUniforms.numLights;
+	int64_t occluderTime = Linux_TimeUs();
 	for (int i = 0; i < occluderUniforms.numOccluders; ++i)
 	{
 		std3D_AssignItemToClusters(pRenderPass, occluderUniforms.firstOccluder + i, (rdVector3*)&occluderUniforms.tmpOccluders[i].position, occluderUniforms.tmpOccluders[i].position.w, pProjection, znear, zfar, NULL);
 	}
-	//printf("\t%lld us to assign occluders to custers for frame %d with draw layer %d\n", Linux_TimeUs() - occluderTime, rdroid_frameTrue, drawLayer);
+	printf("\t%lld us to assign occluders to custers for frame %d\n", Linux_TimeUs() - occluderTime, rdroid_frameTrue);
 
 	// assign decals
 	decalUniforms.firstDecal = occluderUniforms.firstOccluder + occluderUniforms.numOccluders;
@@ -5316,7 +5441,8 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 	{
 		std3D_AssignItemToClusters(pRenderPass, decalUniforms.firstDecal + i, (rdVector3*)&decalUniforms.tmpDecals[i].posRad, decalUniforms.tmpDecals[i].posRad.w, pProjection, znear, zfar, &decalUniforms.tmpDecals[i].decalMatrix);
 	}
-	//printf("\t%lld us to assign decals to custers for frame %d with draw layer %d\n", Linux_TimeUs() - decalTime, rdroid_frameTrue, drawLayer);
+	printf("\t%lld us to assign decals to custers for frame %d\n", Linux_TimeUs() - decalTime, rdroid_frameTrue);
+#endif
 
 	std3D_FlushLights();
 	std3D_FlushOccluders();
@@ -5327,7 +5453,7 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 	glBufferSubData(GL_TEXTURE_BUFFER, 0, sizeof(std3D_clusterBits), (void*)std3D_clusterBits);
 	glBindBuffer(GL_TEXTURE_BUFFER, 0);
 
-	//printf("%lld us to build custers for frame %d with draw layer %d\n", Linux_TimeUs() - time, rdroid_frameTrue, drawLayer);
+	//printf("%lld us to assign items to clusters for frame %d\n", Linux_TimeUs() - time, rdroid_frameTrue);
 }
 
 #endif
