@@ -67,7 +67,8 @@ void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrained
 	constraint->coneAngleCos = stdMath_Cos(angle);
 	constraint->jointAxis = *pJointAxis;
 
-	//sithConstraint_AddTwistConstraint(pThing, pConstrainedThing, pTargetThing, pAxis, pJointAxis, -5.0f, 5.0f);
+	// todo: expose angles
+	sithConstraint_AddTwistConstraint(pThing, pConstrainedThing, pTargetThing, pAxis, pJointAxis, -35.0f, 35.0f);
 }
 
 void sithConstraint_AddHingeConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pTargetAxis, const rdVector3* pJointAxis, float minAngle, float maxAngle)
@@ -81,7 +82,8 @@ void sithConstraint_AddHingeConstraint(sithThing* pThing, sithThing* pConstraine
 	constraint->targetAxis = *pTargetAxis;
 	constraint->jointAxis = *pJointAxis;
 
-	//sithConstraint_AddTwistConstraint(pThing, pConstrainedThing, pTargetThing, pTargetAxis, pJointAxis, minAngle, maxAngle);
+	if (minAngle > -360.0 && maxAngle < 360.0)
+		sithConstraint_AddTwistConstraint(pThing, pConstrainedThing, pTargetThing, pTargetAxis, pJointAxis, minAngle, maxAngle);
 }
 
 void sithConstraint_AddTwistConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pTargetAxis, const rdVector3* pJointAxis, float minAngle, float maxAngle)
@@ -294,7 +296,7 @@ static void sithConstraint_SolveTwistConstraint(sithTwistLimitConstraint* pConst
 	float sinTheta = rdVector_Dot3(&twistAxis, &crossProduct);
 
 	// compute the twist angle
-	float twistAngle = stdMath_ArcTan4(sinTheta, cosTheta);
+	float twistAngle = atan2f(sinTheta, cosTheta) * 180.0f / M_PI;// stdMath_ArcTan4(sinTheta, cosTheta);
 	if (twistAngle < pConstraint->minAngle)
 	{
 		pResult->C = pConstraint->minAngle - twistAngle;
