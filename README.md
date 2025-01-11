@@ -1,10 +1,15 @@
 # This fork
 This fork introduces a variety of new features and experiments. Among them (not all enabled by default):
 
+General:
+- Simple Job System
+- Extra math functions and utils
+
 Rendering (General):
 - Fog (Infernal Machine style), requires JKL version 2.0 to use
-- Underwater distortion PostFX 
+- Underwater distortion PostFX
 - Specular lighting (RD_LIGHTMODE_SPECULAR)
+- Simple subsurface scattering (RD_LIGHTMODE_SUBSURFACE)
 - RGB thing lights (lightcolor template param for things), including lightsaber colored lighting derived from the saber material
 - RGB ambient lighting, including directional ambient and specular
 - Decal rendering (new .dcal file to specify decals, decal template param for things)
@@ -21,6 +26,8 @@ Render Droid 2:
 - Quadrilinear texturing for polylines
 - Custom UV behavior, currently only ceiling and horizon sky, but for future spheremaps and others
 - Emissive surface flag, generates a point light at the surface for dynamic lighting (ex. breakable neon signs)
+- Backdrop sector for skyboxes
+- Still works under GL 3.3
 
 Deprecated Pipeline:
 - Half Lambert diffuse for dynamic lights to soften low poly model shading
@@ -34,10 +41,10 @@ Gameplay:
 - Lightsaber trails
 - Lightsaber marks
 - JO style saber glow
-- Muzzle flashes (new cog verb + muzzle hierarchy + keyframe markers to activate)
-- Dynamic POV animation, crosshair and autoaim (gun follows aim targets, crosshair reacts to geometry/blockers and better represents trajectory, gun moves dynamically when player moves, requires using new verbs to leverage)
+- Muzzle flashes (new cog verbs + muzzle hierarchy + keyframe markers to activate)
+- Dynamic POV animation, crosshair and autoaim (gun follows aim targets, crosshair reacts to geometry/blockers and better represents trajectory, gun moves dynamically when player moves, requires using new verbs to enable)
 - Extra static.jkl loading, allows stacking up to 4 extra static.jkls (mod stacking)
-- Physicalized puppet animation and physics constraints (ex. ragdolls, includes new data in .pup files)
+- Physicalized puppet animation and physics constraints (ex. ragdolls, includes extended joint data in .pup files)
 - Polyline upgrades and rendering fixes (new .pln file to specify a polyline def that can be assigned to a thing via template params the same as models and sprites)
 - Regional damage and lightsaber limb dismemberment (with new params to damaged and killed cog messages)
 - Gameplay system cogs (currently only g_combat.cog) that can be used to perform shared game logic (ex. regional damage and dismemberment)
