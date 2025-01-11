@@ -1254,7 +1254,7 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 		rdVector_Copy3(&pJointThing->physicsParams.vel, &vel);
 		rdVector_Add3Acc(&pJointThing->physicsParams.vel, pInitialVel);
 		//rdVector_Copy3(&pJointThing->physicsParams.angVel, &pThing->rdthing.paHierarchyNodeAngularVelocities[pNode->idx]);
-		sithPhysics_AnglesToAngularVelocity(&pJointThing->physicsParams.angVel, &pThing->rdthing.paHierarchyNodeAngularVelocities[pNode->idx], &pThing->rdthing.hierarchyNodeMatrices[pBodyPart->nodeIdx]);
+		sithPhysics_AnglesToAngularVelocity(&pJointThing->physicsParams.rotVel, &pThing->rdthing.paHierarchyNodeAngularVelocities[pNode->idx], &pThing->rdthing.hierarchyNodeMatrices[pBodyPart->nodeIdx]);
 	}
 
 	// enter the things sector to start physics
@@ -1410,6 +1410,15 @@ static inline void sithPuppet_UpdateJointThing(sithThing* pThing, sithThing* pJo
 	int collide = pJointThing->collide;
 	if (pBodyPart->nodeIdx < pThing->rdthing.rootJoint || pThing->rdthing.amputatedJoints[pBodyPart->nodeIdx])
 		pJointThing->collide = SITH_COLLIDE_NONE;
+
+	// apply animation velocities
+	//rdVector3 vel;
+	//rdMatrix_TransformVector34(&vel, &pThing->rdthing.paHierarchyNodeVelocities[pBodyPart->nodeIdx], &pThing->rdthing.hierarchyNodeMatrices[pBodyPart->nodeIdx]);
+	//rdVector_MultAcc3(&pJointThing->physicsParams.vel, &vel, deltaSeconds);
+	//
+	//rdVector3 rotVel;
+	//sithPhysics_AnglesToAngularVelocity(&rotVel, &pThing->rdthing.paHierarchyNodeAngularVelocities[pBodyPart->nodeIdx], &pThing->rdthing.hierarchyNodeMatrices[pBodyPart->nodeIdx]);
+	//rdVector_MultAcc3(&pJointThing->physicsParams.rotVel, &rotVel, deltaSeconds);
 
  	sithPhysics_ThingTick(pJointThing, deltaSeconds);
 	sithThing_TickPhysics(pJointThing, deltaSeconds);
