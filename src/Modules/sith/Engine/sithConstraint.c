@@ -68,7 +68,7 @@ void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrained
 	constraint->jointAxis = *pJointAxis;
 
 	// todo: expose angles
-	//sithConstraint_AddTwistConstraint(pThing, pConstrainedThing, pTargetThing, pAxis, pJointAxis, -35.0f, 35.0f);
+	sithConstraint_AddTwistConstraint(pThing, pConstrainedThing, pTargetThing, pAxis, pJointAxis, -35.0f, 35.0f);
 }
 
 void sithConstraint_AddHingeConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pTargetAxis, const rdVector3* pJointAxis, float minAngle, float maxAngle)
@@ -272,10 +272,18 @@ static void sithConstraint_SolveTwistConstraint(sithTwistLimitConstraint* pConst
 	rdMatrix_TransformVector34Acc(&refVectorA, &bodyA->lookOrientation);
 	rdMatrix_TransformVector34Acc(&refVectorB, &bodyB->lookOrientation);
 
-	// project onto the twist plane
-	rdVector3 twistAxis;
-	rdMatrix_TransformVector34(&twistAxis, &pConstraint->targetAxis, &bodyA->lookOrientation);
+	// compute a twist axis between by projecting the joint axis onto the target axis plane
+	rdVector3 targetAxis;
+	rdMatrix_TransformVector34(&targetAxis, &pConstraint->targetAxis, &bodyA->lookOrientation);
 
+	rdVector3 jointAxis;
+	rdMatrix_TransformVector34(&jointAxis, &pConstraint->jointAxis, &bodyB->lookOrientation);
+	
+	rdVector3 twistAxis;
+	rdVector_ProjectDir3(&twistAxis, &jointAxis, &targetAxis);
+	rdVector_Normalize3Acc(&twistAxis);
+
+	// project the reference dirs onto the twist plane
 	rdVector3 projA, projB;
 	//rdVector_ProjectDir3(&projA, &refVectorA, &twistAxis);
 	//rdVector_ProjectDir3(&projB, &refVectorB, &twistAxis);
