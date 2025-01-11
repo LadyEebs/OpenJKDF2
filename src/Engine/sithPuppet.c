@@ -1144,7 +1144,7 @@ void sithPuppet_AddBallSocketConstraint(sithThing* pThing, int joint, int target
 	sithConstraint_AddDistanceConstraint(pThing, jointThing, targetThing, &anchor, &rdroid_zeroVector3, 0.0f);*/
 }
 
-void sithPuppet_AddConeConstraint(sithThing* pThing, int joint, int target, const rdVector3* axis, const rdVector3* targetAxis, float angle)
+void sithPuppet_AddConeConstraint(sithThing* pThing, int joint, int target, const rdVector3* axis, const rdVector3* targetAxis, float angle, float twistAngle)
 {
 	uint64_t hasJoint = pThing->animclass->jointBits & (1ull << joint);
 	uint64_t hasTarget = pThing->animclass->jointBits & (1ull << target);
@@ -1155,7 +1155,7 @@ void sithPuppet_AddConeConstraint(sithThing* pThing, int joint, int target, cons
 	sithThing* jointThing = &pThing->puppet->physics->joints[joint].thing;
 	
 	rdHierarchyNode* pNode = &pThing->rdthing.model3->hierarchyNodes[pThing->animclass->bodypart[joint].nodeIdx];
-	sithConstraint_AddConeConstraint(pThing, jointThing, targetThing, targetAxis, angle, axis);
+	sithConstraint_AddConeConstraint(pThing, jointThing, targetThing, targetAxis, angle, axis, twistAngle);
 }
 
 void sithPuppet_AddHingeConstraint(sithThing* pThing, int joint, int target, const rdVector3* axis, const rdVector3* targetAxis, float minAngle, float maxAngle)
@@ -1330,10 +1330,10 @@ void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float de
 			sithPuppet_AddBallSocketConstraint(pThing, constraints->jointB, constraints->jointA);
 			break;
 		case SITH_CONSTRAINT_CONE:
-			sithPuppet_AddConeConstraint(pThing, constraints->jointB, constraints->jointA, &constraints->axisB, &constraints->axisA, constraints->minAngle);
+			sithPuppet_AddConeConstraint(pThing, constraints->jointB, constraints->jointA, &constraints->axisB, &constraints->axisA, constraints->angle0, constraints->angle1);
 			break;
 		case SITH_CONSTRAINT_HINGE:
-			sithPuppet_AddHingeConstraint(pThing, constraints->jointB, constraints->jointA, &constraints->axisB, &constraints->axisA, constraints->minAngle, constraints->maxAngle);
+			sithPuppet_AddHingeConstraint(pThing, constraints->jointB, constraints->jointA, &constraints->axisB, &constraints->axisA, constraints->angle0, constraints->angle1);
 			break;
 		default:
 			break;

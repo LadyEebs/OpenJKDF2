@@ -313,10 +313,10 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 								}
 							}
 							if (stdConffile_entry.numArgs > 5)
-								constraint->minAngle = atof(stdConffile_entry.args[5].key);
+								constraint->angle0 = atof(stdConffile_entry.args[5].key);
 
 							if (stdConffile_entry.numArgs > 6)
-								constraint->maxAngle = atof(stdConffile_entry.args[6].key);
+								constraint->angle1 = atof(stdConffile_entry.args[6].key);
 						}
 					}
 				}

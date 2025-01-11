@@ -1393,8 +1393,8 @@ typedef struct sithAnimclassConstraint
 	int jointB;			// JOINTTYPE
 	rdVector3 axisA;	// optional axis
 	rdVector3 axisB;	// optional axis
-	float minAngle;		// optional angle
-	float maxAngle;		// optional angle
+	float angle0;		// optional angle
+	float angle1;		// optional angle
 	struct sithAnimclassConstraint* next;
 } sithAnimclassConstraint;
 #endif

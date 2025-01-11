@@ -54,7 +54,7 @@ void sithConstraint_AddBallSocketConstraint(sithThing* pThing, sithThing* pConst
 	constraint->constraintAnchor = *pConstrainedAnchor;
 }
 
-void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pAxis, float angle, const rdVector3* pJointAxis)
+void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pAxis, float angle, const rdVector3* pJointAxis, float twistAngle)
 {
 	sithConeLimitConstraint* constraint = (sithConeLimitConstraint*)pSithHS->alloc(sizeof(sithConeLimitConstraint));
 	if (!constraint)
@@ -67,8 +67,8 @@ void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrained
 	constraint->coneAngleCos = stdMath_Cos(angle);
 	constraint->jointAxis = *pJointAxis;
 
-	// todo: expose angles
-	sithConstraint_AddTwistConstraint(pThing, pConstrainedThing, pTargetThing, pAxis, pJointAxis, -35.0f, 35.0f);
+	if (twistAngle < 360.0)
+		sithConstraint_AddTwistConstraint(pThing, pConstrainedThing, pTargetThing, /*pAxis*/pJointAxis, pJointAxis, -twistAngle, twistAngle);
 }
 
 void sithConstraint_AddHingeConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pTargetAxis, const rdVector3* pJointAxis, float minAngle, float maxAngle)
