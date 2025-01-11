@@ -66,6 +66,8 @@ void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrained
 	constraint->coneAngle = angle;
 	constraint->coneAngleCos = stdMath_Cos(angle);
 	constraint->jointAxis = *pJointAxis;
+
+	//sithConstraint_AddTwistConstraint(pThing, pConstrainedThing, pTargetThing, pAxis, pJointAxis, -5.0f, 5.0f);
 }
 
 void sithConstraint_AddHingeConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pTargetAxis, const rdVector3* pJointAxis, float minAngle, float maxAngle)
@@ -78,8 +80,22 @@ void sithConstraint_AddHingeConstraint(sithThing* pThing, sithThing* pConstraine
 
 	constraint->targetAxis = *pTargetAxis;
 	constraint->jointAxis = *pJointAxis;
-	constraint->minCosAngle = minAngle;//stdMath_Cos(minAngle * 0.5f);
-	constraint->maxCosAngle = maxAngle;//stdMath_Cos(maxAngle * 0.5f);
+
+	//sithConstraint_AddTwistConstraint(pThing, pConstrainedThing, pTargetThing, pTargetAxis, pJointAxis, minAngle, maxAngle);
+}
+
+void sithConstraint_AddTwistConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pTargetAxis, const rdVector3* pJointAxis, float minAngle, float maxAngle)
+{
+	sithTwistLimitConstraint* constraint = (sithTwistLimitConstraint*)pSithHS->alloc(sizeof(sithTwistLimitConstraint));
+	if (!constraint)
+		return;
+	memset(constraint, 0, sizeof(sithTwistLimitConstraint));
+	sithConstraint_InitConstraint(&constraint->base, SITH_CONSTRAINT_TWIST, pThing, pConstrainedThing, pTargetThing);
+
+	constraint->targetAxis = *pTargetAxis;
+	constraint->jointAxis = *pJointAxis;
+	constraint->minAngle = minAngle;
+	constraint->maxAngle = maxAngle;
 }
 
 void sithConstraint_RemoveConstraint(sithConstraint* pConstraint)
@@ -193,10 +209,6 @@ static void sithConstraint_SolveConeConstraint(sithConeLimitConstraint* pConstra
 		return;
 	}
 
-	rdVector3 correctionAxis;
-	rdVector_Cross3(&correctionAxis, &coneAxis, &relativeAxis);
-	rdVector_Normalize3Acc(&correctionAxis);
-
 	rdVector3 JwA = relativeAxis;
 	rdVector3 JwB = relativeAxis;
 	rdVector_Neg3Acc(&JwB);
@@ -220,13 +232,18 @@ static void sithConstraint_SolveHingeConstraint(sithHingeLimitConstraint* pConst
 	rdVector_Zero3(&pResult->JvA);
 	rdVector_Zero3(&pResult->JvB);
 
+	// hinge axii to world space
 	rdVector3 hingeAxisA, hingeAxisB;	
 	rdMatrix_TransformVector34(&hingeAxisA, &pConstraint->targetAxis, &bodyA->lookOrientation);
 	rdMatrix_TransformVector34(&hingeAxisB, &pConstraint->jointAxis, &bodyB->lookOrientation);
 
+	// angle between the 2 axis
 	float cosAngle = rdVector_Dot3(&hingeAxisA, &hingeAxisB);
 	pResult->C = 1.0f - cosAngle;
+	pResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * pResult->C;
+	pResult->C = stdMath_Clamp(pResult->C, -CONSTRAINT_VEL_LIMIT, CONSTRAINT_VEL_LIMIT);
 
+	// perpendicular vector for angle-axis correction
 	rdVector3 rotationAxis;
 	rdVector_Cross3(&rotationAxis, &hingeAxisA, &hingeAxisB);
 	rdVector_Normalize3Acc(&rotationAxis);
@@ -234,66 +251,70 @@ static void sithConstraint_SolveHingeConstraint(sithHingeLimitConstraint* pConst
 	pResult->JrA = rotationAxis;
 	pResult->JrB = rotationAxis;
 	rdVector_Neg3Acc(&pResult->JrA);
+}
 
-//	// Compute dynamic reference vectors
-//	rdVector3 refVectorA, refVectorB;
-//	rdVector3 arbitraryVec = { 1.0f, 0.0f, 0.0f };
-//
-//	// Ensure arbitraryVec is not parallel to hingeAxisA
-//	if (stdMath_Fabs(rdVector_Dot3(&hingeAxisA, &arbitraryVec)) > 0.99f)
-//		arbitraryVec = (rdVector3){ 0.0f, 1.0f, 0.0f };
-//
-//	// Compute the first reference vector for hingeAxisA
-//	rdVector_Cross3(&refVectorA, &hingeAxisA, &arbitraryVec);
-//	rdVector_Normalize3Acc(&refVectorA);
-//
-//	// Compute the second reference vector for hingeAxisB (same approach as above)
-//	if (stdMath_Fabs(rdVector_Dot3(&hingeAxisB, &arbitraryVec)) > 0.99f)
-//		arbitraryVec = (rdVector3){ 0.0f, 1.0f, 0.0f };
-//	rdVector_Cross3(&refVectorB, &hingeAxisB, &arbitraryVec);
-//	rdVector_Normalize3Acc(&refVectorB);
-//
-//	// Project the reference vectors onto their respective hinge planes
-//	rdVector3 projRefA, projRefB, temp;
-//
-//	// Project refVectorA onto the plane perpendicular to hingeAxisA
-//	rdVector_Scale3(&temp, &hingeAxisA, rdVector_Dot3(&refVectorA, &hingeAxisA));
-//	rdVector_Sub3(&projRefA, &refVectorA, &temp);
-//	rdVector_Normalize3Acc(&projRefA);
-//
-//	// Project refVectorB onto the plane perpendicular to hingeAxisB
-//	rdVector_Scale3(&temp, &hingeAxisB, rdVector_Dot3(&refVectorB, &hingeAxisB));
-//	rdVector_Sub3(&projRefB, &refVectorB, &temp);
-//	rdVector_Normalize3Acc(&projRefB);
-//
-//	// Compute twist angle
-//	rdVector3 cross;
-//	rdVector_Cross3(&cross, &projRefA, &projRefB);
-//	float dot = rdVector_Dot3(&projRefA, &projRefB);
-//	float twistAngle = stdMath_ArcTan3(rdVector_Len3(&cross), dot);
-//
-//	//float dotA = rdVector_Dot3(&rotationAxis, &hingeAxisA);
-//	//float dotB = rdVector_Dot3(&rotationAxis, &hingeAxisB);
-//	//float twistAngle = stdMath_ArcTan3(dotA, dotB);
-//	float twistError = 0.0f;
-//	if (twistAngle < pConstraint->minCosAngle)
-//	{
-//		// Push up towards the minAngle
-//		twistError = (pConstraint->minCosAngle - twistAngle) * (M_PI / 180.0f);
-//	}
-//	else if (twistAngle > pConstraint->maxCosAngle)
-//	{
-//		// Pull down towards the maxAngle
-//		twistError = (twistAngle - pConstraint->maxCosAngle) * (M_PI / 180.0f);
-//	}
-//	pResult->C += twistError;
-//	
-//	rdVector3 twistAxis = hingeAxisA; // The hinge axis contributes to twist
-//	rdVector_MultAcc3(&pResult->JrA, &twistAxis, -twistError); // Add twist correction to body A
-//	rdVector_MultAcc3(&pResult->JrB, &twistAxis,  twistError); // Add twist correction to body B
+static void sithConstraint_SolveTwistConstraint(sithTwistLimitConstraint* pConstraint, float deltaSeconds)
+{
+	sithConstraintResult* pResult = &pConstraint->base.result;
+
+	sithThing* bodyA = pConstraint->base.targetThing;
+	sithThing* bodyB = pConstraint->base.constrainedThing;
+
+	rdVector_Zero3(&pResult->JvA);
+	rdVector_Zero3(&pResult->JvB);
+
+	// perpendicular vectors to the axis
+	rdVector3 refVectorA, refVectorB;
+	rdVector_Perpendicular3(&refVectorA, &pConstraint->targetAxis);
+	rdVector_Perpendicular3(&refVectorB, &pConstraint->jointAxis);
+	rdMatrix_TransformVector34Acc(&refVectorA, &bodyA->lookOrientation);
+	rdMatrix_TransformVector34Acc(&refVectorB, &bodyB->lookOrientation);
+
+	// project onto the twist plane
+	rdVector3 twistAxis;
+	rdMatrix_TransformVector34(&twistAxis, &pConstraint->targetAxis, &bodyA->lookOrientation);
+
+	rdVector3 projA, projB;
+	//rdVector_ProjectDir3(&projA, &refVectorA, &twistAxis);
+	//rdVector_ProjectDir3(&projB, &refVectorB, &twistAxis);
+	rdVector_Scale3(&projA, &twistAxis, rdVector_Dot3(&refVectorA, &twistAxis));
+	rdVector_Sub3(&projA, &refVectorA, &projA);
+
+	rdVector_Scale3(&projB, &twistAxis, rdVector_Dot3(&refVectorB, &twistAxis));
+	rdVector_Sub3(&projB, &refVectorB, &projB);
+
+	rdVector_Normalize3Acc(&projA);
+	rdVector_Normalize3Acc(&projB);
+
+	// compute cos(theta) and sin(theta)
+	float cosTheta = rdVector_Dot3(&projA, &projB);
 	
+	rdVector3 crossProduct;
+	rdVector_Cross3(&crossProduct, &projA, &projB);
+	float sinTheta = rdVector_Dot3(&twistAxis, &crossProduct);
+
+	// compute the twist angle
+	float twistAngle = stdMath_ArcTan4(sinTheta, cosTheta);
+	if (twistAngle < pConstraint->minAngle)
+	{
+		pResult->C = pConstraint->minAngle - twistAngle;
+	}
+	else if (twistAngle > pConstraint->maxAngle)
+	{
+		pResult->C = pConstraint->maxAngle - twistAngle;
+	}
+	else
+	{
+		pResult->C = 0.0f;
+		return;
+	}
+	pResult->C *= -M_PI / 180.0f;
 	pResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * pResult->C;
 	pResult->C = stdMath_Clamp(pResult->C, -CONSTRAINT_VEL_LIMIT, CONSTRAINT_VEL_LIMIT);
+
+	pResult->JrA = twistAxis;
+	pResult->JrB = twistAxis;
+	rdVector_Neg3Acc(&pResult->JrA);
 }
 
 void sithConstraint_ApplyImpulses(sithThing* pThing)
@@ -430,6 +451,9 @@ void sithConstraint_SolveConstraint(sithConstraint* pConstraint, float deltaSeco
 		break;
 	case SITH_CONSTRAINT_HINGE:
 		sithConstraint_SolveHingeConstraint((sithHingeLimitConstraint*)pConstraint, deltaSeconds);
+		break;
+	case SITH_CONSTRAINT_TWIST:
+		sithConstraint_SolveTwistConstraint((sithTwistLimitConstraint*)pConstraint, deltaSeconds);
 		break;
 	default:
 		break;

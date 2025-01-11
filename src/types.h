@@ -2904,20 +2904,6 @@ typedef struct sithAIAlign
 
 
 #ifdef PUPPET_PHYSICS
-enum SITH_CONSTRAINT_TYPE
-{
-	SITH_CONSTRAINT_BALLSOCKET,
-	SITH_CONSTRAINT_CONE,
-	SITH_CONSTRAINT_HINGE,
-
-	SITH_CONSTRAINT_COUNT
-};
-
-enum SITH_CONSTRAINT_FLAGS
-{
-	SITH_CONSTRAINT_DISABLED = 0x1
-};
-
 typedef struct sithConstraintResult
 {
 	float     C;                               // constraint error
@@ -2962,9 +2948,16 @@ typedef struct sithHingeLimitConstraint
 	sithConstraint base;
 	rdVector3      targetAxis;
 	rdVector3      jointAxis;
-	float          minCosAngle;
-	float          maxCosAngle;
 } sithHingeLimitConstraint;
+
+typedef struct sithTwistLimitConstraint
+{
+	sithConstraint base;
+	rdVector3      targetAxis;
+	rdVector3      jointAxis;
+	float          minAngle;
+	float          maxAngle;
+} sithTwistLimitConstraint;
 
 #endif
 

@@ -737,6 +737,12 @@ void rdVector_Project3(rdVector3* out, rdVector3* p, rdVector3* o, rdVector3* n)
 	rdVector_MultAcc3(out, n, -dist);
 }
 
+void rdVector_ProjectDir3(rdVector3* out, rdVector3* v, rdVector3* n)
+{
+	float dist = rdVector_Dot3(v, n);
+	rdVector_Scale3(out, n, dist);
+}
+
 int rdVector_Compare3(const rdVector3* a, const rdVector3* b)
 {
 	return memcmp(a, b, sizeof(rdVector3));
@@ -772,4 +778,13 @@ void rdVector_FromPYR(rdVector3* v, const rdVector3* pyr)
 
 	rdVector_Add3(v, &pitchAxis, &rollAxis);
 	rdVector_Add3Acc(v, &yawAxis);
+}
+
+void rdVector_Perpendicular3(rdVector3* perp, const rdVector3* v)
+{
+	rdVector3 arbitraryVec = { 1.0f, 0.0f, 0.0f };
+	if (stdMath_Fabs(rdVector_Dot3(v, &arbitraryVec)) > 0.99f)
+		arbitraryVec = (rdVector3){ 0.0f, 1.0f, 0.0f };
+	rdVector_Cross3(perp, v, &arbitraryVec);
+	rdVector_Normalize3Acc(perp);
 }

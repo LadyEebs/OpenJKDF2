@@ -140,9 +140,11 @@ void rdVector_Reflect3(rdVector3* v, const rdVector3* incidentVec, const rdVecto
 void rdVector_Average3(rdVector3* out, rdVector3* a, rdVector3* b, rdVector3* c);
 void rdVector_Lerp3(rdVector3* out, rdVector3* a, rdVector3* b, float f);
 void rdVector_Project3(rdVector3* out, rdVector3* p, rdVector3* o, rdVector3* n);
+void rdVector_ProjectDir3(rdVector3* out, rdVector3* v, rdVector3* n);
 int rdVector_Compare3(const rdVector3* a, const rdVector3* b);
 int rdVector_Compare4(const rdVector4* a, const rdVector4* b);
 void rdVector_ToPYR(rdVector3* pyr, const rdVector3* v);
 void rdVector_FromPYR(rdVector3* v, const rdVector3* pyr);
+void rdVector_Perpendicular3(rdVector3* perp, const rdVector3* v);
 
 #endif // _RDVECTOR_H
