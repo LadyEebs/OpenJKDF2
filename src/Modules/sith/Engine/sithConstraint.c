@@ -68,7 +68,7 @@ void sithConstraint_AddConeConstraint(sithThing* pThing, sithThing* pConstrained
 	constraint->jointAxis = *pJointAxis;
 
 	// todo: expose angles
-	sithConstraint_AddTwistConstraint(pThing, pConstrainedThing, pTargetThing, pAxis, pJointAxis, -35.0f, 35.0f);
+	//sithConstraint_AddTwistConstraint(pThing, pConstrainedThing, pTargetThing, pAxis, pJointAxis, -35.0f, 35.0f);
 }
 
 void sithConstraint_AddHingeConstraint(sithThing* pThing, sithThing* pConstrainedThing, sithThing* pTargetThing, const rdVector3* pTargetAxis, const rdVector3* pJointAxis, float minAngle, float maxAngle)
@@ -292,7 +292,7 @@ static void sithConstraint_SolveTwistConstraint(sithTwistLimitConstraint* pConst
 	float cosTheta = rdVector_Dot3(&projA, &projB);
 	
 	rdVector3 crossProduct;
-	rdVector_Cross3(&crossProduct, &projA, &projB);
+	rdVector_Cross3(&crossProduct, &projB, &projA);
 	float sinTheta = rdVector_Dot3(&twistAxis, &crossProduct);
 
 	// compute the twist angle
@@ -310,7 +310,7 @@ static void sithConstraint_SolveTwistConstraint(sithTwistLimitConstraint* pConst
 		pResult->C = 0.0f;
 		return;
 	}
-	pResult->C *= -M_PI / 180.0f;
+	pResult->C *= M_PI / 180.0f;
 	pResult->C = (jkPlayer_puppetAngBias / deltaSeconds) * pResult->C;
 	pResult->C = stdMath_Clamp(pResult->C, -CONSTRAINT_VEL_LIMIT, CONSTRAINT_VEL_LIMIT);
 
