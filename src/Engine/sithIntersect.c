@@ -146,8 +146,8 @@ int sithIntersect_CollideThings(sithThing *pThing, const rdVector3 *a2, const rd
 	// shrink the collide size if both bodies belong to the same puppet hierarchy to avoid issues
 	if (pThing && pThing->constraintRoot && a6->constraintRoot && pThing->constraintRoot == a6->constraintRoot)
 	{
-		collideSize *= 0.5f;
-		rangeSize *= 0.5f;
+		collideSize *= 0.7f;
+		rangeSize *= 0.7f;
 	}
 #endif
 
