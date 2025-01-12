@@ -693,14 +693,21 @@ void sithRender_Draw()
     rdSetTextureMode(sithRender_texMode);
     rdSetRenderOptions(rdGetRenderOptions() | 2);
 
-#ifdef FOG
-	rdSetFog(sithWorld_pCurrentWorld->fogEnabled, &sithWorld_pCurrentWorld->fogColor, sithWorld_pCurrentWorld->fogStartDepth, sithWorld_pCurrentWorld->fogEndDepth);
-#endif
-
     if (!sithCamera_currentCamera || !sithCamera_currentCamera->sector)
         return;
 
     sithPlayer_SetScreenTint(sithCamera_currentCamera->sector->tint.x, sithCamera_currentCamera->sector->tint.y, sithCamera_currentCamera->sector->tint.z);
+#ifdef FOG
+	if (sithCamera_currentCamera->sector->flags & SITH_SECTOR_UNDERWATER)
+	{
+		rdVector4 fog = { sithCamera_currentCamera->sector->tint.x, sithCamera_currentCamera->sector->tint.y, sithCamera_currentCamera->sector->tint.z, 1.0f };
+		rdSetFog(1, &fog, 0.0f, 10.0f);
+	}
+	else
+	{
+		rdSetFog(sithWorld_pCurrentWorld->fogEnabled, &sithWorld_pCurrentWorld->fogColor, sithWorld_pCurrentWorld->fogStartDepth, sithWorld_pCurrentWorld->fogEndDepth);
+	}
+#endif
 
 	sithCamera_currentCamera->rdCam.flags &= ~0x1;
 	if ( (sithCamera_currentCamera->sector->flags & 2) != 0 )
