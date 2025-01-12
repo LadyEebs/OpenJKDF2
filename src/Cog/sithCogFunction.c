@@ -932,6 +932,19 @@ void sithCogFunction_SetPovWaggle(sithCog* ctx)
 }
 #endif
 
+#ifdef FOG
+void sithCogFunction_SetFog(sithCog* ctx)
+{
+	sithWorld_pCurrentWorld->fogEndDepth = sithCogExec_PopFlex(ctx);
+	sithWorld_pCurrentWorld->fogStartDepth = sithCogExec_PopFlex(ctx);
+	sithWorld_pCurrentWorld->fogColor.w = sithCogExec_PopFlex(ctx);
+	sithWorld_pCurrentWorld->fogColor.z = sithCogExec_PopFlex(ctx);
+	sithWorld_pCurrentWorld->fogColor.y = sithCogExec_PopFlex(ctx);
+	sithWorld_pCurrentWorld->fogColor.x = sithCogExec_PopFlex(ctx);
+	sithWorld_pCurrentWorld->fogEnabled = sithCogExec_PopInt(ctx);
+}
+#endif
+
 void sithCogFunction_HeapNew(sithCog *ctx)
 {
     sithCogStackvar *oldHeap; // eax
@@ -1894,6 +1907,9 @@ void sithCogFunction_Startup(void* ctx)
     sithCogScript_RegisterVerb(ctx, sithCogFunction_SetPovShake, "setpovshake");
 #ifdef DYNAMIC_POV
 	sithCogScript_RegisterVerb(ctx, sithCogFunction_SetPovWaggle, "setpovwaggle");
+#endif
+#ifdef FOG
+	sithCogScript_RegisterVerb(ctx, sithCogFunction_SetFog, "setfog");
 #endif
     sithCogScript_RegisterVerb(ctx, sithCogFunction_SetCameraStateFlags, "setcamerastateflags");
     sithCogScript_RegisterVerb(ctx, sithCogFunction_GetCameraStateFlags, "getcamerastateflags");
