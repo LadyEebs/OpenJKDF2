@@ -40,7 +40,7 @@ in float f_depth;
 
 noperspective in vec2 f_uv_affine;
 
-uniform sharedBlock
+layout(std140) uniform sharedBlock
 {
 	vec4  ambientSGBasis[8];
 
@@ -58,7 +58,7 @@ uniform sharedBlock
 	vec2  clusterScaleBias;
 };
 
-uniform textureBlock
+layout(std140) uniform textureBlock
 {
 	int   tex_mode;
 	int   uv_mode;
@@ -73,7 +73,7 @@ uniform textureBlock
 	vec4 padding;
 };
 
-uniform materialBlock
+layout(std140) uniform materialBlock
 {	
 	vec4 fillColor;
 	vec4 albedoFactor;

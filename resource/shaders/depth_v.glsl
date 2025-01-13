@@ -16,7 +16,7 @@ out float f_depth;
 
 uniform mat4 modelMatrix;
 
-uniform sharedBlock
+layout(std140) uniform sharedBlock
 {
 	vec4  ambientSGBasis[8];
 
@@ -34,7 +34,7 @@ uniform sharedBlock
 	vec2  clusterScaleBias;
 };
 
-uniform textureBlock
+layout(std140) uniform textureBlock
 {
 	int   tex_mode;
 	int   uv_mode;

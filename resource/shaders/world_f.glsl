@@ -131,7 +131,7 @@ uniform vec3 ambientSG[8];
 #define CLUSTER_GRID_SIZE_XYZ (CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y * CLUSTER_GRID_SIZE_Z)
 #define CLUSTER_GRID_TOTAL_SIZE (CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y * CLUSTER_GRID_SIZE_Z * CLUSTER_BUCKETS_PER_CLUSTER)
 
-uniform sharedBlock
+layout(std140) uniform sharedBlock
 {
 	vec4  ambientSGBasis[8];
 
@@ -149,7 +149,7 @@ uniform sharedBlock
 	vec2  clusterScaleBias;
 };
 
-uniform fogBlock
+layout(std140) uniform fogBlock
 {
 	vec4  fogColor;
 	int   fogEnabled;
@@ -158,7 +158,7 @@ uniform fogBlock
 	int   fogPad0;
 };
 
-uniform textureBlock
+layout(std140) uniform textureBlock
 {
 	int   tex_mode;
 	int   uv_mode;
@@ -173,7 +173,7 @@ uniform textureBlock
 	vec4 padding;
 };
 
-uniform materialBlock
+layout(std140) uniform materialBlock
 {	
 	vec4 fillColor;
 	vec4 albedoFactor;
@@ -200,7 +200,7 @@ struct light
 	float cosAngleY;
 };
 
-uniform lightBlock
+layout(std140) uniform lightBlock
 {
 	uint firstLight;
 	uint numLights;
@@ -213,7 +213,7 @@ struct occluder
 	vec4 position;
 };
 
-uniform occluderBlock
+layout(std140) uniform occluderBlock
 {
 	uint firstOccluder;
 	uint numOccluders;
@@ -234,7 +234,7 @@ struct decal
 	float padding1;
 };
 
-uniform decalBlock
+layout(std140) uniform decalBlock
 {
 	uint  firstDecal;
 	uint  numDecals;
