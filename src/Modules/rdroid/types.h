@@ -78,6 +78,7 @@ enum RD_TEXGEN
 	RD_TEXGEN_NONE    = 0,
 	RD_TEXGEN_HORIZON = 1,
 	RD_TEXGEN_CEILING = 2,
+	RD_TEXGEN_WATER   = 3
 };
 
 typedef uint8_t rdTexFilter_t;
@@ -92,7 +93,8 @@ enum RD_RENDERPASS
 {
 	RD_RENDERPASS_NONE              = 0x0,
 	RD_RENDERPASS_CLEAR_DEPTH       = 0x1,
-	RD_RENDERPASS_AMBIENT_OCCLUSION = 0x2
+	RD_RENDERPASS_AMBIENT_OCCLUSION = 0x2,
+	RD_RENDERPASS_REFRACTION        = 0x4,
 };
 
 typedef uint8_t rdDitherMode_t;

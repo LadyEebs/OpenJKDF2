@@ -780,7 +780,7 @@ void sithRender_Draw()
 
 	sithRender_DrawBackdrop();
 
-	rdRenderPass("sithRender_Draw", 1, RD_RENDERPASS_CLEAR_DEPTH | (jkPlayer_enableSSAO ? RD_RENDERPASS_AMBIENT_OCCLUSION : 0));
+	rdRenderPass("sithRender_Draw", 1, RD_RENDERPASS_REFRACTION | RD_RENDERPASS_CLEAR_DEPTH | (jkPlayer_enableSSAO ? RD_RENDERPASS_AMBIENT_OCCLUSION : 0));
 	rdDepthRange(0.0f, 1.0f);
 
 	rdMatrixMode(RD_MATRIX_VIEW);
@@ -1307,6 +1307,18 @@ void sithRender_DrawSurface(sithSurface* surface)
 
 	rdSetLightMode(lightMode);
 
+	if (sithRender_lightingIRMode)
+	{
+		rdAmbientLight(sithRender_f_83198C, sithRender_f_83198C, sithRender_f_83198C);
+	}
+	else
+	{
+		float extra = stdMath_Clamp(surface->parent_sector->extraLight + surface->surfaceInfo.face.extraLight + sithRender_008d4098, 0.0, 1.0);
+		rdAmbientLight(extra, extra, extra);
+	}
+	rdAmbientLightSH(NULL);
+	//rdAmbientLightSH(&surface->parent_sector->ambientSH);
+
 	int texMode = surface->surfaceInfo.face.textureMode;
 	if (texMode >= sithRender_texMode)
 		texMode = sithRender_texMode;
@@ -1327,7 +1339,30 @@ void sithRender_DrawSurface(sithSurface* surface)
 	}
 	else
 	{
-		rdTexOffseti(surface->surfaceInfo.face.clipIdk.x, surface->surfaceInfo.face.clipIdk.y);
+		int isWater = 0;
+		if (surface->adjoin && (surface->parent_sector->flags & SITH_SECTOR_UNDERWATER || surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER))
+			isWater = 1;
+		else if (!(surface->parent_sector->flags & SITH_SECTOR_UNDERWATER) && (surface->surfaceFlags & SITH_SURFACE_WATER || surface->surfaceFlags & SITH_SURFACE_PUDDLE || surface->surfaceFlags & SITH_SURFACE_VERYDEEPWATER))
+			isWater = 1;
+
+		if (isWater)// if (surface->adjoin && (surface->parent_sector->flags & SITH_SECTOR_UNDERWATER || surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER))//if (surface->adjoin && surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER)
+		{
+			//rdSetLightMode(RD_LIGHTMODE_SPECULAR);
+			rdTexGen(RD_TEXGEN_WATER);
+			if (surface->adjoin)
+				rdTexGenParams(surface->adjoin->sector->tint.x, surface->adjoin->sector->tint.y, surface->adjoin->sector->tint.z, sithTime_curSeconds);
+			else
+				rdTexGenParams(0, 0, 0, sithTime_curSeconds);
+
+			// surface scroll currently causes popping when it loops
+			//rdTexOffseti(surface->surfaceInfo.face.clipIdk.x, surface->surfaceInfo.face.clipIdk.y);
+
+			//rdAmbientLightSH(&surface->parent_sector->ambientSH);
+		}
+		else
+		{
+			rdTexOffseti(surface->surfaceInfo.face.clipIdk.x, surface->surfaceInfo.face.clipIdk.y);
+		}
 	}
 
 	if(surface->parent_sector->flags & SITH_SECTOR_DRAW_AS_3DO)
@@ -1337,18 +1372,6 @@ void sithRender_DrawSurface(sithSurface* surface)
 
 	rdSetTexMode(texMode);
 	rdTexFilterMode((surface->surfaceInfo.face.type & RD_FF_TEX_FILTER_NEAREST) ? RD_TEXFILTER_NEAREST : RD_TEXFILTER_BILINEAR);
-
-	if (sithRender_lightingIRMode)
-	{
-		rdAmbientLight(sithRender_f_83198C, sithRender_f_83198C, sithRender_f_83198C);
-	}
-	else
-	{
-		float extra = stdMath_Clamp(surface->parent_sector->extraLight + surface->surfaceInfo.face.extraLight + sithRender_008d4098, 0.0, 1.0);
-		rdAmbientLight(extra, extra, extra);
-	}
-	rdAmbientLightSH(NULL);
-	//rdAmbientLightSH(&surface->parent_sector->ambientSH);
 
 	int isAlpha = (surface->surfaceInfo.face.type & RD_FF_TEX_TRANSLUCENT) != 0;
 

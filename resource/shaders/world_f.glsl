@@ -57,6 +57,7 @@ uniform sampler2D decalAtlas;
 
 uniform sampler2D ztex;
 uniform sampler2D ssaotex;
+uniform sampler2D refrtex;
 
 in vec4 f_color;
 in float f_light;
@@ -957,6 +958,62 @@ float upsample_ssao(in vec2 texcoord, in float linearDepth)
 	return dot(weights / totalWeight, values);
 }
 
+// https://www.shadertoy.com/view/MdXyzX
+// https://www.shadertoy.com/view/ctjXzd
+vec2 wavedx(vec2 position, vec2 direction, float speed, float frequency, float timeshift)
+{
+    float x = dot(direction, position) * frequency + timeshift * speed;
+    float wave = exp(sin(x) - 1.0);
+    float dx = wave * cos(x);
+    return vec2(wave, -dx);
+}
+
+float getwaves(vec2 position, int iterations,float t)
+{
+	float iter = 0.0;
+    float phase = 6.0;
+    float speed = 2.0;
+    float weight = 1.0;
+    float w = 0.0;
+    float ws = 0.0;
+#define DRAG_MULT 0.048
+    for(int i=0;i<iterations;i++)
+	{
+        vec2 p = vec2(sin(iter), cos(iter));
+        vec2 res = wavedx(position, p, speed, phase, t);
+        position += p * res.y * weight * DRAG_MULT;
+        w += res.x * weight;
+        iter += 12.0;
+        ws += weight;
+        weight = mix(weight, 0.0, 0.2);
+        phase *= 1.18;
+        speed *= 1.07;
+    }
+    return w / ws;
+}
+
+vec3 normalPlane(vec2 uv, out vec3 normalMap)
+{    
+	int iter = 20;
+	float T = texgen_params.w;
+  
+	const int textureOffset = 1;
+    float p  = getwaves(uv,iter,T);
+    float h1 = getwaves(uv +  vec2(textureOffset, 0) / 256.0, iter, T);
+    float v1 = getwaves(uv +  vec2(0, textureOffset) / 256.0, iter, T);
+   	
+	normalMap.xy = (p - vec2(h1, v1)) * 100.0;
+	normalMap.xy = -normalMap.xy;
+	normalMap.z = 1.0;
+    
+    vec3 normal;
+    mat3 TBN = construct_tbn(uv);
+    
+    normal= TBN * normalMap;
+    normal=normalize(normal);
+    return normal;
+}
+
 void main(void)
 {
 	const float DITHER_LUT[16] = float[16](
@@ -1008,6 +1065,21 @@ void main(void)
 	//	mipBias -= 2.0 * log2(1.0 + c * c) -12.3 * seam;
 	//}
 
+	vec3 surfaceNormals = normalize(f_normal);
+	vec3 localViewDir = normalize(-f_coord.xyz);
+	
+#ifndef ALPHA_BLEND
+	if (texgen == 3)
+	{
+		//vec3 normalMap;
+		//surfaceNormals = normalPlane(adj_texcoords.xy, normalMap);
+		//adj_texcoords.xy += normalMap.xy * 0.05;
+
+		float p = getwaves(adj_texcoords.xy, 20, texgen_params.w);
+		adj_texcoords.xy += p * 0.1;
+	}
+#endif
+
     vec4 sampled = texture(tex, adj_texcoords.xy, mipBias);
     vec4 sampledEmiss = texture(texEmiss, adj_texcoords.xy, mipBias);
     vec4 sampled_color = vec4(1.0, 1.0, 1.0, 1.0);
@@ -1016,8 +1088,32 @@ void main(void)
     vec4 palval = texture(worldPalette, vec2(index, 0.5));
 	vec4 emissive = vec4(0.0);
 
-	vec3 surfaceNormals = normalize(f_normal);
+#ifdef ALPHA_BLEND
+	float disp = 0.0;
+	if (texgen == 3)
+	{
+		float ndotv = dot(surfaceNormals.xyz, localViewDir.xyz);	
 
+		float fresnel = pow(1.0 - max(ndotv, 0.0), 5.0);
+		float lo = mix(0.4, 0.7, fresnel);
+		float hi = mix(1.4, 1.2, fresnel);
+
+	    float p = getwaves(adj_texcoords.xy, 20, texgen_params.w);
+
+		float alpha = 0.2;
+		if(p > lo)
+			alpha = 0.0;
+        
+		float h = getwaves(adj_texcoords.xy * 0.2, 10, texgen_params.w);
+		if (p + h > hi)
+			alpha = 0.8;
+        
+		disp = p;
+		sampled_color.rgb = vec3(p);
+		vertex_color.w = alpha;
+	}
+	else
+#endif
     if (tex_mode == TEX_MODE_TEST || geoMode <= 3) {
 		sampled_color = fillColor;
     }
@@ -1066,7 +1162,6 @@ void main(void)
 
     vec4 albedoFactor_copy = albedoFactor;
 
-	vec3 localViewDir = normalize(-f_coord.xyz);
 	uint cluster_index = compute_cluster_index(gl_FragCoord.xy, f_coord.y);
 	uint bucket_index = cluster_index * CLUSTER_BUCKETS_PER_CLUSTER;
 
@@ -1080,6 +1175,9 @@ void main(void)
 #ifndef UNLIT
 	#ifdef SPECULAR
 		//roughness = 0.2;
+
+		if (texgen == 3)
+			roughness = 0.01;
 
 		// fill color is effectively an anti-metalness control
 		vec3 avgAlbedo = fillColor.xyz;
@@ -1109,6 +1207,11 @@ void main(void)
 		//vec3 reflVec = reflect(-localViewDir, surfaceNormals);
 		//diffuseColor.xyz *= pow(max(dot(reflVec, surfaceNormals), 0.0), 8.0) * 0.5 + 0.5;
 #endif
+
+	//if (texgen == 3)
+	//{
+	//	diffuseColor = fillColor.xyz * sampled_color.xyz;
+	//}
 
 	if(numDecals > 0u)
 		BlendDecals(diffuseColor.xyz, emissive.xyz, bucket_index, f_coord.xyz, surfaceNormals);
@@ -1146,6 +1249,12 @@ void main(void)
 	float ndotv = dot(surfaceNormals.xyz, localViewDir.xyz);
 	vec3 specAO = mix(ao * ao, vec3(1.0), clamp(-0.3 * ndotv * ndotv, 0.0, 1.0));
 	specularLight.xyz *= specAO;
+
+	//if (texgen == 3)
+	//{
+	//	float fresnel = 0.04 + (1.0-0.04) * pow(1.0 - max(ndotv, 0.0), 5.0);
+	//	vertex_color.w *= fresnel;
+	//}
 	
 	if (numLights > 0u)
 		CalculatePointLighting(bucket_index, surfaceNormals, localViewDir, shadows, diffuseColor.xyz, specularColor.xyz, roughness, diffuseLight, specularLight);
@@ -1185,8 +1294,8 @@ void main(void)
 
     float orig_alpha = main_color.a;
 
-#ifdef ALPHA_BLEND
-    if (main_color.a < 0.01 && sampledEmiss.r == 0.0 && sampledEmiss.g == 0.0 && sampledEmiss.b == 0.0) {
+#ifdef ALPHABLEND
+    if (texgen != 3 && main_color.a < 0.01 && sampledEmiss.r == 0.0 && sampledEmiss.g == 0.0 && sampledEmiss.b == 0.0) {
         discard;
     }
 #endif
@@ -1206,6 +1315,36 @@ void main(void)
 
     fragColor = main_color;
 
+#ifdef ALPHA_BLEND
+	if (texgen == 3)
+	{
+		vec2 screenUV = gl_FragCoord.xy / iResolution.xy;
+		vec2 refrUV = screenUV + (disp * 2.0 - 1.0) * min(0.1, 0.0001 / f_depth);
+		float refrDepth = texture(ztex, refrUV).r;
+		if (refrDepth < f_depth)
+		{
+			refrUV = screenUV;
+			refrDepth = texture(ztex, refrUV).r;
+		}
+
+		vec3 refr = texture(refrtex, refrUV).rgb;
+		if(refrDepth < 0.9999)
+		{
+			float waterStart = f_depth * 128.0;
+			float waterEnd = refrDepth * 128.0;
+			float waterFogAmount = clamp((waterEnd - waterStart) / (10.0), 0.0, 1.0);
+			refr.rgb = mix(refr.rgb, texgen_params.rgb, waterFogAmount);
+		}
+
+		vec3 half_tint = texgen_params.rgb * 0.5;
+		vec3 tint_delta = texgen_params.rgb - (half_tint.brr + half_tint.ggb);
+		refr.rgb = clamp(tint_delta.rgb * refr.rgb + refr.rgb, vec3(0.0), vec3(1.0));
+
+		fragColor.rgb = fragColor.rgb * fragColor.w + refr.rgb;
+		fragColor.w = 1.0;
+	}
+#endif
+
 	// dither the output in case we're using some lower precision output
 	if(ditherMode == 1)
 		fragColor.rgb = min(fragColor.rgb + dither, vec3(1.0));
@@ -1214,6 +1353,6 @@ void main(void)
     fragColorEmiss = emissive * vec4(vec3(emissiveFactor.w), f_color.w);
 #else
     // Dont include any windows or transparent objects in emissivity output
-	fragColorEmiss = vec4(0.0);
+	fragColorEmiss = vec4(0.0, 0.0, 0.0, fragColor.w);
 #endif
 }

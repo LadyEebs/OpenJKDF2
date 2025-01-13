@@ -52,6 +52,7 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #define TEX_SLOT_DECAL_ATLAS     6
 #define TEX_SLOT_DEPTH           7
 #define TEX_SLOT_AO              8
+#define TEX_SLOT_REFRACTION      9
 
 #define STD3D_MAX_RENDER_PASSES     3
 
@@ -130,6 +131,7 @@ typedef struct std3DFramebuffer
     std3DIntermediateFbo main;
 
 	std3DIntermediateFbo postfx; // temporary composite space for postfx
+	std3DIntermediateFbo refr; // 1/2 refraction tex
 	std3DIntermediateFbo ssaoDepth;
 	std3DIntermediateFbo ssao;
     std3DIntermediateFbo bloomLayers[4];
@@ -410,7 +412,7 @@ typedef struct std3D_worldStage
 	GLint attribute_coord3d, attribute_v_color, attribute_v_light, attribute_v_uv, attribute_v_norm;
 	GLint uniform_projection, uniform_modelMatrix;
 	GLint uniform_ambient_color, uniform_ambient_sg;
-	GLint uniform_geo_mode,  uniform_fillColor, uniform_tex, uniform_texEmiss, uniform_displacement_map, uniform_texDecals, uniform_texz, uniform_texssao;
+	GLint uniform_geo_mode,  uniform_fillColor, uniform_tex, uniform_texEmiss, uniform_displacement_map, uniform_texDecals, uniform_texz, uniform_texssao, uniform_texrefraction;
 	GLint uniform_worldPalette, uniform_worldPaletteLights;
 	GLint uniform_light_mode, uniform_ditherMode, uniform_ao_flags;
 	GLint uniform_shared, uniform_fog, uniform_tex_block, uniform_material, uniform_lightbuf, uniform_lights, uniform_occluders, uniform_decals;
@@ -845,6 +847,8 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 
 	std3D_generateIntermediateFbo(width, height, &pFb->postfx, GL_RGB10_A2, 0, 0, 0);
 
+	std3D_generateIntermediateFbo(width/2, height/2, &pFb->refr, GL_RGB5_A1, 0, 0, 0);
+
     pFb->main.fbo = pFb->fbo;
     pFb->main.tex = pFb->tex1;
     pFb->main.rbo = pFb->rbo;
@@ -875,6 +879,7 @@ void std3D_deleteFramebuffer(std3DFramebuffer* pFb)
 		std3D_deleteIntermediateFbo(&pFb->bloomLayers[i]);
 
 	std3D_deleteIntermediateFbo(&pFb->postfx);
+	std3D_deleteIntermediateFbo(&pFb->refr);
 }
 
 #ifdef HW_VBUFFER
@@ -1252,6 +1257,7 @@ int std3D_loadWorldStage(std3D_worldStage* pStage, int isZPass, const char* defi
 	pStage->uniform_texDecals = std3D_tryFindUniform(pStage->program, "decalAtlas");
 	pStage->uniform_texz = std3D_tryFindUniform(pStage->program, "ztex");
 	pStage->uniform_texssao = std3D_tryFindUniform(pStage->program, "ssaotex");
+	pStage->uniform_texrefraction = std3D_tryFindUniform(pStage->program, "refrtex");
 	pStage->uniform_geo_mode = std3D_tryFindUniform(pStage->program, "geoMode");
 	pStage->uniform_ditherMode = std3D_tryFindUniform(pStage->program, "ditherMode");
 	pStage->uniform_light_mode = std3D_tryFindUniform(pStage->program, "lightMode");
@@ -4191,8 +4197,10 @@ void std3D_UpdateSharedUniforms()
 	else
 		rdVector_Set4(&uniforms.filter, 1.0, 1.0, 1.0, 1.0f);
 	rdVector_Set4(&uniforms.add, (float)rdroid_curColorEffects.add.x / 255.0f, (float)rdroid_curColorEffects.add.y / 255.0f, (float)rdroid_curColorEffects.add.z / 255.0f, 0.0f);
-	uniforms.fade = rdroid_curColorEffects.fade;
+	//uniforms.fade = rdroid_curColorEffects.fade;
 	////
+
+	uniforms.fade = sithTime_curSeconds;
 
 	uniforms.lightMult = 1.0;//jkGuiBuildMulti_bRendering ? 0.85 : (jkPlayer_enableBloom ? 0.9 : 0.85);
 	
@@ -4483,6 +4491,7 @@ void std3D_BindStage(std3D_worldStage* pStage)
 	glUniform1i(pStage->uniform_texDecals,          TEX_SLOT_DECAL_ATLAS);
 	glUniform1i(pStage->uniform_texz,               TEX_SLOT_DEPTH);
 	glUniform1i(pStage->uniform_texssao,            TEX_SLOT_AO);
+	glUniform1i(pStage->uniform_texrefraction,      TEX_SLOT_REFRACTION);
 }
 
 void std3D_bindTexture(int type, int texId, int slot)
@@ -4709,6 +4718,7 @@ void std3D_setupWorldTextures()
 	std3D_bindTexture(GL_TEXTURE_2D, decalAtlasFBO.tex, TEX_SLOT_DECAL_ATLAS);
 	std3D_bindTexture(GL_TEXTURE_2D, std3D_pFb->ztex, TEX_SLOT_DEPTH);
 	std3D_bindTexture(GL_TEXTURE_2D, aotex, TEX_SLOT_AO);
+	std3D_bindTexture(GL_TEXTURE_2D, std3D_pFb->refr.tex, TEX_SLOT_REFRACTION);
 }
 
 void std3D_FlushZDrawCalls(std3D_RenderPass* pRenderPass)
@@ -4746,6 +4756,12 @@ void std3D_FlushColorDrawCalls(std3D_RenderPass* pRenderPass)
 
 	std3D_FlushDrawCallList(pRenderPass,   &pRenderPass->drawCallLists[DRAW_LIST_COLOR_ZPREPASS], std3D_DrawCallCompareSortKey,    "Color ZPrepass");
 	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_NOZPREPASS], std3D_DrawCallCompareSortKey, "Color No ZPrepass");
+	
+	if (pRenderPass->flags & RD_RENDERPASS_REFRACTION)
+	{	
+		std3D_DrawSimpleTex(&std3D_texFboStage, &std3D_pFb->refr, std3D_pFb->tex0, 0, 0, 1.0, 1.0, 1.0, 0, "Refraction Downscale");
+		glBindFramebuffer(GL_FRAMEBUFFER, std3D_pFb->fbo);
+	}
 	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_ALPHABLEND],   std3D_DrawCallCompareDepth,  "Color Alphablend");
 
 	std3D_popDebugGroup();
@@ -5404,6 +5420,8 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 
 	// wait for clusters to finish building
 	stdJob_Wait();
+	
+	time = Linux_TimeUs();
 
 	// now assign items to clusters in parallel
 	stdJob_Dispatch(lightUniforms.numLights, 8, stdJob_AssignLightsToClustersJob);
@@ -5412,6 +5430,8 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 
 	// wait on the result before uploading to GPU
 	stdJob_Wait();
+
+	//printf("%lld us to assign items to clusters for frame %d\n", Linux_TimeUs() - time, rdroid_frameTrue);
 #else
 	// clean slate
 	memset(std3D_clusterBits, 0, sizeof(std3D_clusterBits));
@@ -5442,6 +5462,8 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 		std3D_AssignItemToClusters(pRenderPass, decalUniforms.firstDecal + i, (rdVector3*)&decalUniforms.tmpDecals[i].posRad, decalUniforms.tmpDecals[i].posRad.w, pProjection, znear, zfar, &decalUniforms.tmpDecals[i].decalMatrix);
 	}
 	printf("\t%lld us to assign decals to custers for frame %d\n", Linux_TimeUs() - decalTime, rdroid_frameTrue);
+
+	//printf("%lld us to assign items to clusters for frame %d\n", Linux_TimeUs() - time, rdroid_frameTrue);
 #endif
 
 	std3D_FlushLights();
@@ -5452,8 +5474,6 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 	glBindBuffer(GL_TEXTURE_BUFFER, cluster_buffer);
 	glBufferSubData(GL_TEXTURE_BUFFER, 0, sizeof(std3D_clusterBits), (void*)std3D_clusterBits);
 	glBindBuffer(GL_TEXTURE_BUFFER, 0);
-
-	//printf("%lld us to assign items to clusters for frame %d\n", Linux_TimeUs() - time, rdroid_frameTrue);
 }
 
 #endif
