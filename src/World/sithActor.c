@@ -584,6 +584,15 @@ void sithActor_Remove(sithThing *thing)
     thing->physicsParams.physflags |= (SITH_PF_FLOORSTICK|SITH_PF_SURFACEALIGN|SITH_PF_USEGRAVITY);
     thing->lifeLeftMs = jkPlayer_bKeepCorpses ? -1 : 20000; // Added
     sithPhysics_FindFloor(thing, 0);
+#ifdef QOL_IMPROVEMENTS
+	// free the AI when we spawn the corpse instead of waiting for thing removal
+	// which never happens when keep corpses is on 
+	//if (jkPlayer_bKeepCorpses)
+	{
+		if (thing->controlType == SITH_CT_AI)
+			sithAI_FreeEntry(thing);
+	}
+#endif
 #ifdef PUPPET_PHYSICS
 	thing->collide = SITH_COLLIDE_NONE;
 	if (thing->animclass && thing->animclass->flags & JOINTFLAGS_PHYSICS)
