@@ -4761,6 +4761,7 @@ void std3D_FlushColorDrawCalls(std3D_RenderPass* pRenderPass)
 	{	
 		std3D_DrawSimpleTex(&std3D_texFboStage, &std3D_pFb->refr, std3D_pFb->tex0, 0, 0, 1.0, 1.0, 1.0, 0, "Refraction Downscale");
 		glBindFramebuffer(GL_FRAMEBUFFER, std3D_pFb->fbo);
+		std3D_setupWorldTextures();
 	}
 	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_ALPHABLEND],   std3D_DrawCallCompareDepth,  "Color Alphablend");
 
