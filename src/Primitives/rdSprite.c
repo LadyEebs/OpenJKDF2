@@ -222,6 +222,8 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 
 	rdSetZBufferMethod(RD_ZBUFFER_READ_NOWRITE);
 
+	extern int jkPlayer_enableTextureFilter;
+	rdTexFilterMode(!jkPlayer_enableTextureFilter || (sprite->face.type & RD_FF_TEX_FILTER_NEAREST) ? RD_TEXFILTER_NEAREST : RD_TEXFILTER_BILINEAR);
 	rdTexClampMode(RD_FF_TEX_CLAMP_X, RD_FF_TEX_CLAMP_Y);
 
 	rdTexOffseti(sprite->face.clipIdk.x, sprite->face.clipIdk.y);

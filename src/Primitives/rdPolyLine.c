@@ -425,6 +425,9 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 		rdVector_Scale3Acc(&uvs[3], (dLR + dUL) / dUL);
 	}
 
+	extern int jkPlayer_enableTextureFilter;
+	rdTexFilterMode(!jkPlayer_enableTextureFilter || (face->type & RD_FF_TEX_FILTER_NEAREST) ? RD_TEXFILTER_NEAREST : RD_TEXFILTER_BILINEAR);
+
 	rdTexOffseti(face->clipIdk.x, face->clipIdk.y);
 
 	if(rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))

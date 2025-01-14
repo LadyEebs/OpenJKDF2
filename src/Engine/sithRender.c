@@ -1319,6 +1319,8 @@ void sithRender_DrawSurface(sithSurface* surface)
 	rdAmbientLightSH(NULL);
 	//rdAmbientLightSH(&surface->parent_sector->ambientSH);
 
+	rdTexFilterMode(!jkPlayer_enableTextureFilter || (surface->surfaceInfo.face.type & RD_FF_TEX_FILTER_NEAREST) ? RD_TEXFILTER_NEAREST : RD_TEXFILTER_BILINEAR);
+
 	int texMode = surface->surfaceInfo.face.textureMode;
 	if (texMode >= sithRender_texMode)
 		texMode = sithRender_texMode;
@@ -1371,7 +1373,6 @@ void sithRender_DrawSurface(sithSurface* surface)
 		rdSetCullMode(RD_CULL_MODE_BACK);
 
 	rdSetTexMode(texMode);
-	rdTexFilterMode((surface->surfaceInfo.face.type & RD_FF_TEX_FILTER_NEAREST) ? RD_TEXFILTER_NEAREST : RD_TEXFILTER_BILINEAR);
 
 	int isAlpha = (surface->surfaceInfo.face.type & RD_FF_TEX_TRANSLUCENT) != 0;
 

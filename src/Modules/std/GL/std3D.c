@@ -4381,6 +4381,18 @@ void std3D_SetTextureState(std3D_worldStage* pStage, std3D_DrawCallState* pState
 		{
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, pTexState->flags & RD_FF_TEX_CLAMP_X ? GL_CLAMP_TO_EDGE : GL_REPEAT);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, pTexState->flags & RD_FF_TEX_CLAMP_Y ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+
+			// oh boy do I ever fucking hate this
+			if (jkPlayer_enableTextureFilter && (pState->stateBits.texFilter == RD_TEXFILTER_BILINEAR) && pTexture->is_16bit)
+			{
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			}
+			else
+			{
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+			}
 		}
 
 		int emiss_tex_id = pTexture->emissive_texture_id;
@@ -4399,7 +4411,7 @@ void std3D_SetTextureState(std3D_worldStage* pStage, std3D_DrawCallState* pState
 		}
 		else
 		{
-			if (!jkPlayer_enableTextureFilter || (pState->stateBits.texFilter == RD_TEXFILTER_NEAREST))
+			if (/*!jkPlayer_enableTextureFilter ||*/ (pState->stateBits.texFilter == RD_TEXFILTER_NEAREST))
 				tex.tex_mode = pTexture->is_16bit ? TEX_MODE_16BPP : TEX_MODE_WORLDPAL;
 			else
 				tex.tex_mode = pTexture->is_16bit ? TEX_MODE_BILINEAR_16BPP : TEX_MODE_BILINEAR;
