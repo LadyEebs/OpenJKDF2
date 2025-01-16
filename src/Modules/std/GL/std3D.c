@@ -1550,7 +1550,6 @@ int init_resources()
 	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHABLEND], 0, "ALPHA_DISCARD;ALPHA_BLEND")) return false;
 	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHABLEND_SPEC], 0, "ALPHA_DISCARD;ALPHA_BLEND;SPECULAR")) return false;
 	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHABLEND_UNLIT], 0, "ALPHA_DISCARD;ALPHA_BLEND;UNLIT")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_REFRACTION], 0, "ALPHA_DISCARD;ALPHA_BLEND;REFRACTION;SPECULAR")) return false;
 
     if (!std3D_loadSimpleTexProgram("shaders/ui", &std3D_uiProgram)) return false;
     if (!std3D_loadSimpleTexProgram("shaders/texfbo", &std3D_texFboStage)) return false;
@@ -4186,6 +4185,14 @@ void std3D_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallSta
 			pDrawCallState->stateBits.zMethod = RD_ZBUFFER_NOREAD_WRITE;
 		else if (pDrawCallState->stateBits.zMethod == RD_ZBUFFER_READ_NOWRITE)
 			pDrawCallState->stateBits.zMethod = RD_ZBUFFER_READ_WRITE;
+
+		// since the surface will be refractive/read the refraction buffer for composite, we can disable actual alpha blending
+		pDrawCallState->stateBits.blend = 0;
+		pDrawCallState->stateBits.srdBlend = 1;
+		pDrawCallState->stateBits.dstBlend = 0;
+
+		// use simple lighting on the refractive surfaces for now
+		pDrawCallState->stateBits.lightMode = RD_LIGHTMODE_DIFFUSE;
 
 		shaderID = SHADER_COLOR_REFRACTION;
 		listIndex = DRAW_LIST_COLOR_REFRACTION;
