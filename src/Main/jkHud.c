@@ -379,6 +379,8 @@ void jkHud_Draw()
     if (!jkHud_bOpened)
         return;
 
+	STD_BEGIN_PROFILER_LABEL();
+
     if ( Main_bDispStats )
     {
         playerThing = sithWorld_pCurrentWorld->playerThing;
@@ -421,6 +423,9 @@ void jkHud_Draw()
 
 #ifdef SDL2_RENDER
     jkHud_DrawGPU();
+
+	STD_END_PROFILER_LABEL();
+
     return;
 #endif
 
@@ -438,6 +443,8 @@ void jkHud_Draw()
 #ifdef SDL2_RENDER
     stdDisplay_VBufferUnlock(Video_pCanvas->vbuffer);
 #endif
+		STD_END_PROFILER_LABEL();
+
         return;
     }
 
@@ -920,6 +927,7 @@ LABEL_116:
 #endif
 
     jkHud_DrawGPU();
+	STD_END_PROFILER_LABEL();
 }
 
 // Added
