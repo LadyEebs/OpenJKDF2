@@ -944,6 +944,7 @@ static_assert(sizeof(std3D_LightingState) == sizeof(uint32_t) * 10, "std3D_Textu
 typedef struct std3D_TransformState
 {
 	rdMatrix44     modelView;
+	rdMatrix44     view;
 	rdMatrix44     proj;
 } std3D_TransformState;
 

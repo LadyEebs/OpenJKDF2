@@ -421,6 +421,8 @@ void rdUpdateDirtyState()
 
 	if (rdroid_dirtyBits & RD_DIRTYBIT_VIEW)
 	{
+		rdroid_transformState.view = rdroid_matrices[RD_MATRIX_VIEW];
+		
 		rdMatrix_Invert44(&rdroid_curCamMatrix, &rdroid_matrices[RD_MATRIX_VIEW]);
 
 		rdMatrix34 viewMat;
