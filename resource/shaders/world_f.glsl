@@ -1580,7 +1580,7 @@ void main(void)
 #ifdef REFRACTION
 	//if (texgen == 3)
 	{
-		float sceneDepth = texture(ztex, screenUV).r;
+		//float sceneDepth = texture(ztex, screenUV).r;
 		float softIntersect = 1.0;//clamp((sceneDepth - f_depth) / -localViewDir.y * 500.0, 0.0, 1.0);
 		
 		disp *= min(0.05, 0.0001 / f_depth) * softIntersect;
@@ -1591,7 +1591,8 @@ void main(void)
 		if (refrDepth < f_depth)
 		{
 			refrUV = screenUV;
-			refrDepth = sceneDepth;
+			//refrDepth = sceneDepth;
+			refrDepth = texture(ztex, screenUV).r;
 		}
 
 		vec3 refr = texture(refrtex, refrUV).rgb;
