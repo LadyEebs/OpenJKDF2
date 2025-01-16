@@ -1201,9 +1201,9 @@ void jkPlayer_DrawPov()
 			rotVelNorm.x = -sithTime_deltaSeconds * angVel.x;
 			rotVelNorm.y = -sithTime_deltaSeconds * angVel.y;
 			rotVelNorm.z = -sithTime_deltaSeconds * angVel.z;
-			jkSaber_rotateVec.x = lastRotVelNorm.x + (rotVelNorm.x - lastRotVelNorm.x) * 0.1f;
-			jkSaber_rotateVec.y = lastRotVelNorm.y + (rotVelNorm.y - lastRotVelNorm.y) * 0.1f;
-			jkSaber_rotateVec.z = lastRotVelNorm.z + (rotVelNorm.z - lastRotVelNorm.z) * 0.1f;
+			jkSaber_rotateVec.x = lastRotVelNorm.x + (rotVelNorm.x - lastRotVelNorm.x) * 0.2f;
+			jkSaber_rotateVec.y = lastRotVelNorm.y + (rotVelNorm.y - lastRotVelNorm.y) * 0.2f;
+			jkSaber_rotateVec.z = lastRotVelNorm.z + (rotVelNorm.z - lastRotVelNorm.z) * 0.2f;
 			lastRotVelNorm = jkSaber_rotateVec;
 
 			// Added: add a small rotation based on pitch
