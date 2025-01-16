@@ -465,23 +465,25 @@ int stdDisplay_VBufferFill(stdVBuffer *vbuf, int fillColor, rdRect *rect)
     SDL_Rect dstRect = {rect->x, rect->y, rect->width, rect->height};
     
     //printf("%x; %u %u %u %u\n", fillColor, rect->x, rect->y, rect->width, rect->height);
+
+	// eebs: this is stupid slow
+   //uint8_t* dstPixels = vbuf->sdlSurface->pixels;
+   //uint32_t dstStride = vbuf->format.width_in_bytes;
+   //uint32_t max_idx = dstStride * vbuf->format.height;
+	//for (int j = 0; j < rect->height; j++)
+   //{
+	//	for (int i = 0; i < rect->width; i++)
+	//	{
+   //        uint32_t idx = (i + dstRect.x) + ((j + dstRect.y)*dstStride);
+   //        if (idx > max_idx)
+   //            continue;
+   //        
+   //        dstPixels[idx] = fillColor;
+   //    }
+   //}
     
-    uint8_t* dstPixels = vbuf->sdlSurface->pixels;
-    uint32_t dstStride = vbuf->format.width_in_bytes;
-    uint32_t max_idx = dstStride * vbuf->format.height;
-	for (int j = 0; j < rect->height; j++)
-    {
-		for (int i = 0; i < rect->width; i++)
-		{
-            uint32_t idx = (i + dstRect.x) + ((j + dstRect.y)*dstStride);
-            if (idx > max_idx)
-                continue;
-            
-            dstPixels[idx] = fillColor;
-        }
-    }
-    
-    //SDL_FillRect(vbuf, &dstRect, fillColor); //TODO error check
+	// eebs: about 1ms faster than above but still pretty shit, can maybe fix with the hw version
+    SDL_FillRect(vbuf->sdlSurface, &dstRect, fillColor); //TODO error check
 
 #ifdef HW_VBUFFER
 	if (vbuf->device_surface)
