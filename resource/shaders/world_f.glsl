@@ -58,10 +58,12 @@ uniform sampler2D decalAtlas;
 uniform sampler2D ztex;
 uniform sampler2D ssaotex;
 uniform sampler2D refrtex;
+uniform sampler2D cliptex;
 
 in vec4 f_color;
 in float f_light;
 in vec4 f_uv;
+in vec4 f_uv_nooffset;
 in vec3 f_coord;
 in vec3 f_normal;
 in float f_depth;
@@ -70,6 +72,7 @@ noperspective in vec2 f_uv_affine;
 
 uniform mat4 modelMatrix;
 uniform mat4 projMatrix;
+uniform mat4 viewMatrix;
 
 
 uniform vec3 cameraRT;
@@ -1014,8 +1017,225 @@ vec3 normalPlane(vec2 uv, out vec3 normalMap)
     return normal;
 }
 
+// 3D simplex noise adapted from https://www.shadertoy.com/view/Ws23RD
+// * Removed gradient normalization
+
+vec4 mod289(vec4 x)
+{
+    return x - floor(x / 289.0) * 289.0;
+}
+
+vec4 permute(vec4 x)
+{
+    return mod289((x * 34.0 + 1.0) * x);
+}
+
+vec4 snoise(vec3 v)
+{
+    const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
+
+    // First corner
+    vec3 i  = floor(v + dot(v, vec3(C.y)));
+    vec3 x0 = v   - i + dot(i, vec3(C.x));
+
+    // Other corners
+    vec3 g = step(x0.yzx, x0.xyz);
+    vec3 l = 1.0 - g;
+    vec3 i1 = min(g.xyz, l.zxy);
+    vec3 i2 = max(g.xyz, l.zxy);
+
+    vec3 x1 = x0 - i1 + C.x;
+    vec3 x2 = x0 - i2 + C.y;
+    vec3 x3 = x0 - 0.5;
+
+    // Permutations
+    vec4 p =
+      permute(permute(permute(i.z + vec4(0.0, i1.z, i2.z, 1.0))
+                            + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+                            + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+
+    // Gradients: 7x7 points over a square, mapped onto an octahedron.
+    // The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
+    vec4 j = p - 49.0 * floor(p / 49.0);  // mod(p,7*7)
+
+    vec4 x_ = floor(j / 7.0);
+    vec4 y_ = floor(j - 7.0 * x_); 
+
+    vec4 x = (x_ * 2.0 + 0.5) / 7.0 - 1.0;
+    vec4 y = (y_ * 2.0 + 0.5) / 7.0 - 1.0;
+
+    vec4 h = 1.0 - abs(x) - abs(y);
+
+    vec4 b0 = vec4(x.xy, y.xy);
+    vec4 b1 = vec4(x.zw, y.zw);
+
+    vec4 s0 = floor(b0) * 2.0 + 1.0;
+    vec4 s1 = floor(b1) * 2.0 + 1.0;
+    vec4 sh = -step(h, vec4(0.0));
+
+    vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+    vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+
+    vec3 g0 = vec3(a0.xy, h.x);
+    vec3 g1 = vec3(a0.zw, h.y);
+    vec3 g2 = vec3(a1.xy, h.z);
+    vec3 g3 = vec3(a1.zw, h.w);
+
+    // Compute noise and gradient at P
+    vec4 m = max(0.6 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0);
+    vec4 m2 = m * m;
+    vec4 m3 = m2 * m;
+    vec4 m4 = m2 * m2;
+    vec3 grad =
+      -6.0 * m3.x * x0 * dot(x0, g0) + m4.x * g0 +
+      -6.0 * m3.y * x1 * dot(x1, g1) + m4.y * g1 +
+      -6.0 * m3.z * x2 * dot(x2, g2) + m4.z * g2 +
+      -6.0 * m3.w * x3 * dot(x3, g3) + m4.w * g3;
+    vec4 px = vec4(dot(x0, g0), dot(x1, g1), dot(x2, g2), dot(x3, g3));
+    return 42.0 * vec4(grad, dot(m4, px));
+}
+
+float water_caustics(vec3 pos)
+{
+    vec4 n = snoise( pos );
+
+    pos -= 0.07*n.xyz;
+    pos *= 1.62;
+    n = snoise( pos );
+
+    pos -= 0.07*n.xyz;
+    n = snoise( pos );
+
+    pos -= 0.07*n.xyz;
+    n = snoise( pos );
+    return n.w;
+}
+
+void sample_color(vec2 uv, float mipBias, inout vec4 sampled_color, inout vec4 emissive)
+{
+	if (tex_mode == TEX_MODE_TEST || geoMode <= 3)
+	{
+		sampled_color = fillColor;
+		emissive = vec4(0.0);
+    }
+    else if (tex_mode == TEX_MODE_16BPP || tex_mode == TEX_MODE_BILINEAR_16BPP)
+    {
+		// todo: can probably do this swap on upload...
+		vec4 sampled = texture(tex, uv.xy, mipBias);
+        sampled_color = vec4(sampled.b, sampled.g, sampled.r, sampled.a);
+		
+		vec4 sampledEmiss = texture(texEmiss, uv.xy, mipBias);
+		emissive.rgb += sampledEmiss.rgb * emissiveFactor.rgb;
+    }
+    else if (tex_mode == TEX_MODE_WORLDPAL
+#ifndef CAN_BILINEAR_FILTER
+    || tex_mode == TEX_MODE_BILINEAR
+#endif
+    )
+    {
+		float index = texture(tex, uv.xy, mipBias).r;
+#ifdef ALPHA_DISCARD
+        if (index == 0.0)
+            discard;
+#endif
+		// Makes sure light is in a sane range
+        float light = clamp(f_light, 0.0, 1.0);
+        float light_worldpalidx = texture(worldPaletteLights, vec2(index, light)).r;
+        vec4 lightPalval = texture(worldPalette, vec2(light_worldpalidx, 0.5));
+
+		emissive = lightPalval;
+        sampled_color = texture(worldPalette, vec2(index, 0.5));
+    }
+#ifdef CAN_BILINEAR_FILTER
+    else if (tex_mode == TEX_MODE_BILINEAR)
+    {
+        bilinear_paletted(uv.xy, sampled_color, emissive);
+	#ifdef ALPHA_DISCARD
+        if (sampled_color.a < 0.01) {
+            discard;
+        }
+	#endif
+    }
+#endif
+}
+
+vec3 PurkinjeShift(vec3 light, float intensity)
+{
+	// constant 
+    const vec3 m = vec3(0.63721, 0.39242, 1.6064); // maximal cone sensitivity
+	const vec3 k = vec3(0.2, 0.2, 0.29);           // rod input strength long/medium/short
+	const float K = 45.0;   // scaling constant
+	const float S = 10.0;   // static saturation
+	const float k3 = 0.6;   // surround strength of opponent signal
+	const float rw = 0.139; // ratio of response for white light
+	const float p = 0.6189; // relative weight of L cones
+		
+	// [jpatry21] slide 164
+    // LMSR matrix using Smits method [smits00]
+    // Mij = Integrate[ Ei(lambda) I(lambda) Rj(lambda) d(lambda) ]
+	const mat4x3 M = mat4x3
+    (	
+        7.69684945, 18.4248204, 2.06809497,
+		2.43113687, 18.6979422, 3.01246326,
+		0.28911757, 1.40183293, 13.7922962,
+		0.46638595, 15.5643680, 10.0599647
+	);
+    
+    // [jpatry21] slide 165
+    // M with gain control factored in
+    // note: the result is slightly different, is this correct?
+    // g = rsqrt(1 + (0.33 / m) * (q + k * q.w))
+    const mat4x3 Mg = mat4x3
+    (	
+        vec3(0.33 / m.x, 1, 1) * (M[0] + k.x * M[3]),
+        vec3(1, 0.33 / m.y, 1) * (M[1] + k.y * M[3]),
+        vec3(1, 1, 0.33 / m.z) * (M[2] + k.z * M[3]),
+        M[3]
+	);
+   
+	// [jpatry21] slide 166
+    const mat3x3 A = mat3x3
+    (
+        -1, -1, 1,
+         1, -1, 1,
+         0,  1, 0
+    );
+	
+	// [jpatry21] slide 167
+	// o = (K / S) * N * diag(k) * (diag(m)^-1)
+    const mat3x3 N = mat3x3
+    (
+        -(k3 + rw),     p * k3,         p * S,
+         1.0 + k3 * rw, (1.0 - p) * k3, (1.0 - p) * S,
+         0, 1, 0
+	);
+	const mat3x3 diag_mi = inverse(mat3x3(m.x, 0, 0, 0, m.y, 0, 0, 0, m.z));
+	const mat3x3 diag_k = mat3x3(k.x, 0, 0, 0, k.y, 0, 0, 0, k.z);
+	const mat3x3 O =  (K / S) * N * diag_k * diag_mi;
+
+	// [jpatry21] slide 168
+	// c = M^-1 * A^-1 * o
+    const mat3 Mi = inverse(mat3(M));
+	const mat3x3 C = transpose(Mi) * inverse(A) * O;
+    
+    // map to some kind of mesopic range, this value is arbitrary, use your best approx
+    const float scale = 1000.0;
+    
+    // reference version
+    //vec4 lmsr = (light * scale) * M;
+    //vec3 lmsGain = inversesqrt(1.0f + (0.33f / m) * (lmsr.rgb + k * lmsr.w));
+    
+    // matrix folded version, ever so slightly different but good enough
+	vec4 lmsr = (light * scale) * Mg;
+    vec3 lmsGain = inversesqrt(1.0f + lmsr.rgb);
+    vec3 rgbGain = C * lmsGain * intensity / scale;    
+    return rgbGain * lmsr.w + light;
+}
+
 void main(void)
 {
+	vec2 screenUV = gl_FragCoord.xy / iResolution.xy;
+
 	const float DITHER_LUT[16] = float[16](
 			0, 4, 1, 5,
 			6, 2, 7, 3,
@@ -1068,92 +1288,72 @@ void main(void)
 	vec3 surfaceNormals = normalize(f_normal);
 	vec3 localViewDir = normalize(-f_coord.xyz);
 	
+	vec3 proc_texcoords = f_uv_nooffset.xyz / f_uv_nooffset.w;
 #ifndef ALPHA_BLEND
-	if (texgen == 3)
-	{
-		//vec3 normalMap;
-		//surfaceNormals = normalPlane(adj_texcoords.xy, normalMap);
-		//adj_texcoords.xy += normalMap.xy * 0.05;
-
-		float p = getwaves(adj_texcoords.xy, 20, texgen_params.w);
-		adj_texcoords.xy += p * 0.1;
-	}
+	//if (texgen == 3)
+	//{
+	//	//vec3 normalMap;
+	//	//surfaceNormals = normalPlane(adj_texcoords.xy, normalMap);
+	//	//adj_texcoords.xy += normalMap.xy * 0.05;
+	//
+	//	float p = getwaves(proc_texcoords.xy, 20, texgen_params.w);
+	//	adj_texcoords.xy += (p-0.5) * 0.1;
+	//}
 #endif
 
-    vec4 sampled = texture(tex, adj_texcoords.xy, mipBias);
-    vec4 sampledEmiss = texture(texEmiss, adj_texcoords.xy, mipBias);
-    vec4 sampled_color = vec4(1.0, 1.0, 1.0, 1.0);
     vec4 vertex_color = f_color;
-    float index = sampled.r;
-    vec4 palval = texture(worldPalette, vec2(index, 0.5));
-	vec4 emissive = vec4(0.0);
+	//vertex_color.rgb += sqrt(PurkinjeShift(vec3(1.0 / 255.0), 1.0));
+	vec4 sampled_color = vec4(1.0, 1.0, 1.0, 1.0);
+    vec4 emissive = vec4(0.0);
 
-#ifdef ALPHA_BLEND
+#ifdef REFRACTION
 	float disp = 0.0;
 	if (texgen == 3)
 	{
 		float ndotv = dot(surfaceNormals.xyz, localViewDir.xyz);	
-
+	
 		float fresnel = pow(1.0 - max(ndotv, 0.0), 5.0);
-		float lo = mix(0.4, 0.7, fresnel);
-		float hi = mix(1.4, 1.2, fresnel);
+		float lo = 0.28;//mix(0.4, 0.7, fresnel);
+		float hi = 0.78;//mix(1.4, 1.1, fresnel);
+	
+	   // float p = getwaves(proc_texcoords.xy, 20, texgen_params.w);
+		
+		vec4 s0, s1, s2, s3;
+		vec4 e0, e1, e2, e3;
+		sample_color( adj_texcoords.xy * 1.0 - 0.1 * texgen_params.w, mipBias, s0, e0);
+		sample_color( adj_texcoords.yx * 0.5 + 0.1 * texgen_params.w, mipBias, s1, e1);
+		sample_color( adj_texcoords.xy * 0.5 - 0.1 * texgen_params.w, mipBias, s2, e2);
+		sample_color(-adj_texcoords.yx * 0.5 + 0.1 * texgen_params.w, mipBias, s3, e3);
+		
+		//s0.rgb /= max(vec3(0.01), fillColor.rgb);
+		//s1.rgb /= max(vec3(0.01), fillColor.rgb);
+		//s2.rgb /= max(vec3(0.01), fillColor.rgb);
+		//s3.rgb /= max(vec3(0.01), fillColor.rgb);
 
-	    float p = getwaves(adj_texcoords.xy, 20, texgen_params.w);
+		float p = dot(s0.rgb + s1.rgb, vec3(0.333)) * 0.5;
 
-		float alpha = 0.2;
+		float alpha = 0.5;// dot(sampled_color.rgb, vec3(0.333));
 		if(p > lo)
 			alpha = 0.0;
         
-		float h = getwaves(adj_texcoords.xy * 0.2, 10, texgen_params.w);
+		//float h = getwaves(proc_texcoords.xy * 0.6, 10, texgen_params.w);
+		float h = dot(s2.rgb + s3.rgb, vec3(0.3333)) * 0.5;
 		if (p + h > hi)
 			alpha = 0.8;
         
-		disp = p;
+		adj_texcoords.xy += (p-0.5) * 0.1;
+
+		disp = (s0.y - fillColor.y) * 2.0;
 		sampled_color.rgb = vec3(p);
+		//sample_color(adj_texcoords.xy, mipBias, sampled_color, emissive);
+		//sampled_color.rgb = sampled_color.rgb * p + h * fillColor.rgb;
 		vertex_color.w = alpha;
 	}
 	else
 #endif
-    if (tex_mode == TEX_MODE_TEST || geoMode <= 3) {
-		sampled_color = fillColor;
-    }
-    else if (tex_mode == TEX_MODE_16BPP
-    || tex_mode == TEX_MODE_BILINEAR_16BPP
-    )
-    {
-        sampled_color = vec4(sampled.b, sampled.g, sampled.r, sampled.a);
-    }
-    else if (tex_mode == TEX_MODE_WORLDPAL
-#ifndef CAN_BILINEAR_FILTER
-    || tex_mode == TEX_MODE_BILINEAR
-#endif
-    )
-
-    {
-#ifdef ALPHA_DISCARD
-        if (index == 0.0)
-            discard;
-#endif
-
-        // Makes sure light is in a sane range
-        float light = clamp(f_light, 0.0, 1.0);
-        float light_worldpalidx = texture(worldPaletteLights, vec2(index, light)).r;
-        vec4 lightPalval = texture(worldPalette, vec2(light_worldpalidx, 0.5));
-
-		emissive = lightPalval;
-        sampled_color = palval;
-    }
-#ifdef CAN_BILINEAR_FILTER
-    else if (tex_mode == TEX_MODE_BILINEAR)
-    {
-        bilinear_paletted(adj_texcoords.xy, sampled_color, emissive);
-	#ifdef ALPHA_DISCARD
-        if (sampled_color.a < 0.01) {
-            discard;
-        }
-	#endif
-    }
-#endif
+	{
+		sample_color(adj_texcoords.xy, mipBias, sampled_color, emissive);
+	}
 
 #ifdef UNLIT
 	if (lightMode == 0)
@@ -1177,30 +1377,34 @@ void main(void)
 		//roughness = 0.2;
 
 		if (texgen == 3)
+		{
 			roughness = 0.01;
+		}
+		else
+		{
+			// fill color is effectively an anti-metalness control
+			vec3 avgAlbedo = fillColor.xyz;
 
-		// fill color is effectively an anti-metalness control
-		vec3 avgAlbedo = fillColor.xyz;
+			float avgLum = dot(fillColor.xyz, vec3(0.2126, 0.7152, 0.0722));
 
-		float avgLum = dot(fillColor.xyz, vec3(0.2126, 0.7152, 0.0722));
+			//roughness = mix(0.5, 0.01, avgLum);		
+			//avgLum = avgLum * 0.7 + 0.3;
 
-		//roughness = mix(0.5, 0.01, avgLum);		
-		//avgLum = avgLum * 0.7 + 0.3;
-
-		// blend to metal when dark
-		diffuseColor = sampled_color.xyz * (1.0 - avgLum);//(1.0 - fillColor.xyz);//diffuseColor * avgAlbedo;// -> 0 * (1-avgAlbedo) + diffuseColor * avgAlbedo -> mix(vec3(0.0), diffuseColor, avgAlbedo)
+			// blend to metal when dark
+			diffuseColor = sampled_color.xyz * (1.0 - avgLum);//(1.0 - fillColor.xyz);//diffuseColor * avgAlbedo;// -> 0 * (1-avgAlbedo) + diffuseColor * avgAlbedo -> mix(vec3(0.0), diffuseColor, avgAlbedo)
 		
-		// blend to dielectric white when bright
-		specularColor = mix(fillColor.xyz, (sampled_color.xyz * 0.95 + 0.05), avgLum);//sampled_color.xyz * fillColor.xyz;//vec3(1.0);//mix(sampled_color.xyz, vec3(0.2), avgAlbedo);
+			// blend to dielectric white when bright
+			specularColor = mix(fillColor.xyz, (sampled_color.xyz * 0.95 + 0.05), avgLum);//sampled_color.xyz * fillColor.xyz;//vec3(1.0);//mix(sampled_color.xyz, vec3(0.2), avgAlbedo);
 		
-		// try to estimate some roughness variation from the texture
-	//	float smoothness = max(sampled_color.r, max(sampled_color.g, sampled_color.b));
-	//	roughness = mix(0.25, 0.05, min(sqrt(smoothness * 2.0), 1.0)); // don't get too rough or there's no point in using specular here
-	//	
-	//	// blend out really dark stuff to fill color with high roughness (ex strifle scopes)
-	//	float threshold = 1.0 / (15.0 / 255.0);
-	//	roughness = mix(0.05, roughness, min(smoothness * threshold, 1.0));
-		//specularColor = mix(min(avgAlbedo * 2.0, vec3(1.0)), specularColor, min(smoothness * threshold, 1.0));
+			// try to estimate some roughness variation from the texture
+		//	float smoothness = max(sampled_color.r, max(sampled_color.g, sampled_color.b));
+		//	roughness = mix(0.25, 0.05, min(sqrt(smoothness * 2.0), 1.0)); // don't get too rough or there's no point in using specular here
+		//	
+		//	// blend out really dark stuff to fill color with high roughness (ex strifle scopes)
+		//	float threshold = 1.0 / (15.0 / 255.0);
+		//	roughness = mix(0.05, roughness, min(smoothness * threshold, 1.0));
+			//specularColor = mix(min(avgAlbedo * 2.0, vec3(1.0)), specularColor, min(smoothness * threshold, 1.0));
+		}
 	#endif
 
 		// for metals do some hacky stuff to make them look a bit more view-dependent
@@ -1244,6 +1448,19 @@ void main(void)
 	vec3 x = ao;
 	ao = max(x, ((x * a + b) * x + c) * x);	// ao = x * x * x * a - x * x * b + x * c;
 
+	if ((aoFlags & 0x4) == 0x4)
+	{
+		mat4 invView = inverse(viewMatrix);
+		vec3 pos = (invView * vec4(f_coord.xyz, 1.0)).xyz;
+		vec3 wn = mat3(invView) * surfaceNormals;
+
+		pos *= 4.0; // tiling
+		pos += wn.xyz * colorEffects_fade; // animate
+		
+		float w = mix(water_caustics(pos), water_caustics(pos + 1.), 0.5);
+		ao *= exp(w * 4.0 - 1.0) * 0.5 + 0.5;
+	}
+
 	diffuseLight.xyz *= ao;
 
 	float ndotv = dot(surfaceNormals.xyz, localViewDir.xyz);
@@ -1285,17 +1502,13 @@ void main(void)
 	// add specular to emissive output
 	//emissive.rgb += max(vec3(0.0), specularLight.rgb - 1.0 - dither);
 
-	if (sampledEmiss.r != 0.0 || sampledEmiss.g != 0.0 || sampledEmiss.b != 0.0)
-    {
-        emissive.rgb += sampledEmiss.rgb * emissiveFactor.rgb;
-    }
-
 	main_color.rgb = max(main_color.rgb, emissive.rgb);
 
     float orig_alpha = main_color.a;
 
-#ifdef ALPHABLEND
-    if (texgen != 3 && main_color.a < 0.01 && sampledEmiss.r == 0.0 && sampledEmiss.g == 0.0 && sampledEmiss.b == 0.0) {
+#ifdef ALPHA_BLEND
+    if (texgen != 3 && main_color.a < 0.01 && emissive.r == 0.0 && emissive.g == 0.0 && emissive.b == 0.0)
+	{
         discard;
     }
 #endif
@@ -1315,16 +1528,21 @@ void main(void)
 
     fragColor = main_color;
 
-#ifdef ALPHA_BLEND
-	if (texgen == 3)
+#ifdef REFRACTION
+	//if (texgen == 3)
 	{
-		vec2 screenUV = gl_FragCoord.xy / iResolution.xy;
-		vec2 refrUV = screenUV + (disp * 2.0 - 1.0) * min(0.1, 0.0001 / f_depth);
+		float sceneDepth = texture(ztex, screenUV).r;
+		float softIntersect = 1.0;//clamp((sceneDepth - f_depth) / -localViewDir.y * 500.0, 0.0, 1.0);
+		
+		disp *= min(0.05, 0.0001 / f_depth) * softIntersect;
+
+		vec2 refrUV = screenUV + disp;
+		
 		float refrDepth = texture(ztex, refrUV).r;
 		if (refrDepth < f_depth)
 		{
 			refrUV = screenUV;
-			refrDepth = texture(ztex, refrUV).r;
+			refrDepth = sceneDepth;
 		}
 
 		vec3 refr = texture(refrtex, refrUV).rgb;
@@ -1333,16 +1551,25 @@ void main(void)
 			float waterStart = f_depth * 128.0;
 			float waterEnd = refrDepth * 128.0;
 			float waterFogAmount = clamp((waterEnd - waterStart) / (10.0), 0.0, 1.0);
-			refr.rgb = mix(refr.rgb, texgen_params.rgb, waterFogAmount);
+			refr.rgb = mix(refr.rgb, fillColor.rgb, softIntersect * waterFogAmount);
 		}
-
-		vec3 half_tint = texgen_params.rgb * 0.5;
-		vec3 tint_delta = texgen_params.rgb - (half_tint.brr + half_tint.ggb);
+		
+		vec3 tint = fillColor.rgb * softIntersect;
+		vec3 half_tint = tint.rgb * 0.5;
+		vec3 tint_delta = tint.rgb - (half_tint.brr + half_tint.ggb);
 		refr.rgb = clamp(tint_delta.rgb * refr.rgb + refr.rgb, vec3(0.0), vec3(1.0));
 
-		fragColor.rgb = fragColor.rgb * fragColor.w + refr.rgb;
+		float alpha = fragColor.w * softIntersect;
+		fragColor.rgb = fragColor.rgb * alpha + refr.rgb;
 		fragColor.w = 1.0;
 	}
+#endif
+
+#if defined(ALPHA_BLEND) || defined(ALPHA_DISCARD)
+	// todo: this is killing early-z for all the passes...
+	float clipDepth = texture(cliptex, screenUV).r;
+	if (clipDepth > f_depth)
+		discard;
 #endif
 
 	// dither the output in case we're using some lower precision output

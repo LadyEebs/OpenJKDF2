@@ -75,6 +75,10 @@ int sithRender_adjoinSafeguard = 0;
 sithThing* sithRender_alphaDrawThing = NULL; // list of things to render after with zwrite off
 #endif
 
+#ifdef RENDER_DROID2
+rdAmbientFlags_t sithRender_aoFlags = 0;
+#endif
+
 #ifdef RGB_THING_LIGHTS
 void sithRender_GetSaberLightColor(rdVector3* outColor, sithThing* thing)
 {
@@ -754,9 +758,10 @@ void sithRender_Draw()
 	//else
 	//	rdDisable(RD_SHADOWS);
 
+	sithRender_aoFlags = (jkPlayer_enableShadows ? RD_AMBIENT_OCCLUDERS : 0) | (jkPlayer_enableSSAO ? RD_AMBIENT_SCREEN_SPACE : 0);
 	rdSetDecalMode(jkPlayer_enableDecals ? RD_DECALS_ENABLED : RD_DECALS_DISABLED);
 	rdDitherMode(jkPlayer_enableDithering ? RD_DITHER_4x4 : RD_DITHER_NONE);
-	rdAmbientFlags((jkPlayer_enableShadows ? RD_AO_OCCLUDERS : 0) | (jkPlayer_enableSSAO ? RD_AO_SCREEN_SPACE : 0));
+	rdAmbientFlags(sithRender_aoFlags);
 	rdClearLights();
 	rdClearOccluders();
 	rdClearDecals();
@@ -1349,6 +1354,10 @@ void sithRender_DrawSurface(sithSurface* surface)
 
 		if (isWater)// if (surface->adjoin && (surface->parent_sector->flags & SITH_SECTOR_UNDERWATER || surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER))//if (surface->adjoin && surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER)
 		{
+			rdTexFilterMode(RD_TEXFILTER_BILINEAR);
+			rdSetGeoMode(RD_GEOMODE_TEXTURED);
+
+			texMode = RD_TEXTUREMODE_PERSPECTIVE;
 			//rdSetLightMode(RD_LIGHTMODE_SPECULAR);
 			rdTexGen(RD_TEXGEN_WATER);
 			if (surface->adjoin)
@@ -1357,12 +1366,14 @@ void sithRender_DrawSurface(sithSurface* surface)
 				rdTexGenParams(0, 0, 0, sithTime_curSeconds);
 
 			// surface scroll currently causes popping when it loops
-			//rdTexOffseti(surface->surfaceInfo.face.clipIdk.x, surface->surfaceInfo.face.clipIdk.y);
+			rdTexOffseti(surface->surfaceInfo.face.clipIdk.x, surface->surfaceInfo.face.clipIdk.y);
 
 			//rdAmbientLightSH(&surface->parent_sector->ambientSH);
 		}
 		else
 		{
+			if (surface->parent_sector->flags & SITH_SECTOR_UNDERWATER)
+				rdAmbientFlags(sithRender_aoFlags | RD_AMBIENT_CAUSTICS);
 			rdTexOffseti(surface->surfaceInfo.face.clipIdk.x, surface->surfaceInfo.face.clipIdk.y);
 		}
 	}
@@ -1427,6 +1438,8 @@ void sithRender_DrawSurface(sithSurface* surface)
 		rdEndPrimitive();
 	}
 
+	rdAmbientFlags(sithRender_aoFlags);
+	
 	rdTexGen(RD_TEXGEN_NONE);
 	rdTexGenParams(0, 0, 0, 0);
 	rdTexOffset(0, 0);
@@ -2988,6 +3001,11 @@ int sithRender_RenderThing(sithThing *pThing)
     pThing->isVisible = bShowInvisibleThings;
     pThing->lookOrientation.scale = pThing->position;
 
+#ifdef RENDER_DROID2
+	if (pThing->sector->flags & SITH_SECTOR_UNDERWATER)
+		rdAmbientFlags(sithRender_aoFlags | RD_AMBIENT_CAUSTICS);
+#endif
+
     ret = rdThing_Draw(&pThing->rdthing, &pThing->lookOrientation);
     rdVector_Zero3(&pThing->lookOrientation.scale);
 #ifdef QOL_IMPROVEMENTS
@@ -3037,6 +3055,10 @@ int sithRender_RenderThing(sithThing *pThing)
 #ifdef QOL_IMPROVEMENTS
 	if (jkPlayer_showThingInfo)
 		sithRender_DebugDrawThingName(pThing);
+#endif
+
+#ifdef RENDER_DROID2
+	rdAmbientFlags(sithRender_aoFlags);
 #endif
 
 	// position debug

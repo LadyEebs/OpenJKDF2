@@ -53,6 +53,7 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #define TEX_SLOT_DEPTH           7
 #define TEX_SLOT_AO              8
 #define TEX_SLOT_REFRACTION      9
+#define TEX_SLOT_CLIP           10
 
 #define STD3D_MAX_RENDER_PASSES     3
 
@@ -116,7 +117,6 @@ typedef struct std3DIntermediateFbo
 // todo: move to stdVBuffer/stdDisplay?
 typedef struct std3DFramebuffer
 {
-	int enable_extra;
 	int32_t w;
 	int32_t h;
 
@@ -126,26 +126,26 @@ typedef struct std3DFramebuffer
 	GLuint ztex;
 	GLuint tex0; // color
     GLuint tex1; // emissive
-
-    std3DIntermediateFbo window;
-    std3DIntermediateFbo main;
-
-	std3DIntermediateFbo postfx; // temporary composite space for postfx
-	std3DIntermediateFbo refr; // 1/2 refraction tex
-	std3DIntermediateFbo ssaoDepth;
-	std3DIntermediateFbo ssao;
-    std3DIntermediateFbo bloomLayers[4];
 } std3DFramebuffer;
 
+std3DIntermediateFbo window;
+std3DIntermediateFbo std3D_mainFbo;
+
+int std3D_framebufferFlags = 0;
+
+std3DIntermediateFbo postfx; // temporary composite space for postfx
+std3DIntermediateFbo refr; // refraction tex
+std3DIntermediateFbo refrZ; // refraction z clipping tex
+std3DIntermediateFbo ssaoDepth;
+std3DIntermediateFbo ssao;
+std3DIntermediateFbo bloomLayers[4];
+
 GLint std3D_windowFbo = 0;
-std3DFramebuffer std3D_framebuffers[2];
-std3DFramebuffer *std3D_pFb = NULL;
+std3DFramebuffer std3D_framebuffer;
 
 static bool has_initted = false;
 
 static void* last_overlay = NULL;
-
-static int std3D_activeFb = 1;
 
 int init_once = 0;
 GLuint programMenu;
@@ -349,9 +349,11 @@ typedef enum STD3D_DRAW_LIST
 {
 	DRAW_LIST_Z,
 	DRAW_LIST_Z_ALPHATEST,
+	DRAW_LIST_Z_REFRACTION,
 	DRAW_LIST_COLOR_ZPREPASS,
 	DRAW_LIST_COLOR_NOZPREPASS,
 	DRAW_LIST_COLOR_ALPHABLEND,
+	DRAW_LIST_COLOR_REFRACTION,
 	DRAW_LIST_COUNT
 } STD3D_DRAW_LIST;
 
@@ -403,6 +405,8 @@ typedef enum STD3D_SHADER_ID
 	SHADER_COLOR_ALPHABLEND,
 	SHADER_COLOR_ALPHABLEND_SPEC,
 
+	SHADER_COLOR_REFRACTION,
+
 	SHADER_COUNT
 } STD3D_DRAW_LIST;
 
@@ -410,9 +414,9 @@ typedef struct std3D_worldStage
 {
 	GLuint program;
 	GLint attribute_coord3d, attribute_v_color, attribute_v_light, attribute_v_uv, attribute_v_norm;
-	GLint uniform_projection, uniform_modelMatrix;
+	GLint uniform_projection, uniform_modelMatrix, uniform_viewMatrix;
 	GLint uniform_ambient_color, uniform_ambient_sg;
-	GLint uniform_geo_mode,  uniform_fillColor, uniform_tex, uniform_texEmiss, uniform_displacement_map, uniform_texDecals, uniform_texz, uniform_texssao, uniform_texrefraction;
+	GLint uniform_geo_mode,  uniform_fillColor, uniform_tex, uniform_texEmiss, uniform_displacement_map, uniform_texDecals, uniform_texz, uniform_texssao, uniform_texrefraction, uniform_texclip;
 	GLint uniform_worldPalette, uniform_worldPaletteLights;
 	GLint uniform_light_mode, uniform_ditherMode, uniform_ao_flags;
 	GLint uniform_shared, uniform_fog, uniform_tex_block, uniform_material, uniform_lightbuf, uniform_lights, uniform_occluders, uniform_decals;
@@ -743,6 +747,11 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
     pFb->w = width;
     pFb->h = height;
 
+	if (jkPlayer_enable32Bit)
+		std3D_framebufferFlags |= 4;
+	else
+		std3D_framebufferFlags &= ~4;
+
     glActiveTexture(GL_TEXTURE0);
 
     glGenFramebuffers(1, &pFb->fbo);
@@ -757,11 +766,6 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-	if(jkPlayer_enable32Bit)
-		pFb->enable_extra |= 4;
-	else
-		pFb->enable_extra &= ~4;
 
     // Attach fbTex to our currently bound framebuffer fb
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pFb->tex0, 0);
@@ -804,15 +808,7 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//_MIPMAP_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 2);
-	//glGenerateMipmap(GL_TEXTURE_2D);
-
-	if (jkPlayer_enable32Bit)
-		pFb->enable_extra |= 4;
-	else
-		pFb->enable_extra &= ~4;
-
+	
 	// Attach fbTex to our currently bound framebuffer fb
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pFb->ztex, 0);
 
@@ -820,51 +816,58 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		stdPlatform_Printf("std3D: ERROR, Framebuffer is incomplete!\n");
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void std3D_generateExtraFramebuffers(int32_t width, int32_t height)
+{
+	glActiveTexture(GL_TEXTURE0);
 
 	if (jkPlayer_enableSSAO)
 	{
 		int ssao_w = width > 320 ? width / 2 : width;
 		int ssao_h = ssao_w * ((float)height / width);
 
-		std3D_generateIntermediateFbo(width/2, height/2, &pFb->ssaoDepth, GL_R16F, 0, 0, 0);
-		std3D_generateIntermediateFbo(width, height, &pFb->ssao, GL_R8, 0, 1, pFb->rbo);
-		pFb->enable_extra |= 2;
+		std3D_generateIntermediateFbo(width / 2, height / 2, &ssaoDepth, GL_R16F, 0, 0, 0);
+		std3D_generateIntermediateFbo(width, height, &ssao, GL_R8, 0, 1, std3D_framebuffer.rbo);
+		std3D_framebufferFlags |= 2;
 	}
 	else
-		pFb->enable_extra &= ~2;
+		std3D_framebufferFlags &= ~2;
 
-    if (jkPlayer_enableBloom)
-    {
+	if (jkPlayer_enableBloom)
+	{
 		int bloom_w = width > 320 ? 640 : 320;
 		int bloom_h = bloom_w * ((float)height / width);
 
-        pFb->enable_extra |= 1;
-		std3D_generateIntermediateFbo(bloom_w, bloom_h, &pFb->bloomLayers[0], GL_RGBA16F, 1, 0, 0);
-		for(int i = 1; i < ARRAY_SIZE(pFb->bloomLayers); ++i)
-			std3D_generateIntermediateFbo(pFb->bloomLayers[i-1].w / 2, pFb->bloomLayers[i - 1].h / 2, &pFb->bloomLayers[i], GL_RGBA16F, 1, 0, 0);
-    }
+		std3D_framebufferFlags |= 1;
+		std3D_generateIntermediateFbo(bloom_w, bloom_h, &bloomLayers[0], GL_RGBA16F, 1, 0, 0);
+		for (int i = 1; i < ARRAY_SIZE(bloomLayers); ++i)
+			std3D_generateIntermediateFbo(bloomLayers[i - 1].w / 2, bloomLayers[i - 1].h / 2, &bloomLayers[i], GL_RGBA16F, 1, 0, 0);
+	}
 	else
 	{
-		pFb->enable_extra &= ~1;
+		std3D_framebufferFlags &= ~1;
 	}
 
-	std3D_generateIntermediateFbo(width, height, &pFb->postfx, GL_RGB10_A2, 0, 0, 0);
+	std3D_generateIntermediateFbo(width, height, &postfx, GL_RGB10_A2, 0, 0, 0);
 
-	std3D_generateIntermediateFbo(width/2, height/2, &pFb->refr, GL_RGB5_A1, 0, 0, 0);
+	// the refraction buffers use the same depth-stencil as the main scene
+	std3D_generateIntermediateFbo(width, height, &refr, GL_RGB5_A1, 0, 1, std3D_framebuffer.rbo);
+	std3D_generateIntermediateFbo(width, height, &refrZ, GL_R32F, 0, 1, std3D_framebuffer.rbo);
 
-    pFb->main.fbo = pFb->fbo;
-    pFb->main.tex = pFb->tex1;
-    pFb->main.rbo = pFb->rbo;
-    pFb->main.w = pFb->w;
-    pFb->main.h = pFb->h;
-    pFb->main.iw = pFb->w;
-    pFb->main.ih = pFb->h;
+	std3D_mainFbo.fbo = std3D_framebuffer.fbo;
+	std3D_mainFbo.tex = std3D_framebuffer.tex1;
+	std3D_mainFbo.rbo = std3D_framebuffer.rbo;
+	std3D_mainFbo.w = std3D_framebuffer.w;
+	std3D_mainFbo.h = std3D_framebuffer.h;
+	std3D_mainFbo.iw = std3D_framebuffer.w;
+	std3D_mainFbo.ih = std3D_framebuffer.h;
 
-    pFb->window.fbo = std3D_windowFbo;
-    pFb->window.w = Window_xSize;
-    pFb->window.h = Window_ySize;
-    pFb->window.iw = Window_xSize;
-    pFb->window.ih = Window_ySize;
+	window.fbo = std3D_windowFbo;
+	window.w = Window_xSize;
+	window.h = Window_ySize;
+	window.iw = Window_xSize;
+	window.ih = Window_ySize;
 }
 
 void std3D_deleteFramebuffer(std3DFramebuffer* pFb)
@@ -875,14 +878,18 @@ void std3D_deleteFramebuffer(std3DFramebuffer* pFb)
     glDeleteRenderbuffers(1, &pFb->rbo);
 	glDeleteTextures(1, &pFb->ztex);
 	glDeleteFramebuffers(1, &pFb->zfbo);
+}
 
-	std3D_deleteIntermediateFbo(&pFb->ssao);
-	std3D_deleteIntermediateFbo(&pFb->ssaoDepth);
-	for (int i = 0; i < ARRAY_SIZE(pFb->bloomLayers); ++i)
-		std3D_deleteIntermediateFbo(&pFb->bloomLayers[i]);
+void std3D_deleteExtraFramebuffers()
+{
+	std3D_deleteIntermediateFbo(&ssao);
+	std3D_deleteIntermediateFbo(&ssaoDepth);
+	for (int i = 0; i < ARRAY_SIZE(bloomLayers); ++i)
+		std3D_deleteIntermediateFbo(&bloomLayers[i]);
 
-	std3D_deleteIntermediateFbo(&pFb->postfx);
-	std3D_deleteIntermediateFbo(&pFb->refr);
+	std3D_deleteIntermediateFbo(&postfx);
+	std3D_deleteIntermediateFbo(&refr);
+	std3D_deleteIntermediateFbo(&refrZ);
 }
 
 #ifdef HW_VBUFFER
@@ -1139,16 +1146,6 @@ void std3D_ClearDrawSurface(std3D_DrawSurface* surface, int fillColor, rdRect* r
 
 void std3D_swapFramebuffers()
 {
-    if (std3D_activeFb == 2)
-    {
-        std3D_activeFb = 1;
-        std3D_pFb = &std3D_framebuffers[0];
-    }
-    else
-    {
-        std3D_activeFb = 2;
-        std3D_pFb = &std3D_framebuffers[1];
-    }
 }
 
 GLuint std3D_loadProgram(const char* fpath_base, const char* userDefines)
@@ -1249,6 +1246,7 @@ int std3D_loadWorldStage(std3D_worldStage* pStage, int isZPass, const char* defi
 
 	pStage->uniform_projection = std3D_tryFindUniform(pStage->program, "projMatrix");
 	pStage->uniform_modelMatrix = std3D_tryFindUniform(pStage->program, "modelMatrix");
+	pStage->uniform_viewMatrix = std3D_tryFindUniform(pStage->program, "viewMatrix");
 	pStage->uniform_ambient_color = std3D_tryFindUniform(pStage->program, "ambientColor");
 	pStage->uniform_ambient_sg = std3D_tryFindUniform(pStage->program, "ambientSG");
 	pStage->uniform_fillColor = std3D_tryFindUniform(pStage->program, "fillColor");
@@ -1261,6 +1259,7 @@ int std3D_loadWorldStage(std3D_worldStage* pStage, int isZPass, const char* defi
 	pStage->uniform_texz = std3D_tryFindUniform(pStage->program, "ztex");
 	pStage->uniform_texssao = std3D_tryFindUniform(pStage->program, "ssaotex");
 	pStage->uniform_texrefraction = std3D_tryFindUniform(pStage->program, "refrtex");
+	pStage->uniform_texclip = std3D_tryFindUniform(pStage->program, "cliptex");
 	pStage->uniform_geo_mode = std3D_tryFindUniform(pStage->program, "geoMode");
 	pStage->uniform_ditherMode = std3D_tryFindUniform(pStage->program, "ditherMode");
 	pStage->uniform_light_mode = std3D_tryFindUniform(pStage->program, "lightMode");
@@ -1532,12 +1531,9 @@ int init_resources()
     int32_t tex_w = Window_xSize;
     int32_t tex_h = Window_ySize;
 
-    std3D_generateFramebuffer(tex_w, tex_h, &std3D_framebuffers[0]);
-    std3D_generateFramebuffer(tex_w, tex_h, &std3D_framebuffers[1]);
+    std3D_generateFramebuffer(tex_w, tex_h, &std3D_framebuffer);
+	std3D_generateExtraFramebuffers(tex_w, tex_h);
 
-    std3D_activeFb = 1;
-    std3D_pFb = &std3D_framebuffers[0];
-    
     if ((programMenu = std3D_loadProgram("shaders/menu", "")) == 0) return false;
 
 	if (!std3D_loadWorldStage(&worldStages[SHADER_DEPTH], 1, "Z_PREPASS")) return false;
@@ -1551,6 +1547,7 @@ int init_resources()
 	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHABLEND], 0, "ALPHA_DISCARD;ALPHA_BLEND")) return false;
 	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHABLEND_SPEC], 0, "ALPHA_DISCARD;ALPHA_BLEND;SPECULAR")) return false;
 	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHABLEND_UNLIT], 0, "ALPHA_DISCARD;ALPHA_BLEND;UNLIT")) return false;
+	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_REFRACTION], 0, "ALPHA_DISCARD;ALPHA_BLEND;REFRACTION;SPECULAR")) return false;
 
     if (!std3D_loadSimpleTexProgram("shaders/ui", &std3D_uiProgram)) return false;
     if (!std3D_loadSimpleTexProgram("shaders/texfbo", &std3D_texFboStage)) return false;
@@ -1767,8 +1764,8 @@ void std3D_FreeResources()
     std3D_PurgeTextureCache();
 
     glDeleteProgram(programMenu);
-    std3D_deleteFramebuffer(&std3D_framebuffers[0]);
-    std3D_deleteFramebuffer(&std3D_framebuffers[1]);
+	std3D_deleteExtraFramebuffers();
+	std3D_deleteFramebuffer(&std3D_framebuffer);
     glDeleteTextures(1, &blank_tex);
     glDeleteTextures(1, &blank_tex_white);
     glDeleteTextures(1, &worldpal_texture);
@@ -1869,22 +1866,24 @@ int std3D_StartScene()
 	tex_w = (tex_w < 320 ? 320 : tex_w);
 	tex_h = tex_w * (float)Window_ySize / Window_xSize;
 
-    if (tex_w != std3D_pFb->w || tex_h != std3D_pFb->h 
-        || (((std3D_pFb->enable_extra & 1) == 1) != jkPlayer_enableBloom)
-		|| (((std3D_pFb->enable_extra & 2) == 2) != jkPlayer_enableSSAO)
-		|| (((std3D_pFb->enable_extra & 4) == 4) != jkPlayer_enable32Bit))
+    if (tex_w != std3D_framebuffer.w || tex_h != std3D_framebuffer.h 
+        || (((std3D_framebufferFlags & 1) == 1) != jkPlayer_enableBloom)
+		|| (((std3D_framebufferFlags & 2) == 2) != jkPlayer_enableSSAO)
+		|| (((std3D_framebufferFlags & 4) == 4) != jkPlayer_enable32Bit))
     {
-        std3D_deleteFramebuffer(std3D_pFb);
-        std3D_generateFramebuffer(tex_w, tex_h, std3D_pFb);
+		std3D_deleteExtraFramebuffers();
+        std3D_deleteFramebuffer(&std3D_framebuffer);
+        std3D_generateFramebuffer(tex_w, tex_h, &std3D_framebuffer);
+		std3D_generateExtraFramebuffers(tex_w, tex_h);
     }
 
 	glClearColor(0.0, 0.0, 0.0, 1.0);
 
 	// clear the window buffer
-	glBindFramebuffer(GL_FRAMEBUFFER, std3D_pFb->window.fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, window.fbo);
 	glClear(GL_COLOR_BUFFER_BIT);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, std3D_pFb->fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.fbo);
     glEnable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -2141,7 +2140,7 @@ void std3D_DrawMenu()
  //   std3D_DrawSceneFbo();
     //glFlush();
 
-	glBindFramebuffer(GL_FRAMEBUFFER, std3D_pFb->window.fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, window.fbo);
 	if (!jkGame_isDDraw)// || jkGuiBuildMulti_bRendering)
 	{
 		//glDisable(GL_DEPTH_TEST);
@@ -3192,7 +3191,7 @@ void std3D_AddRenderListUITris(rdUITri *tris, unsigned int num_tris)
 int std3D_ClearZBuffer()
 {
     glDepthMask(GL_TRUE);
-    glBindFramebuffer(GL_FRAMEBUFFER, std3D_pFb->fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.fbo);
     glClear(GL_DEPTH_BUFFER_BIT);
     return 1;
 }
@@ -3694,12 +3693,12 @@ void std3D_UpdateSettings()
 void std3D_Screenshot(const char* pFpath)
 {
 #ifdef TARGET_CAN_JKGM
-    if (!std3D_pFb) return;
+    //if (!std3D_pFb) return;
 
-    uint8_t* data = malloc(std3D_pFb->window.w * std3D_pFb->window.h * 3 * sizeof(uint8_t));
-    glBindFramebuffer(GL_FRAMEBUFFER, std3D_pFb->window.fbo);
-    glReadPixels(0, 0, std3D_pFb->window.w, std3D_pFb->window.h, GL_RGB, GL_UNSIGNED_BYTE, data);
-    jkgm_write_png(pFpath, std3D_pFb->window.w, std3D_pFb->window.h, data);
+    uint8_t* data = malloc(window.w * window.h * 3 * sizeof(uint8_t));
+    glBindFramebuffer(GL_FRAMEBUFFER, window.fbo);
+    glReadPixels(0, 0, window.w, window.h, GL_RGB, GL_UNSIGNED_BYTE, data);
+    jkgm_write_png(pFpath, window.w, window.h, data);
     free(data);
 #endif
 }
@@ -3967,7 +3966,7 @@ void std3D_DrawOccluder(rdVector3* position, float radius, rdVector3* verts)
 
 void std3D_BlitFramebuffer(int x, int y, int width, int height, void* pixels)
 {
-	glBindFramebuffer(GL_FRAMEBUFFER, std3D_pFb->fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.fbo);
 	glDrawBuffer(GL_NONE);
 	glReadBuffer(GL_COLOR_ATTACHMENT0);
 
@@ -4164,12 +4163,27 @@ void std3D_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallSta
 	int lighting = pDrawCallState->stateBits.lightMode >= RD_LIGHTMODE_DIFFUSE;
 	int specular = pDrawCallState->stateBits.lightMode == RD_LIGHTMODE_SPECULAR;
 	
+	int writesZ = std3D_HasDepthWrites(pDrawCallState);
+	int isWater = pDrawCallState->stateBits.texGen == RD_TEXGEN_WATER;
+
 	int listIndex;
 	int shaderID;
 
-	// add to z-prepass if applicable
-	int writesZ = std3D_HasDepthWrites(pDrawCallState);
-	if (!blending && writesZ)
+	if (blending && isWater)
+	{
+		std3D_AddZListDrawCall(type, &std3D_renderPasses[renderPass].drawCallLists[DRAW_LIST_Z_REFRACTION], pDrawCallState, paVertices, numVertices);
+		
+		// water surfaces are refractive and split the render into 2
+		// in order for this to work correctly, they MUST write Z so that the content above them clips correctly
+		if(pDrawCallState->stateBits.zMethod == RD_ZBUFFER_NOREAD_NOWRITE)
+			pDrawCallState->stateBits.zMethod = RD_ZBUFFER_NOREAD_WRITE;
+		else if (pDrawCallState->stateBits.zMethod == RD_ZBUFFER_READ_NOWRITE)
+			pDrawCallState->stateBits.zMethod = RD_ZBUFFER_READ_WRITE;
+
+		shaderID = SHADER_COLOR_REFRACTION;
+		listIndex = DRAW_LIST_COLOR_REFRACTION;
+	}
+	else if (!blending && writesZ) // add to z-prepass if applicable
 	{
 		std3D_AddZListDrawCall(type, &std3D_renderPasses[renderPass].drawCallLists[DRAW_LIST_Z + alphaTest], pDrawCallState, paVertices, numVertices);
 
@@ -4229,7 +4243,7 @@ void std3D_UpdateSharedUniforms()
 	
 	rdVector_Set2(&uniforms.clusterTileSizes, (float)tileSizeX, (float)tileSizeY);
 	rdVector_Set2(&uniforms.clusterScaleBias, sliceScalingFactor, sliceBiasFactor);	
-	rdVector_Set2(&uniforms.resolution, std3D_pFb->w, std3D_pFb->h);
+	rdVector_Set2(&uniforms.resolution, std3D_framebuffer.w, std3D_framebuffer.h);
 
 	extern rdVector4 rdroid_sgBasis[8]; //eww
 	memcpy(uniforms.sgBasis, rdroid_sgBasis, sizeof(rdVector4)*8);
@@ -4378,6 +4392,7 @@ void std3D_SetTransformState(std3D_worldStage* pStage, std3D_DrawCallState* pSta
 	glUniformMatrix4fv(pStage->uniform_projection, 1, GL_FALSE, (float*)pProjection);
 	glUniform2f(pStage->uniform_rightTop, R, T);
 
+	glUniformMatrix4fv(pStage->uniform_viewMatrix, 1, GL_FALSE, (float*)&pState->transformState.view);
 	glUniformMatrix4fv(pStage->uniform_modelMatrix, 1, GL_FALSE, (float*)&pState->transformState.modelView);
 }
 
@@ -4516,6 +4531,7 @@ void std3D_BindStage(std3D_worldStage* pStage)
 	glUniform1i(pStage->uniform_texz,               TEX_SLOT_DEPTH);
 	glUniform1i(pStage->uniform_texssao,            TEX_SLOT_AO);
 	glUniform1i(pStage->uniform_texrefraction,      TEX_SLOT_REFRACTION);
+	glUniform1i(pStage->uniform_texclip,            TEX_SLOT_CLIP);
 }
 
 inline void std3D_bindTexture(int type, int texId, int slot)
@@ -4697,7 +4713,7 @@ void std3D_DoSSAO()
 	std3D_pushDebugGroup("SSAO");
 
 	// downscale the depth buffer with lower precision
-	std3D_DrawSimpleTex(&std3D_texFboStage, &std3D_pFb->ssaoDepth, std3D_pFb->ztex, 0, 0, 1.0, 1.0, 1.0, 0, "Z Downscale");
+	std3D_DrawSimpleTex(&std3D_texFboStage, &ssaoDepth, std3D_framebuffer.ztex, 0, 0, 1.0, 1.0, 1.0, 0, "Z Downscale");
 
 	// enable depth testing to prevent running SSAO on empty pixels
 	glEnable(GL_DEPTH_TEST);
@@ -4705,23 +4721,23 @@ void std3D_DoSSAO()
 	glDepthMask(GL_FALSE);
 	glDisable(GL_CULL_FACE);
 
-	glBindFramebuffer(GL_FRAMEBUFFER, std3D_pFb->ssao.fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, ssao.fbo);
 
 	glClearColor(1,1,1,1);
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	std3D_useProgram(std3D_ssaoStage.program);
 
-	std3D_bindTexture(GL_TEXTURE_2D, std3D_pFb->ztex,          0);
-	std3D_bindTexture(GL_TEXTURE_2D, std3D_pFb->ssaoDepth.tex, 1);
+	std3D_bindTexture(GL_TEXTURE_2D, std3D_framebuffer.ztex,          0);
+	std3D_bindTexture(GL_TEXTURE_2D, ssaoDepth.tex, 1);
 	std3D_bindTexture(GL_TEXTURE_2D, tiledrand_texture,        2);
 
 	glUniform1i(std3D_ssaoStage.uniform_tex,  0);
 	glUniform1i(std3D_ssaoStage.uniform_tex2, 1);
 	glUniform1i(std3D_ssaoStage.uniform_tex3, 2);
 
-	glViewport(0, 0, std3D_pFb->ssao.w, std3D_pFb->ssao.h);
-	glUniform2f(std3D_ssaoStage.uniform_iResolution, std3D_pFb->ssao.iw, std3D_pFb->ssao.ih);
+	glViewport(0, 0, ssao.w, ssao.h);
+	glUniform2f(std3D_ssaoStage.uniform_iResolution, ssao.iw, ssao.ih);
 	
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 	
@@ -4734,24 +4750,46 @@ void std3D_DoSSAO()
 
 void std3D_setupWorldTextures()
 {
-	GLint aotex = jkPlayer_enableSSAO ? std3D_pFb->ssao.tex : blank_tex_white;
-	std3D_bindTexture(GL_TEXTURE_2D, blank_tex_white, TEX_SLOT_DIFFUSE);
-	std3D_bindTexture(GL_TEXTURE_2D, worldpal_texture, TEX_SLOT_WORLD_PAL);
-	std3D_bindTexture(GL_TEXTURE_2D, worldpal_lights_texture, TEX_SLOT_WORLD_LIGHT_PAL);
-	std3D_bindTexture(GL_TEXTURE_2D, blank_tex, TEX_SLOT_EMISSIVE);
-	std3D_bindTexture(GL_TEXTURE_2D, blank_tex, TEX_SLOT_DISPLACEMENT);
-	std3D_bindTexture(GL_TEXTURE_BUFFER, cluster_tbo, TEX_SLOT_CLUSTER_BUFFER);
-	std3D_bindTexture(GL_TEXTURE_2D, decalAtlasFBO.tex, TEX_SLOT_DECAL_ATLAS);
-	std3D_bindTexture(GL_TEXTURE_2D, std3D_pFb->ztex, TEX_SLOT_DEPTH);
-	std3D_bindTexture(GL_TEXTURE_2D, aotex, TEX_SLOT_AO);
-	std3D_bindTexture(GL_TEXTURE_2D, std3D_pFb->refr.tex, TEX_SLOT_REFRACTION);
+	GLint aotex = jkPlayer_enableSSAO ? ssao.tex : blank_tex_white;
+	std3D_bindTexture(    GL_TEXTURE_2D,         blank_tex_white,         TEX_SLOT_DIFFUSE);
+	std3D_bindTexture(    GL_TEXTURE_2D,        worldpal_texture,       TEX_SLOT_WORLD_PAL);
+	std3D_bindTexture(    GL_TEXTURE_2D, worldpal_lights_texture, TEX_SLOT_WORLD_LIGHT_PAL);
+	std3D_bindTexture(    GL_TEXTURE_2D,               blank_tex,        TEX_SLOT_EMISSIVE);
+	std3D_bindTexture(    GL_TEXTURE_2D,               blank_tex,    TEX_SLOT_DISPLACEMENT);
+	std3D_bindTexture(GL_TEXTURE_BUFFER,             cluster_tbo,  TEX_SLOT_CLUSTER_BUFFER);
+	std3D_bindTexture(    GL_TEXTURE_2D,       decalAtlasFBO.tex,     TEX_SLOT_DECAL_ATLAS);
+	std3D_bindTexture(    GL_TEXTURE_2D,  std3D_framebuffer.ztex,           TEX_SLOT_DEPTH);
+	std3D_bindTexture(    GL_TEXTURE_2D,                   aotex,              TEX_SLOT_AO);
+	std3D_bindTexture(    GL_TEXTURE_2D,                refr.tex,      TEX_SLOT_REFRACTION);
+	std3D_bindTexture(    GL_TEXTURE_2D,               blank_tex,            TEX_SLOT_CLIP);
+}
+
+void std3D_FlushRefractionZDrawCalls(std3D_RenderPass* pRenderPass)
+{
+	std3D_pushDebugGroup("std3D_FlushRefractionZDrawCalls");
+
+	glBindFramebuffer(GL_FRAMEBUFFER, refrZ.fbo);
+
+	glEnable(GL_STENCIL_TEST);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+	glStencilFunc(GL_ALWAYS, 0xFF, 0xFF);
+	glClearColor(0, 0, 0, 0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+	//std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_Z], std3D_DrawCallCompareSortKey, "Z Prepass");
+	//std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_Z_ALPHATEST], std3D_DrawCallCompareSortKey, "Z Prepass Alphatest");
+	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_Z_REFRACTION], std3D_DrawCallCompareSortKey, "Refraction Z");
+	
+	glDisable(GL_STENCIL_TEST);
+
+	std3D_popDebugGroup();
 }
 
 void std3D_FlushZDrawCalls(std3D_RenderPass* pRenderPass)
 {
 	std3D_pushDebugGroup("std3D_FlushZDrawCalls");
 
-	glBindFramebuffer(GL_FRAMEBUFFER, std3D_pFb->zfbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.zfbo);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
 
 	// clear the depth buffer if requested
@@ -4770,26 +4808,58 @@ void std3D_FlushZDrawCalls(std3D_RenderPass* pRenderPass)
 	std3D_popDebugGroup();
 }
 
+void std3D_FlushColorDrawCallsRefraction(std3D_RenderPass* pRenderPass)
+{
+	std3D_pushDebugGroup("std3D_FlushColorDrawCallsRefraction");
+
+	std3D_setupWorldTextures();
+	std3D_bindTexture(GL_TEXTURE_2D, refrZ.tex, TEX_SLOT_CLIP);
+
+	glEnable(GL_STENCIL_TEST);
+	glStencilFunc(GL_EQUAL, 0xFF, 0xFF);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, refr.fbo);
+	GLenum bufs[] = { GL_COLOR_ATTACHMENT0 };//, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers(ARRAYSIZE(bufs), bufs);
+
+	std3D_FlushDrawCallList(pRenderPass,   &pRenderPass->drawCallLists[DRAW_LIST_COLOR_ZPREPASS], std3D_DrawCallCompareSortKey,    "Color ZPrepass");
+	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_NOZPREPASS], std3D_DrawCallCompareSortKey, "Color No ZPrepass");
+	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_ALPHABLEND],   std3D_DrawCallCompareDepth,  "Color Alphablend");
+	
+	glDisable(GL_STENCIL_TEST);
+
+	std3D_popDebugGroup();
+}
+
 void std3D_FlushColorDrawCalls(std3D_RenderPass* pRenderPass)
 {
 	std3D_pushDebugGroup("std3D_FlushColorDrawCalls");
 	
 	std3D_setupWorldTextures();
 
-	glBindFramebuffer(GL_FRAMEBUFFER, std3D_pFb->fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.fbo);
 	GLenum bufs[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
 	glDrawBuffers(ARRAYSIZE(bufs), bufs);
 
 	std3D_FlushDrawCallList(pRenderPass,   &pRenderPass->drawCallLists[DRAW_LIST_COLOR_ZPREPASS], std3D_DrawCallCompareSortKey,    "Color ZPrepass");
 	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_NOZPREPASS], std3D_DrawCallCompareSortKey, "Color No ZPrepass");
-	
-	if (pRenderPass->flags & RD_RENDERPASS_REFRACTION)
-	{	
-		std3D_DrawSimpleTex(&std3D_texFboStage, &std3D_pFb->refr, std3D_pFb->tex0, 0, 0, 1.0, 1.0, 1.0, 0, "Refraction Downscale");
-		glBindFramebuffer(GL_FRAMEBUFFER, std3D_pFb->fbo);
-		std3D_setupWorldTextures();
-	}
 	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_ALPHABLEND],   std3D_DrawCallCompareDepth,  "Color Alphablend");
+
+	std3D_popDebugGroup();
+}
+
+void std3D_FlushRefractionDrawCalls(std3D_RenderPass* pRenderPass)
+{
+	std3D_pushDebugGroup("std3D_FlushRefractionDrawCalls");
+
+	std3D_setupWorldTextures();
+
+	glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.fbo);
+	GLenum bufs[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers(ARRAYSIZE(bufs), bufs);
+
+	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_REFRACTION], std3D_DrawCallCompareDepth, "Color Refraction");
 
 	std3D_popDebugGroup();
 }
@@ -4819,21 +4889,21 @@ void std3D_DoBloom()
 	std3D_pushDebugGroup("Bloom");
 
 	// downscale layers using a simple gaussian filter
-	std3D_DrawSimpleTex(&std3D_bloomStage, &std3D_pFb->bloomLayers[0], std3D_pFb->tex1, 0, 0, uvScale, 1.0, 1.0, 0, "Bloom Downscale");
-	for (int i = 1; i < ARRAY_SIZE(std3D_pFb->bloomLayers); ++i)
-		std3D_DrawSimpleTex(&std3D_bloomStage, &std3D_pFb->bloomLayers[i], std3D_pFb->bloomLayers[i - 1].tex, 0, 0, uvScale, 1.0, 1.0, 0, "Bloom Downscale");
+	std3D_DrawSimpleTex(&std3D_bloomStage, &bloomLayers[0], std3D_framebuffer.tex1, 0, 0, uvScale, 1.0, 1.0, 0, "Bloom Downscale");
+	for (int i = 1; i < ARRAY_SIZE(bloomLayers); ++i)
+		std3D_DrawSimpleTex(&std3D_bloomStage, &bloomLayers[i], bloomLayers[i - 1].tex, 0, 0, uvScale, 1.0, 1.0, 0, "Bloom Downscale");
 
 	// upscale layers and blend upward
 	glEnable(GL_BLEND);
 	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glBlendFunc(GL_ONE, GL_ONE);
-	for (int i = ARRAY_SIZE(std3D_pFb->bloomLayers) - 2; i >= 0; --i)
-		std3D_DrawSimpleTex(&std3D_bloomStage, &std3D_pFb->bloomLayers[i], std3D_pFb->bloomLayers[i + 1].tex, 0, 0, uvScale, blendLerp, 1.0, 0, "Bloom Upscale");
+	for (int i = ARRAY_SIZE(bloomLayers) - 2; i >= 0; --i)
+		std3D_DrawSimpleTex(&std3D_bloomStage, &bloomLayers[i], bloomLayers[i + 1].tex, 0, 0, uvScale, blendLerp, 1.0, 0, "Bloom Upscale");
 
 	// blend to postfx target
 	//glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_COLOR);
-	std3D_DrawSimpleTex(&std3D_texFboStage, &std3D_pFb->postfx, std3D_pFb->bloomLayers[0].tex, 0, 0, 1.0f, bloom_intensity, bloom_gamma, 0, "Bloom Composite");
+	std3D_DrawSimpleTex(&std3D_texFboStage, &postfx, bloomLayers[0].tex, 0, 0, 1.0f, bloom_intensity, bloom_gamma, 0, "Bloom Composite");
 
 	std3D_popDebugGroup();
 }
@@ -4842,7 +4912,7 @@ void std3D_FlushPostFX()
 {
 	std3D_pushDebugGroup("std3D_FlushPostFX");
 
-	glBindFramebuffer(GL_FRAMEBUFFER, std3D_pFb->window.fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, window.fbo);
 	//glClear(GL_COLOR_BUFFER_BIT);
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_BLEND);
@@ -4851,12 +4921,12 @@ void std3D_FlushPostFX()
 		//return;
 
 	// blit the framebuffer to a higher precision target for postfx composition
-	std3D_DrawSimpleTex(&std3D_texFboStage, &std3D_pFb->postfx, std3D_pFb->tex0, 0, 0, 1.0, 1.0, 1.0, 0, "PostFX Blit");
+	std3D_DrawSimpleTex(&std3D_texFboStage, &postfx, std3D_framebuffer.tex0, 0, 0, 1.0, 1.0, 1.0, 0, "PostFX Blit");
 
 	std3D_DoBloom();
 
 	glDisable(GL_BLEND);
-	std3D_DrawSimpleTex(&std3D_postfxStage, &std3D_pFb->window, std3D_pFb->postfx.tex, 0, 0, (rdCamera_pCurCamera->flags & 0x1) ? sithTime_curSeconds : -1.0, jkPlayer_enableDithering, jkPlayer_gamma, 0, "Final Output");
+	std3D_DrawSimpleTex(&std3D_postfxStage, &window, postfx.tex, 0, 0, (rdCamera_pCurCamera->flags & 0x1) ? sithTime_curSeconds : -1.0, jkPlayer_enableDithering, jkPlayer_gamma, 0, "Final Output");
 
 	std3D_popDebugGroup();
 }
@@ -4869,7 +4939,7 @@ void std3D_FlushDrawCalls()
 
 	std3D_pushDebugGroup("std3D_FlushDrawCalls");
 
-	glViewport(0, 0, std3D_pFb->w, std3D_pFb->h);
+	glViewport(0, 0, std3D_framebuffer.w, std3D_framebuffer.h);
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_TRUE);
 	glDepthFunc(GL_LESS);
@@ -4887,9 +4957,38 @@ void std3D_FlushDrawCalls()
 		// do opaque-only deferred stuff
 		std3D_FlushDeferred(&std3D_renderPasses[j]);
 
-		// draw color passes
-		std3D_FlushColorDrawCalls(& std3D_renderPasses[j]);
+		// draw refraction passes
+		int hasRefraction = 0;
+		if (std3D_renderPasses[j].flags & RD_RENDERPASS_REFRACTION)
+			hasRefraction = std3D_renderPasses[j].drawCallLists[DRAW_LIST_Z_REFRACTION].drawCallCount > 0;
+
+		if (hasRefraction)
+		{
+			if (j == 0)
+			{
+				glBindFramebuffer(GL_FRAMEBUFFER, refr.fbo);
+				glClear(GL_COLOR_BUFFER_BIT);
+			}
+			else
+			{
+				glDepthMask(GL_FALSE);
+				std3D_DrawSimpleTex(&std3D_texFboStage, &refr, std3D_framebuffer.tex0, 0, 0, 1.0, 1.0, 1.0, 0, "Refraction Blit");
+			}
+
+			// fill the refraction depth buffer, this includes refracted objects
+			std3D_FlushRefractionZDrawCalls(&std3D_renderPasses[j]);
+
+			// draw color with clipping against the water depth and stencil
+			std3D_FlushColorDrawCallsRefraction(&std3D_renderPasses[j]);
+
+			// draw refraction surfaces
+			std3D_FlushRefractionDrawCalls(&std3D_renderPasses[j]);
+		}
 		
+		// draw scene normally
+		// for refraction case, the depth buffer will clip out anything below the refraction surfaces
+		std3D_FlushColorDrawCalls(&std3D_renderPasses[j]);
+
 		std3D_popDebugGroup();
 	}
 
@@ -5429,8 +5528,8 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 	sliceBiasFactor    = -((float)CLUSTER_GRID_SIZE_Z * logf(znear) / logf(zfar / znear));
 
 	// ratio of tile to pixel
-	tileSizeX = (uint32_t)ceilf((float)std3D_pFb->w / (float)CLUSTER_GRID_SIZE_X);
-	tileSizeY = (uint32_t)ceilf((float)std3D_pFb->h / (float)CLUSTER_GRID_SIZE_Y);
+	tileSizeX = (uint32_t)ceilf((float)std3D_framebuffer.w / (float)CLUSTER_GRID_SIZE_X);
+	tileSizeY = (uint32_t)ceilf((float)std3D_framebuffer.h / (float)CLUSTER_GRID_SIZE_Y);
 	
 	int64_t time = Linux_TimeUs();
 

@@ -104,12 +104,13 @@ enum RD_DITHER_MODE
 	RD_DITHER_4x4  = 1,
 };
 
-typedef uint8_t rdAmbientOcclusionFlags_t;
-enum RD_AMBIENT_OCCLUSION_FLAGS
+typedef uint8_t rdAmbientFlags_t;
+enum RD_AMBIENT_FLAGS
 {
-	RD_AO_NONE         = 0x0,
-	RD_AO_OCCLUDERS    = 0x1,
-	RD_AO_SCREEN_SPACE = 0x2,
+	RD_AMBIENT_NONE         = 0x0,
+	RD_AMBIENT_OCCLUDERS    = 0x1,
+	RD_AMBIENT_SCREEN_SPACE = 0x2,
+	RD_AMBIENT_CAUSTICS     = 0x4, // todo: remove this, caustics should be a texture effect but we don't have TMUs yet
 };
 
 typedef uint8_t rdDecalMode_t;

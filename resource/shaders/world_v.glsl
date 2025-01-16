@@ -9,6 +9,7 @@ in vec3 coordVS;
 out vec4 f_color;
 out float f_light;
 out vec4 f_uv;
+out vec4 f_uv_nooffset;
 out vec3 f_coord;
 out vec3 f_normal;
 out float f_depth;
@@ -217,6 +218,7 @@ void main(void)
     f_color = clamp(v_color.bgra, vec4(0.0), vec4(1.0));
 
     f_uv = v_uv;
+	f_uv_nooffset = v_uv;
 	f_uv.xy += uv_offset.xy;
 	f_uv_affine = v_uv.xy;
 
