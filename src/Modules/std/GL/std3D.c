@@ -360,12 +360,14 @@ typedef enum STD3D_DRAW_LIST
 
 typedef struct std3D_DrawCallList
 {
-	uint32_t       drawCallCount;
-	uint32_t       drawCallIndexCount;
-	uint32_t       drawCallVertexCount;
-	std3D_DrawCall drawCalls[STD3D_MAX_DRAW_CALLS];
-	uint16_t       drawCallIndices[STD3D_MAX_DRAW_CALL_INDICES];
-	D3DVERTEX      drawCallVertices[STD3D_MAX_DRAW_CALL_VERTS];
+	int             bSorted;
+	uint32_t        drawCallCount;
+	uint32_t        drawCallIndexCount;
+	uint32_t        drawCallVertexCount;
+	std3D_DrawCall  drawCalls[STD3D_MAX_DRAW_CALLS];
+	uint16_t        drawCallIndices[STD3D_MAX_DRAW_CALL_INDICES];
+	D3DVERTEX       drawCallVertices[STD3D_MAX_DRAW_CALL_VERTS];
+	std3D_DrawCall* drawCallPtrs[STD3D_MAX_DRAW_CALLS];
 } std3D_DrawCallList;
 
 // todo/fixme: we're not currently handling viewport changes mid-draw
@@ -1729,6 +1731,8 @@ int init_resources()
     return true;
 }
 
+void std3D_ResetDrawCalls();
+
 int std3D_Startup()
 {
     if (std3D_bInitted) {
@@ -1941,6 +1945,8 @@ int std3D_StartScene()
         memcpy(displaypal_data, stdDisplay_masterPalette, 0x300);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 1, GL_RGB, GL_UNSIGNED_BYTE, displaypal_data);
     }
+
+	std3D_ResetDrawCalls();
 
 	std3D_popDebugGroup();
 
@@ -4215,9 +4221,12 @@ void std3D_ResetDrawCalls()
 	{
 		for (int i = 0; i < DRAW_LIST_COUNT; ++i)
 		{
+			std3D_renderPasses[j].drawCallLists[i].bSorted = 0;
 			std3D_renderPasses[j].drawCallLists[i].drawCallCount = 0;
 			std3D_renderPasses[j].drawCallLists[i].drawCallIndexCount = 0;
 			std3D_renderPasses[j].drawCallLists[i].drawCallVertexCount = 0;
+			for (int k = 0; k < STD3D_MAX_DRAW_CALLS; ++k)
+				std3D_renderPasses[j].drawCallLists[i].drawCallPtrs[k] = &std3D_renderPasses[j].drawCallLists[i].drawCalls[k];
 		}
 	}
 }
@@ -4259,20 +4268,20 @@ void std3D_UpdateSharedUniforms()
 	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(std3D_SharedUniforms), &uniforms);
 }
 
-int std3D_DrawCallCompareSortKey(std3D_DrawCall* a, std3D_DrawCall* b)
+int std3D_DrawCallCompareSortKey(std3D_DrawCall** a, std3D_DrawCall** b)
 {
-	if (a->sortKey > b->sortKey)
+	if ((*a)->sortKey > (*b)->sortKey)
 		return 1;
-	if (a->sortKey < b->sortKey)
+	if ((*a)->sortKey < (*b)->sortKey)
 		return -1;
 	return 0;
 }
 
-int std3D_DrawCallCompareDepth(std3D_DrawCall* a, std3D_DrawCall* b)
+int std3D_DrawCallCompareDepth(std3D_DrawCall** a, std3D_DrawCall** b)
 {
-	if (a->state.header.sortDistance > b->state.header.sortDistance)
+	if ((*a)->state.header.sortDistance > (*b)->state.header.sortDistance)
 		return 1;
-	if (a->state.header.sortDistance < b->state.header.sortDistance)
+	if ((*a)->state.header.sortDistance < (*b)->state.header.sortDistance)
 		return -1;
 	return 0;
 }
@@ -4554,6 +4563,30 @@ enum STD3D_DIRTYBIT
 	STD3D_LIGHTING  = 0x40,
 };
 
+static uint16_t std3D_drawCallIndicesSorted[STD3D_MAX_DRAW_CALL_INDICES];
+
+uint16_t* std3D_SortDrawCallIndices(std3D_DrawCallList* pList)
+{
+	STD_BEGIN_PROFILER_LABEL();
+	int drawCallIndexCount = 0;
+	for (int i = 0; i < pList->drawCallCount; ++i)
+	{
+		memcpy(&std3D_drawCallIndicesSorted[drawCallIndexCount], &pList->drawCallIndices[pList->drawCallPtrs[i]->firstIndex], sizeof(uint16_t) * pList->drawCallPtrs[i]->numIndices);
+		drawCallIndexCount += pList->drawCallPtrs[i]->numIndices;
+	}
+	STD_END_PROFILER_LABEL();
+	return std3D_drawCallIndicesSorted;
+}
+
+void std3D_SortDrawCallList(std3D_DrawCallList* pList, std3D_SortFunc sortFunc)
+{
+	STD_BEGIN_PROFILER_LABEL();
+	if(!pList->bSorted)
+		_qsort(pList->drawCallPtrs, pList->drawCallCount, sizeof(std3D_DrawCall*), (int(__cdecl*)(const void*, const void*))sortFunc);
+	pList->bSorted = 1;
+	STD_END_PROFILER_LABEL();
+}
+
 void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* pList, std3D_SortFunc sortFunc, const char* debugName)
 {
 	if (!pList->drawCallCount)
@@ -4572,23 +4605,14 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 
 	// sort draw calls to reduce state changes and maximize batching
 	if(sortFunc)
-		_qsort(pList->drawCalls, pList->drawCallCount, sizeof(std3D_DrawCall), (int(__cdecl*)(const void*, const void*))sortFunc);
+		std3D_SortDrawCallList(pList, sortFunc);
 
 	// batching needs to follow the draw order, but index array becomes disjointed after sorting
 	// build a sorted list of indices to ensure sequential access during batching
-	static uint16_t std3D_drawCallIndicesSorted[STD3D_MAX_DRAW_CALL_INDICES];
 	uint16_t* indexArray = pList->drawCallIndices;
 	if (sortFunc)
-	{
-		int drawCallIndexCount = 0;
-		for (int i = 0; i < pList->drawCallCount; ++i)
-		{
-			memcpy(&std3D_drawCallIndicesSorted[drawCallIndexCount], &pList->drawCallIndices[pList->drawCalls[i].firstIndex], sizeof(uint16_t) * pList->drawCalls[i].numIndices);
-			drawCallIndexCount += pList->drawCalls[i].numIndices;
-		}
-		indexArray = std3D_drawCallIndicesSorted;
-	}
-
+		indexArray = std3D_SortDrawCallIndices(pList);
+	
 	std3D_UpdateSharedUniforms();
 
 	glBindBufferBase(GL_UNIFORM_BUFFER, 0, light_ubo);
@@ -4599,7 +4623,7 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 	glBindBufferBase(GL_UNIFORM_BUFFER, 5, tex_ubo);
 	glBindBufferBase(GL_UNIFORM_BUFFER, 6, material_ubo);
 
-	std3D_DrawCall* pDrawCall = &pList->drawCalls[0];
+	std3D_DrawCall* pDrawCall = pList->drawCallPtrs[0];
 	std3D_DrawCallState* pState = &pDrawCall->state;
 
 	std3D_DrawCallState lastState = pDrawCall->state;
@@ -4625,7 +4649,7 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 	int indexOffset = 0;
 	for (int j = 0; j < pList->drawCallCount; j++)
 	{
-		pDrawCall = &pList->drawCalls[j];
+		pDrawCall = pList->drawCallPtrs[j];
 		pState = &pDrawCall->state;
 
 		int texid = pState->textureState.pTexture ? pState->textureState.pTexture->texture_id : blank_tex_white;
