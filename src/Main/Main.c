@@ -71,6 +71,7 @@
 #ifdef JOB_SYSTEM
 #include "Modules/std/stdJob.h"
 #endif
+#include "Modules/std/stdProfiler.h"
 
 #include "Platform/Common/stdHttp.h"
 #include "Platform/Common/stdUpdater.h"
@@ -366,6 +367,7 @@ int Main_Startup(const char *cmdline)
 #ifdef JOB_SYSTEM
 	stdJob_Startup(); // Added
 #endif
+	stdProfiler_Startup(); // Added
 
     wuRegistry_Startup(HKEY_LOCAL_MACHINE, "Software\\LucasArts Entertainment Company\\JediKnight\\v1.0", "0.1");
     //stdStartup(&hs); // Moved
@@ -524,6 +526,7 @@ void Main_Shutdown()
 #ifdef JOB_SYSTEM
 	stdJob_Shutdown(); // Added
 #endif
+	stdProfiler_Shutdown(); // Added
     stdShutdown();
     if ( Main_logLevel == 1 )
     {

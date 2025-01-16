@@ -30,6 +30,7 @@
 #include "General/stdMath.h"
 #include "General/stdHashTable.h"
 #include "Modules/std/stdJob.h"
+#include "Modules/std/stdProfiler.h"
 
 #ifdef WIN32
 // Force Optimus/AMD to use non-integrated GPUs by default.
@@ -4558,6 +4559,7 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 	if (!pList->drawCallCount)
 		return;
 
+	STD_BEGIN_PROFILER_LABEL();
 	std3D_pushDebugGroup(debugName);
 
 	if (rdMatrix_Compare44(&pRenderPass->oldProj, &pList->drawCalls[0].state.transformState.proj) != 0)
@@ -4706,6 +4708,7 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 	glBindSampler(0, 0);
 
 	std3D_popDebugGroup();
+	STD_END_PROFILER_LABEL();
 }
 
 void std3D_DoSSAO()
@@ -4937,6 +4940,7 @@ void std3D_FlushDrawCalls()
 	if (Main_bHeadless) return;
 	if (!has_initted) return;
 
+	STD_BEGIN_PROFILER_LABEL();
 	std3D_pushDebugGroup("std3D_FlushDrawCalls");
 
 	glViewport(0, 0, std3D_framebuffer.w, std3D_framebuffer.h);
@@ -5008,6 +5012,7 @@ void std3D_FlushDrawCalls()
 	glBindSampler(0, 0);
 
 	std3D_popDebugGroup();
+	STD_END_PROFILER_LABEL();
 }
 
 void std3D_ClearLights()
@@ -5510,6 +5515,8 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 {
 	if(!pRenderPass->clustersDirty)
 		return;
+	
+	STD_BEGIN_PROFILER_LABEL();
 
 #ifdef JOB_SYSTEM
 	std3D_jobRenderPass = pRenderPass;
@@ -5542,6 +5549,8 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 	stdJob_Dispatch(CLUSTER_GRID_SIZE_XYZ, 64, stdJob_BuildClustersJob);
 	//printf("%lld us to build custers for frame %d\n", Linux_TimeUs() - time, rdroid_frameTrue);
 
+	// todo: do we need to atomically clear this?
+	// maybe this should also be in a dispatch
 	for (int i = 0; i < ARRAY_SIZE(std3D_clusterBits); ++i)
 		SDL_AtomicSet(&std3D_clusterBits[i], 0);
 
@@ -5601,6 +5610,8 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 	glBindBuffer(GL_TEXTURE_BUFFER, cluster_buffer);
 	glBufferSubData(GL_TEXTURE_BUFFER, 0, sizeof(std3D_clusterBits), (void*)std3D_clusterBits);
 	glBindBuffer(GL_TEXTURE_BUFFER, 0);
+
+	STD_END_PROFILER_LABEL();
 }
 
 #endif

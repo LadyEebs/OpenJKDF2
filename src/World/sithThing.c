@@ -48,6 +48,7 @@
 #ifdef PUPPET_PHYSICS
 #include "Modules/sith/Engine/sithConstraint.h"
 #endif
+#include "Modules/std/stdProfiler.h"
 
 #define NUM_THING_PARAMS (THINGPARAM_NUM_PARAMS-1)
 #define NUM_THING_TYPES (13)
@@ -248,6 +249,8 @@ void sithThing_TickAll(float deltaSeconds, int deltaMs)
     if ( sithWorld_pCurrentWorld->numThings < 0 )
         return;
 
+	STD_BEGIN_PROFILER_LABEL();
+
 	#ifdef PUPPET_PHYSICS
 	sithPuppet_activePuppets = 0;
 	sithPuppet_restingPuppets = 0;
@@ -383,6 +386,8 @@ void sithThing_TickAll(float deltaSeconds, int deltaMs)
         }
         sithNet_things[1 + sithNet_thingsIdx++] = v7;
     }
+
+	STD_END_PROFILER_LABEL();
 }
 
 void sithThing_TickPhysics(sithThing *pThing, float deltaSecs)

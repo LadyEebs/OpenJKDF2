@@ -33,6 +33,7 @@
 #ifdef DYNAMIC_POV
 #include "World/sithSprite.h"
 #endif
+#include "Modules/std/stdProfiler.h"
 
 #include "jk.h"
 
@@ -1659,6 +1660,8 @@ void sithCogScript_TickAll()
     if (g_sithMode == 2)
         return;
 
+	STD_BEGIN_PROFILER_LABEL();
+
     for (uint32_t i = 0; i < sithWorld_pCurrentWorld->numCogsLoaded; i++)
     {
         sithCogScript_Tick(&sithWorld_pCurrentWorld->cogs[i]);
@@ -1682,6 +1685,8 @@ void sithCogScript_TickAll()
             sithCogScript_Tick(&sithWorld_pStatic->cogs[i]);
         }
     }
+
+	STD_END_PROFILER_LABEL();
 }
 
 void sithCogScript_Tick(sithCog *cog)

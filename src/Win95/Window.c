@@ -13,6 +13,7 @@
 #include "Devices/sithConsole.h"
 #include "Platform/wuRegistry.h"
 #include "Main/jkQuakeConsole.h"
+#include "Modules/std/stdProfiler.h"
 
 #include "jk.h"
 
@@ -994,6 +995,9 @@ void Window_SdlUpdate()
     {
         SDL_GL_SetSwapInterval(jkPlayer_enableVsync);
     }
+
+	// Added
+	stdProfiler_Tick();
 
     if (!jkGame_isDDraw)
     {

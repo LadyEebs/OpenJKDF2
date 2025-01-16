@@ -98,6 +98,7 @@ void jkDev_Startup()
     jkDev_RegisterCmd(jkDev_CmdNoclip, "noclip", "Noclip", 0);
 	jkDev_RegisterCmd(jkDev_Custom_CmdJumpNextCheckpoint, "checkmate", "", 0);  // cycles to next auto-restart checkpoint
 	jkDev_RegisterCmd(jkDev_CmdDebugFlags3, "necromancer", "Necromancer", 8);
+	jkDev_RegisterCmd(jkDev_CmdProfiler, "jn66", "", 0);
 #endif
 
     jkDev_bInitted = 1;
@@ -1200,5 +1201,13 @@ int jkDev_CmdNoclip(stdDebugConsoleCmd *pCmd, const char *pArgStr)
     }
 
     return 0;
+}
+
+int jkDev_CmdProfiler(stdDebugConsoleCmd* pCmd, const char* pArgStr)
+{
+	extern int stdProfiler_enable;
+	stdProfiler_enable = !stdProfiler_enable;
+
+	return 1;
 }
 #endif

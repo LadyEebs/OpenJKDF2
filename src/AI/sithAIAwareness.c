@@ -7,6 +7,7 @@
 #include "World/sithThing.h"
 #include "Dss/sithMulti.h"
 #include "jk.h"
+#include "Modules/std/stdProfiler.h"
 
 int sithAIAwareness_Startup()
 {
@@ -63,6 +64,8 @@ int sithAIAwareness_Tick(int a, sithEventInfo* b)
         return 1;
     }
 
+	STD_BEGIN_PROFILER_LABEL();
+
     for (size_t v1 = 0; v1 < sithAIAwareness_numEntries; v1++)
     {
         sithSectorEntry* v2 = &sithAIAwareness_aEntries[v1];
@@ -96,6 +99,9 @@ int sithAIAwareness_Tick(int a, sithEventInfo* b)
         }
     }
     sithAIAwareness_numEntries = 0;
+
+	STD_END_PROFILER_LABEL();
+
     return 1;
 }
 

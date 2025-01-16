@@ -24,6 +24,7 @@
 #ifdef PUPPET_PHYSICS
 #include "Engine/sithPuppet.h"
 #endif
+#include "Modules/std/stdProfiler.h"
 
 #include "stdPlatform.h"
 #include "jk.h"
@@ -126,6 +127,8 @@ int jkGame_Update()
     double v4; // st7
     int result; // eax
     int v6; // [esp+1Ch] [ebp-1Ch]
+
+	STD_BEGIN_PROFILER_LABEL();
 
     // HACK HACK HACK: Adjust zNear depending on if we're using the scope/camera views
 #if defined(SDL2_RENDER) || defined(TARGET_TWL)
@@ -313,6 +316,8 @@ int jkGame_Update()
     }
     result = stdDisplay_DDrawGdiSurfaceFlip();
     */
+
+	STD_END_PROFILER_LABEL();
 
     return result;
 }

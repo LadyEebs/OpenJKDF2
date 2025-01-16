@@ -13,6 +13,7 @@
 #include "World/jkPlayer.h"
 #include "Dss/sithDSSThing.h"
 #include "General/stdMath.h"
+#include "Modules/std/stdProfiler.h"
 #include "jk.h"
 
 int sithSoundMixer_Startup()
@@ -735,7 +736,10 @@ void sithSoundMixer_Tick(float deltaSecs)
 
     if ( !sithCamera_currentCamera )
         return;
-    if ( (sithCamera_currentCamera->cameraPerspective & 0xFC) != 0 )
+   
+	STD_BEGIN_PROFILER_LABEL();
+   
+   if ( (sithCamera_currentCamera->cameraPerspective & 0xFC) != 0 )
         sithSoundMixer_pFocusedThing = 0;
     else
         sithSoundMixer_pFocusedThing = sithWorld_pCurrentWorld->cameraFocus;
@@ -939,6 +943,8 @@ LABEL_72:
     //printf("--- %u\n", sithSoundMixer_activeChannels);
     rdVector_Scale3(&v44, &sithCamera_currentCamera->vec3_1, 10.0);
     stdSound_SetPositionOrientation(&v44, &sithCamera_currentCamera->viewMat.lvec, &sithCamera_currentCamera->viewMat.uvec);
+	
+	STD_END_PROFILER_LABEL();
 }
 
 void sithSoundMixer_TickPlayingSound(sithPlayingSound *sound, float deltaSecs)

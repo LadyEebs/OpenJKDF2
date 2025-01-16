@@ -92,6 +92,7 @@ int jkDev_UpdateEntries();
 
 #ifdef QOL_IMPROVEMENTS
 int jkDev_CmdNoclip(stdDebugConsoleCmd *pCmd, const char *pArgStr);
+int jkDev_CmdProfiler(stdDebugConsoleCmd* pCmd, const char* pArgStr);
 #endif
 
 static int (*jkDev_DialogFunc)(HWND, UINT, WPARAM, LPARAM) = (void*)jkDev_DialogFunc_ADDR;

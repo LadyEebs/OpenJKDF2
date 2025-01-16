@@ -37,6 +37,7 @@
 #include "World/sithSprite.h"
 #include "Engine/sithCollision.h"
 #endif
+#include "Modules/std/stdProfiler.h"
 
 
 // DO NOT FORGET TO ADD TO jkPlayer_ResetVars()
@@ -1126,6 +1127,8 @@ void jkPlayer_DrawPov()
     if (!playerThings[playerThingIdx].povModel.model3)
         return;
 
+	STD_BEGIN_PROFILER_LABEL();
+
 #ifdef RENDER_DROID2
 	int32_t tex_w = (int32_t)((double)Window_xSize * jkPlayer_ssaaMultiple);
 	int32_t tex_h = (int32_t)((double)Window_ySize * jkPlayer_ssaaMultiple);
@@ -1503,6 +1506,8 @@ void jkPlayer_DrawPov()
 		rdCache_FlushLights();
 #endif
     }
+
+	STD_END_PROFILER_LABEL();
 }
 
 #ifdef QOL_IMPROVEMENTS

@@ -7,6 +7,8 @@
 #include "General/stdColor.h"
 
 #include "Platform/std3D.h"
+#include "Modules/std/stdJob.h"
+#include "Modules/std/stdProfiler.h"
 
 void stdDisplay_SetGammaTable(int len, double *table)
 {
@@ -453,6 +455,8 @@ int stdDisplay_VBufferCopy(stdVBuffer *vbuf, stdVBuffer *vbuf2, unsigned int bli
 
 int stdDisplay_VBufferFill(stdVBuffer *vbuf, int fillColor, rdRect *rect)
 {    
+	STD_BEGIN_PROFILER_LABEL();
+
     rdRect fallback = {0,0,vbuf->format.width, vbuf->format.height};
     if (!rect)
     {
@@ -489,6 +493,8 @@ int stdDisplay_VBufferFill(stdVBuffer *vbuf, int fillColor, rdRect *rect)
 	if (vbuf->device_surface)
 		std3D_ClearDrawSurface(vbuf->device_surface, fillColor, rect);
 #endif
+
+	STD_END_PROFILER_LABEL();
 
     return 1;
 }

@@ -24,6 +24,7 @@
 #include "../jk.h"
 #include "types.h"
 #include "types_enums.h"
+#include "Modules/std/stdProfiler.h"
 
 //stdBitmap* jkHud_pTestbitmap = NULL;
 #ifdef DYNAMIC_POV
@@ -921,6 +922,18 @@ LABEL_116:
     jkHud_DrawGPU();
 }
 
+// Added
+int profilerY = 0;
+void jkHud_DrawProfilerStats(const char* functionName, int64_t duration)
+{
+	char tmpText[1024];
+	snprintf(&tmpText, 1024, "%s: %.3f ms", functionName, (double)duration * 0.001);
+
+	stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, 25, profilerY, 999, tmpText, 1, jkPlayer_hudScale);
+	
+	profilerY += stdFont_GetHeight(jkHud_pMsgFontSft) * jkPlayer_hudScale + jkHud_pMsgFontSft->marginY;
+}
+
 // MOTS altered
 void jkHud_DrawGPU()
 {
@@ -1033,6 +1046,10 @@ void jkHud_DrawGPU()
 #ifdef SDL2_RENDER
     stdDisplay_VBufferLock(Video_pCanvas->vbuffer);
 #endif
+
+	// todo: custom font for debugging
+	profilerY = 15;
+	stdProfiler_Enumerate(jkHud_DrawProfilerStats);
 
     // The rendering for GPU is kind of inverted from how the original does it.
     // The original blits onto the left/right statuses, then blits those to the screen.

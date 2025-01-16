@@ -27,6 +27,7 @@
 #include "Dss/sithDSS.h"
 #include "Dss/sithMulti.h"
 #include "jk.h"
+#include "Modules/std/stdProfiler.h"
 
 stdHashTable* sithAI_commandsHashmap = NULL;
 uint32_t sithAI_maxActors = 0;
@@ -308,6 +309,8 @@ void sithAI_FreeEntry(sithThing *thing)
 
 void sithAI_TickAll()
 {
+	STD_BEGIN_PROFILER_LABEL();
+
     int v0; // edi
     sithActor *actor; // esi
 
@@ -351,6 +354,8 @@ void sithAI_TickAll()
 
         ++v0;
     }
+
+	STD_END_PROFILER_LABEL();
 }
 
 void sithAI_TickActor(sithActor *actor)

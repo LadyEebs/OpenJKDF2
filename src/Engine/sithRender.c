@@ -29,7 +29,7 @@
 #include "World/sithExplosion.h"
 #include "Platform/std3D.h"
 #include "stdPlatform.h"
-
+#include "Modules/std/stdProfiler.h"
 #ifdef PUPPET_PHYSICS
 #include "Modules/sith/Engine/sithConstraint.h"
 #include "Engine/sithPuppet.h"
@@ -700,6 +700,8 @@ void sithRender_Draw()
     if (!sithCamera_currentCamera || !sithCamera_currentCamera->sector)
         return;
 
+	STD_BEGIN_PROFILER_LABEL();
+
     sithPlayer_SetScreenTint(sithCamera_currentCamera->sector->tint.x, sithCamera_currentCamera->sector->tint.y, sithCamera_currentCamera->sector->tint.z);
 #ifdef FOG
 	if (sithCamera_currentCamera->sector->flags & SITH_SECTOR_UNDERWATER)
@@ -933,6 +935,8 @@ void sithRender_Draw()
 #ifdef RGB_AMBIENT
 	sithRender_RenderDebugAmbientCubes();
 #endif
+
+	STD_END_PROFILER_LABEL();
 }
 
 // MOTS altered?
