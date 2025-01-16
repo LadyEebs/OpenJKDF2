@@ -451,6 +451,9 @@ void* displaypal_data = NULL;
 GLuint tiledrand_texture;
 rdVector3 tiledrand_data[4 * 4];
 
+GLuint linearSampler[4];
+GLuint nearestSampler[4];
+
 size_t std3D_loadedUITexturesAmt = 0;
 stdBitmap* std3D_aUIBitmaps[STD3D_MAX_TEXTURES] = {0};
 GLuint std3D_aUITextures[STD3D_MAX_TEXTURES] = {0};
@@ -1570,6 +1573,23 @@ int init_resources()
     programMenu_uniform_tex = std3D_tryFindUniform(programMenu, "tex");
     programMenu_uniform_displayPalette = std3D_tryFindUniform(programMenu, "displayPalette");
    
+	// samplers
+	int wrap[2] = { GL_REPEAT, GL_CLAMP_TO_EDGE };
+	glGenSamplers(4, linearSampler);
+	glGenSamplers(4, nearestSampler);
+	for (int i = 0; i < 4; ++i)
+	{
+		glSamplerParameteri(linearSampler[i], GL_TEXTURE_WRAP_S, wrap[i%2]);
+		glSamplerParameteri(linearSampler[i], GL_TEXTURE_WRAP_T, wrap[i/2]);
+		glSamplerParameteri(linearSampler[i], GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glSamplerParameteri(linearSampler[i], GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		
+		glSamplerParameteri(nearestSampler[i], GL_TEXTURE_WRAP_S, wrap[i % 2]);
+		glSamplerParameteri(nearestSampler[i], GL_TEXTURE_WRAP_T, wrap[i / 2]);
+		glSamplerParameteri(nearestSampler[i], GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glSamplerParameteri(nearestSampler[i], GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+	}
+
     // Blank texture
     glGenTextures(1, &blank_tex);
     blank_data = jkgm_alloc_aligned(0x400);
@@ -1764,6 +1784,9 @@ void std3D_FreeResources()
         jkgm_aligned_free(worldpal_lights_data);
     if (displaypal_data)
         jkgm_aligned_free(displaypal_data);
+
+	glDeleteSamplers(4, linearSampler);
+	glDeleteSamplers(4, nearestSampler);
 
     blank_data = NULL;
     blank_data_white = NULL;
@@ -4376,24 +4399,13 @@ void std3D_SetTextureState(std3D_worldStage* pStage, std3D_DrawCallState* pState
 		glActiveTexture(GL_TEXTURE0 + 0);
 		glBindTexture(GL_TEXTURE_2D, tex_id ? tex_id : blank_tex_white);
 
-		// I can't imagine doing this all the time is very efficient..
-		if (tex_id)
-		{
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, pTexState->flags & RD_FF_TEX_CLAMP_X ? GL_CLAMP_TO_EDGE : GL_REPEAT);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, pTexState->flags & RD_FF_TEX_CLAMP_Y ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+		int clampX = pTexState->flags & RD_FF_TEX_CLAMP_X;
+		int clampY = pTexState->flags & RD_FF_TEX_CLAMP_Y;
 
-			// oh boy do I ever fucking hate this
-			if (jkPlayer_enableTextureFilter && (pState->stateBits.texFilter == RD_TEXFILTER_BILINEAR) && pTexture->is_16bit)
-			{
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-			}
-			else
-			{
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_NEAREST);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
-			}
-		}
+		if ((pState->stateBits.texFilter == RD_TEXFILTER_BILINEAR) && pTexture->is_16bit)
+			glBindSampler(0, linearSampler[clampX + clampY * 2]);
+		else
+			glBindSampler(0, nearestSampler[clampX + clampY * 2]);
 
 		int emiss_tex_id = pTexture->emissive_texture_id;
 		glActiveTexture(GL_TEXTURE0 + 3);
@@ -4411,7 +4423,7 @@ void std3D_SetTextureState(std3D_worldStage* pStage, std3D_DrawCallState* pState
 		}
 		else
 		{
-			if (/*!jkPlayer_enableTextureFilter ||*/ (pState->stateBits.texFilter == RD_TEXFILTER_NEAREST))
+			if (/*!jkPlayer_enableTextureFilter || */ (pState->stateBits.texFilter == RD_TEXFILTER_NEAREST))
 				tex.tex_mode = pTexture->is_16bit ? TEX_MODE_16BPP : TEX_MODE_WORLDPAL;
 			else
 				tex.tex_mode = pTexture->is_16bit ? TEX_MODE_BILINEAR_16BPP : TEX_MODE_BILINEAR;
@@ -4506,7 +4518,7 @@ void std3D_BindStage(std3D_worldStage* pStage)
 	glUniform1i(pStage->uniform_texrefraction,      TEX_SLOT_REFRACTION);
 }
 
-void std3D_bindTexture(int type, int texId, int slot)
+inline void std3D_bindTexture(int type, int texId, int slot)
 {
 	glActiveTexture(GL_TEXTURE0 + slot);
 	glBindTexture(type, texId);
@@ -4674,6 +4686,8 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 
 	if (batchIndices)
 		glDrawElements(std3D_PrimitiveForGeoMode(pDrawCall->state.stateBits.geoMode + 1), batchIndices, GL_UNSIGNED_SHORT, (void*)(indexOffset * sizeof(uint16_t)));
+
+	glBindSampler(0, 0);
 
 	std3D_popDebugGroup();
 }
@@ -4892,6 +4906,7 @@ void std3D_FlushDrawCalls()
 	glDisable(GL_STENCIL_TEST);
 	glDisable(GL_SCISSOR_TEST);
 	glCullFace(GL_FRONT);
+	glBindSampler(0, 0);
 
 	std3D_popDebugGroup();
 }
