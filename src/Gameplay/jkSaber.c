@@ -284,7 +284,7 @@ void jkSaber_DrawTrail(rdThing* pThing, jkSaberTrail* pSaberTrail, rdMatrix34* p
 				verts[0] = tmp;
 			}
 
-			pThing->polyline->edgeFace.sortId = 5;
+			pThing->polyline->tipFace.sortId = 5;
 
 			idxInfo.vertexUVs = uvs;
 			rdPolyLine_DrawFace(pThing, &pThing->polyline->tipFace, NULL, &idxInfo);
