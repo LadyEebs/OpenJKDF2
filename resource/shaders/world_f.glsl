@@ -323,6 +323,74 @@ vec3 temperature(float t)
     return vec3( clamp(r.x, 0.0f, 1.0), clamp(r.y, 0.0, 1.0), clamp(r.z, 0.0, 1.0) );
 }
 
+bool ceiling_intersect(vec3 pos, vec3 dir, vec3 normal, vec3 center, inout float t)
+{
+	float denom = dot(dir, normal);
+	if (abs(denom) > 1e-6)
+	{
+		t = dot(center - pos, normal) / denom;
+		if (t >= 0.0 && t < 1000.0)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+vec2 do_ceiling_uv(inout vec3 viewPos)
+{
+	mat4 invMat = inverse(modelMatrix); // fixme: expensive + only works when model component is identity
+	vec3 cam_pos   = (invMat * vec4(0, 0, 0, 1)).xyz;
+
+	mat4 invView = inverse(viewMatrix);
+	vec3 world_pos = (invView * vec4(viewPos.xyz, 1.0)).xyz;
+
+	vec3 ray_dir = normalize(world_pos.xyz - cam_pos.xyz);
+	vec3 view_ceiling = texgen_params.xyz;
+	vec3 view_norm = vec3(0,0,-1);
+
+	float tmp = 0.0;
+	if (!ceiling_intersect(cam_pos, ray_dir, view_norm, view_ceiling.xyz, tmp))
+		tmp = 1000.0;
+
+    vec3 sky_pos = tmp * ray_dir + cam_pos;
+	
+	viewPos.y = sky_pos.y;
+
+	vec2 uv = sky_pos.xy * 16.0;
+
+	vec4 proj_sky = projMatrix * modelMatrix * vec4(sky_pos.xyz, 1.0);
+	
+	return (uv + uv_offset.xy) / texsize.xy;
+}
+
+vec2 do_horizon_uv()
+{
+	vec2 projXY = vec2(0.5,-0.5) * (gl_FragCoord.xy / iResolution.xy);
+	projXY = projXY.xy * iResolution.xy * (texgen_params.x / gl_FragCoord.w);
+
+	vec2 uv;
+	uv.x = projXY.x * texgen_params.y + (projXY.y * -texgen_params.z);
+	uv.y = projXY.y * texgen_params.y + (projXY.x *  texgen_params.z);
+	
+	return (uv + uv_offset.xy) / texsize.xy;
+}
+
+void do_texgen(inout vec3 uv, inout vec3 viewPos)
+{
+	if(texgen == 1) // 1 = RD_TEXGEN_HORIZON
+	{
+		uv.xy = do_horizon_uv();
+		uv.z = 0.0;
+	}
+	else if(texgen == 2) // 2 = RD_TEXGEN_CEILING
+	{
+		uv.xy = do_ceiling_uv(viewPos);
+		uv.z = 0;
+	}
+}
+
+
 // https://therealmjp.github.io/posts/sg-series-part-1-a-brief-and-incomplete-history-of-baked-lighting-representations/
 // SphericalGaussian(dir) := Amplitude * exp(Sharpness * (dot(Axis, dir) - 1.0f))
 struct SG
@@ -1294,9 +1362,12 @@ void main(void)
 	float dither = DITHER_LUT[wrap_index] / 255.0;
    
 	vec3 adj_texcoords = f_uv.xyz / f_uv.w;
+	vec3 viewPos = f_coord.xyz;
+
+	do_texgen(adj_texcoords, viewPos);
 
 	// software actually uses the zmin of the entire face
-	float mipBias = compute_mip_bias(f_coord.y);
+	float mipBias = compute_mip_bias(viewPos.y);
 	mipBias = min(mipBias, float(numMips - 1));
 
     if(displacement_factor != 0.0)
@@ -1311,7 +1382,7 @@ void main(void)
 	//if(texgen == 1) // 1 = RD_TEXGEN_HORIZON
 	//{
 	//	mat4 invMat = inverse(modelMatrix);
-	//	vec3 worldPos = mat3(invMat) * f_coord;
+	//	vec3 worldPos = mat3(invMat) * viewPos;
 	//	//worldPos = normalize(worldPos);// * vec3(1.0, 1.0, 2.0));
 	//
 	//	//adj_texcoords.xy = worldPos.xy / (worldPos.z + 1.0) * 0.5 + 0.5;
@@ -1332,7 +1403,7 @@ void main(void)
 	//}
 
 	vec3 surfaceNormals = normalize(f_normal);
-	vec3 localViewDir = normalize(-f_coord.xyz);
+	vec3 localViewDir = normalize(-viewPos.xyz);
 	
 	vec3 proc_texcoords = f_uv_nooffset.xyz / f_uv_nooffset.w;
 #ifndef ALPHA_BLEND
@@ -1408,7 +1479,7 @@ void main(void)
 
     vec4 albedoFactor_copy = albedoFactor;
 
-	uint cluster_index = compute_cluster_index(gl_FragCoord.xy, f_coord.y);
+	uint cluster_index = compute_cluster_index(gl_FragCoord.xy, viewPos.y);
 	uint bucket_index = cluster_index * CLUSTER_BUCKETS_PER_CLUSTER;
 
 	vec3 diffuseColor = sampled_color.xyz;
@@ -1464,7 +1535,7 @@ void main(void)
 	//}
 
 	if(numDecals > 0u)
-		BlendDecals(diffuseColor.xyz, emissive.xyz, bucket_index, f_coord.xyz, surfaceNormals);
+		BlendDecals(diffuseColor.xyz, emissive.xyz, bucket_index, viewPos.xyz, surfaceNormals);
 
 #ifndef UNLIT
 	#ifdef SPECULAR
@@ -1474,7 +1545,7 @@ void main(void)
 		
 	vec4 shadows = vec4(0.0, 0.0, 0.0, 1.0);
 	if ((aoFlags & 0x1) == 0x1 && numOccluders > 0u)
-		shadows = CalculateIndirectShadows(bucket_index, f_coord.xyz, surfaceNormals);
+		shadows = CalculateIndirectShadows(bucket_index, viewPos.xyz, surfaceNormals);
 
 	vec3 ao = vec3(shadows.w * 0.8 + 0.2); // remap so we don't overdarken
 	
@@ -1497,16 +1568,16 @@ void main(void)
 	if ((aoFlags & 0x4) == 0x4)
 	{
 		mat4 invView = inverse(viewMatrix);
-		vec3 pos = (invView * vec4(f_coord.xyz, 1.0)).xyz;
+		vec3 pos = (invView * vec4(viewPos.xyz, 1.0)).xyz;
 		vec3 wn = mat3(invView) * surfaceNormals;
 		
 		//pos *= 4.0; // tiling
-		//pos += wn.xyz * colorEffects_fade; // animate
+		pos += wn.xyz * 0.25 * colorEffects_fade; // animate
 		
 		//float w = mix(water_caustics(pos), water_caustics(pos + 1.), 0.5);
 		//ao *= exp(w * 4.0 - 1.0) * 0.5 + 0.5;
 
-		float w = pow(getwaves2(vec3(pos.xy * 50.0, colorEffects_fade * 10.0)), 3.0);
+		float w = pow(getwaves2(vec3(pos.xyz * 50.0)), 3.0);
 		ao *= w * 2.0 + 0.5;
 	}
 
@@ -1566,7 +1637,7 @@ void main(void)
 #ifdef FOG
 	if(fogEnabled > 0)
 	{
-		float distToCam = length(-f_coord.xyz);
+		float distToCam = length(-viewPos.xyz);
 		float fog_amount = clamp((distToCam - fogStart) / (fogEnd - fogStart), 0.0, 1.0);
 		fog_amount *= fogColor.a;
 
@@ -1615,12 +1686,12 @@ void main(void)
 	}
 #endif
 
-#if defined(ALPHA_BLEND) || defined(ALPHA_DISCARD)
+//#if defined(ALPHA_BLEND) || defined(ALPHA_DISCARD)
 	// todo: this is killing early-z for all the passes...
 	float clipDepth = texture(cliptex, screenUV).r;
 	if (clipDepth > f_depth)
 		discard;
-#endif
+//#endif
 
 	// dither the output in case we're using some lower precision output
 	if(ditherMode == 1)
