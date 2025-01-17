@@ -226,6 +226,12 @@
 #define STD3D_MAX_UI_VERTICES (0x8000)
 #endif
 
+#ifdef QOL_IMPROVEMENTS
+#define RDSURFACE_MAX 4096
+#else
+#define RDSURFACE_MAX 256
+#endif
+
 #define SITHCONTROL_NUM_HANDLERS (9)
 
 // jkGuiMultiTally delay between maps

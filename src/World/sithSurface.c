@@ -17,14 +17,14 @@
 
 int sithSurface_Startup()
 {
-    _memset(sithSurface_aSurfaces, 0, sizeof(rdSurface) * 256); // sizeof(sithSurface_aSurfaces)
+    _memset(sithSurface_aSurfaces, 0, sizeof(rdSurface) * RDSURFACE_MAX); // sizeof(sithSurface_aSurfaces)
 
-    for (int i = 255; i >= 0; i--)
+    for (int i = RDSURFACE_MAX-1; i >= 0; i--)
     {
-        sithSurface_aAvail[i+1] = 255-i;
+        sithSurface_aAvail[i+1] = RDSURFACE_MAX -1-i;
     }
 
-    sithSurface_numAvail = 256;
+    sithSurface_numAvail = RDSURFACE_MAX;
     sithSurface_numSurfaces = 0;
     return 1;
 }
@@ -1364,7 +1364,7 @@ void sithSurface_Sync()
 
     for (uint32_t v0 = 0; v0 < sithSurface_numSurfaces_0; v0++)
     {
-        sithDSS_SendSurfaceStatus(aSithSurfaces[v0], -1, 255);
+        sithDSS_SendSurfaceStatus(aSithSurfaces[v0], -1, RDSURFACE_MAX-1);
     }
 
     sithSurface_numSurfaces_0 = 0;
