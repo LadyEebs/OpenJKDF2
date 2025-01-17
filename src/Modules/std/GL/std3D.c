@@ -4914,7 +4914,9 @@ void std3D_DoBloom()
 {
 	if (!jkPlayer_enableBloom)
 		return;
-	
+
+	STD_BEGIN_PROFILER_LABEL();
+
 	// todo: cvars
 	const float bloom_intensity = 1.0f;// 1.0f;
 	const float bloom_gamma = 1.0f;// 1.5f;
@@ -4941,10 +4943,14 @@ void std3D_DoBloom()
 	std3D_DrawSimpleTex(&std3D_texFboStage, &postfx, bloomLayers[0].tex, 0, 0, 1.0f, bloom_intensity, bloom_gamma, 0, "Bloom Composite");
 
 	std3D_popDebugGroup();
+	
+	STD_END_PROFILER_LABEL();
 }
 
 void std3D_FlushPostFX()
 {
+	STD_BEGIN_PROFILER_LABEL();
+
 	std3D_pushDebugGroup("std3D_FlushPostFX");
 
 	glBindFramebuffer(GL_FRAMEBUFFER, window.fbo);
@@ -4964,6 +4970,8 @@ void std3D_FlushPostFX()
 	std3D_DrawSimpleTex(&std3D_postfxStage, &window, postfx.tex, 0, 0, (rdCamera_pCurCamera->flags & 0x1) ? sithTime_curSeconds : -1.0, jkPlayer_enableDithering, jkPlayer_gamma, 0, "Final Output");
 
 	std3D_popDebugGroup();
+
+	STD_END_PROFILER_LABEL();
 }
 
 // fixme: flush this when rdCache_Flush is called instead of trying to lump everything into a bunch of draw lists?
