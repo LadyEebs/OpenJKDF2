@@ -1394,8 +1394,8 @@ void jkPlayer_DrawPov()
 				rdVector3 angles;
 				rdMatrix_ExtractAngles34(&autoAimMat, &angles);
 			
-				jkSaber_aimAngles.x = (angles.x - jkSaber_aimAngles.x) * 8.0f * min(sithTime_deltaSeconds, 0.02f) + jkSaber_aimAngles.x;
-				jkSaber_aimAngles.y = (angles.y - jkSaber_aimAngles.y) * 8.0f * min(sithTime_deltaSeconds, 0.02f) + jkSaber_aimAngles.y;
+				jkSaber_aimAngles.x = (angles.x - jkSaber_aimAngles.x) * 20.0f * min(sithTime_deltaSeconds, 0.02f) + jkSaber_aimAngles.x;
+				jkSaber_aimAngles.y = (angles.y - jkSaber_aimAngles.y) * 20.0f * min(sithTime_deltaSeconds, 0.02f) + jkSaber_aimAngles.y;
 				// ignore roll, it gets weird
 				//jkSaber_aimAngles.z = (angles.z - jkSaber_aimAngles.z) * 8.0f * min(sithTime_deltaSeconds, 0.02f) + jkSaber_aimAngles.z;
 			
@@ -1403,9 +1403,9 @@ void jkPlayer_DrawPov()
 				rdMatrix_PreMultiply34(&viewMat, &autoAimMat);
 			}
 		}
-		jkSaber_aimVector.x = (aimVector.x - jkSaber_aimVector.x) * 8.0f * min(sithTime_deltaSeconds, 0.02f) + jkSaber_aimVector.x;
-		jkSaber_aimVector.y = (aimVector.y - jkSaber_aimVector.y) * 8.0f * min(sithTime_deltaSeconds, 0.02f) + jkSaber_aimVector.y;
-		jkSaber_aimVector.z = (aimVector.z - jkSaber_aimVector.z) * 8.0f * min(sithTime_deltaSeconds, 0.02f) + jkSaber_aimVector.z;
+		jkSaber_aimVector.x = (aimVector.x - jkSaber_aimVector.x) * 20.0f * min(sithTime_deltaSeconds, 0.02f) + jkSaber_aimVector.x;
+		jkSaber_aimVector.y = (aimVector.y - jkSaber_aimVector.y) * 20.0f * min(sithTime_deltaSeconds, 0.02f) + jkSaber_aimVector.y;
+		jkSaber_aimVector.z = (aimVector.z - jkSaber_aimVector.z) * 20.0f * min(sithTime_deltaSeconds, 0.02f) + jkSaber_aimVector.z;
 
 		// if we didn't end up with a target for auto aiming, check for what we're pointing at
 		if (!jkPlayer_crosshairTarget)
