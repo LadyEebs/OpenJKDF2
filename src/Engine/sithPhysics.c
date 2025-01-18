@@ -1429,4 +1429,13 @@ void sithPhysics_ThingWake(sithThing* pThing)
 		//sithPhysics_ThingWake(pThing->constraintRoot);
 }
 
+// calculates a buoyancy value from a radius and the fluid density of water
+float sithPhysics_BuoyancyFromRadius(float radius)
+{
+	// Calculate the volume of the sphere
+	float fluidDensity = 1000.0f; // density of water in kg/m^3
+	float volume = (4.0f / 3.0f) * M_PI * powf(radius, 3.0f);
+	return fluidDensity * volume;
+}
+
 #endif

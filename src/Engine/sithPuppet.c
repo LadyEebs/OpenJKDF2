@@ -1222,7 +1222,9 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 		// setup physics params
 		_memcpy(&pJointThing->physicsParams, &pThing->physicsParams, sizeof(sithThingPhysParams));
 		pJointThing->physicsParams.mass *= pBodyPart->mass;
-		pJointThing->physicsParams.buoyancy = pBodyPart->buoyancy;
+		// note: physicsParams.buoyancy is applied to gravity directly
+		// for an upward force, we need it to be negative
+		pJointThing->physicsParams.buoyancy = -sithPhysics_BuoyancyFromRadius(pJointThing->moveSize);
 		pJointThing->physicsParams.height = 0.0f;// pMesh ? pMesh->maxRadius : 0.0f;
 
 		pJointThing->physicsParams.physflags = SITH_PF_FEELBLASTFORCE;

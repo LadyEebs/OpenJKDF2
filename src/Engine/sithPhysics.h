@@ -36,6 +36,7 @@ void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactP
 void sithPhysics_ThingWake(sithThing* pThing);
 void sithPhysics_AnglesToAngularVelocity(rdVector3* result, const rdVector3* eulerPYR, const rdMatrix34* orientation);
 void sithPhysics_AngularVelocityToAngles(rdVector3* result, const rdVector3* angularVelocity, const rdMatrix34* orientation);
+float sithPhysics_BuoyancyFromRadius(float radius);
 #endif
 
 static void (*_sithPhysics_ThingPhysAttached)(sithThing *pThing, float deltaSeconds) = (void*)sithPhysics_ThingPhysAttached_ADDR;
