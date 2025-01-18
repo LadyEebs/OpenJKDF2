@@ -367,7 +367,7 @@ vec2 do_ceiling_uv(inout vec3 viewPos)
 vec2 do_horizon_uv()
 {
 	vec2 projXY = vec2(0.5,-0.5) * (gl_FragCoord.xy / iResolution.xy);
-	projXY = projXY.xy * iResolution.xy * (texgen_params.x / gl_FragCoord.w);
+	projXY = projXY.xy * iResolution.xy * (texgen_params.x);// / gl_FragCoord.w);
 
 	vec2 uv;
 	uv.x = projXY.x * texgen_params.y + (projXY.y * -texgen_params.z);
@@ -1364,8 +1364,6 @@ void main(void)
 	vec3 adj_texcoords = f_uv.xyz / f_uv.w;
 	vec3 viewPos = f_coord.xyz;
 
-	do_texgen(adj_texcoords, viewPos);
-
 	// software actually uses the zmin of the entire face
 	float mipBias = compute_mip_bias(viewPos.y);
 	mipBias = min(mipBias, float(numMips - 1));
@@ -1378,6 +1376,8 @@ void main(void)
 	{
 		adj_texcoords.xy = f_uv_affine;
 	}
+	
+	do_texgen(adj_texcoords, viewPos);
 
 	//if(texgen == 1) // 1 = RD_TEXGEN_HORIZON
 	//{
