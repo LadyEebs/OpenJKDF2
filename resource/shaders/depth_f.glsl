@@ -1,20 +1,5 @@
-#ifdef GL_ARB_texture_query_lod
-float impl_textureQueryLod(sampler2D tex, vec2 uv)
-{
-	return textureQueryLOD(tex, uv).x;
-}
-#else
-float impl_textureQueryLod(sampler2D tex, vec2 uv)
-{
-    vec2 dims = textureSize(tex, 0);
-	vec2  texture_coordinate = uv * dims;
-    vec2  dx_vtc        = dFdx(texture_coordinate);
-    vec2  dy_vtc        = dFdy(texture_coordinate);
-    float delta_max_sqr = max(dot(dx_vtc, dx_vtc), dot(dy_vtc, dy_vtc));
-    float mml = 0.5 * log2(delta_max_sqr);
-    return max( 0, mml );
-}
-#endif
+#include "uniforms.gli"
+#include "math.gli"
 
 #define TEX_MODE_TEST 0
 #define TEX_MODE_WORLDPAL 1
@@ -40,49 +25,6 @@ in float f_depth;
 
 noperspective in vec2 f_uv_affine;
 
-layout(std140) uniform sharedBlock
-{
-	vec4  ambientSGBasis[8];
-
-	vec4  colorEffects_tint;
-	vec4  colorEffects_filter;
-	vec4  colorEffects_add;
-	
-	vec4  mipDistances;
-
-	float colorEffects_fade;
-	float light_mult;
-	vec2  iResolution;
-
-	vec2  clusterTileSizes;
-	vec2  clusterScaleBias;
-};
-
-layout(std140) uniform textureBlock
-{
-	int   tex_mode;
-	int   uv_mode;
-	int   texgen;
-	int   numMips;
-
-	vec2 texsize;
-	vec2 uv_offset;
-
-	vec4 texgen_params;
-
-	vec4 padding;
-};
-
-layout(std140) uniform materialBlock
-{	
-	vec4 fillColor;
-	vec4 albedoFactor;
-	vec4 emissiveFactor;
-
-	float displacement_factor;
-	float texPad0, texPad1, texPad2;
-};
-
 uniform mat4 modelMatrix;
 uniform mat4 projMatrix;
 
@@ -107,12 +49,6 @@ float compute_mip_bias(float z_min)
 	}
 
 	return mipmap_level + mipDistances.w;
-}
-
-float luminance(vec3 c_rgb)
-{
-    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
-    return dot(c_rgb, W);
 }
 
 vec3 normals(vec3 pos) {
@@ -181,7 +117,7 @@ vec2 parallax_mapping(vec2 tc, vec3 vp_normal, vec3 adjusted_coords)
 #ifdef CAN_BILINEAR_FILTER
 vec4 bilinear_paletted(vec2 uv)
 {
-	float mip = impl_textureQueryLod(tex, uv);
+	float mip = texQueryLod(tex, uv);
 	mip += compute_mip_bias(f_coord.y);
 	mip = min(mip, float(numMips - 1));
 

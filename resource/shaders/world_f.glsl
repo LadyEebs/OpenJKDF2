@@ -1,40 +1,9 @@
 #include "uniforms.gli"
-
-#ifdef GL_ARB_texture_query_lod
-float impl_textureQueryLod(sampler2D tex, vec2 uv)
-{
-	return textureQueryLOD(tex, uv).x;
-}
-#else
-float impl_textureQueryLod(sampler2D tex, vec2 uv)
-{
-    vec2 dims = textureSize(tex, 0);
-	vec2  texture_coordinate = uv * dims;
-    vec2  dx_vtc        = dFdx(texture_coordinate);
-    vec2  dy_vtc        = dFdy(texture_coordinate);
-    float delta_max_sqr = max(dot(dx_vtc, dx_vtc), dot(dy_vtc, dy_vtc));
-    float mml = 0.5 * log2(delta_max_sqr);
-    return max( 0, mml );
-}
-#endif
-
-// if we don't have native support for findLSB (necessary for the clustered bit scan), implement it
-#ifndef GL_ARB_gpu_shader5
-uint bitCount(uint n)
-{
-    n = ((0xaaaaaaaau & n) >>  1) + (0x55555555u & n);
-    n = ((0xccccccccu & n) >>  2) + (0x33333333u & n);
-    n = ((0xf0f0f0f0u & n) >>  4) + (0x0f0f0f0fu & n);
-    n = ((0xff00ff00u & n) >>  8) + (0x00ff00ffu & n);
-    n = ((0xffff0000u & n) >> 16) + (0x0000ffffu & n);
-    return n;
-}
-
-int findLSB(uint x)
-{
-	return (x == 0u) ? -1 : int(bitCount(~x & (x - 1u)));
-}
-#endif
+#include "clustering.gli"
+#include "math.gli"
+#include "lighting.gli"
+#include "decals.gli"
+#include "occluders.gli"
 
 #define LIGHT_DIVISOR (3.0)
 
@@ -54,8 +23,6 @@ uniform sampler2D worldPalette;
 uniform sampler2D worldPaletteLights;
 uniform sampler2D displacement_map;
 
-uniform usamplerBuffer clusterBuffer;
-uniform sampler2D decalAtlas;
 
 uniform sampler2D ztex;
 uniform sampler2D ssaotex;
@@ -76,45 +43,6 @@ uniform mat4 modelMatrix;
 uniform mat4 projMatrix;
 uniform mat4 viewMatrix;
 
-
-uniform vec3 cameraRT;
-uniform vec3 cameraLT;
-uniform vec3 cameraRB;
-uniform vec3 cameraLB;
-
-
-vec3 get_camera_frustum_ray(vec2 uv)
-{
-	// barycentric lerp
-	return ((1.0 - uv.x - uv.y) * cameraLB.xyz + (uv.x * cameraRB.xyz + (uv.y * cameraLT.xyz)));
-}
-
-vec3 get_view_position_from_depth(vec3 cam_vec, float linear_depth)
-{
-	return cam_vec.xyz * linear_depth;
-}
-
-uniform vec2 rightTop;
-vec3 get_view_position(float linear_depth, vec2 uv)
-{
-	//vec3 cam_vec = get_camera_frustum_ray(uv).xyz;
-	//return get_view_position_from_depth(cam_vec, linear_depth);
-
-	// todo: this sucks do something better
-	mat4 invProj = inverse(projMatrix);
-
-	vec2 ndc = uv * 2.0 - 1.0;
-    vec3 ray = (invProj * vec4(ndc, 1.0, 1.0)).xyz;
-    return linear_depth * 128.0 * ray;
-
-//	uv = uv * 2.0 - 1.0;
-//	vec2 pnear = uv * rightTop;
-//	float Far = 128.0;
-//	float Near = 1.0 / 64.0;
-//	float pz = -linear_depth * Far;
-//	return vec3(-pz * pnear.x / Near, -pz * pnear.y / Near, pz);
-}
-
 uniform int  lightMode;
 uniform int  geoMode;
 uniform int  ditherMode;
@@ -125,82 +53,7 @@ uniform vec4 ambientSH[3];
 uniform vec3 ambientDominantDir;
 uniform vec3 ambientSG[8];
 
-uint get_cluster_z_index(float screen_depth)
-{
-	return uint(max(log(screen_depth) * clusterScaleBias.x + clusterScaleBias.y, 0.0));
-}
 
-uint compute_cluster_index(vec2 pixel_pos, float screen_depth)
-{
-	uint z_index = get_cluster_z_index(screen_depth);
-    uvec3 indices = uvec3(uvec2(pixel_pos.xy / clusterTileSizes.xy), z_index);
-    uint cluster = indices.x + indices.y * CLUSTER_GRID_SIZE_X + indices.z * CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y;
-    return cluster;
-}
-
-// https://seblagarde.wordpress.com/2014/12/01/inverse-trigonometric-functions-gpu-optimization-for-amd-gcn-architecture/
-// max absolute error 1.3x10^-3
-// Eberly's odd polynomial degree 5 - respect bounds
-// 4 VGPR, 14 FR (10 FR, 1 QR), 2 scalar
-// input [0, infinity] and output [0, PI/2]
-float atanPos(float x) 
-{ 
-    float t0 = (x < 1.0) ? x : 1.0f / x;
-    float t1 = t0 * t0;
-    float poly = 0.0872929;
-    poly = -0.301895 + poly * t1;
-    poly = 1.0f + poly * t1;
-    poly = poly * t0;
-    return (x < 1.0) ? poly : 1.570796 - poly;
-}
-
-// 4 VGPR, 16 FR (12 FR, 1 QR), 2 scalar
-// input [-infinity, infinity] and output [-PI/2, PI/2]
-float atanFast(float x) 
-{     
-    float t0 = atanPos(abs(x));     
-    return (x < 0.0) ? -t0: t0; 
-}
-
-float acosFast(float x) 
-{ 
-    x = abs(x); 
-    float res = -0.156583 * x + 1.570796; 
-    res *= sqrt(1.0f - x); 
-    return (x >= 0) ? res : 3.141592 - res; 
-}
-
-// debug view
-vec3 temperature(float t)
-{
-    vec3 c[10] = vec3[10](
-        vec3(   0.0/255.0,   2.0/255.0,  91.0f/255.0 ),
-        vec3(   0.0/255.0, 108.0/255.0, 251.0f/255.0 ),
-        vec3(   0.0/255.0, 221.0/255.0, 221.0f/255.0 ),
-        vec3(  51.0/255.0, 221.0/255.0,   0.0f/255.0 ),
-        vec3( 255.0/255.0, 252.0/255.0,   0.0f/255.0 ),
-        vec3( 255.0/255.0, 180.0/255.0,   0.0f/255.0 ),
-        vec3( 255.0/255.0, 104.0/255.0,   0.0f/255.0 ),
-        vec3( 226.0/255.0,  22.0/255.0,   0.0f/255.0 ),
-        vec3( 191.0/255.0,   0.0/255.0,  83.0f/255.0 ),
-        vec3( 145.0/255.0,   0.0/255.0,  65.0f/255.0 ) 
-    );
-
-    float s = t * 10.0;
-
-    int cur = int(s) <= 9 ? int(s) : 9;
-    int prv = cur >= 1 ? cur - 1 : 0;
-    int nxt = cur < 9 ? cur + 1 : 9;
-
-    float blur = 0.8;
-
-    float wc = smoothstep( float(cur) - blur, float(cur) + blur, s ) * (1.0 - smoothstep(float(cur + 1) - blur, float(cur + 1) + blur, s) );
-    float wp = 1.0 - smoothstep( float(cur) - blur, float(cur) + blur, s );
-    float wn = smoothstep( float(cur + 1) - blur, float(cur + 1) + blur, s );
-
-    vec3 r = wc * c[cur] + wp * c[prv] + wn * c[nxt];
-    return vec3( clamp(r.x, 0.0f, 1.0), clamp(r.y, 0.0, 1.0), clamp(r.z, 0.0, 1.0) );
-}
 
 bool ceiling_intersect(vec3 pos, vec3 dir, vec3 normal, vec3 center, inout float t)
 {
@@ -270,97 +123,7 @@ void do_texgen(inout vec3 uv, inout vec3 viewPos)
 }
 
 
-// https://therealmjp.github.io/posts/sg-series-part-1-a-brief-and-incomplete-history-of-baked-lighting-representations/
-// SphericalGaussian(dir) := Amplitude * exp(Sharpness * (dot(Axis, dir) - 1.0f))
-struct SG
-{
-    vec3 Amplitude;
-    vec3 Axis;
-    float Sharpness;
-};
 
-SG DistributionTermSG(vec3 direction, float roughness)
-{
-    SG distribution;
-    distribution.Axis = direction;
-    float m2 = max(roughness * roughness, 1e-4);
-    distribution.Sharpness = 2.0 / m2;
-    distribution.Amplitude = vec3(1.0 / (3.141592 * m2));
-
-    return distribution;
-}
-
-SG WarpDistributionSG(SG ndf, vec3 view)
-{
-    SG warp;
-    warp.Axis = reflect(-view, ndf.Axis);
-    warp.Amplitude = ndf.Amplitude;
-    warp.Sharpness = ndf.Sharpness / (4.0 * max(dot(ndf.Axis, view), 0.1));
-    return warp;
-}
-
-vec3 SGInnerProduct(SG x, SG y)
-{
-    float umLength = length(x.Sharpness * x.Axis + y.Sharpness * y.Axis);
-    vec3 expo = exp(umLength - x.Sharpness - y.Sharpness) * x.Amplitude * y.Amplitude;
-    float other = 1.0 - exp(-2.0 * umLength);
-    return (2.0 * 3.141592 * expo * other) / umLength;
-}
-
-SG CosineLobeSG(vec3 direction)
-{
-    SG cosineLobe;
-    cosineLobe.Axis = direction;
-    cosineLobe.Sharpness = 2.133;
-    cosineLobe.Amplitude = vec3(1.17);
-
-    return cosineLobe;
-}
-
-vec3 SGIrradianceInnerProduct(SG lightingLobe, vec3 normal)
-{
-    SG cosineLobe = CosineLobeSG(normal);
-    return max(SGInnerProduct(lightingLobe, cosineLobe), 0.0);
-}
-
-vec3 SGIrradiancePunctual(SG lightingLobe, vec3 normal)
-{
-    float cosineTerm = clamp(dot(lightingLobe.Axis, normal), 0.0, 1.0);
-    return cosineTerm * 2.0 * 3.141592 * (lightingLobe.Amplitude) / lightingLobe.Sharpness;
-}
-
-vec3 ApproximateSGIntegral(in SG sg)
-{
-    return 2 * 3.141592 * (sg.Amplitude / sg.Sharpness);
-}
-
-vec3 SGIrradianceFitted(in SG lightingLobe, in vec3 normal)
-{
-    float muDotN = dot(lightingLobe.Axis, normal);
-    float lambda = lightingLobe.Sharpness;
-
-    const float c0 = 0.36f;
-    const float c1 = 1.0f / (4.0f * c0);
-
-    float eml  = exp(-lambda);
-    float em2l = eml * eml;
-    float rl   = 1.0/(lambda);
-
-    float scale = 1.0f + 2.0f * em2l - rl;
-    float bias  = (eml - em2l) * rl - em2l;
-
-    float x  = sqrt(1.0f - scale);
-    float x0 = c0 * muDotN;
-    float x1 = c1 * x;
-
-    float n = x0 + x1;
-
-    float y = (abs(x0) <= x1) ? n * n / x : clamp(muDotN, 0.0, 1.0);
-
-    float normalizedIrradiance = scale * y + bias;
-
-    return normalizedIrradiance * ApproximateSGIntegral(lightingLobe);
-}
 
 vec3 CalculateAmbientSpecular(vec3 normal, vec3 view, float roughness, vec3 f0)
 {
@@ -392,304 +155,8 @@ vec3 CalculateAmbientSpecular(vec3 normal, vec3 view, float roughness, vec3 f0)
 	return ambientSpecular;// * 3.141592;
 }
 
-// todo: split the spotlights out
-void CalculatePointLighting(uint bucket_index, vec3 normal, vec3 view, vec4 shadows, vec3 albedo, vec3 f0, float roughness, inout vec3 diffuseLight, inout vec3 specularLight)
-{	
-	// precompute some terms
-	float a = roughness;// * roughness;
-	float a2 = a;// * a;
-	float rcp_a2 = 1.0 / a2;
-	float aperture = max(sqrt(1.0 - shadows.w), 0.01);
-	vec3 reflVec = reflect(-view, normal);
-
-	float scalar = 0.4; // todo: needs to come from rdCamera_pCurCamera->attenuationMin
-	vec3 sssRadius = fillColor.rgb;
-
-	float overdraw = 0.0;
-
-	uint first_item = firstLight;
-	uint last_item = first_item + numLights - 1u;
-	uint first_bucket = first_item / 32u;
-	uint last_bucket = min(last_item / 32u, max(0u, CLUSTER_BUCKETS_PER_CLUSTER - 1u));
-	for (uint bucket = first_bucket; bucket <= last_bucket; ++bucket)
-	{
-		uint bucket_bits = uint(texelFetch(clusterBuffer, int(bucket_index + bucket)).x);
-		while(bucket_bits != 0u)
-		{
-			uint bucket_bit_index = uint(findLSB(bucket_bits));
-			uint light_index = bucket * 32u + bucket_bit_index;
-			bucket_bits ^= (1u << bucket_bit_index);
-				
-		#ifdef SPECULAR
-			if (light_index >= first_item && light_index <= last_item)
-		#else
-			if (light_index >= first_item && light_index <= last_item)// && any(lessThan(diffuseLight, vec3(1.0))))
-		#endif
-			{
-				overdraw += 1.0;
-
-				light l = lights[light_index];
-				vec3 diff = l.position.xyz - f_coord.xyz;
-
-				float len;
-
-				// diffuse uses dist to plane
-				//if (lightMode == 2)
-				//	len = dot(l.position.xyz - f_coord.xyz, normal.xyz);
-				//else
-					len = length(diff);
-
-				if ( len >= l.falloffMin )
-					continue;
-
-				float rcpLen = len > 1e-6 ? 1.0 / len : 0.0;
-				diff *= rcpLen;
-
-				float intensity = l.direction_intensity.w;
-				if(l.type == 3)
-				{
-					float angle = dot(l.direction_intensity.xyz, diff);
-					if (angle <= l.cosAngleY)
-						continue;
-
-					if (angle < l.cosAngleX)
-                        intensity = (1.0 - (l.cosAngleX - angle) * l.lux) * intensity;
-				}
-
-				// this is JK's attenuation model, note it depends on scalar value matching whatever was used to calculate the intensity, it seems
-				intensity = max(0.0, intensity - len * scalar);
-
-				if ((aoFlags & 0x1) == 0x1 && numOccluders > 0u)
-				{
-					//float localShadow = clamp(dot(shadows.xyz, diff.xyz) / (aperture * 0.3 + 0.7), 0.0, 1.0);
-					//intensity *= localShadow;// * localShadow;
-				}
-
-				if (intensity <= 0.0)
-					continue;
-				
-				float lightMagnitude = dot(normal, diff);
-				float signedMagnitude = lightMagnitude;
-				lightMagnitude = max(lightMagnitude, 0.0);
-
-				vec3 cd = vec3(lightMagnitude);
-				if (lightMode == 5)
-				{
-					// https://www.shadertoy.com/view/dltGWl
-					vec3 sss = 0.2 * exp(-3.0 * abs(signedMagnitude) / (sssRadius.xyz + 0.001));
-					cd.xyz += sssRadius.xyz * sss;
-				}
-				else if(signedMagnitude <= 0.0)
-				{
-					continue;
-				}
-
-				diffuseLight += l.color.xyz * intensity * cd;
-
-			#ifdef SPECULAR
-				//vec3 h = normalize(diff + view);
-				vec3 f = f0;// + (1.0 - f0) * exp2(-8.35 * max(0.0, dot(diff, h)));
-				//f *= clamp(dot(f0, vec3(333.0)), 0.0, 1.0); // fade out when spec is less than 0.1% albedo
-					
-				float c = 0.72134752 * rcp_a2 + 0.39674113;
-				float d = exp2( c * dot(reflVec, diff) - c ) * (rcp_a2 / 3.141592);
-
-				vec3 cs = f * (lightMagnitude * d);
-
-				specularLight += l.color.xyz * intensity * cs;
-			#endif
-			}
-			else if (light_index > last_item)
-			{
-				bucket = CLUSTER_BUCKETS_PER_CLUSTER;
-				break;
-			}
-		}
-	}
-
-	//diffuseLight.rgb = temperature(overdraw * 0.125);
-}
-
-vec4 CalculateIndirectShadows(uint bucket_index, vec3 pos, vec3 normal)
-{
-	vec4 shadowing = vec4(normal.xyz, 1.0);
-	float overdraw = 0.0;
-
-	uint first_item = firstOccluder;
-	uint last_item = first_item + numOccluders - 1u;
-	uint first_bucket = first_item / 32u;
-	uint last_bucket = min(last_item / 32u, max(0u, CLUSTER_BUCKETS_PER_CLUSTER - 1u));
-	for (uint bucket = first_bucket; bucket <= last_bucket; ++bucket)
-	//for (int occluder_index = 0; occluder_index < numOccluders; ++occluder_index)
-	{
-		uint bucket_bits = uint(texelFetch(clusterBuffer, int(bucket_index + bucket)).x);
-		while(bucket_bits != 0u)
-		{
-			uint bucket_bit_index = uint(findLSB(bucket_bits));
-			uint occluder_index = bucket * 32u + bucket_bit_index;
-			bucket_bits ^= (1u << bucket_bit_index);
-			
-			if (occluder_index >= first_item && occluder_index <= last_item)
-			{
-				overdraw += 1.0;				
-				//occluder occ = occluders[occluder_index];
-
-				occluder occ = occluders[occluder_index - first_item];
-
-				//vec3 direction = (occ.position.xyz - pos.xyz);
-				//float len = length(direction);
-				//float rcpLen = len > 1e-6 ? 1.0 / len : 0.0;
-				//
-				//// the radius is the total range of the effect
-				//float radius = occ.position.w * sqrt(occ.position.w);// * 0.5 / 3.14159;
-				//
-				//float heightAboveHorizon = dot(normal, direction);	
-				//float cosAlpha = dot( normal, direction * rcpLen );
-				//
-				//float horizonScale = clamp((heightAboveHorizon + radius) / (2.0 * radius), 0.0, 1.0);
-				//float factor = radius / len;
-				//float occlusion = cosAlpha * (factor * factor) * horizonScale;
-				//
-				//shadowing.w *= 1.0 - occlusion;
-				//shadowing.xyz -= direction * occlusion;
-
-				vec3 direction = (occ.position.xyz - pos.xyz);
-				float len = length(occ.position.xyz - pos.xyz);
-				if (len >= occ.position.w)
-					continue;
-				
-				float rcpLen = len > 1e-6 ? 1.0 / len : 0.0;
-				direction *= rcpLen;
-				
-				float cosTheta = dot(normal, direction);
-				if(cosTheta <= 0.0)
-					continue;
-				
-				// simplified smoothstep falloff, equivalent to smoothstep(0, occ.position.w, occ.position.w - len)
-				float falloff = clamp((occ.position.w - len) / occ.position.w, 0.0, 1.0);
-				//falloff = falloff * falloff * (3.0 - 2.0 * falloff);
-				if(falloff <= 0.0)
-					continue;
-				
-				float solidAngle = (1.0 - cos(atanFast(occ.position.w * rcpLen)));
-				if(solidAngle <= 0.0)
-					continue;
-				
-				float integralSolidAngle = cosTheta * solidAngle * falloff;
-				shadowing.w *= 1.0 - integralSolidAngle;
-				shadowing.xyz -= direction * integralSolidAngle;// * 0.5;
-			}
-			else if (occluder_index > last_item)
-			{
-				bucket = CLUSTER_BUCKETS_PER_CLUSTER;
-				break;
-			}
-		}
-	}
-	shadowing.xyz = normalize(shadowing.xyz);
-	return shadowing;
-}
-
-
-vec3 blackbody(float t)
-{
-    t *= 3000.0;
-    
-    float u = ( 0.860117757 + 1.54118254e-4 * t + 1.28641212e-7 * t*t ) 
-            / ( 1.0 + 8.42420235e-4 * t + 7.08145163e-7 * t*t );
-    
-    float v = ( 0.317398726 + 4.22806245e-5 * t + 4.20481691e-8 * t*t ) 
-            / ( 1.0 - 2.89741816e-5 * t + 1.61456053e-7 * t*t );
-
-    float x = 3.0*u / (2.0*u - 8.0*v + 4.0);
-    float y = 2.0*v / (2.0*u - 8.0*v + 4.0);
-    float z = 1.0 - x - y;
-    
-    float Y = 1.0;
-    float X = Y / y * x;
-    float Z = Y / y * z;
-
-    mat3 XYZtoRGB = mat3(3.2404542, -1.5371385, -0.4985314,
-                        -0.9692660,  1.8760108,  0.0415560,
-                         0.0556434, -0.2040259,  1.0572252);
-
-    return max(vec3(0.0), (vec3(X,Y,Z) * XYZtoRGB) * pow(t * 0.0004, 4.0));
-}
-
-void BlendDecals(inout vec3 color, inout vec3 emissive, uint bucket_index, vec3 pos, vec3 normal)
-{
-	float overdraw = 0.0;
-
-	uint first_item = firstDecal;
-	uint last_item = first_item + numDecals - 1u;
-	uint first_bucket = first_item / 32u;
-	uint last_bucket = min(last_item / 32u, max(0u, CLUSTER_BUCKETS_PER_CLUSTER - 1u));
-	for (uint bucket = first_bucket; bucket <= last_bucket; ++bucket)
-	{
-		uint bucket_bits = uint(texelFetch(clusterBuffer, int(bucket_index + bucket)).x);
-		while(bucket_bits != 0u)
-		{
-			uint bucket_bit_index = uint(findLSB(bucket_bits));
-			uint decal_index = bucket * 32u + bucket_bit_index;
-			bucket_bits ^= (1u << bucket_bit_index);
-			
-			if (decal_index >= first_item && decal_index <= last_item)
-			{
-				decal dec = decals[decal_index - first_item];
-								overdraw += 1.0;
-
-				vec4 objectPosition = inverse(dec.decalMatrix) * vec4(pos.xyz, 1.0);				
-				vec3 falloff = 0.5f - abs(objectPosition.xyz);
-				if( any(lessThanEqual(falloff, vec3(0.0))) )
-					continue;
-				
-				vec2 decalTexCoord = objectPosition.xz + 0.5;
-				decalTexCoord = decalTexCoord.xy * dec.uvScaleBias.zw + dec.uvScaleBias.xy;
-				
-				vec4 decalColor = textureLod(decalAtlas, decalTexCoord, 0);
-				
-				bool isHeat = (dec.flags & 0x2u) == 0x2u;
-				bool isAdditive = (dec.flags & 0x4u) == 0x4u;
-				bool isRgbAlpha = (dec.flags & 0x8u) == 0x8u;
-				if(isRgbAlpha)
-					decalColor.a = max(decalColor.r, max(decalColor.g, decalColor.b));
-
-				if(decalColor.a < 0.001)
-					continue;
-				
-				decalColor.rgb *= dec.color.rgb;
-				
-				if(isHeat)
-				{
-					decalColor.rgb = blackbody(decalColor.r);
-					emissive.rgb += decalColor.rgb;
-				}
-				
-				float edgeBlend = 1.0 - pow(clamp(abs(objectPosition.z), 0.0, 1.0), 8);
-				if(isAdditive)
-					color.rgb += edgeBlend * decalColor.rgb;
-				else
-					color.rgb = mix(color.rgb, decalColor.rgb, decalColor.w * edgeBlend);
-			}
-			else if (decal_index > last_item)
-			{
-				bucket = CLUSTER_BUCKETS_PER_CLUSTER;
-				break;
-			}
-		}
-	}
-
-	//color.rgb *= temperature(overdraw * 0.125);
-}
-
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 fragColorEmiss;
-
-float luminance(vec3 c_rgb)
-{
-    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
-    return dot(c_rgb, W);
-}
 
 vec3 normals(vec3 pos) {
     vec3 fdx = dFdx(pos);
@@ -784,7 +251,7 @@ float compute_mip_bias(float z_min)
 #ifdef CAN_BILINEAR_FILTER
 void bilinear_paletted(vec2 uv, out vec4 color, out vec4 emissive)
 {
-	float mip = impl_textureQueryLod(tex, uv);
+	float mip = texQueryLod(tex, uv);
 	mip += compute_mip_bias(f_coord.y);
 	mip = min(mip, float(numMips - 1));
 
@@ -841,24 +308,6 @@ void bilinear_paletted(vec2 uv, out vec4 color, out vec4 emissive)
 	emissive = mix(mix(ca, cb, w.x), mix(cc, cd, w.x), w.y);
 }
 #endif
-
-vec3 RGBtoHSV(vec3 c)
-{
-    vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-	vec4 p = c.g < c.b ? vec4(c.bg, K.wz) : vec4(c.gb, K.xy);
-    vec4 q = c.r < p.x ? vec4(p.xyw, c.r) : vec4(c.r, p.yzx);
-
-    float d = q.x - min(q.w, q.y);
-    float e = 1.0e-10;
-    return vec3(abs(q.z + (q.w - q.y) / (6.0f * d + e)), d / (q.x + e), q.x);
-}
-
-vec3 HSVtoRGB(vec3 c)
-{
-    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-    return c.z * mix(K.xxx, clamp(p - K.xxx, vec3(0.0), vec3(1.0)), c.y);
-}
 
 // much thanks to Cary Knoop
 // https://forum.blackmagicdesign.com/viewtopic.php?f=21&t=122108
@@ -1318,10 +767,10 @@ void main(void)
 		
 		vec4 s0, s1, s2, s3;
 		vec4 e0, e1, e2, e3;
-		sample_color( adj_texcoords.xy * 1.0 - 0.1 * texgen_params.w, mipBias, s0, e0);
-		sample_color( adj_texcoords.yx * 0.5 + 0.1 * texgen_params.w, mipBias, s1, e1);
-		sample_color( adj_texcoords.xy * 0.5 - 0.1 * texgen_params.w, mipBias, s2, e2);
-		sample_color(-adj_texcoords.yx * 0.5 + 0.1 * texgen_params.w, mipBias, s3, e3);
+		sample_color( adj_texcoords.xy * 1.0/* + 0.1 * texgen_params.w*/, mipBias, s0, e0);
+		sample_color( adj_texcoords.xy * 0.5 + uv_offset.xy/* + 0.1 * texgen_params.w*/, mipBias, s1, e1);
+		sample_color( adj_texcoords.xy * 0.6 + uv_offset.xy * 1.5/* + 0.1 * texgen_params.w*/, mipBias, s2, e2);
+		sample_color( adj_texcoords.xy * 0.3 + uv_offset.xy * 0.8/* + 0.1 * texgen_params.w*/, mipBias, s3, e3);
 		
 		//s0.rgb /= max(vec3(0.01), fillColor.rgb);
 		//s1.rgb /= max(vec3(0.01), fillColor.rgb);
@@ -1481,7 +930,7 @@ void main(void)
 	//}
 	
 	if (numLights > 0u)
-		CalculatePointLighting(bucket_index, surfaceNormals, localViewDir, shadows, diffuseColor.xyz, specularColor.xyz, roughness, diffuseLight, specularLight);
+		CalculatePointLighting(bucket_index, lightMode, f_coord.xyz, surfaceNormals, localViewDir, shadows, diffuseColor.xyz, specularColor.xyz, roughness, diffuseLight, specularLight);
 	
 	diffuseLight.xyz = clamp(diffuseLight.xyz, vec3(0.0), vec3(1.0));	
 	//specularLight.xyz = clamp(specularLight.xyz, vec3(0.0), vec3(1.0));	

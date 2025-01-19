@@ -186,6 +186,8 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 	int profile;
 	SDL_GL_GetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, &profile);
 
+
+	const char* type_name = (type == GL_VERTEX_SHADER) ? "#define VERTEX_SHADER\n" : "#define FRAGMENT_SHADER\n";
 	const char* extensions = "\n";
 	const char* defines = "\n";
 	//if (profile == SDL_GL_CONTEXT_PROFILE_ES)
@@ -276,16 +278,40 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 		"#  define highp                     \n"
 		"#endif                              \n";
 
+	// custom intrinsics
+	const char* intrinsics =
+		"#ifndef VERTEX_SHADER\n"
+		"#ifdef GL_ARB_texture_query_lod\n"
+		"	float texQueryLod(sampler2D tex, vec2 uv)\n"
+		"	{\n"
+		"		return textureQueryLOD(tex, uv).x;\n"
+		"	}\n"
+		"#else\n"
+		"	float texQueryLod(sampler2D tex, vec2 uv)\n"
+		"	{\n"
+		"		vec2 dims = textureSize(tex, 0);\n"
+		"		vec2  texture_coordinate = uv * dims;\n"
+		"		vec2  dx_vtc = dFdx(texture_coordinate);\n"
+		"		vec2  dy_vtc = dFdy(texture_coordinate);\n"
+		"		float delta_max_sqr = max(dot(dx_vtc, dx_vtc), dot(dy_vtc, dy_vtc));\n"
+		"		float mml = 0.5 * log2(delta_max_sqr);\n"
+		"		return max(0, mml);\n"
+		"	}\n"
+		"#endif\n"
+		"#endif\n";
+
 	const GLchar* sources[] = {
 		version,
+		type_name,
 		extensions,
 		defines,
 		featureDefines,
 		userDefs,
 		precision,
+		intrinsics,
 		source
 	};
-	glShaderSource(res, 7, sources, NULL);
+	glShaderSource(res, 9, sources, NULL);
 	
 	glCompileShader(res);
 	GLint compile_ok = GL_FALSE;

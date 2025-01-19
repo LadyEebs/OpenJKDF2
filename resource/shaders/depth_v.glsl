@@ -1,3 +1,6 @@
+#include "uniforms.gli"
+#include "math.gli"
+
 in vec3 coord3d;
 in vec3 v_normal;
 in vec4 v_color[4];
@@ -14,39 +17,6 @@ out vec3 f_normal;
 out float f_depth;
 
 uniform mat4 modelMatrix;
-
-layout(std140) uniform sharedBlock
-{
-	vec4  ambientSGBasis[8];
-
-	vec4  colorEffects_tint;
-	vec4  colorEffects_filter;
-	vec4  colorEffects_add;
-	
-	vec4  mipDistances;
-
-	float colorEffects_fade;
-	float light_mult;
-	vec2  iResolution;
-
-	vec2  clusterTileSizes;
-	vec2  clusterScaleBias;
-};
-
-layout(std140) uniform textureBlock
-{
-	int   tex_mode;
-	int   uv_mode;
-	int   texgen;
-	int   numMips;
-
-	vec2 texsize;
-	vec2 uv_offset;
-
-	vec4 texgen_params;
-
-	vec4 padding;
-};
 
 noperspective out vec2 f_uv_affine;
 

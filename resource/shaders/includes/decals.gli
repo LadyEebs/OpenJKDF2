@@ -1,0 +1,102 @@
+#include "uniforms.gli"
+#include "math.gli"
+#include "clustering.gli"
+#include "sg.gli"
+
+#ifndef DECALS_H
+#define DECALS_H
+
+uniform sampler2D decalAtlas;
+
+vec3 blackbody(float t)
+{
+    t *= 3000.0;
+    
+    float u = ( 0.860117757 + 1.54118254e-4 * t + 1.28641212e-7 * t*t ) 
+            / ( 1.0 + 8.42420235e-4 * t + 7.08145163e-7 * t*t );
+    
+    float v = ( 0.317398726 + 4.22806245e-5 * t + 4.20481691e-8 * t*t ) 
+            / ( 1.0 - 2.89741816e-5 * t + 1.61456053e-7 * t*t );
+
+    float x = 3.0*u / (2.0*u - 8.0*v + 4.0);
+    float y = 2.0*v / (2.0*u - 8.0*v + 4.0);
+    float z = 1.0 - x - y;
+    
+    float Y = 1.0;
+    float X = Y / y * x;
+    float Z = Y / y * z;
+
+    mat3 XYZtoRGB = mat3(3.2404542, -1.5371385, -0.4985314,
+                        -0.9692660,  1.8760108,  0.0415560,
+                         0.0556434, -0.2040259,  1.0572252);
+
+    return max(vec3(0.0), (vec3(X,Y,Z) * XYZtoRGB) * pow(t * 0.0004, 4.0));
+}
+
+void BlendDecals(inout vec3 color, inout vec3 emissive, uint bucket_index, vec3 pos, vec3 normal)
+{
+	float overdraw = 0.0;
+
+	uint first_item = firstDecal;
+	uint last_item = first_item + numDecals - 1u;
+	uint first_bucket = first_item / 32u;
+	uint last_bucket = min(last_item / 32u, max(0u, CLUSTER_BUCKETS_PER_CLUSTER - 1u));
+	for (uint bucket = first_bucket; bucket <= last_bucket; ++bucket)
+	{
+		uint bucket_bits = uint(texelFetch(clusterBuffer, int(bucket_index + bucket)).x);
+		while(bucket_bits != 0u)
+		{
+			uint bucket_bit_index = uint(findLSB(bucket_bits));
+			uint decal_index = bucket * 32u + bucket_bit_index;
+			bucket_bits ^= (1u << bucket_bit_index);
+			
+			if (decal_index >= first_item && decal_index <= last_item)
+			{
+				decal dec = decals[decal_index - first_item];
+								overdraw += 1.0;
+
+				vec4 objectPosition = inverse(dec.decalMatrix) * vec4(pos.xyz, 1.0);				
+				vec3 falloff = 0.5f - abs(objectPosition.xyz);
+				if( any(lessThanEqual(falloff, vec3(0.0))) )
+					continue;
+				
+				vec2 decalTexCoord = objectPosition.xz + 0.5;
+				decalTexCoord = decalTexCoord.xy * dec.uvScaleBias.zw + dec.uvScaleBias.xy;
+				
+				vec4 decalColor = textureLod(decalAtlas, decalTexCoord, 0);
+				
+				bool isHeat = (dec.flags & 0x2u) == 0x2u;
+				bool isAdditive = (dec.flags & 0x4u) == 0x4u;
+				bool isRgbAlpha = (dec.flags & 0x8u) == 0x8u;
+				if(isRgbAlpha)
+					decalColor.a = max(decalColor.r, max(decalColor.g, decalColor.b));
+
+				if(decalColor.a < 0.001)
+					continue;
+				
+				decalColor.rgb *= dec.color.rgb;
+				
+				if(isHeat)
+				{
+					decalColor.rgb = blackbody(decalColor.r);
+					emissive.rgb += decalColor.rgb;
+				}
+				
+				float edgeBlend = 1.0 - pow(clamp(abs(objectPosition.z), 0.0, 1.0), 8);
+				if(isAdditive)
+					color.rgb += edgeBlend * decalColor.rgb;
+				else
+					color.rgb = mix(color.rgb, decalColor.rgb, decalColor.w * edgeBlend);
+			}
+			else if (decal_index > last_item)
+			{
+				bucket = CLUSTER_BUCKETS_PER_CLUSTER;
+				break;
+			}
+		}
+	}
+
+	//color.rgb *= temperature(overdraw * 0.125);
+}
+
+#endif

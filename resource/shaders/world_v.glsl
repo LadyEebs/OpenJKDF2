@@ -1,4 +1,7 @@
 #include "uniforms.gli"
+#include "clustering.gli"
+#include "math.gli"
+#include "lighting.gli"
 
 in vec3 coord3d;
 in vec3 v_normal;
@@ -26,79 +29,6 @@ uniform vec3 ambientColor;
 uniform vec4 ambientSH[3];
 uniform vec3 ambientDominantDir;
 uniform vec3 ambientSG[8];
-
-// https://therealmjp.github.io/posts/sg-series-part-1-a-brief-and-incomplete-history-of-baked-lighting-representations/
-// SphericalGaussian(dir) := Amplitude * exp(Sharpness * (dot(Axis, dir) - 1.0f))
-struct SG
-{
-    vec3 Amplitude;
-    vec3 Axis;
-    float Sharpness;
-};
-
-vec3 SGInnerProduct(SG x, SG y)
-{
-    float umLength = length(x.Sharpness * x.Axis + y.Sharpness * y.Axis);
-    vec3 expo = exp(umLength - x.Sharpness - y.Sharpness) * x.Amplitude * y.Amplitude;
-    float other = 1.0 - exp(-2.0 * umLength);
-    return (2.0 * 3.141592 * expo * other) / umLength;
-}
-
-SG CosineLobeSG(vec3 direction)
-{
-    SG cosineLobe;
-    cosineLobe.Axis = direction;
-    cosineLobe.Sharpness = 2.133;
-    cosineLobe.Amplitude = vec3(1.17);
-
-    return cosineLobe;
-}
-
-vec3 SGIrradianceInnerProduct(SG lightingLobe, vec3 normal)
-{
-    SG cosineLobe = CosineLobeSG(normal);
-    return max(SGInnerProduct(lightingLobe, cosineLobe), 0.0);
-}
-
-vec3 SGIrradiancePunctual(SG lightingLobe, vec3 normal)
-{
-    float cosineTerm = clamp(dot(lightingLobe.Axis, normal), 0.0, 1.0);
-    return cosineTerm * 2.0 * 3.141592 * (lightingLobe.Amplitude) / lightingLobe.Sharpness;
-}
-
-
-vec3 ApproximateSGIntegral(in SG sg)
-{
-    return 2 * 3.141592 * (sg.Amplitude / sg.Sharpness);
-}
-
-vec3 SGIrradianceFitted(in SG lightingLobe, in vec3 normal)
-{
-    float muDotN = dot(lightingLobe.Axis, normal);
-    float lambda = lightingLobe.Sharpness;
-
-    const float c0 = 0.36f;
-    const float c1 = 1.0f / (4.0f * c0);
-
-    float eml  = exp(-lambda);
-    float em2l = eml * eml;
-    float rl   = 1.0/(lambda);
-
-    float scale = 1.0f + 2.0f * em2l - rl;
-    float bias  = (eml - em2l) * rl - em2l;
-
-    float x  = sqrt(1.0f - scale);
-    float x0 = c0 * muDotN;
-    float x1 = c1 * x;
-
-    float n = x0 + x1;
-
-    float y = (abs(x0) <= x1) ? n * n / x : clamp(muDotN, 0.0, 1.0);
-
-    float normalizedIrradiance = scale * y + bias;
-
-    return normalizedIrradiance * ApproximateSGIntegral(lightingLobe);
-}
 
 vec3 CalculateAmbientDiffuse(vec3 normal)
 {
