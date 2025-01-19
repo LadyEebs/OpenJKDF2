@@ -358,6 +358,9 @@ typedef enum STD3D_DRAW_LIST
 	DRAW_LIST_COUNT
 } STD3D_DRAW_LIST;
 
+// define the maximum number of staging buffers needed for a whole frame to prevent reuse (vbo/ibo)
+#define STD3D_STAGING_COUNT (DRAW_LIST_COUNT * STD3D_MAX_RENDER_PASSES)
+
 typedef struct std3D_DrawCallList
 {
 	int             bSorted;
@@ -429,7 +432,7 @@ typedef struct std3D_worldStage
 	GLint uniform_rb;
 	GLint uniform_lb;
 
-	GLuint vao;
+	GLuint vao[STD3D_STAGING_COUNT];
 } std3D_worldStage;
 
 std3D_worldStage worldStages[SHADER_COUNT];
@@ -487,8 +490,9 @@ static void* loaded_colormap = NULL;
 rdDDrawSurface* last_tex = NULL;
 int last_flags = 0;
 
-GLuint world_vbo_all;
-GLuint world_ibo_triangle;
+int bufferIdx;
+GLuint world_vbo_all[STD3D_STAGING_COUNT];
+GLuint world_ibo_triangle[STD3D_STAGING_COUNT];
 
 D3DVERTEX* menu_data_all = NULL;
 GLushort* menu_data_elements = NULL;
@@ -1404,58 +1408,60 @@ void std3D_setupLightingUBO(std3D_worldStage* pStage)
 
 void std3D_setupDrawCallVAO(std3D_worldStage* pStage)
 {
-	glGenVertexArrays(1, &pStage->vao);
-	glBindVertexArray(pStage->vao);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_ibo_triangle);
-
-	glBindBuffer(GL_ARRAY_BUFFER, world_vbo_all);
-	glVertexAttribPointer(
-		pStage->attribute_coord3d, // attribute
-		3,                 // number of elements per vertex, here (x,y,z)
-		GL_FLOAT,          // the type of each element
-		GL_FALSE,          // normalize fixed-point data?
-		sizeof(rdVertex),                 // data stride
-		(GLvoid*)offsetof(rdVertex, x)                  // offset of first element
-	);
-	glEnableVertexAttribArray(pStage->attribute_coord3d);
-
-	glVertexAttribPointer(
-		pStage->attribute_v_norm, // attribute
-		3,                 // number of elements per vertex, here (x,y,z)
-		GL_FLOAT,          // the type of each element
-		GL_FALSE,          // normalize fixed-point data?
-		sizeof(rdVertex), // data stride
-		(GLvoid*)offsetof(rdVertex, nx) // offset of first element
-	);
-	glEnableVertexAttribArray(pStage->attribute_v_norm);
-
-	for (int i = 0; i < RD_NUM_COLORS; ++i)
+	glGenVertexArrays(STD3D_STAGING_COUNT, pStage->vao);
+	for (int i = 0; i < STD3D_STAGING_COUNT; ++i)
 	{
-		glVertexAttribPointer(
-			pStage->attribute_v_color + i, // attribute
-			4,                 // number of elements per vertex, here (R,G,B,A)
-			GL_UNSIGNED_BYTE,  // the type of each element
-			GL_TRUE,          // normalize fixed-point data?
-			sizeof(rdVertex),                 // no extra data between each position
-			(GLvoid*)offsetof(rdVertex, colors[i]) // offset of first element
-		);
-		glEnableVertexAttribArray(pStage->attribute_v_color + i);
-	}
+		glBindVertexArray(pStage->vao[i]);
 
-	for (int i = 0; i < RD_NUM_COLORS; ++i)
-	{
+		glBindBuffer(GL_ARRAY_BUFFER, world_vbo_all[i]);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_ibo_triangle[i]);
+
 		glVertexAttribPointer(
-			pStage->attribute_v_uv + i,    // attribute
-			4,                 // number of elements per vertex, here (U,V,R,Q)
+			pStage->attribute_coord3d, // attribute
+			3,                 // number of elements per vertex, here (x,y,z)
 			GL_FLOAT,          // the type of each element
-			GL_FALSE,          // take our values as-is
-			sizeof(rdVertex),                 // no extra data between each position
-			(GLvoid*)offsetof(rdVertex, texcoords[i])                  // offset of first element
+			GL_FALSE,          // normalize fixed-point data?
+			sizeof(rdVertex),                 // data stride
+			(GLvoid*)offsetof(rdVertex, x)                  // offset of first element
 		);
-		glEnableVertexAttribArray(pStage->attribute_v_uv + i);
-	}
+		glEnableVertexAttribArray(pStage->attribute_coord3d);
 
+		glVertexAttribPointer(
+			pStage->attribute_v_norm, // attribute
+			3,                 // number of elements per vertex, here (x,y,z)
+			GL_FLOAT,          // the type of each element
+			GL_FALSE,          // normalize fixed-point data?
+			sizeof(rdVertex), // data stride
+			(GLvoid*)offsetof(rdVertex, nx) // offset of first element
+		);
+		glEnableVertexAttribArray(pStage->attribute_v_norm);
+
+		for (int i = 0; i < RD_NUM_COLORS; ++i)
+		{
+			glVertexAttribPointer(
+				pStage->attribute_v_color + i, // attribute
+				4,                 // number of elements per vertex, here (R,G,B,A)
+				GL_UNSIGNED_BYTE,  // the type of each element
+				GL_TRUE,          // normalize fixed-point data?
+				sizeof(rdVertex),                 // no extra data between each position
+				(GLvoid*)offsetof(rdVertex, colors[i]) // offset of first element
+			);
+			glEnableVertexAttribArray(pStage->attribute_v_color + i);
+		}
+
+		for (int i = 0; i < RD_NUM_COLORS; ++i)
+		{
+			glVertexAttribPointer(
+				pStage->attribute_v_uv + i,    // attribute
+				4,                 // number of elements per vertex, here (U,V,R,Q)
+				GL_FLOAT,          // the type of each element
+				GL_FALSE,          // take our values as-is
+				sizeof(rdVertex),                 // no extra data between each position
+				(GLvoid*)offsetof(rdVertex, texcoords[i])                  // offset of first element
+			);
+			glEnableVertexAttribArray(pStage->attribute_v_uv + i);
+		}
+	}
 	glBindVertexArray(vao);
 }
 
@@ -1644,13 +1650,25 @@ int init_resources()
     menu_data_all = malloc(STD3D_MAX_UI_VERTICES * sizeof(D3DVERTEX));
     menu_data_elements = malloc(sizeof(GLushort) * 3 * STD3D_MAX_UI_TRIS);
 
-    glGenBuffers(1, &world_vbo_all);
-    glGenBuffers(1, &world_ibo_triangle);
-
     glGenBuffers(1, &menu_vbo_all);
     glGenBuffers(1, &menu_ibo_triangle);
 
 	std3D_setupMenuVAO();
+
+	// generate staging buffers
+	bufferIdx = 0;
+	glGenBuffers(STD3D_STAGING_COUNT, world_vbo_all);
+	glGenBuffers(STD3D_STAGING_COUNT, world_ibo_triangle);
+	for (int i = 0; i < STD3D_STAGING_COUNT; ++i)
+	{
+		glBindBuffer(GL_ARRAY_BUFFER, world_vbo_all[i]);
+		glBufferData(GL_ARRAY_BUFFER, STD3D_MAX_DRAW_CALLS * sizeof(rdVertex), NULL, GL_STREAM_DRAW);
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_ibo_triangle[i]);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, STD3D_MAX_DRAW_CALL_INDICES * sizeof(uint16_t), NULL, GL_STREAM_DRAW);
+	}
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	memset(&std3D_renderPasses[0], 0, sizeof(std3D_RenderPass));
 	memset(&std3D_renderPasses[1], 0, sizeof(std3D_RenderPass));
@@ -1740,13 +1758,16 @@ void std3D_FreeResources()
 
     loaded_colormap = NULL;
 
-    glDeleteBuffers(1, &world_vbo_all);
-    glDeleteBuffers(1, &world_ibo_triangle);
+    glDeleteBuffers(STD3D_STAGING_COUNT, world_vbo_all);
+    glDeleteBuffers(STD3D_STAGING_COUNT, world_ibo_triangle);
 
     glDeleteBuffers(1, &menu_vbo_all);
 
 	for(int i = 0; i < SHADER_COUNT; ++i)
+	{
 		glDeleteProgram(worldStages[i].program);
+		glDeleteVertexArrays(3, worldStages[i].vao);
+	}
 	glDeleteBuffers(1, &tex_ubo);
 	glDeleteBuffers(1, &material_ubo);
 	glDeleteBuffers(1, &shared_ubo);
@@ -4461,9 +4482,9 @@ void std3D_BindStage(std3D_worldStage* pStage)
 {
 	std3D_useProgram(pStage->program);
 
-	glBindVertexArray(pStage->vao);
-	glBindBuffer(GL_ARRAY_BUFFER, world_vbo_all);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_ibo_triangle);
+	glBindVertexArray(pStage->vao[bufferIdx]);
+	glBindBuffer(GL_ARRAY_BUFFER, world_vbo_all[bufferIdx]);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_ibo_triangle[bufferIdx]);
 
 	glUniform1i(pStage->uniform_tex,                TEX_SLOT_DIFFUSE);
 	glUniform1i(pStage->uniform_worldPalette,       TEX_SLOT_WORLD_PAL);
@@ -4565,10 +4586,13 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 	int lastShader = pDrawCall->shaderID;
 	std3D_worldStage* pStage = &worldStages[pDrawCall->shaderID];
 
-	std3D_BindStage(pStage);
-	glBufferData(GL_ARRAY_BUFFER, pList->drawCallVertexCount * sizeof(rdVertex), pList->drawCallVertices, GL_STREAM_DRAW);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, pList->drawCallIndexCount * sizeof(uint16_t), indexArray, GL_STREAM_DRAW);
+	// increase the buffer counter for next upload
+	bufferIdx = (bufferIdx + 1) % STD3D_STAGING_COUNT;
 
+	std3D_BindStage(pStage);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, pList->drawCallVertexCount * sizeof(rdVertex), pList->drawCallVertices);
+	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, pList->drawCallIndexCount * sizeof(uint16_t), indexArray);
+	
 	int last_tex = pState->textureState.pTexture ? pState->textureState.pTexture->texture_id : blank_tex_white;
 	std3D_SetRasterState(pStage, pState);
 	std3D_SetFogState(pStage, pState);
