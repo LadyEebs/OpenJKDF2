@@ -1238,6 +1238,8 @@ void sample_color(vec2 uv, float mipBias, inout vec4 sampled_color, inout vec4 e
 		vec4 sampled = texture(tex, uv.xy, mipBias);
         sampled_color = vec4(sampled.b, sampled.g, sampled.r, sampled.a);
 		
+		emissive.rgb += sampled_color.rgb * f_light;
+
 		vec4 sampledEmiss = texture(texEmiss, uv.xy, mipBias);
 		emissive.rgb += sampledEmiss.rgb * emissiveFactor.rgb;
     }
@@ -1474,7 +1476,13 @@ void main(void)
 
 #ifdef UNLIT
 	if (lightMode == 0)
-		emissive.xyz *= fillColor.xyz * 0.5;
+	{
+		// temp hack, mat16 doesn't output fill correctly
+		if (tex_mode == TEX_MODE_16BPP || tex_mode == TEX_MODE_BILINEAR_16BPP)
+			emissive.xyz *= 0.5;
+		else
+			emissive.xyz *= fillColor.xyz * 0.5;
+	}
 #endif
 
     vec4 albedoFactor_copy = albedoFactor;
@@ -1633,7 +1641,7 @@ void main(void)
 	//else
 	{
 		diffuseLight.xyz *= diffuseColor.xyz;
-		diffuseLight.xyz = (PurkinjeShift(diffuseLight.xyz, 1.0));
+		//diffuseLight.xyz = (PurkinjeShift(diffuseLight.xyz, 1.0));
 
 		// paletted light levels desaturate at low intensity
 		// mimic that behavior here
