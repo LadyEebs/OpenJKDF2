@@ -1713,8 +1713,8 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 				rdTexCoord2i(uv->x, uv->y);
 			}
 
-			rdNormal(lightingMode == RD_LIGHTMODE_DIFFUSE ? &face->normal : &pCurMesh->vertexNormals[posidx]);
-			rdVertex(&pCurMesh->vertices[posidx]);
+			rdNormal3v(lightingMode == RD_LIGHTMODE_DIFFUSE ? &face->normal.x : &pCurMesh->vertexNormals[posidx].x);
+			rdVertex3v(&pCurMesh->vertices[posidx].x);
 		}
 		rdEndPrimitive();
 	}

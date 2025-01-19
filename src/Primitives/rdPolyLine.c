@@ -440,7 +440,7 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 				rdVector3* uv = &uvs[i];
 				rdTexCoord4i(uv->x, uv->y, 0.0f, uv->z); // post interpolation uv / q
 			}
-			rdVertex(&idxInfo->vertices[i]);
+			rdVertex3v(&idxInfo->vertices[i].x);
 		}
 		rdEndPrimitive();
 	}

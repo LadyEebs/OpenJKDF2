@@ -69,7 +69,7 @@ static rdVector4 rdroid_vertexTexCoordState = { 0.0f, 0.0f, 0.0f, 1.0f };
 static rdVector3 rdroid_vertexNormalState = { 0.0f, 0.0f, 0.0f };
 
 static int               rdroid_vertexCacheNum = 0;
-static D3DVERTEX         rdroid_vertexCache[64];
+static rdVertex          rdroid_vertexCache[64];
 static rdPrimitiveType_t rdroid_curPrimitiveType = RD_PRIMITIVE_NONE;
 
 void rdResetRasterState()
@@ -612,7 +612,7 @@ int rdBeginPrimitive(rdPrimitiveType_t type)
 	return 1;
 }
 
-extern void std3D_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallState, D3DVERTEX* paVertices, int numVertices);
+extern void std3D_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallState, rdVertex* paVertices, int numVertices);
 
 void rdEndPrimitive()
 {
@@ -648,24 +648,23 @@ void rdVertex3f(float x, float y, float z)
 		return;
 	}
 
-	D3DVERTEX* pVert = &rdroid_vertexCache[rdroid_vertexCacheNum++];
+	rdVertex* pVert = &rdroid_vertexCache[rdroid_vertexCacheNum++];
 	pVert->x = x;
 	pVert->y = y;
 	pVert->z = z;
-	pVert->tu = rdroid_vertexTexCoordState.x;
-	pVert->tv = rdroid_vertexTexCoordState.y;
-	pVert->tr = rdroid_vertexTexCoordState.z;
-	pVert->tq = rdroid_vertexTexCoordState.w;
 	pVert->nx = rdroid_vertexNormalState.x;
 	pVert->ny = rdroid_vertexNormalState.y;
 	pVert->nz = rdroid_vertexNormalState.z;
-	pVert->color = rdroid_vertexColorState;
-	pVert->lightLevel = 0.0f;
+	pVert->texcoords[0].u = rdroid_vertexTexCoordState.x;
+	pVert->texcoords[0].v = rdroid_vertexTexCoordState.y;
+	pVert->texcoords[0].r = rdroid_vertexTexCoordState.z;
+	pVert->texcoords[0].q = rdroid_vertexTexCoordState.w;
+	pVert->colors[0] = rdroid_vertexColorState;
 }
 
-void rdVertex(const rdVector3* pPos)
+void rdVertex3v(const float* v)
 {
-	rdVertex3f(pPos->x, pPos->y, pPos->z);
+	rdVertex3f(v[0], v[1], v[2]);
 }
 
 void rdColor4f(float r, float g, float b, float a)
@@ -677,9 +676,9 @@ void rdColor4f(float r, float g, float b, float a)
 	rdroid_vertexColorState = RD_PACK_COLOR8(ir, ig, ib, ia);
 }
 
-void rdColor(const rdVector4* pCol)
+void rdColor4v(const float* v)
 {
-	rdColor4f(pCol->x, pCol->y, pCol->z, pCol->w);
+	rdColor4f(v[0], v[1], v[2], v[3]);
 }
 
 void rdTexCoord2f(float u, float v)
@@ -719,9 +718,9 @@ void rdTexCoord2i(float u, float v)
 	rdroid_vertexTexCoordState.w = 1;
 }
 
-void rdTexCoord(const rdVector2* pUV)
+void rdTexCoord2v(const float* v)
 {
-	rdTexCoord2f(pUV->x, pUV->y);
+	rdTexCoord2f(v[0], v[1]);
 }
 
 void rdTexCoord4i(float u, float v, float r, float q)
@@ -738,9 +737,9 @@ void rdNormal3f(float x, float y, float z)
 	rdroid_vertexNormalState.z = z;
 }
 
-void rdNormal(const rdVector3* pNormal)
+void rdNormal3v(const float* v)
 {
-	rdNormal3f(pNormal->x, pNormal->y, pNormal->z);
+	rdNormal3f(v[0], v[1], v[2]);
 }
 
 // Texture

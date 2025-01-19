@@ -123,10 +123,10 @@ void rdTexCoord2f(float u, float v); // normalized
 void rdTexCoord2i(float u, float v); // unnormalized
 void rdTexCoord4i(float u, float v, float r, float q); // unnormalized
 void rdNormal3f(float x, float y, float z);
-void rdVertex(const rdVector3* pPos);
-void rdColor(const rdVector4* pCol);
-void rdTexCoord(const rdVector2* pUV);
-void rdNormal(const rdVector3* pNormal);
+void rdVertex3v(const float* v);
+void rdColor4v(const float* v);
+void rdTexCoord2v(const float* v);
+void rdNormal3v(const float* v);
 
 // render state
 void rdSetZBufferCompare(rdCompare_t compare);

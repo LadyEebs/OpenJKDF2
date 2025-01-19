@@ -1,8 +1,7 @@
 in vec3 coord3d;
-in vec4 v_color;
-in float v_light;
-in vec4 v_uv;
 in vec3 v_normal;
+in vec4 v_color[4];
+in vec4 v_uv[4];
 
 in vec3 coordVS;
 
@@ -160,12 +159,12 @@ void main(void)
 		//f_normal = face_normal;
 
     gl_Position = pos;
-    f_color = clamp(v_color.bgra, vec4(0.0), vec4(1.0));
+    f_color = clamp(v_color[0].bgra, vec4(0.0), vec4(1.0));
 
-    f_uv = v_uv;
-	f_uv_nooffset = v_uv;
+    f_uv = v_uv[0];
+	f_uv_nooffset = v_uv[0];
 	f_uv.xy += uv_offset.xy;
-	f_uv_affine = v_uv.xy;
+	f_uv_affine = v_uv[0].xy;
 
 	f_coord = viewPos.xyz;
 
@@ -175,7 +174,7 @@ void main(void)
 	else
 		f_light = 0.0;
 #else
-    f_light = v_light;
+    f_light = 0.0;
 #endif
 
  	f_depth = pos.w / 128.0;

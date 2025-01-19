@@ -366,7 +366,7 @@ typedef struct std3D_DrawCallList
 	uint32_t        drawCallVertexCount;
 	std3D_DrawCall  drawCalls[STD3D_MAX_DRAW_CALLS];
 	uint16_t        drawCallIndices[STD3D_MAX_DRAW_CALL_INDICES];
-	D3DVERTEX       drawCallVertices[STD3D_MAX_DRAW_CALL_VERTS];
+	rdVertex        drawCallVertices[STD3D_MAX_DRAW_CALL_VERTS];
 	std3D_DrawCall* drawCallPtrs[STD3D_MAX_DRAW_CALLS];
 } std3D_DrawCallList;
 
@@ -487,9 +487,6 @@ static void* loaded_colormap = NULL;
 rdDDrawSurface* last_tex = NULL;
 int last_flags = 0;
 
-D3DVERTEX* world_data_all = NULL;
-GLushort* world_data_elements = NULL;
-GLuint world_vao;
 GLuint world_vbo_all;
 GLuint world_ibo_triangle;
 
@@ -1286,59 +1283,6 @@ int std3D_loadWorldStage(std3D_worldStage* pStage, int isZPass, const char* defi
 	return 1;
 }
 
-void std3D_setupWorldVAO()
-{
-	glGenVertexArrays(1, &world_vao);
-	glBindVertexArray(world_vao);
-
-	// Describe our vertices array to OpenGL (it can't guess its format automatically)
-	glBindBuffer(GL_ARRAY_BUFFER, world_vbo_all);
-	glVertexAttribPointer(
-		attribute_coord3d, // attribute
-		3,                 // number of elements per vertex, here (x,y,z)
-		GL_FLOAT,          // the type of each element
-		GL_FALSE,          // normalize fixed-point data?
-		sizeof(D3DVERTEX),                 // data stride
-		(GLvoid*)offsetof(D3DVERTEX, x)                  // offset of first element
-	);
-
-	glVertexAttribPointer(
-		attribute_v_color, // attribute
-		4,                 // number of elements per vertex, here (R,G,B,A)
-		GL_UNSIGNED_BYTE,  // the type of each element
-		GL_TRUE,          // normalize fixed-point data?
-		sizeof(D3DVERTEX),                 // no extra data between each position
-		(GLvoid*)offsetof(D3DVERTEX, color) // offset of first element
-	);
-
-	glVertexAttribPointer(
-		attribute_v_light, // attribute
-		1,                 // number of elements per vertex, here (L)
-		GL_FLOAT,  // the type of each element
-		GL_FALSE,          // normalize fixed-point data?
-		sizeof(D3DVERTEX),                 // no extra data between each position
-		(GLvoid*)offsetof(D3DVERTEX, lightLevel) // offset of first element
-	);
-
-	glVertexAttribPointer(
-		attribute_v_uv,    // attribute
-		2,                 // number of elements per vertex, here (U,V)
-		GL_FLOAT,          // the type of each element
-		GL_FALSE,          // take our values as-is
-		sizeof(D3DVERTEX),                 // no extra data between each position
-		(GLvoid*)offsetof(D3DVERTEX, tu)                  // offset of first element
-	);
-
-	glEnableVertexAttribArray(attribute_coord3d);
-	glEnableVertexAttribArray(attribute_v_color);
-	glEnableVertexAttribArray(attribute_v_light);
-	glEnableVertexAttribArray(attribute_v_uv);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_ibo_triangle);
-
-	glBindVertexArray(vao);
-}
-
 void std3D_setupMenuVAO()
 {
 	glGenVertexArrays(1, &menu_vao);
@@ -1465,58 +1409,52 @@ void std3D_setupDrawCallVAO(std3D_worldStage* pStage)
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_ibo_triangle);
 
-	// Describe our vertices array to OpenGL (it can't guess its format automatically)
 	glBindBuffer(GL_ARRAY_BUFFER, world_vbo_all);
 	glVertexAttribPointer(
 		pStage->attribute_coord3d, // attribute
 		3,                 // number of elements per vertex, here (x,y,z)
 		GL_FLOAT,          // the type of each element
 		GL_FALSE,          // normalize fixed-point data?
-		sizeof(D3DVERTEX),                 // data stride
-		(GLvoid*)offsetof(D3DVERTEX, x)                  // offset of first element
+		sizeof(rdVertex),                 // data stride
+		(GLvoid*)offsetof(rdVertex, x)                  // offset of first element
 	);
+	glEnableVertexAttribArray(pStage->attribute_coord3d);
 
-	glVertexAttribPointer(
-		pStage->attribute_v_color, // attribute
-		4,                 // number of elements per vertex, here (R,G,B,A)
-		GL_UNSIGNED_BYTE,  // the type of each element
-		GL_TRUE,          // normalize fixed-point data?
-		sizeof(D3DVERTEX),                 // no extra data between each position
-		(GLvoid*)offsetof(D3DVERTEX, color) // offset of first element
-	);
-
-	glVertexAttribPointer(
-		pStage->attribute_v_light, // attribute
-		1,                 // number of elements per vertex, here (L)
-		GL_FLOAT,  // the type of each element
-		GL_FALSE,          // normalize fixed-point data?
-		sizeof(D3DVERTEX),                 // no extra data between each position
-		(GLvoid*)offsetof(D3DVERTEX, lightLevel) // offset of first element
-	);
-
-	glVertexAttribPointer(
-		pStage->attribute_v_uv,    // attribute
-		4,                 // number of elements per vertex, here (U,V,R,Q)
-		GL_FLOAT,          // the type of each element
-		GL_FALSE,          // take our values as-is
-		sizeof(D3DVERTEX),                 // no extra data between each position
-		(GLvoid*)offsetof(D3DVERTEX, tu)                  // offset of first element
-	);
-	
 	glVertexAttribPointer(
 		pStage->attribute_v_norm, // attribute
-			3,                 // number of elements per vertex, here (x,y,z)
-			GL_FLOAT,          // the type of each element
-			GL_FALSE,          // normalize fixed-point data?
-			sizeof(D3DVERTEX), // data stride
-			(GLvoid*)offsetof(D3DVERTEX, nx) // offset of first element
-		);
-
-	glEnableVertexAttribArray(pStage->attribute_coord3d);
-	glEnableVertexAttribArray(pStage->attribute_v_color);
-	glEnableVertexAttribArray(pStage->attribute_v_light);
-	glEnableVertexAttribArray(pStage->attribute_v_uv);
+		3,                 // number of elements per vertex, here (x,y,z)
+		GL_FLOAT,          // the type of each element
+		GL_FALSE,          // normalize fixed-point data?
+		sizeof(rdVertex), // data stride
+		(GLvoid*)offsetof(rdVertex, nx) // offset of first element
+	);
 	glEnableVertexAttribArray(pStage->attribute_v_norm);
+
+	for (int i = 0; i < RD_NUM_COLORS; ++i)
+	{
+		glVertexAttribPointer(
+			pStage->attribute_v_color + i, // attribute
+			4,                 // number of elements per vertex, here (R,G,B,A)
+			GL_UNSIGNED_BYTE,  // the type of each element
+			GL_TRUE,          // normalize fixed-point data?
+			sizeof(rdVertex),                 // no extra data between each position
+			(GLvoid*)offsetof(rdVertex, colors[i]) // offset of first element
+		);
+		glEnableVertexAttribArray(pStage->attribute_v_color + i);
+	}
+
+	for (int i = 0; i < RD_NUM_COLORS; ++i)
+	{
+		glVertexAttribPointer(
+			pStage->attribute_v_uv + i,    // attribute
+			4,                 // number of elements per vertex, here (U,V,R,Q)
+			GL_FLOAT,          // the type of each element
+			GL_FALSE,          // take our values as-is
+			sizeof(rdVertex),                 // no extra data between each position
+			(GLvoid*)offsetof(rdVertex, texcoords[i])                  // offset of first element
+		);
+		glEnableVertexAttribArray(pStage->attribute_v_uv + i);
+	}
 
 	glBindVertexArray(vao);
 }
@@ -1703,9 +1641,6 @@ int init_resources()
     glGenVertexArrays( 1, &vao );
     glBindVertexArray( vao ); 
 
-    world_data_all = malloc(STD3D_MAX_VERTICES * sizeof(D3DVERTEX));
-    world_data_elements = malloc(sizeof(GLushort) * 3 * STD3D_MAX_TRIS);
-
     menu_data_all = malloc(STD3D_MAX_UI_VERTICES * sizeof(D3DVERTEX));
     menu_data_elements = malloc(sizeof(GLushort) * 3 * STD3D_MAX_UI_TRIS);
 
@@ -1715,7 +1650,6 @@ int init_resources()
     glGenBuffers(1, &menu_vbo_all);
     glGenBuffers(1, &menu_ibo_triangle);
 
-	std3D_setupWorldVAO();
 	std3D_setupMenuVAO();
 
 	memset(&std3D_renderPasses[0], 0, sizeof(std3D_RenderPass));
@@ -1795,14 +1729,6 @@ void std3D_FreeResources()
     worldpal_data = NULL;
     worldpal_lights_data = NULL;
     displaypal_data = NULL;
-
-    if (world_data_all)
-        free(world_data_all);
-    world_data_all = NULL;
-
-    if (world_data_elements)
-        free(world_data_elements);
-    world_data_elements = NULL;
 
     if (menu_data_all)
         free(menu_data_all);
@@ -4053,13 +3979,13 @@ int std3D_GetShaderID(std3D_DrawCallState* pState)
 	return SHADER_COLOR_UNLIT + lighting + specular;
 }
 
-void std3D_AddListVertices(std3D_DrawCall* pDrawCall, rdPrimitiveType_t type, std3D_DrawCallList* pList, D3DVERTEX* paVertices, int numVertices)
+void std3D_AddListVertices(std3D_DrawCall* pDrawCall, rdPrimitiveType_t type, std3D_DrawCallList* pList, rdVertex* paVertices, int numVertices)
 {
 	int firstIndex = pList->drawCallIndexCount;
 	int firstVertex = pList->drawCallVertexCount;
 
 	// copy the vertices
-	memcpy(&pList->drawCallVertices[firstVertex], paVertices, sizeof(D3DVERTEX) * numVertices);
+	memcpy(&pList->drawCallVertices[firstVertex], paVertices, sizeof(rdVertex) * numVertices);
 	pList->drawCallVertexCount += numVertices;
 
 	// generate indices
@@ -4115,7 +4041,7 @@ void std3D_AddListVertices(std3D_DrawCall* pDrawCall, rdPrimitiveType_t type, st
 	pDrawCall->numIndices = pList->drawCallIndexCount - firstIndex;
 }
 
-void std3D_AddListDrawCall(rdPrimitiveType_t type, std3D_DrawCallList* pList, std3D_DrawCallState* pDrawCallState, int shaderID, D3DVERTEX* paVertices, int numVertices)
+void std3D_AddListDrawCall(rdPrimitiveType_t type, std3D_DrawCallList* pList, std3D_DrawCallState* pDrawCallState, int shaderID, rdVertex* paVertices, int numVertices)
 {
 	if (pList->drawCallCount + 1 > STD3D_MAX_DRAW_CALLS)
 		return; // todo: flush here?
@@ -4131,7 +4057,7 @@ void std3D_AddListDrawCall(rdPrimitiveType_t type, std3D_DrawCallList* pList, st
 	std3D_AddListVertices(pDrawCall, type, pList, paVertices, numVertices);
 }
 
-void std3D_AddZListDrawCall(rdPrimitiveType_t type, std3D_DrawCallList* pList, std3D_DrawCallState* pDrawCallState, D3DVERTEX* paVertices, int numVertices)
+void std3D_AddZListDrawCall(rdPrimitiveType_t type, std3D_DrawCallList* pList, std3D_DrawCallState* pDrawCallState, rdVertex* paVertices, int numVertices)
 {
 	if (pList->drawCallCount + 1 > STD3D_MAX_DRAW_CALLS)
 		return; // todo: flush here?
@@ -4158,7 +4084,7 @@ void std3D_AddZListDrawCall(rdPrimitiveType_t type, std3D_DrawCallList* pList, s
 	std3D_AddListVertices(pDrawCall, type, pList, paVertices, numVertices);
 }
 
-void std3D_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallState, D3DVERTEX* paVertices, int numVertices)
+void std3D_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallState, rdVertex* paVertices, int numVertices)
 {
 	if (Main_bHeadless)
 		return;
@@ -4640,7 +4566,7 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 	std3D_worldStage* pStage = &worldStages[pDrawCall->shaderID];
 
 	std3D_BindStage(pStage);
-	glBufferData(GL_ARRAY_BUFFER, pList->drawCallVertexCount * sizeof(D3DVERTEX), pList->drawCallVertices, GL_STREAM_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, pList->drawCallVertexCount * sizeof(rdVertex), pList->drawCallVertices, GL_STREAM_DRAW);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, pList->drawCallIndexCount * sizeof(uint16_t), indexArray, GL_STREAM_DRAW);
 
 	int last_tex = pState->textureState.pTexture ? pState->textureState.pTexture->texture_id : blank_tex_white;

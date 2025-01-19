@@ -5,6 +5,27 @@
 #define RD_TRUE  1
 #define RD_FALSE 0
 
+#define RD_COLOR0 0
+#define RD_COLOR1 1
+#define RD_COLOR2 2
+#define RD_COLOR3 3
+
+#define RD_NUM_COLORS 4
+
+#define RD_TEXTURE0 0
+#define RD_TEXTURE1 1
+#define RD_TEXTURE2 2
+#define RD_TEXTURE3 3
+
+#define RD_NUM_TEXTURES 4
+
+#define RD_TEXCOORD0 0
+#define RD_TEXCOORD1 1
+#define RD_TEXCOORD2 2
+#define RD_TEXCOORD3 3
+
+#define RD_NUM_TEXCOORDS 4
+
 typedef uint8_t rdBlend_t;
 typedef enum RD_BLEND
 {

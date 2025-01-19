@@ -854,6 +854,19 @@ typedef D3DVERTEX_orig D3DVERTEX;
 
 #ifdef RENDER_DROID2
 
+typedef struct rdTexVertex
+{
+	float u, v, r, q;
+} rdTexVertex;
+
+typedef struct rdVertex
+{
+	float       x, y, z, w;
+	float       nx, ny, nz, nw;
+	uint32_t    colors[RD_NUM_COLORS];
+	rdTexVertex texcoords[RD_NUM_TEXCOORDS];
+} rdVertex;
+
 typedef struct rdViewportRect
 {
 	float x, y, width, height;

@@ -273,7 +273,7 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 				}
 				rdTexCoord2i(uv.x, uv.y);
 			}
-			rdVertex(&rdSprite_inVerts[i]);
+			rdVertex3v(&rdSprite_inVerts[i].x);
 		}
 		rdEndPrimitive();
 	}

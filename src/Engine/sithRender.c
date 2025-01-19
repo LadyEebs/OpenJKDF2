@@ -1434,10 +1434,10 @@ void sithRender_DrawSurface(sithSurface* surface)
 				rdTexCoord2i(uv->x, uv->y);
 			}
 
-			rdNormal(&surface->surfaceInfo.face.normal);
+			rdNormal3v(&surface->surfaceInfo.face.normal.x);
 
 			rdVector3* v = &sithWorld_pCurrentWorld->vertices[posidx];
-			rdVertex(&sithWorld_pCurrentWorld->vertices[posidx]);
+			rdVertex3v(&v->x);
 		}
 		rdEndPrimitive();
 	}
