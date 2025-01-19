@@ -25,8 +25,8 @@
 
 #define MAX_NAME_LENGTH 32
 #define MAX_PATH_LENGTH 128
-#define MAX_LINE_LENGTH 1024
-#define MAX_SOURCE_LENGTH 65536
+#define MAX_LINE_LENGTH 2048
+#define MAX_SOURCE_LENGTH 16777216//65536 // todo: how big should this actually be?
 
 /**
  * Display compilation errors from the OpenGL shader compiler
@@ -60,6 +60,19 @@ void print_log(GLuint object) {
 int starts_with(const char* str, const char* prefix)
 {
 	return strncmp(str, prefix, strlen(prefix)) == 0;
+}
+
+const char loadedIncludes[64][128];
+int numLoadedIncludes = 0;
+
+int already_included(const char* name)
+{
+	for (int i = 0; i < numLoadedIncludes; ++i)
+	{
+		if(strncmp(name, loadedIncludes[i], 128) == 0)
+			return 1;
+	}
+	return 0;
 }
 
 char* load_source(const char* filepath)
@@ -109,17 +122,24 @@ char* load_source(const char* filepath)
 			strncpy(included_file, line_buffer + 10, MAX_NAME_LENGTH - 1); // remove "#include_
 			included_file[strlen(included_file) - 1] = '\0'; // Remove trailing "
 
-			// For simplicity all includes are in the same folder
-			char resolved_path[MAX_PATH_LENGTH];
-			snprintf(resolved_path, MAX_PATH_LENGTH, "shaders/includes/%s", included_file);
-
-			// Recursively load the included file
-			// todo: we could cache this by preloading includes
-			char* included_source = load_source(resolved_path);
-			if (included_source)
+			if(!already_included(included_file))
 			{
-				strcat(full_source_code, included_source);
-				free(included_source);
+				strcpy_s(loadedIncludes[numLoadedIncludes++], 128, included_file);
+
+				// For simplicity all includes are in the same folder
+				char resolved_path[MAX_PATH_LENGTH];
+				snprintf(resolved_path, MAX_PATH_LENGTH, "shaders/includes/%s", included_file);
+
+				// Recursively load the included file
+				// todo: we could cache this by preloading includes
+				// and also check if it was already included for this file
+				// since atm the includes get repeatedly included and they bloat the code size
+				char* included_source = load_source(resolved_path);
+				if (included_source)
+				{
+					strcat(full_source_code, included_source);
+					free(included_source);
+				}
 			}
 			continue; // Skip adding #include lines to the source
 		}
@@ -133,6 +153,8 @@ char* load_source(const char* filepath)
 
 GLuint load_shader_file(const char* filepath, GLenum type, const char* userDefines)
 {
+	numLoadedIncludes = 0;
+
     char* shader_contents = load_source(filepath);// stdEmbeddedRes_Load(filepath, NULL);
 
     if (!shader_contents)
