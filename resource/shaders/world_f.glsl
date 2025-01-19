@@ -1611,9 +1611,38 @@ void main(void)
 	//diffuseColor = ao;//1.0);
 	//diffuseLight = vec3(1.0);
 #endif
-
-	diffuseLight.xyz *= diffuseColor.xyz;
+	//diffuseLight.xyz = clamp(diffuseLight.xyz, vec3(0.0), vec3(2.0));	
+	
+	//diffuseLight.xyz *= diffuseColor.xyz;
 	//specularLight.xyz *= specularColor.xyz;
+
+	//if (tex_mode == TEX_MODE_WORLDPAL
+    //|| tex_mode == TEX_MODE_BILINEAR
+    //)
+    //{
+	//	float index = texture(tex, adj_texcoords.xy, mipBias).r;
+	//
+    //    float r = texture(worldPaletteLights, vec2(index, min(diffuseLight.r + dither, 1.0))).r;
+	//	float g = texture(worldPaletteLights, vec2(index, min(diffuseLight.g + dither, 1.0))).r;
+	//	float b = texture(worldPaletteLights, vec2(index, min(diffuseLight.b + dither, 1.0))).r;
+	//
+    //    diffuseLight.r = texture(worldPalette, vec2(r, 0.5)).r;		
+    //    diffuseLight.g = texture(worldPalette, vec2(g, 0.5)).g;
+    //    diffuseLight.b = texture(worldPalette, vec2(b, 0.5)).b;
+    //}
+	//else
+	{
+		diffuseLight.xyz *= diffuseColor.xyz;
+		diffuseLight.xyz = (PurkinjeShift(diffuseLight.xyz, 1.0));
+
+		// paletted light levels desaturate at low intensity
+		// mimic that behavior here
+		//float lum0 = luminance(diffuseLight.xyz);
+		//diffuseLight.xyz *= diffuseColor.xyz;
+		//
+		//float lum = luminance(diffuseLight.xyz);
+		//diffuseLight.xyz = mix(vec3(lum), diffuseLight.xyz, min(1.0, lum0 * lum0 * 4.0));
+	}
 
 	vec4 main_color = (vec4(diffuseLight.xyz, vertex_color.w) + vec4(specularLight.xyz, 0.0));// * vec4(sampled_color.xyz, 1.0);   
 
