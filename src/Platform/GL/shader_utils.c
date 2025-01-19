@@ -15,12 +15,18 @@
 
 #include "stdPlatform.h"
 #include "General/stdString.h"
+#include "General/stdFnames.h"
 
 #ifdef LINUX
 #include "external/fcaseopen/fcaseopen.h"
 #endif
 
 #include "Platform/Common/stdEmbeddedRes.h"
+
+#define MAX_NAME_LENGTH 32
+#define MAX_PATH_LENGTH 128
+#define MAX_LINE_LENGTH 1024
+#define MAX_SOURCE_LENGTH 65536
 
 /**
  * Display compilation errors from the OpenGL shader compiler
@@ -51,9 +57,83 @@ void print_log(GLuint object) {
 	free(log);
 }
 
+int starts_with(const char* str, const char* prefix)
+{
+	return strncmp(str, prefix, strlen(prefix)) == 0;
+}
+
+char* load_source(const char* filepath)
+{
+	char* shader_contents = stdEmbeddedRes_Load(filepath, NULL);
+	if(!shader_contents)
+		return NULL;
+
+	char* full_source_code = (char*)malloc(MAX_SOURCE_LENGTH);
+	if (!full_source_code)
+	{
+		char errtmp[256];
+		snprintf(errtmp, 256, "std3D: Failed to preprocess shader file `%s`\n", filepath);
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", errtmp, NULL);
+		free(shader_contents);
+		return NULL;
+	}
+	full_source_code[0] = '\0'; // Start with an empty string
+
+	char line_buffer[MAX_LINE_LENGTH];
+	const char* current = shader_contents;
+
+	// Read the file line by line
+	while (*current)
+	{
+		// Extract the next line
+		char* next_newline = strchr(current, '\n');
+		size_t line_length = next_newline ? (size_t)(next_newline - current) : strlen(current);
+		if (line_length >= MAX_LINE_LENGTH)
+		{
+			char errtmp[256];
+			snprintf(errtmp, 256, "std3D: Line too long in file  `%s`\n", filepath);
+			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", errtmp, NULL);
+			free(shader_contents);
+			free(full_source_code);
+			return NULL;
+		}
+
+		strncpy(line_buffer, current, line_length);
+		line_buffer[line_length] = '\0';
+		current += line_length + (next_newline ? 1 : 0);
+
+		// Process #include directives
+		if (starts_with(line_buffer, "#include "))
+		{
+			char included_file[MAX_NAME_LENGTH];
+			strncpy(included_file, line_buffer + 10, MAX_NAME_LENGTH - 1); // remove "#include_
+			included_file[strlen(included_file) - 1] = '\0'; // Remove trailing "
+
+			// For simplicity all includes are in the same folder
+			char resolved_path[MAX_PATH_LENGTH];
+			snprintf(resolved_path, MAX_PATH_LENGTH, "shaders/includes/%s", included_file);
+
+			// Recursively load the included file
+			// todo: we could cache this by preloading includes
+			char* included_source = load_source(resolved_path);
+			if (included_source)
+			{
+				strcat(full_source_code, included_source);
+				free(included_source);
+			}
+			continue; // Skip adding #include lines to the source
+		}
+
+		// Add the line to the full source code
+		strcat(full_source_code, line_buffer);
+		strcat(full_source_code, "\n");
+	}
+	return full_source_code;
+}
+
 GLuint load_shader_file(const char* filepath, GLenum type, const char* userDefines)
 {
-    char* shader_contents = stdEmbeddedRes_Load(filepath, NULL);
+    char* shader_contents = load_source(filepath);// stdEmbeddedRes_Load(filepath, NULL);
 
     if (!shader_contents)
     {
