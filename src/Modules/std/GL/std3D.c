@@ -387,6 +387,7 @@ typedef struct std3D_RenderPass
 	rdMatrix44          oldProj; // keep track of the global projection to avoid redundant cluster building if the matrix doesn't change over the course of several frames
 	int                 clustersDirty;       // clusters need rebuilding/refilling
 	int                 clusterFrustumFrame; // current frame for clusters, any cluster not matching will have its bounds updated
+	int                 lastClusterFrustumFrame; // last frame for clusters, will be updated to clusterFrustumFrame after building
 	std3D_Cluster       clusters[CLUSTER_GRID_TOTAL_SIZE]; // each render pass gets its own cluster state to avoid recomputing the cluster bounds every time the projection changes
 } std3D_RenderPass;
 
@@ -3909,7 +3910,7 @@ void std3D_DrawDecal(stdVBuffer* vbuf, rdDDrawSurface* texture, rdVector3* verts
 		return;
 
 	decalsDirty = 1;
-	std3D_renderPasses[0].clustersDirty = std3D_renderPasses[1].clustersDirty = 1;
+	std3D_renderPasses[0].clustersDirty = std3D_renderPasses[1].clustersDirty = std3D_renderPasses[2].clustersDirty = 1;
 
 	rdRect uvScaleBias;
 	if (!std3D_InsertDecalTexture(&uvScaleBias, vbuf, texture))
@@ -3946,7 +3947,7 @@ void std3D_DrawOccluder(rdVector3* position, float radius, rdVector3* verts)
 		return;
 
 	occludersDirty = 1;
-	std3D_renderPasses[0].clustersDirty = std3D_renderPasses[1].clustersDirty = 1;
+	std3D_renderPasses[0].clustersDirty = std3D_renderPasses[1].clustersDirty = std3D_renderPasses[2].clustersDirty = 1;
 
 	std3D_occluder* occ = &occluderUniforms.tmpOccluders[occluderUniforms.numOccluders++];
 	occ->position.x = position->x;
@@ -4593,15 +4594,18 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 	STD_BEGIN_PROFILER_LABEL();
 	std3D_pushDebugGroup(debugName);
 
-	if (rdMatrix_Compare44(&pRenderPass->oldProj, &pList->drawCalls[0].state.transformState.proj) != 0)
+	if (!(pRenderPass->flags & RD_RENDERPASS_NO_CLUSTERING))
 	{
-		pRenderPass->clustersDirty = 1;
-		pRenderPass->clusterFrustumFrame++;
-		rdMatrix_Copy44(&pRenderPass->oldProj, &pList->drawCalls[0].state.transformState.proj);
-	}
+		if (rdMatrix_Compare44(&pRenderPass->oldProj, &pList->drawCalls[0].state.transformState.proj) != 0)
+		{
+			pRenderPass->clustersDirty = 1;
+			pRenderPass->clusterFrustumFrame++;
+			rdMatrix_Copy44(&pRenderPass->oldProj, &pList->drawCalls[0].state.transformState.proj);
+		}
 
-	if(pRenderPass->clustersDirty)
-		std3D_BuildClusters(pRenderPass, &pList->drawCalls[0].state.transformState.proj);
+		if(pRenderPass->clustersDirty)
+			std3D_BuildClusters(pRenderPass, &pList->drawCalls[0].state.transformState.proj);
+	}
 
 	// sort draw calls to reduce state changes and maximize batching
 	uint16_t* indexArray;
@@ -4713,14 +4717,18 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 		
 			// if the projection matrix changed then all lighting is invalid, rebuild clusters and assign lights
 			// perhaps all of this would be better if we just flushed the pipeline on matrix change instead
+
 			if (rdMatrix_Compare44(&lastState.transformState.proj, &pDrawCall->state.transformState.proj) != 0)
 			{
-				stdPlatform_Printf("std3D: Warning, clusters are being rebuilt twice within a draw list flush!\n");
+				if (!(pRenderPass->flags & RD_RENDERPASS_NO_CLUSTERING))
+				{
+					stdPlatform_Printf("std3D: Warning, clusters are being rebuilt twice within a draw list flush!\n");
 
-				rdMatrix_Copy44(&pRenderPass->oldProj, &pDrawCall->state.transformState.proj);
-				pRenderPass->clusterFrustumFrame++;
-				pRenderPass->clustersDirty = 1;
-				std3D_BuildClusters(pRenderPass, &pDrawCall->state.transformState.proj);
+					rdMatrix_Copy44(&pRenderPass->oldProj, &pDrawCall->state.transformState.proj);
+					pRenderPass->clusterFrustumFrame++;
+					pRenderPass->clustersDirty = 1;
+					std3D_BuildClusters(pRenderPass, &pDrawCall->state.transformState.proj);
+				}
 				std3D_UpdateSharedUniforms();
 			}
 
@@ -5587,25 +5595,38 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 	occluderUniforms.firstOccluder = lightUniforms.firstLight + lightUniforms.numLights;
 	decalUniforms.firstDecal = occluderUniforms.firstOccluder + occluderUniforms.numOccluders;
 
-	// build all clusters in parallel
-	stdJob_Dispatch(CLUSTER_GRID_SIZE_XYZ, 64, stdJob_BuildClustersJob);
-	//printf("%lld us to build custers for frame %d\n", Linux_TimeUs() - time, rdroid_frameTrue);
-
 	// todo: do we need to atomically clear this?
 	// maybe this should also be in a dispatch
 	//for (int i = 0; i < ARRAY_SIZE(std3D_clusterBits); ++i)
 		//SDL_AtomicSet(&std3D_clusterBits[i], 0);
 	memset(std3D_clusterBits, 0, sizeof(std3D_clusterBits));
 
-	// wait for clusters to finish building
-	stdJob_Wait();
+	// build all clusters in parallel
+	if(pRenderPass->lastClusterFrustumFrame != pRenderPass->clusterFrustumFrame)
+	{
+		stdJob_Dispatch(CLUSTER_GRID_SIZE_XYZ, 64, stdJob_BuildClustersJob);
+		//printf("%lld us to build custers for frame %d\n", Linux_TimeUs() - time, rdroid_frameTrue);
+
+		// wait for clusters to finish building
+		stdJob_Wait();
+
+		pRenderPass->lastClusterFrustumFrame = pRenderPass->clusterFrustumFrame;
+	}
 	
 	//time = Linux_TimeUs();
 
+	if (!lightUniforms.numLights && !occluderUniforms.numOccluders && !decalUniforms.numDecals)
+		return;
+
 	// now assign items to clusters in parallel
-	stdJob_Dispatch(lightUniforms.numLights, 8, stdJob_AssignLightsToClustersJob);
-	stdJob_Dispatch(occluderUniforms.numOccluders, 8, stdJob_AssignOccludersToClustersJob);
-	stdJob_Dispatch(decalUniforms.numDecals, 8, stdJob_AssignDecalsToClustersJob);
+	if (lightUniforms.numLights)
+		stdJob_Dispatch(lightUniforms.numLights, 8, stdJob_AssignLightsToClustersJob);
+	
+	if (occluderUniforms.numOccluders)
+		stdJob_Dispatch(occluderUniforms.numOccluders, 8, stdJob_AssignOccludersToClustersJob);
+	
+	if (decalUniforms.numDecals)
+		stdJob_Dispatch(decalUniforms.numDecals, 8, stdJob_AssignDecalsToClustersJob);
 
 	// wait on the result before uploading to GPU
 	stdJob_Wait();

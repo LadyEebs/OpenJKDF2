@@ -594,7 +594,7 @@ void sithRender_DrawBackdrop()
 	{
 		// todo: this is causing a cluster build, but we don't need it
 		// either disable all clustering for the layer, or give items a renderpass mask
-		rdRenderPass("sithRender_DrawBackdrop", 0, 0);
+		rdRenderPass("sithRender_DrawBackdrop", 0, RD_RENDERPASS_NO_CLUSTERING);
 		rdDepthRange(0.0f, 0.0f);
 
 		rdSetCullFlags(0);
