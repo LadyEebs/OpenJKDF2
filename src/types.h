@@ -1718,6 +1718,10 @@ typedef struct sithSurface
     sithAdjoin* adjoin;
     uint32_t surfaceFlags;
     sithSurfaceInfo surfaceInfo;
+#ifdef RENDER_DROID2
+	float radius;
+	rdVector3 center;
+#endif
 } sithSurface;
 
 typedef int (*rdMaterialUnloader_t)(rdMaterial*);

@@ -339,6 +339,9 @@ int sithWorld_NewEntry(sithWorld *pWorld)
             _memset(v7, 0, sizeof(int) * pWorld->numVertices);
             for (int i = 0; i < pWorld->numSurfaces; i++)
             {
+#ifdef RENDER_DROID2
+				sithSurface_GetCenterRadius(&pWorld->surfaces[i], &pWorld->surfaces[i].center, &pWorld->surfaces[i].radius);
+#endif
                 adjoinIter = pWorld->surfaces[i].adjoin;
                 if ( adjoinIter )
                 {
