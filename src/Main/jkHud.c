@@ -932,10 +932,10 @@ LABEL_116:
 
 // Added
 int profilerY = 0;
-void jkHud_DrawProfilerStats(const char* functionName, int64_t duration)
+void jkHud_DrawProfilerStats(const char* functionName, int64_t duration, uint32_t numCalls)
 {
 	char tmpText[1024];
-	snprintf(&tmpText, 1024, "%s: %.3f ms", functionName, (double)duration * 0.001);
+	snprintf(&tmpText, 1024, "%s: %.3f ms (calls: %d)", functionName, (double)duration * 0.001, numCalls);
 
 	stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, 25, profilerY, 999, tmpText, 1, jkPlayer_hudScale);
 	

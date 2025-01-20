@@ -22,6 +22,7 @@ typedef struct stdProfiler_Label
 	int64_t                   startTime;
 	int64_t                   duration;
 	uint32_t                  frameIdx;
+	uint32_t                  numCalls;
 	struct stdProfiler_Label* next;
 } stdProfiler_Label;
 
@@ -110,15 +111,21 @@ void stdProfiler_EndLabel(const char* name)
 	
 	int64_t duration = Linux_TimeUs() - label->startTime;
 	if (label->frameIdx != stdProfiler_frameIdx)
+	{
 		label->duration = duration;
+		label->numCalls = 1;
+	}
 	else
+	{
 		label->duration += duration;
+		++label->numCalls;
+	}
 
 	label->frameIdx = stdProfiler_frameIdx;
 	label->startTime = 0;
 }
 
-void stdProfiler_Enumerate(void(*func)(const char*, int64_t))
+void stdProfiler_Enumerate(void(*func)(const char*, int64_t, uint32_t))
 {
 	if (!stdProfiler_enable)
 		return;
@@ -126,7 +133,7 @@ void stdProfiler_Enumerate(void(*func)(const char*, int64_t))
 	stdProfiler_Label* label = stdProfiler_labels;
 	while (label)
 	{
-		func(label->functionName, label->duration);
+		func(label->functionName, label->duration, label->numCalls);
 		label = label->next;
 	}
 }
