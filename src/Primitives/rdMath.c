@@ -203,14 +203,54 @@ int rdMath_IntersectLineSegments(const rdVector3* pStartA, const rdVector3* pEnd
 
 int rdMath_IntersectAABB_Sphere(rdVector3* minb, rdVector3* maxb, rdVector3* center, float radius)
 {
-	rdVector3 closest;
-	closest.x = fmax(minb->x, fmin(center->x, maxb->x));
-	closest.y = fmax(minb->y, fmin(center->y, maxb->y));
-	closest.z = fmax(minb->z, fmin(center->z, maxb->z));
+	float distSquared = 0.0f;
+	float radiusSquared = radius * radius;
 
-	rdVector3 dist;
-	rdVector_Sub3(&dist, &closest, center);
-	return rdVector_Dot3(&dist, &dist) <= (radius * radius);
+	// Calculate the squared distance from the sphere center to the AABB
+	if (center->x < minb->x)
+	{
+		float d = center->x - minb->x;
+		distSquared += d * d;
+	}
+	else if (center->x > maxb->x)
+	{
+		float d = center->x - maxb->x;
+		distSquared += d * d;
+	}
+
+	if (center->y < minb->y)
+	{
+		float d = center->y - minb->y;
+		distSquared += d * d;
+	}
+	else if (center->y > maxb->y)
+	{
+		float d = center->y - maxb->y;
+		distSquared += d * d;
+	}
+
+	if (center->z < minb->z)
+	{
+		float d = center->z - minb->z;
+		distSquared += d * d;
+	}
+	else if (center->z > maxb->z)
+	{
+		float d = center->z - maxb->z;
+		distSquared += d * d;
+	}
+
+	// The sphere intersects the AABB if the distance squared is less than or equal to the radius squared
+	return distSquared <= radiusSquared;
+
+	//rdVector3 closest;
+	//closest.x = fmax(minb->x, fmin(center->x, maxb->x));
+	//closest.y = fmax(minb->y, fmin(center->y, maxb->y));
+	//closest.z = fmax(minb->z, fmin(center->z, maxb->z));
+	//
+	//rdVector3 dist;
+	//rdVector_Sub3(&dist, &closest, center);
+	//return rdVector_Dot3(&dist, &dist) <= (radius * radius);
 }
 
 int rdMath_IntersectAABB_OBB(rdVector3* minb, rdVector3* maxb, const rdMatrix44* mat)
