@@ -70,17 +70,17 @@ void stdProfiler_Tick()
 		++stdProfiler_frameIdx;
 }
 
-void stdProfiler_BeginLabel(const char* name)
+void* stdProfiler_BeginLabel(const char* name)
 {
 	if (!stdProfiler_enable)
-		return;
+		return NULL;
 
 	stdProfiler_Label* label = (stdProfiler_Label*)stdHashTable_GetKeyVal(stdProfiler_labelHashmap, name);
 	if (!label)
 	{
 		label = pHS->alloc(sizeof(stdProfiler_Label));
 		if (!label)
-			return;
+			return NULL;
 
 		stdString_SafeStrCopy(label->functionName, name, 128);
 		stdHashTable_SetKeyVal(stdProfiler_labelHashmap, name, label);
@@ -98,14 +98,16 @@ void stdProfiler_BeginLabel(const char* name)
 	}
 
 	label->startTime = Linux_TimeUs();
+
+	return (void*)label;
 }
 
-void stdProfiler_EndLabel(const char* name)
+void stdProfiler_EndLabel(void* v)
 {
 	if (!stdProfiler_enable)
 		return;
 
-	stdProfiler_Label* label = (stdProfiler_Label*)stdHashTable_GetKeyVal(stdProfiler_labelHashmap, name);
+	stdProfiler_Label* label = (stdProfiler_Label*)v;//stdHashTable_GetKeyVal(stdProfiler_labelHashmap, name);
 	if (!label)
 		return;
 	
