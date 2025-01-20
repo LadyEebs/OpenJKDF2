@@ -367,14 +367,14 @@ typedef enum STD3D_DRAW_LIST
 
 typedef struct std3D_DrawCallList
 {
-	int             bSorted;
-	uint32_t        drawCallCount;
-	uint32_t        drawCallIndexCount;
-	uint32_t        drawCallVertexCount;
-	std3D_DrawCall  drawCalls[STD3D_MAX_DRAW_CALLS];
-	uint16_t        drawCallIndices[STD3D_MAX_DRAW_CALL_INDICES];
-	rdVertex        drawCallVertices[STD3D_MAX_DRAW_CALL_VERTS];
-	std3D_DrawCall* drawCallPtrs[STD3D_MAX_DRAW_CALLS];
+	int              bSorted;
+	uint32_t         drawCallCount;
+	uint32_t         drawCallIndexCount;
+	uint32_t         drawCallVertexCount;
+	std3D_DrawCall*  drawCalls;
+	uint16_t*        drawCallIndices;
+	rdVertex*        drawCallVertices;
+	std3D_DrawCall** drawCallPtrs;
 } std3D_DrawCallList;
 
 // todo/fixme: we're not currently handling viewport changes mid-draw
@@ -392,6 +392,35 @@ typedef struct std3D_RenderPass
 
 // todo: likely better to just swap to a BeginRenderPass/EndRenderPass in rdroid and call flush in EndRenderPass so we can have as many as we want
 std3D_RenderPass std3D_renderPasses[STD3D_MAX_RENDER_PASSES];
+
+void std3D_initDrawList(std3D_DrawCallList* pList)
+{
+	pList->drawCalls = malloc(sizeof(std3D_DrawCall) * STD3D_MAX_DRAW_CALLS);
+	pList->drawCallIndices = malloc(sizeof(uint16_t) * STD3D_MAX_DRAW_CALL_INDICES);
+	pList->drawCallVertices = malloc(sizeof(rdVertex) * STD3D_MAX_DRAW_CALL_VERTS);
+	pList->drawCallPtrs = malloc(sizeof(std3D_DrawCall*) * STD3D_MAX_DRAW_CALLS);
+}
+
+void std3D_freeDrawList(std3D_DrawCallList* pList)
+{
+	free(pList->drawCalls);
+	free(pList->drawCallIndices);
+	free(pList->drawCallVertices);
+	free(pList->drawCallPtrs);
+}
+
+void std3D_initRenderPass(std3D_RenderPass* pRenderPass)
+{
+	memset(pRenderPass, 0, sizeof(std3D_RenderPass));
+	for(int i = 0; i < DRAW_LIST_COUNT; ++i)
+		std3D_initDrawList(&pRenderPass->drawCallLists[i]);
+}
+
+void std3D_freeRenderPass(std3D_RenderPass* pRenderPass)
+{
+	for (int i = 0; i < DRAW_LIST_COUNT; ++i)
+		std3D_freeDrawList(&pRenderPass->drawCallLists[i]);
+}
 
 void std3D_FlushLights();
 void std3D_FlushOccluders();
@@ -510,7 +539,7 @@ int std3D_bInitted = 0;
 rdColormap std3D_ui_colormap;
 int std3D_bReinitHudElements = 0;
 
-static bool std3D_isIntegerFormat(GLuint format)
+static inline bool std3D_isIntegerFormat(GLuint format)
 {
 	switch (format)
 	{
@@ -525,7 +554,7 @@ static bool std3D_isIntegerFormat(GLuint format)
 	}
 }
 
-static GLuint std3D_getUploadFormat(GLuint format)
+static inline GLuint std3D_getUploadFormat(GLuint format)
 {
 	switch (format)
 	{
@@ -588,7 +617,7 @@ static GLuint std3D_getUploadFormat(GLuint format)
 	};
 }
 
-static uint8_t std3D_getNumChannels(GLuint format)
+static inline uint8_t std3D_getNumChannels(GLuint format)
 {
 	switch (format)
 	{
@@ -648,7 +677,7 @@ static uint8_t std3D_getNumChannels(GLuint format)
 	return 0;
 }
 
-static GLuint std3D_getImageFormat(GLuint format)
+static inline GLuint std3D_getImageFormat(GLuint format)
 {
 	static GLuint typeForChannels[] =
 	{
@@ -671,13 +700,13 @@ static GLuint std3D_getImageFormat(GLuint format)
 	return isInteger ? intTypeForChannels[numChannels] : typeForChannels[numChannels];
 }
 
-static void std3D_pushDebugGroup(const char* name)
+static inline void std3D_pushDebugGroup(const char* name)
 {
 	if(GLEW_KHR_debug)
 		glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, -1, name);
 }
 
-static void std3D_popDebugGroup()
+static inline void std3D_popDebugGroup()
 {
 	if(GLEW_KHR_debug)
 		glPopDebugGroup();
@@ -1674,8 +1703,9 @@ int init_resources()
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-	memset(&std3D_renderPasses[0], 0, sizeof(std3D_RenderPass));
-	memset(&std3D_renderPasses[1], 0, sizeof(std3D_RenderPass));
+	for (int i = 0; i < STD3D_MAX_RENDER_PASSES; ++i)
+		std3D_initRenderPass(&std3D_renderPasses[i]);
+	
 	std3D_setupUBOs();
 	for(int i = 0; i < SHADER_COUNT; ++i)
 	{
@@ -1780,6 +1810,9 @@ void std3D_FreeResources()
 	glDeleteBuffers(1, &decal_ubo);
 	glDeleteBuffers(1, &cluster_buffer);
 	glDeleteTextures(1, &cluster_tbo);
+
+	for (int i = 0; i < STD3D_MAX_RENDER_PASSES; ++i)
+		std3D_freeRenderPass(&std3D_renderPasses[i]);
 
     std3D_bReinitHudElements = 1;
 
@@ -4178,14 +4211,20 @@ void std3D_ResetDrawCalls()
 {
 	for(int j = 0; j < STD3D_MAX_RENDER_PASSES; ++j)
 	{
+		std3D_RenderPass* pRenderPass = &std3D_renderPasses[j];
 		for (int i = 0; i < DRAW_LIST_COUNT; ++i)
 		{
-			std3D_renderPasses[j].drawCallLists[i].bSorted = 0;
-			std3D_renderPasses[j].drawCallLists[i].drawCallCount = 0;
-			std3D_renderPasses[j].drawCallLists[i].drawCallIndexCount = 0;
-			std3D_renderPasses[j].drawCallLists[i].drawCallVertexCount = 0;
+			std3D_DrawCallList* pList = &pRenderPass->drawCallLists[i];
+			pList->bSorted = 0;
+			pList->drawCallCount = 0;
+			pList->drawCallIndexCount = 0;
+			pList->drawCallVertexCount = 0;
+
+			std3D_DrawCall* drawCalls = pList->drawCalls;
+			std3D_DrawCall** drawCallPtrs = pList->drawCallPtrs;
+
 			for (int k = 0; k < STD3D_MAX_DRAW_CALLS; ++k)
-				std3D_renderPasses[j].drawCallLists[i].drawCallPtrs[k] = &std3D_renderPasses[j].drawCallLists[i].drawCalls[k];
+				drawCallPtrs[k] = &drawCalls[k];
 		}
 	}
 }
@@ -4558,19 +4597,26 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 	{
 		pRenderPass->clustersDirty = 1;
 		pRenderPass->clusterFrustumFrame++;
+		rdMatrix_Copy44(&pRenderPass->oldProj, &pList->drawCalls[0].state.transformState.proj);
 	}
-	std3D_BuildClusters(pRenderPass, &pList->drawCalls[0].state.transformState.proj);
-	pRenderPass->oldProj = pList->drawCalls[0].state.transformState.proj;
+
+	if(pRenderPass->clustersDirty)
+		std3D_BuildClusters(pRenderPass, &pList->drawCalls[0].state.transformState.proj);
 
 	// sort draw calls to reduce state changes and maximize batching
+	uint16_t* indexArray;
 	if(sortFunc)
+	{
 		std3D_SortDrawCallList(pList, sortFunc);
-
-	// batching needs to follow the draw order, but index array becomes disjointed after sorting
-	// build a sorted list of indices to ensure sequential access during batching
-	uint16_t* indexArray = pList->drawCallIndices;
-	if (sortFunc)
+		
+		// batching needs to follow the draw order, but index array becomes disjointed after sorting
+		// build a sorted list of indices to ensure sequential access during batching
 		indexArray = std3D_SortDrawCallIndices(pList);
+	}
+	else
+	{
+		indexArray = pList->drawCallIndices;
+	}
 	
 	std3D_UpdateSharedUniforms();
 
@@ -4585,7 +4631,8 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 	std3D_DrawCall* pDrawCall = pList->drawCallPtrs[0];
 	std3D_DrawCallState* pState = &pDrawCall->state;
 
-	std3D_DrawCallState lastState = pDrawCall->state;
+	std3D_DrawCallState lastState;
+	memcpy(&lastState, &pDrawCall->state, sizeof(std3D_DrawCallState));
 
 	int lastShader = pDrawCall->shaderID;
 	std3D_worldStage* pStage = &worldStages[pDrawCall->shaderID];
@@ -4670,7 +4717,7 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 			{
 				stdPlatform_Printf("std3D: Warning, clusters are being rebuilt twice within a draw list flush!\n");
 
-				pRenderPass->oldProj = pDrawCall->state.transformState.proj;
+				rdMatrix_Copy44(&pRenderPass->oldProj, &pDrawCall->state.transformState.proj);
 				pRenderPass->clusterFrustumFrame++;
 				pRenderPass->clustersDirty = 1;
 				std3D_BuildClusters(pRenderPass, &pDrawCall->state.transformState.proj);
@@ -4855,12 +4902,13 @@ void std3D_FlushRefractionDrawCalls(std3D_RenderPass* pRenderPass)
 
 void std3D_FlushDeferred(std3D_RenderPass* pRenderPass)
 {
+	STD_BEGIN_PROFILER_LABEL();
 	std3D_pushDebugGroup("std3D_FlushDeferred");
 
-	if(pRenderPass->flags & RD_RENDERPASS_AMBIENT_OCCLUSION)
-		std3D_DoSSAO();
+	std3D_DoSSAO();
 
 	std3D_popDebugGroup();
+	STD_END_PROFILER_LABEL();
 }
 
 // writes directly to the final window framebuffer
@@ -4947,18 +4995,21 @@ void std3D_FlushDrawCalls()
 
 	for (int j = 0; j < STD3D_MAX_RENDER_PASSES; ++j)
 	{
-		std3D_pushDebugGroup(std3D_renderPasses[j].name);
+		std3D_RenderPass* pRenderPass = &std3D_renderPasses[j];
+
+		std3D_pushDebugGroup(pRenderPass->name);
 
 		// fill the depth buffer with opaque draw calls
-		std3D_FlushZDrawCalls(&std3D_renderPasses[j]);
+		std3D_FlushZDrawCalls(pRenderPass);
 
 		// do opaque-only deferred stuff
-		std3D_FlushDeferred(&std3D_renderPasses[j]);
+		if (pRenderPass->flags & RD_RENDERPASS_AMBIENT_OCCLUSION)
+			std3D_FlushDeferred(pRenderPass);
 
 		// draw refraction passes
 		int hasRefraction = 0;
-		if (std3D_renderPasses[j].flags & RD_RENDERPASS_REFRACTION)
-			hasRefraction = std3D_renderPasses[j].drawCallLists[DRAW_LIST_Z_REFRACTION].drawCallCount > 0;
+		if (pRenderPass->flags & RD_RENDERPASS_REFRACTION)
+			hasRefraction = pRenderPass->drawCallLists[DRAW_LIST_Z_REFRACTION].drawCallCount > 0;
 
 		if (hasRefraction)
 		{
@@ -4974,18 +5025,18 @@ void std3D_FlushDrawCalls()
 			}
 
 			// fill the refraction depth buffer, this includes refracted objects
-			std3D_FlushRefractionZDrawCalls(&std3D_renderPasses[j]);
+			std3D_FlushRefractionZDrawCalls(pRenderPass);
 
 			// draw color with clipping against the water depth and stencil
-			std3D_FlushColorDrawCallsRefraction(&std3D_renderPasses[j]);
+			std3D_FlushColorDrawCallsRefraction(pRenderPass);
 
 			// draw refraction surfaces
-			std3D_FlushRefractionDrawCalls(&std3D_renderPasses[j]);
+			std3D_FlushRefractionDrawCalls(pRenderPass);
 		}
 		
 		// draw scene normally
 		// for refraction case, the depth buffer will clip out anything below the refraction surfaces
-		std3D_FlushColorDrawCalls(&std3D_renderPasses[j]);
+		std3D_FlushColorDrawCalls(pRenderPass);
 
 		std3D_popDebugGroup();
 	}
@@ -5507,9 +5558,6 @@ void stdJob_AssignDecalsToClustersJob(uint32_t jobIndex, uint32_t groupIndex)
 
 void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 {
-	if(!pRenderPass->clustersDirty)
-		return;
-	
 	STD_BEGIN_PROFILER_LABEL();
 
 #ifdef USE_JOBS
@@ -5532,7 +5580,7 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 	tileSizeX = (uint32_t)ceilf((float)std3D_framebuffer.w / (float)CLUSTER_GRID_SIZE_X);
 	tileSizeY = (uint32_t)ceilf((float)std3D_framebuffer.h / (float)CLUSTER_GRID_SIZE_Y);
 	
-	int64_t time = Linux_TimeUs();
+	//int64_t time = Linux_TimeUs();
 
 #ifdef USE_JOBS
 	lightUniforms.firstLight = 0;
@@ -5545,13 +5593,14 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 
 	// todo: do we need to atomically clear this?
 	// maybe this should also be in a dispatch
-	for (int i = 0; i < ARRAY_SIZE(std3D_clusterBits); ++i)
-		SDL_AtomicSet(&std3D_clusterBits[i], 0);
+	//for (int i = 0; i < ARRAY_SIZE(std3D_clusterBits); ++i)
+		//SDL_AtomicSet(&std3D_clusterBits[i], 0);
+	memset(std3D_clusterBits, 0, sizeof(std3D_clusterBits));
 
 	// wait for clusters to finish building
 	stdJob_Wait();
 	
-	time = Linux_TimeUs();
+	//time = Linux_TimeUs();
 
 	// now assign items to clusters in parallel
 	stdJob_Dispatch(lightUniforms.numLights, 8, stdJob_AssignLightsToClustersJob);
