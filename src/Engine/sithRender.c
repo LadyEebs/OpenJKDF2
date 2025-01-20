@@ -1498,6 +1498,12 @@ void sithRender_RenderLevelGeometry()
 				+ (sithCamera_currentCamera->vec3_1.x - vertices_alloc[*surface->surfaceInfo.face.vertexPosIdx].x) * surface->surfaceInfo.face.normal.x <= 0.0)
 				continue;
 
+			rdVector3 screenPos;
+			rdMatrix_TransformPoint34(&screenPos, &surface->center, &rdCamera_pCurCamera->view_matrix);
+			int clippingIdk = rdClip_SphereInFrustrum(pSector->clipFrustum, &screenPos, surface->radius);
+			if (clippingIdk == 2)
+				continue;
+
 			rdMaterial* surfaceMat = surface->surfaceInfo.face.material;
 			rdTexinfo* texInfo = NULL;
 			if (surfaceMat)
