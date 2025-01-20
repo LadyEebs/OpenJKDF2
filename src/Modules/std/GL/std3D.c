@@ -4280,8 +4280,7 @@ void std3D_SetFogState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 	rdVector_Set4(&fog.fogColor, r, g, b, a);
 
 	glBindBuffer(GL_UNIFORM_BUFFER, fog_ubo);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_FogUniforms), NULL, GL_DYNAMIC_DRAW); // orphan the buffer
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_FogUniforms), &fog, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(std3D_FogUniforms), &fog);
 }
 
 int std3D_SetBlendState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
@@ -4427,8 +4426,7 @@ void std3D_SetTextureState(std3D_worldStage* pStage, std3D_DrawCallState* pState
 	}
 
 	glBindBuffer(GL_UNIFORM_BUFFER, tex_ubo);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_TextureUniforms), NULL, GL_DYNAMIC_DRAW); // orphan the buffer
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_TextureUniforms), &tex, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(std3D_TextureUniforms), &tex);
 }
 
 #define RD_SET_COLOR4(target, color) \
@@ -4456,8 +4454,7 @@ void std3D_SetMaterialState(std3D_worldStage* pStage, std3D_DrawCallState* pStat
 	//}
 
 	glBindBuffer(GL_UNIFORM_BUFFER, material_ubo);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_MaterialUniforms), NULL, GL_DYNAMIC_DRAW); // orphan the buffer
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_MaterialUniforms), &tex, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(std3D_MaterialUniforms), &tex);
 }
 
 void std3D_SetLightingState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
