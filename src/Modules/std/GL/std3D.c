@@ -32,9 +32,6 @@
 #include "Modules/std/stdJob.h"
 #include "Modules/std/stdProfiler.h"
 
-#define RD_SET_COLOR4(target, color) \
-	rdVector_Set4(target, ((color >> 16) & 0xFF) / 255.0f, ((color >> 8) & 0xFF) / 255.0f, ((color >> 0) & 0xFF) / 255.0f, ((color >> 24) & 0xFF) / 255.0f);
-
 #ifdef WIN32
 // Force Optimus/AMD to use non-integrated GPUs by default.
 __declspec(dllexport) DWORD NvOptimusEnablement = 1;
@@ -1352,6 +1349,21 @@ void std3D_setupUBOs()
 	glBindBuffer(GL_UNIFORM_BUFFER, shared_ubo);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_SharedUniforms), NULL, GL_DYNAMIC_DRAW);
 
+	// fog buffer
+	glGenBuffers(1, &fog_ubo);
+	glBindBuffer(GL_UNIFORM_BUFFER, fog_ubo);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_FogUniforms), NULL, GL_DYNAMIC_DRAW);
+
+	// texture buffer
+	glGenBuffers(1, &tex_ubo);
+	glBindBuffer(GL_UNIFORM_BUFFER, tex_ubo);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_TextureUniforms), NULL, GL_DYNAMIC_DRAW);
+
+	// material buffer	
+	glGenBuffers(1, &material_ubo);
+	glBindBuffer(GL_UNIFORM_BUFFER, material_ubo);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_MaterialUniforms), NULL, GL_DYNAMIC_DRAW);
+
 	// light buffer
 	glGenBuffers(1, &light_ubo);
 	glBindBuffer(GL_UNIFORM_BUFFER, light_ubo);
@@ -1374,24 +1386,6 @@ void std3D_setupUBOs()
 	glGenBuffers(1, &cluster_buffer);
 	glBindBuffer(GL_TEXTURE_BUFFER, cluster_buffer);
 	glBufferData(GL_TEXTURE_BUFFER, sizeof(std3D_clusterBits), NULL, GL_DYNAMIC_DRAW);
-
-	// per-draw buffers
-
-	// fog buffer
-	glGenBuffers(1, &fog_ubo);
-	glBindBuffer(GL_UNIFORM_BUFFER, fog_ubo);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_FogUniforms) * STD3D_MAX_DRAW_CALLS, NULL, GL_DYNAMIC_DRAW);
-
-	// texture buffer
-	glGenBuffers(1, &tex_ubo);
-	glBindBuffer(GL_UNIFORM_BUFFER, tex_ubo);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_TextureUniforms) * STD3D_MAX_DRAW_CALLS, NULL, GL_DYNAMIC_DRAW);
-
-	// material buffer	
-	glGenBuffers(1, &material_ubo);
-	glBindBuffer(GL_UNIFORM_BUFFER, material_ubo);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_MaterialUniforms) * STD3D_MAX_DRAW_CALLS, NULL, GL_DYNAMIC_DRAW);
-
 
 	glGenTextures(1, &cluster_tbo);
 	glBindTexture(GL_TEXTURE_BUFFER, cluster_tbo);
@@ -4247,214 +4241,6 @@ int std3D_DrawCallCompareDepth(std3D_DrawCall** a, std3D_DrawCall** b)
 	return 0;
 }
 
-enum STD3D_DIRTYBIT
-{
-	STD3D_STATEBITS = 0x1,
-	STD3D_SHADER = 0x2,
-	STD3D_TRANSFORM = 0x4,
-	STD3D_RASTER = 0x8,
-	STD3D_TEXTURE = 0x10,
-	STD3D_FOG = 0x20,
-	STD3D_LIGHTING = 0x40,
-};
-
-inline uint32_t std3D_CheckDirtyState(std3D_DrawCall* pDrawCall, std3D_DrawCallState* pLastState, int lastShader, int texid)
-{
-	STD_BEGIN_PROFILER_LABEL();
-	uint32_t dirtyBits = 0;
-	dirtyBits |= (lastShader != pDrawCall->shaderID) ? STD3D_SHADER : 0;
-	dirtyBits |= (last_tex != texid) ? STD3D_TEXTURE : 0;
-	dirtyBits |= (pLastState->stateBits.data != pDrawCall->state.stateBits.data) ? STD3D_STATEBITS : 0; // todo: this probably triggers too many updates, make it more granular
-	dirtyBits |= (memcmp(&pLastState->fogState, &pDrawCall->state.fogState, sizeof(std3D_FogState)) != 0) ? STD3D_FOG : 0;
-	dirtyBits |= (memcmp(&pLastState->rasterState, &pDrawCall->state.rasterState, sizeof(std3D_RasterState)) != 0) ? STD3D_RASTER : 0;
-	dirtyBits |= (memcmp(&pLastState->textureState, &pDrawCall->state.textureState, sizeof(std3D_TextureState)) != 0) ? STD3D_TEXTURE : 0;
-	dirtyBits |= (memcmp(&pLastState->materialState, &pDrawCall->state.materialState, sizeof(std3D_MaterialState)) != 0) ? STD3D_TEXTURE : 0;
-	dirtyBits |= (memcmp(&pLastState->lightingState, &pDrawCall->state.lightingState, sizeof(std3D_LightingState)) != 0) ? STD3D_LIGHTING : 0;
-	dirtyBits |= (memcmp(&pLastState->transformState, &pDrawCall->state.transformState, sizeof(std3D_TransformState)) != 0) ? STD3D_TRANSFORM : 0;
-	STD_END_PROFILER_LABEL();
-	return dirtyBits;
-}
-
-typedef struct std3D_DrawBatch
-{
-	int primitive;
-	int numIndices;
-	int indexOffset;
-	uint32_t dirtyBits;
-	uint32_t shaderID;
-	std3D_DrawCallState* state;
-} std3D_DrawBatch;
-
-int std3D_numBatches;
-std3D_DrawBatch std3D_drawBatches[STD3D_MAX_DRAW_CALLS];
-std3D_FogUniforms std3D_fogUniforms[STD3D_MAX_DRAW_CALLS];
-std3D_TextureUniforms std3D_texUniforms[STD3D_MAX_DRAW_CALLS];
-std3D_MaterialUniforms std3D_materialUniforms[STD3D_MAX_DRAW_CALLS];
-
-void std3D_SetBatchFogData(int index, std3D_DrawCallState* pState)
-{
-	std3D_FogUniforms* fog = &std3D_fogUniforms[index];
-	fog->fogEnabled = pState->stateBits.fogMode;
-	fog->fogStartDepth = pState->fogState.startDepth;
-	fog->fogEndDepth = pState->fogState.endDepth;
-
-	float a = ((pState->fogState.color >> 24) & 0xFF) / 255.0f;
-	float r = ((pState->fogState.color >> 16) & 0xFF) / 255.0f;
-	float g = ((pState->fogState.color >> 8) & 0xFF) / 255.0f;
-	float b = ((pState->fogState.color >> 0) & 0xFF) / 255.0f;
-	rdVector_Set4(&fog->fogColor, r, g, b, a);
-}
-
-void std3D_SetBatchTextureData(int index, std3D_DrawCallState* pState)
-{
-	STD_BEGIN_PROFILER_LABEL();
-
-	std3D_TextureState* pTexState = &pState->textureState;
-	rdDDrawSurface* pTexture = (pState->stateBits.geoMode + 1 == RD_GEOMODE_TEXTURED) ? pState->textureState.pTexture : NULL;
-
-	std3D_TextureUniforms* tex = &std3D_texUniforms[index];
-	tex->uv_mode = pState->stateBits.texMode;
-	tex->texgen = pState->stateBits.texGen;
-	tex->numMips = pTexState->numMips;
-	tex->uv_offset = pTexState->texOffset;
-	tex->texgen_params = pTexState->texGenParams;
-
-	if (pTexture)
-	{
-		if (pTexture->texture_id == 0)
-		{
-			tex->tex_mode = TEX_MODE_TEST;
-		}
-		else
-		{
-			if (pState->stateBits.texFilter == RD_TEXFILTER_NEAREST)
-				tex->tex_mode = pTexture->is_16bit ? TEX_MODE_16BPP : TEX_MODE_WORLDPAL;
-			else
-				tex->tex_mode = pTexture->is_16bit ? TEX_MODE_BILINEAR_16BPP : TEX_MODE_BILINEAR;
-		}
-		rdVector_Set2(&tex->texsize, pTexture->width, pTexture->height);
-	}
-	else
-	{
-		tex->tex_mode = TEX_MODE_TEST;
-		rdVector_Set2(&tex->texsize, 1, 1);
-	}
-
-	STD_END_PROFILER_LABEL();
-}
-
-void std3D_SetBatchMaterialData(int index, std3D_DrawCallState* pState)
-{
-	STD_BEGIN_PROFILER_LABEL();
-
-	std3D_MaterialState* pMaterialState = &pState->materialState;
-	rdDDrawSurface* pTexture = (pState->stateBits.geoMode + 1 == RD_GEOMODE_TEXTURED) ? pState->textureState.pTexture : NULL;
-
-	std3D_MaterialUniforms* tex = &std3D_materialUniforms[index];
-	RD_SET_COLOR4(&tex->fillColor, pMaterialState->fillColor);
-
-	//if (pTexture)
-	{
-		RD_SET_COLOR4(&tex->emissive_factor, pMaterialState->emissive);
-		RD_SET_COLOR4(&tex->albedo_factor, pMaterialState->albedo);
-		tex->displacement_factor = pMaterialState->displacement;
-	}
-	//else
-	//{
-	//	RD_SET_COLOR4(&tex.emissive_factor, 0xFF000000);
-	//	RD_SET_COLOR4(&tex.albedo_factor, 0xFFFFFFFF);
-	//	tex.displacement_factor = 0.0;
-	//}
-
-	STD_END_PROFILER_LABEL();
-}
-
-void std3D_BuildBatches(std3D_DrawCallList* pList)
-{
-	std3D_numBatches = 0;
-	if (!pList->drawCallCount)
-		return;
-
-	STD_BEGIN_PROFILER_LABEL();
-
-	std3D_DrawCall* pDrawCall = pList->drawCallPtrs[0];
-	std3D_DrawCallState* pState = &pDrawCall->state;
-	std3D_DrawCallState* pLastState = &pDrawCall->state;
-
-	int lastShader = pDrawCall->shaderID;
-
-	int batchIndex = std3D_numBatches++;
-	std3D_DrawBatch* pBatch = &std3D_drawBatches[batchIndex];
-	pBatch->dirtyBits = 0;
-	pBatch->state = pState;
-	pBatch->shaderID = pDrawCall->shaderID;
-
-	std3D_SetBatchFogData(batchIndex, pState);
-	std3D_SetBatchTextureData(batchIndex, pState);
-	std3D_SetBatchMaterialData(batchIndex, pState);
-
-	int batchIndices = 0;
-	int indexOffset = 0;
-	for (int j = 0; j < pList->drawCallCount; j++)
-	{
-		pDrawCall = pList->drawCallPtrs[j];
-		pState = &pDrawCall->state;
-
-		int texid = pState->textureState.pTexture ? pState->textureState.pTexture->texture_id : blank_tex_white;
-
-		uint32_t dirtyBits = std3D_CheckDirtyState(pDrawCall, pLastState, lastShader, texid);
-		if (dirtyBits)
-		{
-			// finalize the batch
-			pBatch->numIndices = batchIndices;
-			pBatch->indexOffset = indexOffset;
-			pBatch->primitive = std3D_PrimitiveForGeoMode(pLastState->stateBits.geoMode + 1);
-
-			// setup next batch
-			batchIndex = std3D_numBatches++;
-			pBatch = &std3D_drawBatches[batchIndex];
-			pBatch->dirtyBits = dirtyBits;
-			pBatch->state = pState;
-			pBatch->shaderID = pDrawCall->shaderID;
-
-			std3D_SetBatchFogData(batchIndex, pState);
-			std3D_SetBatchTextureData(batchIndex, pState);
-			std3D_SetBatchMaterialData(batchIndex, pState);
-	
-			lastShader = pDrawCall->shaderID;
-			pLastState = &pDrawCall->state;
-
-			indexOffset += batchIndices;
-			batchIndices = 0;
-		}
-
-		batchIndices += pDrawCall->numIndices;
-	}
-
-	if (batchIndices)
-	{
-		// finalize the batch
-		pBatch->numIndices = batchIndices;
-		pBatch->indexOffset = indexOffset;
-		pBatch->primitive = std3D_PrimitiveForGeoMode(pLastState->stateBits.geoMode + 1);
-
-	}
-
-	glBindBuffer(GL_UNIFORM_BUFFER, fog_ubo);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_FogUniforms) * STD3D_MAX_DRAW_CALLS, NULL, GL_DYNAMIC_DRAW); // orphan
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_FogUniforms) * STD3D_MAX_DRAW_CALLS, std3D_fogUniforms, GL_DYNAMIC_DRAW);
-
-	glBindBuffer(GL_UNIFORM_BUFFER, tex_ubo);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_TextureUniforms) * STD3D_MAX_DRAW_CALLS, NULL, GL_DYNAMIC_DRAW); // orphan
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_TextureUniforms) * STD3D_MAX_DRAW_CALLS, std3D_texUniforms, GL_DYNAMIC_DRAW);
-
-	glBindBuffer(GL_UNIFORM_BUFFER, material_ubo);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_MaterialUniforms) * STD3D_MAX_DRAW_CALLS, NULL, GL_DYNAMIC_DRAW); // orphan
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_MaterialUniforms) * STD3D_MAX_DRAW_CALLS, std3D_materialUniforms, GL_DYNAMIC_DRAW);
-
-	STD_END_PROFILER_LABEL();
-}
-
 // todo: track state bits and only apply necessary changes
 void std3D_SetRasterState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 {
@@ -4486,13 +4272,13 @@ void std3D_SetFogState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 	fog.fogEnabled = pState->stateBits.fogMode;
 	fog.fogStartDepth = pState->fogState.startDepth;
 	fog.fogEndDepth = pState->fogState.endDepth;
-	
+
 	float a = ((pState->fogState.color >> 24) & 0xFF) / 255.0f;
 	float r = ((pState->fogState.color >> 16) & 0xFF) / 255.0f;
 	float g = ((pState->fogState.color >> 8) & 0xFF) / 255.0f;
 	float b = ((pState->fogState.color >> 0) & 0xFF) / 255.0f;
 	rdVector_Set4(&fog.fogColor, r, g, b, a);
-	
+
 	glBindBuffer(GL_UNIFORM_BUFFER, fog_ubo);
 	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(std3D_FogUniforms), &fog);
 }
@@ -4558,144 +4344,96 @@ void std3D_SetDepthStencilState(std3D_DrawCallState* pState)
 
 void std3D_SetTransformState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 {
-	STD_BEGIN_PROFILER_LABEL();
-	
 	rdMatrix44* pProjection = &pState->transformState.proj;
 
-	//float fov = 2.0 * atanf(1.0 / pProjection->vC.y);
-	//float aspect = pProjection->vC.y / pProjection->vA.x;
-	//float znear = -pProjection->vD.z / (pProjection->vB.z + 1.0f);
-	//float zfar = -pProjection->vD.z / (pProjection->vB.z - 1.0f);
-	//
-	//float T = znear * tanf(0.5 * fov);
-	//float R = aspect * T;
+	float fov = 2.0 * atanf(1.0 / pProjection->vC.y);
+	float aspect = pProjection->vC.y / pProjection->vA.x;
+	float znear = -pProjection->vD.z / (pProjection->vB.z + 1.0f);
+	float zfar = -pProjection->vD.z / (pProjection->vB.z - 1.0f);
+
+	float T = znear * tanf(0.5 * fov);
+	float R = aspect * T;
 
 	glUniformMatrix4fv(pStage->uniform_projection, 1, GL_FALSE, (float*)pProjection);
-	//glUniform2f(pStage->uniform_rightTop, R, T);
+	glUniform2f(pStage->uniform_rightTop, R, T);
 
 	glUniformMatrix4fv(pStage->uniform_viewMatrix, 1, GL_FALSE, (float*)&pState->transformState.view);
 	glUniformMatrix4fv(pStage->uniform_modelMatrix, 1, GL_FALSE, (float*)&pState->transformState.modelView);
-
-	STD_END_PROFILER_LABEL();
-}
-
-static int std3D_lastTexBind[3];
-static int std3D_lastSamplerBind;
-
-void std3D_ResetTexTracking()
-{
-	std3D_lastSamplerBind = -1;
-	std3D_lastTexBind[0] = -1;
-	std3D_lastTexBind[1] = -1;
-	std3D_lastTexBind[2] = -1;
 }
 
 void std3D_SetTextureState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 {
-	STD_BEGIN_PROFILER_LABEL();
-	
 	std3D_TextureState* pTexState = &pState->textureState;
 	rdDDrawSurface* pTexture = (pState->stateBits.geoMode + 1 == RD_GEOMODE_TEXTURED) ? pState->textureState.pTexture : NULL;
 
-	//std3D_TextureUniforms tex;
-	//tex.uv_mode = pState->stateBits.texMode;
-	//tex.texgen = pState->stateBits.texGen;
-	//tex.numMips = pTexState->numMips;
-	//tex.uv_offset = pTexState->texOffset;
-	//tex.texgen_params = pTexState->texGenParams;		
+	std3D_TextureUniforms tex;
+	tex.uv_mode = pState->stateBits.texMode;
+	tex.texgen = pState->stateBits.texGen;
+	tex.numMips = pTexState->numMips;
+	rdVector_Set2(&tex.uv_offset, pTexState->texOffset.x, pTexState->texOffset.y);
+	rdVector_Set4(&tex.texgen_params, pTexState->texGenParams.x, pTexState->texGenParams.y, pTexState->texGenParams.z, pTexState->texGenParams.w);		
 
 	if(pTexture)
 	{
-		int tex_id = pTexture->texture_id ? pTexture->texture_id : blank_tex_white;
-		if (std3D_lastTexBind[0] != tex_id)
-		{
-			glActiveTexture(GL_TEXTURE0 + 0);
-			glBindTexture(GL_TEXTURE_2D, tex_id);
-			std3D_lastTexBind[0] = tex_id;
-		}
+		int tex_id = pTexture->texture_id;
+		glActiveTexture(GL_TEXTURE0 + 0);
+		glBindTexture(GL_TEXTURE_2D, tex_id ? tex_id : blank_tex_white);
 
 		int clampX = pTexState->flags & RD_FF_TEX_CLAMP_X;
 		int clampY = pTexState->flags & RD_FF_TEX_CLAMP_Y;
-		int sampler;
+
 		if ((pState->stateBits.texFilter == RD_TEXFILTER_BILINEAR) && pTexture->is_16bit)
-			sampler = linearSampler[clampX + clampY * 2];
+			glBindSampler(0, linearSampler[clampX + clampY * 2]);
 		else
-			sampler = nearestSampler[clampX + clampY * 2];
+			glBindSampler(0, nearestSampler[clampX + clampY * 2]);
 
-		if (std3D_lastSamplerBind != sampler)
-			glBindSampler(0, sampler);
+		int emiss_tex_id = pTexture->emissive_texture_id;
+		glActiveTexture(GL_TEXTURE0 + 3);
+		glBindTexture(GL_TEXTURE_2D, emiss_tex_id ? emiss_tex_id : blank_tex);
 
-		int emiss_tex_id = pTexture->emissive_texture_id ? pTexture->emissive_texture_id : blank_tex;
-		if(std3D_lastTexBind[1] != emiss_tex_id)
-		{
-			glActiveTexture(GL_TEXTURE0 + 3);
-			glBindTexture(GL_TEXTURE_2D, emiss_tex_id);
-			std3D_lastTexBind[1] = emiss_tex_id;
-		}
-
-		int displace_tex_id = pTexture->displacement_texture_id ? pTexture->displacement_texture_id : blank_tex;
-		if(std3D_lastTexBind[2] != displace_tex_id)
-		{
-			glActiveTexture(GL_TEXTURE0 + 4);
-			glBindTexture(GL_TEXTURE_2D, displace_tex_id);
-			std3D_lastTexBind[2] = displace_tex_id;
-		}
+		int displace_tex_id = pTexture->displacement_texture_id;
+		glActiveTexture(GL_TEXTURE0 + 4);
+		glBindTexture(GL_TEXTURE_2D, displace_tex_id ? displace_tex_id : blank_tex);
 		
 		glActiveTexture(GL_TEXTURE0 + 0);
 
-		//if (tex_id == 0)
-		//{
-		//	tex.tex_mode = TEX_MODE_TEST;
-		//}
-		//else
-		//{
-		//	if (/*!jkPlayer_enableTextureFilter || */ (pState->stateBits.texFilter == RD_TEXFILTER_NEAREST))
-		//		tex.tex_mode = pTexture->is_16bit ? TEX_MODE_16BPP : TEX_MODE_WORLDPAL;
-		//	else
-		//		tex.tex_mode = pTexture->is_16bit ? TEX_MODE_BILINEAR_16BPP : TEX_MODE_BILINEAR;
-		//}
-		//
-		//rdVector_Set2(&tex.texsize, pTexture->width, pTexture->height);
+		if (tex_id == 0)
+		{
+			tex.tex_mode = TEX_MODE_TEST;
+		}
+		else
+		{
+			if (/*!jkPlayer_enableTextureFilter || */ (pState->stateBits.texFilter == RD_TEXFILTER_NEAREST))
+				tex.tex_mode = pTexture->is_16bit ? TEX_MODE_16BPP : TEX_MODE_WORLDPAL;
+			else
+				tex.tex_mode = pTexture->is_16bit ? TEX_MODE_BILINEAR_16BPP : TEX_MODE_BILINEAR;
+		}
+
+		rdVector_Set2(&tex.texsize, pTexture->width, pTexture->height);
 	}
 	else
 	{
-		if (std3D_lastTexBind[1] != blank_tex)
-		{
-			glActiveTexture(GL_TEXTURE0 + 3);
-			glBindTexture(GL_TEXTURE_2D, blank_tex); // emissive
-			std3D_lastTexBind[1] = blank_tex;
-		}
-
-		if (std3D_lastTexBind[2] != blank_tex)
-		{
-			glActiveTexture(GL_TEXTURE0 + 4);
-			glBindTexture(GL_TEXTURE_2D, blank_tex); // displace
-			std3D_lastTexBind[2] = blank_tex;
-		}
-
-		if (std3D_lastTexBind[0] != blank_tex_white)
-		{
-			glActiveTexture(GL_TEXTURE0 + 0);
-			glBindTexture(GL_TEXTURE_2D, blank_tex_white);
-			std3D_lastTexBind[0] = blank_tex_white;
-		}
+		glActiveTexture(GL_TEXTURE0 + 3);
+		glBindTexture(GL_TEXTURE_2D, blank_tex); // emissive
+		glActiveTexture(GL_TEXTURE0 + 4);
+		glBindTexture(GL_TEXTURE_2D, blank_tex); // displace
+		glActiveTexture(GL_TEXTURE0 + 0);
+		glBindTexture(GL_TEXTURE_2D, blank_tex_white);
 		glActiveTexture(GL_TEXTURE0 + 0);
 
-		//tex.tex_mode = TEX_MODE_TEST;
-		//rdVector_Set2(&tex.texsize, 1, 1);
+		tex.tex_mode = TEX_MODE_TEST;
+		rdVector_Set2(&tex.texsize, 1, 1);
 	}
 
-	//glBindBuffer(GL_UNIFORM_BUFFER, tex_ubo);
-	////glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(std3D_TextureUniforms), &tex);
-	//glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_TextureUniforms), &tex, GL_DYNAMIC_DRAW);
-
-	STD_END_PROFILER_LABEL();
+	glBindBuffer(GL_UNIFORM_BUFFER, tex_ubo);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(std3D_TextureUniforms), &tex);
 }
+
+#define RD_SET_COLOR4(target, color) \
+	rdVector_Set4(target, ((color >> 16) & 0xFF) / 255.0f, ((color >> 8) & 0xFF) / 255.0f, ((color >> 0) & 0xFF) / 255.0f, ((color >> 24) & 0xFF) / 255.0f);
 
 void std3D_SetMaterialState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 {
-	STD_BEGIN_PROFILER_LABEL();
-
 	std3D_MaterialState* pMaterialState = &pState->materialState;
 	rdDDrawSurface* pTexture = (pState->stateBits.geoMode + 1 == RD_GEOMODE_TEXTURED) ? pState->textureState.pTexture : NULL;
 
@@ -4717,14 +4455,10 @@ void std3D_SetMaterialState(std3D_worldStage* pStage, std3D_DrawCallState* pStat
 
 	glBindBuffer(GL_UNIFORM_BUFFER, material_ubo);
 	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(std3D_MaterialUniforms), &tex);
-
-	STD_END_PROFILER_LABEL();
 }
 
 void std3D_SetLightingState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 {
-	STD_BEGIN_PROFILER_LABEL();
-
 	glUniform1i(pStage->uniform_light_mode, pState->stateBits.lightMode);
 	glUniform1i(pStage->uniform_ao_flags, pState->lightingState.ambientFlags);
 
@@ -4742,13 +4476,10 @@ void std3D_SetLightingState(std3D_worldStage* pStage, std3D_DrawCallState* pStat
 		rdVector_Set3(&sgs[i], r, g, b);
 	}
 	glUniform3fv(pStage->uniform_ambient_sg, 8, &sgs[0].x);
-
-	STD_END_PROFILER_LABEL();
 }
 
 void std3D_BindStage(std3D_worldStage* pStage)
 {
-	STD_BEGIN_PROFILER_LABEL();
 	std3D_useProgram(pStage->program);
 
 	glBindVertexArray(pStage->vao[bufferIdx]);
@@ -4766,8 +4497,6 @@ void std3D_BindStage(std3D_worldStage* pStage)
 	glUniform1i(pStage->uniform_texssao,            TEX_SLOT_AO);
 	glUniform1i(pStage->uniform_texrefraction,      TEX_SLOT_REFRACTION);
 	glUniform1i(pStage->uniform_texclip,            TEX_SLOT_CLIP);
-
-	STD_END_PROFILER_LABEL();
 }
 
 inline void std3D_bindTexture(int type, int texId, int slot)
@@ -4778,9 +4507,20 @@ inline void std3D_bindTexture(int type, int texId, int slot)
 
 typedef int(*std3D_SortFunc)(std3D_DrawCall*, std3D_DrawCall*);
 
+enum STD3D_DIRTYBIT
+{
+	STD3D_STATEBITS = 0x1,
+	STD3D_SHADER    = 0x2,
+	STD3D_TRANSFORM = 0x4,
+	STD3D_RASTER    = 0x8,
+	STD3D_TEXTURE   = 0x10,
+	STD3D_FOG       = 0x20,
+	STD3D_LIGHTING  = 0x40,
+};
+
 static uint16_t std3D_drawCallIndicesSorted[STD3D_MAX_DRAW_CALL_INDICES];
 
-inline uint16_t* std3D_SortDrawCallIndices(std3D_DrawCallList* pList)
+uint16_t* std3D_SortDrawCallIndices(std3D_DrawCallList* pList)
 {
 	STD_BEGIN_PROFILER_LABEL();
 	int drawCallIndexCount = 0;
@@ -4793,7 +4533,7 @@ inline uint16_t* std3D_SortDrawCallIndices(std3D_DrawCallList* pList)
 	return std3D_drawCallIndicesSorted;
 }
 
-inline void std3D_SortDrawCallList(std3D_DrawCallList* pList, std3D_SortFunc sortFunc)
+void std3D_SortDrawCallList(std3D_DrawCallList* pList, std3D_SortFunc sortFunc)
 {
 	STD_BEGIN_PROFILER_LABEL();
 	if(!pList->bSorted)
@@ -4809,8 +4549,6 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 
 	STD_BEGIN_PROFILER_LABEL();
 	std3D_pushDebugGroup(debugName);
-
-	std3D_ResetTexTracking();
 
 	if (rdMatrix_Compare44(&pRenderPass->oldProj, &pList->drawCalls[0].state.transformState.proj) != 0)
 	{
@@ -4840,163 +4578,114 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 	glBindBufferBase(GL_UNIFORM_BUFFER, 5, tex_ubo);
 	glBindBufferBase(GL_UNIFORM_BUFFER, 6, material_ubo);
 
+	std3D_DrawCall* pDrawCall = pList->drawCallPtrs[0];
+	std3D_DrawCallState* pState = &pDrawCall->state;
+
+	std3D_DrawCallState lastState = pDrawCall->state;
+
+	int lastShader = pDrawCall->shaderID;
+	std3D_worldStage* pStage = &worldStages[pDrawCall->shaderID];
+
 	// increase the buffer counter for next upload
 	bufferIdx = (bufferIdx + 1) % STD3D_STAGING_COUNT;
-
-	std3D_BuildBatches(pList);
-
-	std3D_DrawCallState* pState = std3D_drawBatches[0].state;
-	std3D_DrawCallState* pLastState = std3D_drawBatches[0].state;
-
-	int lastShader = std3D_drawBatches[0].shaderID;
-	std3D_worldStage* pStage = &worldStages[std3D_drawBatches[0].shaderID];
 
 	std3D_BindStage(pStage);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, pList->drawCallVertexCount * sizeof(rdVertex), pList->drawCallVertices);
 	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, pList->drawCallIndexCount * sizeof(uint16_t), indexArray);
 	
-	for (int j = 0; j < std3D_numBatches; j++)
+	int last_tex = pState->textureState.pTexture ? pState->textureState.pTexture->texture_id : blank_tex_white;
+	std3D_SetRasterState(pStage, pState);
+	std3D_SetFogState(pStage, pState);
+	std3D_SetBlendState(pStage, pState);
+	std3D_SetDepthStencilState(pState);
+	std3D_SetTextureState(pStage, pState);
+	std3D_SetMaterialState(pStage, pState);
+	std3D_SetLightingState(pStage, pState);	
+	std3D_SetTransformState(pStage, pState);
+	
+	int batchIndices = 0;
+	int indexOffset = 0;
+	for (int j = 0; j < pList->drawCallCount; j++)
 	{
-		std3D_DrawBatch* pBatch = &std3D_drawBatches[j];
-		pState = pBatch->state;
+		pDrawCall = pList->drawCallPtrs[j];
+		pState = &pDrawCall->state;
 
-		if (lastShader != pBatch->shaderID)
+		int texid = pState->textureState.pTexture ? pState->textureState.pTexture->texture_id : blank_tex_white;
+		
+		uint32_t dirtyBits = 0;
+		dirtyBits |= (lastShader != pDrawCall->shaderID) ? STD3D_SHADER : 0;
+		dirtyBits |= (last_tex != texid) ? STD3D_TEXTURE : 0;
+		dirtyBits |= (lastState.stateBits.data != pDrawCall->state.stateBits.data) ? STD3D_STATEBITS : 0; // todo: this probably triggers too many updates, make it more granular
+		dirtyBits |= (memcmp(&lastState.fogState, &pDrawCall->state.fogState, sizeof(std3D_FogState)) != 0) ? STD3D_FOG : 0;
+		dirtyBits |= (memcmp(&lastState.rasterState, &pDrawCall->state.rasterState, sizeof(std3D_RasterState)) != 0) ? STD3D_RASTER : 0;		
+		dirtyBits |= (memcmp(&lastState.textureState, &pDrawCall->state.textureState, sizeof(std3D_TextureState)) != 0) ? STD3D_TEXTURE : 0;
+		dirtyBits |= (memcmp(&lastState.materialState, &pDrawCall->state.materialState, sizeof(std3D_MaterialState)) != 0) ? STD3D_TEXTURE : 0;
+		dirtyBits |= (memcmp(&lastState.lightingState, &pDrawCall->state.lightingState, sizeof(std3D_LightingState)) != 0) ? STD3D_LIGHTING : 0;
+		dirtyBits |= (memcmp(&lastState.transformState, &pDrawCall->state.transformState, sizeof(std3D_TransformState)) != 0) ? STD3D_TRANSFORM : 0;
+
+		if (dirtyBits)
 		{
-			pStage = &worldStages[pBatch->shaderID];
-			std3D_BindStage(pStage);
+			//glDrawArrays(std3D_PrimitiveForGeoMode(lastState.raster.geoMode), vertexOffset, batch_verts);
+			glDrawElements(std3D_PrimitiveForGeoMode(lastState.stateBits.geoMode + 1), batchIndices, GL_UNSIGNED_SHORT, (void*)(indexOffset * sizeof(uint16_t)));
+
+			if (lastShader != pDrawCall->shaderID)//dirtyBits & STD3D_SHADER)
+			{
+				pStage = &worldStages[pDrawCall->shaderID];
+				std3D_BindStage(pStage);
+			}
+
+			if((dirtyBits & STD3D_RASTER) || (dirtyBits & STD3D_STATEBITS))
+				std3D_SetRasterState(pStage, pState);
+
+			if ((dirtyBits & STD3D_FOG) || (dirtyBits & STD3D_STATEBITS))
+				std3D_SetFogState(pStage, pState);
+
+			if (dirtyBits & STD3D_STATEBITS)
+			{
+				std3D_SetBlendState(pStage, pState);
+				std3D_SetDepthStencilState(pState);
+			}
+
+			if ((dirtyBits & STD3D_TEXTURE) || (dirtyBits & STD3D_STATEBITS))
+			{
+				std3D_SetTextureState(pStage, pState);
+
+				// todo: material bits
+				std3D_SetMaterialState(pStage, pState);
+			}
+			
+			if ((dirtyBits & STD3D_LIGHTING) || (dirtyBits & STD3D_STATEBITS))
+				std3D_SetLightingState(pStage, pState);
+			
+			//if ((dirtyBits & STD3D_TRANSFORM)) // fixme: not working?
+				std3D_SetTransformState(pStage, pState);
+		
+			// if the projection matrix changed then all lighting is invalid, rebuild clusters and assign lights
+			// perhaps all of this would be better if we just flushed the pipeline on matrix change instead
+			if (rdMatrix_Compare44(&lastState.transformState.proj, &pDrawCall->state.transformState.proj) != 0)
+			{
+				stdPlatform_Printf("std3D: Warning, clusters are being rebuilt twice within a draw list flush!\n");
+
+				pRenderPass->oldProj = pDrawCall->state.transformState.proj;
+				pRenderPass->clusterFrustumFrame++;
+				pRenderPass->clustersDirty = 1;
+				std3D_BuildClusters(pRenderPass, &pDrawCall->state.transformState.proj);
+				std3D_UpdateSharedUniforms();
+			}
+
+			last_tex = texid;
+			lastShader = pDrawCall->shaderID;
+			memcpy(&lastState, &pDrawCall->state, sizeof(std3D_DrawCallState));
+
+			indexOffset += batchIndices;
+			batchIndices = 0;
 		}
 
-		if ((pBatch->dirtyBits & STD3D_FOG) || (pBatch->dirtyBits & STD3D_STATEBITS))
-			glBindBufferRange(GL_UNIFORM_BUFFER, 4, fog_ubo, sizeof(std3D_FogUniforms) * j, sizeof(std3D_FogUniforms));
-		
-		glBindBufferRange(GL_UNIFORM_BUFFER, 5, tex_ubo, sizeof(std3D_TextureUniforms) * j, sizeof(std3D_TextureUniforms));
-		
-		glBindBufferRange(GL_UNIFORM_BUFFER, 6, material_ubo, sizeof(std3D_MaterialUniforms) * j, sizeof(std3D_MaterialUniforms));
-		
-		if ((pBatch->dirtyBits & STD3D_RASTER) || (pBatch->dirtyBits & STD3D_STATEBITS))
-			std3D_SetRasterState(pStage, pState);
-	
-		//std3D_SetFogState(pStage, pState);
-	
-		if (pBatch->dirtyBits & STD3D_STATEBITS)
-		{
-			std3D_SetBlendState(pStage, pState);
-			std3D_SetDepthStencilState(pState);
-		}
-	
-		if ((pBatch->dirtyBits & STD3D_TEXTURE) || (pBatch->dirtyBits & STD3D_STATEBITS))
-			std3D_SetTextureState(pStage, pState);
-		
-		if ((pBatch->dirtyBits & STD3D_LIGHTING) || (pBatch->dirtyBits & STD3D_STATEBITS))
-			std3D_SetLightingState(pStage, pState);
-		
-		//if ((dirtyBits & STD3D_TRANSFORM)) // fixme: not working?
-			std3D_SetTransformState(pStage, pState);
-		
-		//glDrawArrays(std3D_PrimitiveForGeoMode(lastState.raster.geoMode), vertexOffset, batch_verts);
-		glDrawElements(pBatch->primitive, pBatch->numIndices, GL_UNSIGNED_SHORT, (void*)(pBatch->indexOffset * sizeof(uint16_t)));
-
-		// if the projection matrix changed then all lighting is invalid, rebuild clusters and assign lights
-		// perhaps all of this would be better if we just flushed the pipeline on matrix change instead
-		if (rdMatrix_Compare44(&pLastState->transformState.proj, &pBatch->state->transformState.proj) != 0)
-		{
-			stdPlatform_Printf("std3D: Warning, clusters are being rebuilt twice within a draw list flush!\n");
-
-			pRenderPass->oldProj = pBatch->state->transformState.proj;
-			pRenderPass->clusterFrustumFrame++;
-			pRenderPass->clustersDirty = 1;
-			std3D_BuildClusters(pRenderPass, &pBatch->state->transformState.proj);
-			std3D_UpdateSharedUniforms();
-		}
-
-		lastShader = pBatch->shaderID;
-		pLastState = pBatch->state;
+		batchIndices += pDrawCall->numIndices;
 	}
 
-//	int last_tex = pState->textureState.pTexture ? pState->textureState.pTexture->texture_id : blank_tex_white;
-//	std3D_SetRasterState(pStage, pState);
-//	std3D_SetFogState(pStage, pState);
-//	std3D_SetBlendState(pStage, pState);
-//	std3D_SetDepthStencilState(pState);
-//	std3D_SetTextureState(pStage, pState);
-//	std3D_SetMaterialState(pStage, pState);
-//	std3D_SetLightingState(pStage, pState);	
-//	std3D_SetTransformState(pStage, pState);
-//	
-//	int batchIndices = 0;
-//	int indexOffset = 0;
-//	for (int j = 0; j < pList->drawCallCount; j++)
-//	{
-//		pDrawCall = pList->drawCallPtrs[j];
-//		pState = &pDrawCall->state;
-//
-//		int texid = pState->textureState.pTexture ? pState->textureState.pTexture->texture_id : blank_tex_white;
-//		
-//		uint32_t dirtyBits = std3D_CheckDirtyState(pDrawCall, pLastState, lastShader, texid);
-//		if (dirtyBits)
-//		{
-//			//glDrawArrays(std3D_PrimitiveForGeoMode(lastState.raster.geoMode), vertexOffset, batch_verts);
-//			glDrawElements(std3D_PrimitiveForGeoMode(pLastState->stateBits.geoMode + 1), batchIndices, GL_UNSIGNED_SHORT, (void*)(indexOffset * sizeof(uint16_t)));
-//
-//			if (lastShader != pDrawCall->shaderID)//dirtyBits & STD3D_SHADER)
-//			{
-//				pStage = &worldStages[pDrawCall->shaderID];
-//				std3D_BindStage(pStage);
-//			}
-//
-//			if((dirtyBits & STD3D_RASTER) || (dirtyBits & STD3D_STATEBITS))
-//				std3D_SetRasterState(pStage, pState);
-//
-//			if ((dirtyBits & STD3D_FOG) || (dirtyBits & STD3D_STATEBITS))
-//				std3D_SetFogState(pStage, pState);
-//
-//			if (dirtyBits & STD3D_STATEBITS)
-//			{
-//				std3D_SetBlendState(pStage, pState);
-//				std3D_SetDepthStencilState(pState);
-//			}
-//
-//			if ((dirtyBits & STD3D_TEXTURE) || (dirtyBits & STD3D_STATEBITS))
-//			{
-//				std3D_SetTextureState(pStage, pState);
-//
-//				// todo: material bits
-//				std3D_SetMaterialState(pStage, pState);
-//			}
-//			
-//			if ((dirtyBits & STD3D_LIGHTING) || (dirtyBits & STD3D_STATEBITS))
-//				std3D_SetLightingState(pStage, pState);
-//			
-//			//if ((dirtyBits & STD3D_TRANSFORM)) // fixme: not working?
-//				std3D_SetTransformState(pStage, pState);
-//		
-//			// if the projection matrix changed then all lighting is invalid, rebuild clusters and assign lights
-//			// perhaps all of this would be better if we just flushed the pipeline on matrix change instead
-//			if (rdMatrix_Compare44(&pLastState->transformState.proj, &pDrawCall->state.transformState.proj) != 0)
-//			{
-//				stdPlatform_Printf("std3D: Warning, clusters are being rebuilt twice within a draw list flush!\n");
-//
-//				pRenderPass->oldProj = pDrawCall->state.transformState.proj;
-//				pRenderPass->clusterFrustumFrame++;
-//				pRenderPass->clustersDirty = 1;
-//				std3D_BuildClusters(pRenderPass, &pDrawCall->state.transformState.proj);
-//				std3D_UpdateSharedUniforms();
-//			}
-//
-//			last_tex = texid;
-//			lastShader = pDrawCall->shaderID;
-//			//memcpy(&lastState, &pDrawCall->state, sizeof(std3D_DrawCallState));
-//			pLastState = &pDrawCall->state;
-//
-//			indexOffset += batchIndices;
-//			batchIndices = 0;
-//		}
-//
-//		batchIndices += pDrawCall->numIndices;
-//	}
-//
-//	if (batchIndices)
-//		glDrawElements(std3D_PrimitiveForGeoMode(pDrawCall->state.stateBits.geoMode + 1), batchIndices, GL_UNSIGNED_SHORT, (void*)(indexOffset * sizeof(uint16_t)));
+	if (batchIndices)
+		glDrawElements(std3D_PrimitiveForGeoMode(pDrawCall->state.stateBits.geoMode + 1), batchIndices, GL_UNSIGNED_SHORT, (void*)(indexOffset * sizeof(uint16_t)));
 
 	glBindSampler(0, 0);
 
