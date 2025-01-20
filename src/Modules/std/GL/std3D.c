@@ -3998,25 +3998,17 @@ GLuint std3D_PrimitiveForGeoMode(rdGeoMode_t geoMode)
 	}
 }
 
-uint64_t std3D_SortKeyBits(uint64_t* offset, uint64_t bits, uint64_t size)
-{
-	uint64_t limit =(size == 64) ? 0xFFFFFFFFFFFFFFFFUL : (1UL << size) - 1UL;
-	*offset -= size;
-	bits = (bits & limit) << *offset;
-	return bits;
-}
-
 uint64_t std3D_GetSortKey(std3D_DrawCall* pDrawCall)
 {
 	int textureID = pDrawCall->state.textureState.pTexture ? pDrawCall->state.textureState.pTexture->texture_id : 0;
 
-	uint64_t offset = 64L;
+	uint64_t offset = 0ull;
 	
 	uint64_t sortKey = 0;
-	sortKey |= std3D_SortKeyBits(&offset, pDrawCall->state.header.sortPriority,  8); // sort priority first
-	sortKey |= std3D_SortKeyBits(&offset,                  pDrawCall->shaderID,  4); // then sort by shader
-	sortKey |= std3D_SortKeyBits(&offset,                            textureID, 16); // then by texture
-	sortKey |= std3D_SortKeyBits(&offset,      pDrawCall->state.stateBits.data, 32); // then by state bits
+	sortKey |= pDrawCall->state.stateBits.data & 0xFFFFFFFF;
+	sortKey |= ((uint64_t)textureID & 0xFFFF) << 32ull;
+	sortKey |= ((uint64_t)pDrawCall->shaderID & 0x4) << 48ull;
+	sortKey |= ((uint64_t)pDrawCall->state.header.sortPriority & 0xFF) << 56ull;
 
 	return sortKey;
 }
@@ -4125,7 +4117,6 @@ void std3D_AddZListDrawCall(rdPrimitiveType_t type, std3D_DrawCallList* pList, s
 		return; // todo: flush here?
 
 	std3D_DrawCall* pDrawCall = &pList->drawCalls[pList->drawCallCount++];
-	pDrawCall->sortKey = std3D_GetSortKey(pDrawCallState);
 	pDrawCall->state = *pDrawCallState;
 	pDrawCall->shaderID = pDrawCallState->stateBits.alphaTest ? SHADER_DEPTH_ALPHATEST : SHADER_DEPTH;
 
@@ -4135,10 +4126,23 @@ void std3D_AddZListDrawCall(rdPrimitiveType_t type, std3D_DrawCallList* pList, s
 	pDrawCall->state.stateBits.srdBlend = 1;
 	pDrawCall->state.stateBits.dstBlend = 0;
 	pDrawCall->state.stateBits.lightMode = 0;
+
 	memset(&pDrawCall->state.fogState, 0, sizeof(std3D_FogState));
 	memset(&pDrawCall->state.lightingState, 0, sizeof(std3D_LightingState));
 	if(!pDrawCallState->stateBits.alphaTest && pDrawCallState->stateBits.texGen == RD_TEXGEN_NONE) // non-alpha test with no texgen doesn't require textures
+	{
+		pDrawCall->state.stateBits.geoMode = 2;
+		pDrawCall->state.stateBits.ditherMode = 0;
+		pDrawCall->state.stateBits.texMode = 0;
+		pDrawCall->state.stateBits.texGen = 0;
+		pDrawCall->state.stateBits.texFilter = 0;
+		pDrawCall->state.stateBits.alphaTest = 0;
+		pDrawCall->state.stateBits.chromaKey = 0;
 		memset(&pDrawCall->state.textureState, 0, sizeof(std3D_TextureState));
+		memset(&pDrawCall->state.materialState, 0, sizeof(std3D_MaterialState));
+	}
+	
+	pDrawCall->sortKey = std3D_GetSortKey(&pDrawCall->state);
 
 	std3D_AddListVertices(pDrawCall, type, pList, paVertices, numVertices);
 }
