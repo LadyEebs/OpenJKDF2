@@ -329,6 +329,10 @@ int std3D_InsertDecalTexture(rdRect* out, stdVBuffer* vbuf, rdDDrawSurface* pTex
 void std3D_PurgeDecalAtlas();
 
 #ifdef JOB_SYSTEM
+#define USE_JOBS
+#endif
+
+#ifdef USE_JOBS
 #include "SDL_atomic.h"
 #endif
 
@@ -5384,7 +5388,7 @@ void std3D_AssignItemToClusters(std3D_RenderPass* pRenderPass, int itemIndex, rd
 					uint32_t tile_bucket_index = clusterID * CLUSTER_BUCKETS_PER_CLUSTER;
 
 					// note: updating the cluster bounds is by far the most expensive part of this entire thing, avoid doing it!
-				#ifndef JOB_SYSTEM
+				#ifndef USE_JOBS
 					if (pRenderPass->clusters[clusterID].lastUpdateFrame != pRenderPass->clusterFrustumFrame)
 					{
 						std3D_BuildCluster(&pRenderPass->clusters[clusterID], x, y, z, znear, zfar);
@@ -5405,7 +5409,7 @@ void std3D_AssignItemToClusters(std3D_RenderPass* pRenderPass, int itemIndex, rd
 						const uint32_t bucket_place = itemIndex % 32;
 						
 						// SDL doesn't have proper atomic bit operations so fucking do it ourselves I guess
-				#ifdef JOB_SYSTEM
+				#ifdef USE_JOBS
 					#ifdef _WIN32
 						_InterlockedOr((long*)&std3D_clusterBits[tile_bucket_index + bucket_index], (1 << bucket_place));
 					#else // hopefully this is ok for Linux?
@@ -5421,7 +5425,7 @@ void std3D_AssignItemToClusters(std3D_RenderPass* pRenderPass, int itemIndex, rd
 	}
 }
 
-#ifdef JOB_SYSTEM
+#ifdef USE_JOBS
 std3D_RenderPass* std3D_jobRenderPass;
 rdMatrix44* std3D_jobProjectionMat;
 
@@ -5508,7 +5512,7 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 	
 	STD_BEGIN_PROFILER_LABEL();
 
-#ifdef JOB_SYSTEM
+#ifdef USE_JOBS
 	std3D_jobRenderPass = pRenderPass;
 	std3D_jobProjectionMat = pProjection;
 #endif
@@ -5530,7 +5534,7 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 	
 	int64_t time = Linux_TimeUs();
 
-#ifdef JOB_SYSTEM
+#ifdef USE_JOBS
 	lightUniforms.firstLight = 0;
 	occluderUniforms.firstOccluder = lightUniforms.firstLight + lightUniforms.numLights;
 	decalUniforms.firstDecal = occluderUniforms.firstOccluder + occluderUniforms.numOccluders;
@@ -5569,7 +5573,7 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 	{
 		std3D_AssignItemToClusters(pRenderPass, lightUniforms.firstLight + i, (rdVector3*)&lightUniforms.tmpLights[i].position, lightUniforms.tmpLights[i].falloffMin, pProjection, znear, zfar, NULL);
 	}
-	printf("\t%lld us to assign lights to custers for frame %d\n", Linux_TimeUs() - lighTime, rdroid_frameTrue);
+	//printf("\t%lld us to assign lights to custers for frame %d\n", Linux_TimeUs() - lighTime, rdroid_frameTrue);
 
 	// assign occluders
 	occluderUniforms.firstOccluder = lightUniforms.firstLight + lightUniforms.numLights;
@@ -5578,7 +5582,7 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 	{
 		std3D_AssignItemToClusters(pRenderPass, occluderUniforms.firstOccluder + i, (rdVector3*)&occluderUniforms.tmpOccluders[i].position, occluderUniforms.tmpOccluders[i].position.w, pProjection, znear, zfar, NULL);
 	}
-	printf("\t%lld us to assign occluders to custers for frame %d\n", Linux_TimeUs() - occluderTime, rdroid_frameTrue);
+	//printf("\t%lld us to assign occluders to custers for frame %d\n", Linux_TimeUs() - occluderTime, rdroid_frameTrue);
 
 	// assign decals
 	decalUniforms.firstDecal = occluderUniforms.firstOccluder + occluderUniforms.numOccluders;
@@ -5587,7 +5591,7 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 	{
 		std3D_AssignItemToClusters(pRenderPass, decalUniforms.firstDecal + i, (rdVector3*)&decalUniforms.tmpDecals[i].posRad, decalUniforms.tmpDecals[i].posRad.w, pProjection, znear, zfar, &decalUniforms.tmpDecals[i].decalMatrix);
 	}
-	printf("\t%lld us to assign decals to custers for frame %d\n", Linux_TimeUs() - decalTime, rdroid_frameTrue);
+	//printf("\t%lld us to assign decals to custers for frame %d\n", Linux_TimeUs() - decalTime, rdroid_frameTrue);
 
 	//printf("%lld us to assign items to clusters for frame %d\n", Linux_TimeUs() - time, rdroid_frameTrue);
 #endif
