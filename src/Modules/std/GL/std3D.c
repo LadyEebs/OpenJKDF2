@@ -4718,9 +4718,9 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 			// if the projection matrix changed then all lighting is invalid, rebuild clusters and assign lights
 			// perhaps all of this would be better if we just flushed the pipeline on matrix change instead
 
-			if (rdMatrix_Compare44(&lastState.transformState.proj, &pDrawCall->state.transformState.proj) != 0)
+			if (!(pRenderPass->flags & RD_RENDERPASS_NO_CLUSTERING))
 			{
-				if (!(pRenderPass->flags & RD_RENDERPASS_NO_CLUSTERING))
+				if (rdMatrix_Compare44(&lastState.transformState.proj, &pDrawCall->state.transformState.proj) != 0)
 				{
 					stdPlatform_Printf("std3D: Warning, clusters are being rebuilt twice within a draw list flush!\n");
 
@@ -4728,8 +4728,8 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 					pRenderPass->clusterFrustumFrame++;
 					pRenderPass->clustersDirty = 1;
 					std3D_BuildClusters(pRenderPass, &pDrawCall->state.transformState.proj);
+					std3D_UpdateSharedUniforms();
 				}
-				std3D_UpdateSharedUniforms();
 			}
 
 			last_tex = texid;
