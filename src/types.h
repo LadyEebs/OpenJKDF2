@@ -881,7 +881,7 @@ typedef struct rdScissorRect
 typedef struct std3D_DrawCallHeader
 {
 	uint32_t                renderPass   : 8;  // 8
-	uint32_t                sortPriority : 24; // 32
+	uint32_t                sortOrder    : 24; // 32
 	float                   sortDistance;      // 64
 } std3D_DrawCallHeader;
 static_assert(sizeof(std3D_DrawCallHeader) == sizeof(uint64_t), "std3D_DrawCallHeader not 8 bytes");

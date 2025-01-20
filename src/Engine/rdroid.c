@@ -151,7 +151,7 @@ int rdStartup(HostServices *p_hs)
 	rdResetTextureState();
 	rdResetMaterialState();
 	rdResetLightingState();
-	rdroid_dcHeader.sortPriority = 0;
+	rdroid_dcHeader.sortOrder = 0;
 	rdroid_dcHeader.sortDistance = 0;
 #endif
 
@@ -953,9 +953,9 @@ void rdSetChromaKeyValue(uint8_t r, uint8_t g, uint8_t b)
 	rdroid_textureState.chromaKeyColor = RD_PACK_COLOR8(r, g, b, 0);
 }
 
-void rdSortPriority(int sortPriority)
+void rdSortOrder(int sortOrder)
 {
-	rdroid_dcHeader.sortPriority = sortPriority;
+	rdroid_dcHeader.sortOrder = sortOrder;
 }
 
 void rdSortDistance(float distance)

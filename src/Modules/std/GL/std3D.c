@@ -1557,8 +1557,8 @@ int init_resources()
 	glGenSamplers(4, nearestSampler);
 	for (int i = 0; i < 4; ++i)
 	{
-		glSamplerParameteri(linearSampler[i], GL_TEXTURE_WRAP_S, wrap[i%2]);
-		glSamplerParameteri(linearSampler[i], GL_TEXTURE_WRAP_T, wrap[i/2]);
+		glSamplerParameteri(linearSampler[i], GL_TEXTURE_WRAP_S, wrap[i % 2]);
+		glSamplerParameteri(linearSampler[i], GL_TEXTURE_WRAP_T, wrap[i / 2]);
 		glSamplerParameteri(linearSampler[i], GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glSamplerParameteri(linearSampler[i], GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		
@@ -4008,7 +4008,7 @@ uint64_t std3D_GetSortKey(std3D_DrawCall* pDrawCall)
 	sortKey |= pDrawCall->state.stateBits.data & 0xFFFFFFFF;
 	sortKey |= ((uint64_t)textureID & 0xFFFF) << 32ull;
 	sortKey |= ((uint64_t)pDrawCall->shaderID & 0x4) << 48ull;
-	sortKey |= ((uint64_t)pDrawCall->state.header.sortPriority & 0xFF) << 56ull;
+	sortKey |= ((uint64_t)pDrawCall->state.header.sortOrder & 0xFF) << 52ull;
 
 	return sortKey;
 }
@@ -4129,7 +4129,7 @@ void std3D_AddZListDrawCall(rdPrimitiveType_t type, std3D_DrawCallList* pList, s
 
 	memset(&pDrawCall->state.fogState, 0, sizeof(std3D_FogState));
 	memset(&pDrawCall->state.lightingState, 0, sizeof(std3D_LightingState));
-	if(!pDrawCallState->stateBits.alphaTest && pDrawCallState->stateBits.texGen == RD_TEXGEN_NONE) // non-alpha test with no texgen doesn't require textures
+	if(!pDrawCallState->stateBits.alphaTest)// && pDrawCallState->stateBits.texGen == RD_TEXGEN_NONE) // non-alpha test with no texgen doesn't require textures
 	{
 		pDrawCall->state.stateBits.geoMode = 2;
 		pDrawCall->state.stateBits.ditherMode = 0;
@@ -4192,7 +4192,7 @@ void std3D_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallSta
 		std3D_AddZListDrawCall(type, &std3D_renderPasses[renderPass].drawCallLists[DRAW_LIST_Z + alphaTest], pDrawCallState, paVertices, numVertices);
 
 		// the forward pass can now do a simple equal test with no writes
-		pDrawCallState->header.sortPriority         = 255; // render first
+		pDrawCallState->header.sortOrder            = 0; // render first
 		pDrawCallState->stateBits.zCompare          = RD_COMPARE_EQUAL;
 		pDrawCallState->stateBits.zMethod           = RD_ZBUFFER_READ_NOWRITE;
 		pDrawCallState->stateBits.alphaTest         = 0;

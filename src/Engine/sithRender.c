@@ -2654,6 +2654,7 @@ void sithRender_RenderThings()
     rdSetVertexColorMode(0);
 
 #ifdef RENDER_DROID2
+	rdSortOrder(1);
 	rdSetDecalMode(RD_DECALS_DISABLED);
 #endif
 
@@ -2978,6 +2979,7 @@ void sithRender_RenderThings()
 
 #ifdef RENDER_DROID2
 	rdSetDecalMode(jkPlayer_enableDecals ? RD_DECALS_ENABLED : RD_DECALS_DISABLED);
+	rdSortOrder(0);
 #endif
 
     // MoTS added

@@ -141,7 +141,7 @@ void rdSetConstantColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 void rdSetChromaKey(rdChromaKeyMode_t mode);
 void rdSetChromaKeyValue(uint8_t r, uint8_t g, uint8_t b);
 
-void rdSortPriority(int sortPriority);
+void rdSortOrder(int sortOrder);
 void rdSortDistance(float distance);
 
 // these names kinda suck, come up with better for per-primitive modes

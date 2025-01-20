@@ -394,7 +394,7 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 		rdAmbientLight(0, 0, 0);
 #endif
 
-	rdSortPriority(face->sortId);
+	rdSortOrder(face->sortId);
 
 	rdBindMaterial(face->material, thing->wallCel);
 
@@ -445,7 +445,7 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 		rdEndPrimitive();
 	}
 
-	rdSortPriority(0);
+	rdSortOrder(0);
 	rdTexOffseti(0, 0);
 	rdMatrixMode(RD_MATRIX_VIEW);
 	rdLoadMatrix(&viewMatrix);

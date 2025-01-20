@@ -401,7 +401,7 @@ int rdParticle_Draw(rdThing* thing, rdMatrix34* mat)
 
 	rdSetConstantColor(255, 255, 255, 255);
 	rdSetCullMode(RD_CULL_MODE_BACK);
-	rdSortPriority(0);
+	rdSortOrder(0);
 	rdTexOffseti(0, 0);
 	rdMatrixMode(RD_MATRIX_VIEW);
 	rdLoadMatrix(&viewMatrix);
