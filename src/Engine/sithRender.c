@@ -613,6 +613,9 @@ void sithRender_DrawBackdrop()
 			centerSector = centerSector->nextBackdropSector;
 		}
 
+		if (!centerSector)
+			centerSector = sithWorld_pCurrentWorld->backdropSector;
+
 		sithCamera_currentCamera->sector = centerSector;
 
 		rdMatrix34 backdropCamMat = rdCamera_camMatrix;
