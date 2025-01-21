@@ -1585,7 +1585,7 @@ static void sithPuppet_UpdatePhysicsParent(sithThing* thing)
 	int rootJoint = thing->animclass->root < 0 ? JOINTTYPE_HIP : thing->animclass->root;
 	sithPuppetJoint* pJoint = &thing->puppet->physics->joints[rootJoint];
 	rdVector_Copy3(&thing->position, &pJoint->thing.position);
-	sithThing_MoveToSector(thing, pJoint->thing.sector, 0);
+	sithThing_MoveToSector(thing, pJoint->thing.sector, 1);
 }
 
 // todo: just update when root or amputatedJoints is changed?
