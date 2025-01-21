@@ -1005,11 +1005,13 @@ void sithRender_Clip(sithSector *sector, rdClipFrustum *frustumArg, float a3)
 
 				rdVector3 offset;
 				rdVector_Scale3(&offset, &sector->surfaces[i].surfaceInfo.face.normal, 0.0075f);
-				rdVector_Add3Acc(&sector->surfaces[i].center, &offset);
+				
+				rdVector3 center;
+				rdVector_Add3(&center, &sector->surfaces[i].center, &offset);
 
 				sithRender_aLights[lightIdx].intensity = sector->surfaces[i].radius / rdCamera_pCurCamera->attenuationMin;
 
-				rdCamera_AddLight(rdCamera_pCurCamera, &sithRender_aLights[lightIdx], &sector->surfaces[i].center);
+				rdCamera_AddLight(rdCamera_pCurCamera, &sithRender_aLights[lightIdx], &center);
 				lightIdx = ++sithRender_numLights;
 			}
 		}
@@ -2413,11 +2415,13 @@ void sithRender_UpdateLights(sithSector *sector, float prev, float dist, int dep
 
 				rdVector3 offset;
 				rdVector_Scale3(&offset, &sector->surfaces[i].surfaceInfo.face.normal, 0.0075f);
-				rdVector_Add3Acc(&sector->surfaces[i].center, &offset);
+				
+				rdVector3 center;
+				rdVector_Add3(&center, &sector->surfaces[i].center, &offset);
 
 				sithRender_aLights[sithRender_numLights].intensity = sector->surfaces[i].radius / rdCamera_pCurCamera->attenuationMin;
 
-				rdCamera_AddLight(rdCamera_pCurCamera, &sithRender_aLights[sithRender_numLights], &sector->surfaces[i].center);
+				rdCamera_AddLight(rdCamera_pCurCamera, &sithRender_aLights[sithRender_numLights], &center);
 				++sithRender_numLights;
 			}
 		}
