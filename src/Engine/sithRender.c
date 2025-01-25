@@ -60,6 +60,8 @@ static rdMatrix34 ambientDebugThing_mat;
 sithRender_weapRendFunc_t sithRender_weaponRenderOpaqueHandle;
 sithRender_weapRendFunc_t sithRender_weaponRenderAlphaHandle;
 
+uint32_t sithRender_numSkyPortals = 0;
+
 #ifdef JKM_LIGHTING
 int sithRender_008d4094 = 0;
 float sithRender_008d4098 = 0.0;
@@ -588,89 +590,118 @@ void sithRender_SetPalette(const void *palette)
 void sithRender_DrawSurface(sithSurface* surface);
 
 #ifdef RENDER_DROID2
+void sithRender_SetCameraFog()
+{
+#ifdef FOG
+	rdFogLightDir(sithWorld_pCurrentWorld->fogLightDir.x, sithWorld_pCurrentWorld->fogLightDir.y, sithWorld_pCurrentWorld->fogLightDir.z);
+
+	if (sithCamera_currentCamera->sector->flags & SITH_SECTOR_UNDERWATER)
+	{
+		rdVector4 fog = { sithCamera_currentCamera->sector->tint.x, sithCamera_currentCamera->sector->tint.y, sithCamera_currentCamera->sector->tint.z, 1.0f };
+		
+		rdSetFogMode(RD_FOG_ENABLED);
+
+		rdVector3 halfFog;
+		halfFog.x = fog.x * 0.5f;
+		halfFog.y = fog.y * 0.5f;
+		halfFog.z = fog.z * 0.5f;
+
+		fog.x = fog.x - (halfFog.z + halfFog.y);
+		fog.y = fog.y - (halfFog.x + halfFog.y);
+		fog.z = fog.z - (halfFog.x + halfFog.z);		
+		
+		rdFogColorf(fog.x, fog.y, fog.z, fog.w);
+		rdFogRange(0.0f, 2.0f);
+		rdFogAnisotropy(0.35f);
+	}
+	else
+	{
+		rdSetFogMode(sithWorld_pCurrentWorld->fogEnabled ? RD_FOG_ENABLED : RD_FOG_DISABLED);
+		rdFogColorf(sithWorld_pCurrentWorld->fogColor.x, sithWorld_pCurrentWorld->fogColor.y, sithWorld_pCurrentWorld->fogColor.z, sithWorld_pCurrentWorld->fogColor.w);
+		rdFogRange(sithWorld_pCurrentWorld->fogStartDepth, sithWorld_pCurrentWorld->fogEndDepth);
+		rdFogAnisotropy(0.35f);
+	}
+#endif
+}
+
 void sithRender_DrawBackdrop()
 {
-	if (sithWorld_pCurrentWorld->backdropSector)
+	rdRenderPass("sithRender_DrawBackdrop", 0, RD_RENDERPASS_NO_CLUSTERING);
+	rdDepthRange(0.0f, 0.0f);
+
+	rdSetCullFlags(0);
+
+	rdMatrixMode(RD_MATRIX_VIEW);
+	rdIdentity();
+
+	rdMatrix34 viewOriginal = rdCamera_pCurCamera->view_matrix;
+	sithSector* origSector = sithCamera_currentCamera->sector;
+
+	sithSector* centerSector = sithWorld_pCurrentWorld->backdropSector;
+	while (centerSector)
 	{
-		// todo: this is causing a cluster build, but we don't need it
-		// either disable all clustering for the layer, or give items a renderpass mask
-		rdRenderPass("sithRender_DrawBackdrop", 0, RD_RENDERPASS_NO_CLUSTERING);
-		rdDepthRange(0.0f, 0.0f);
-
-		rdSetCullFlags(0);
-
-		rdMatrixMode(RD_MATRIX_VIEW);
-		rdIdentity();
-
-		rdMatrix34 viewOriginal = rdCamera_pCurCamera->view_matrix;
-		sithSector* origSector = sithCamera_currentCamera->sector;
-
-		sithSector* centerSector = sithWorld_pCurrentWorld->backdropSector;
-		while (centerSector)
-		{
-			if (!(centerSector->flags & SITH_SECTOR_DRAW_AS_3DO))
-				break;
-			centerSector = centerSector->nextBackdropSector;
-		}
-
-		if (!centerSector)
-			centerSector = sithWorld_pCurrentWorld->backdropSector;
-
-		sithCamera_currentCamera->sector = centerSector;
-
-		rdMatrix34 backdropCamMat = rdCamera_camMatrix;
-		backdropCamMat.scale = centerSector->center;
-		rdMatrix_InvertOrtho34(&rdCamera_pCurCamera->view_matrix, &backdropCamMat);
-
-		rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
-
-		rdMatrixMode(RD_MATRIX_MODEL);
-		rdIdentity();
-
-		sithSector* backdropSector = sithWorld_pCurrentWorld->backdropSector;
-		while (backdropSector)
-		{
-			rdColormap_SetCurrent(backdropSector->colormap);
-
-			sithSurface* surface = backdropSector->surfaces;
-			for (int v75 = 0; v75 < backdropSector->numSurfaces; ++surface, v75++)
-			{
-				if (!surface->surfaceInfo.face.geometryMode)
-					continue;
-				sithRender_DrawSurface(surface);
-			}
-
-			int safeguard = 0;
-			for (sithThing* pThing = backdropSector->thingsList; pThing; pThing = pThing->nextThing)
-			{
-				if (++safeguard >= SITH_MAX_THINGS)
-					break;
-
-				if (pThing->thingflags & (SITH_TF_DISABLED | SITH_TF_INVISIBLE | SITH_TF_WILLBEREMOVED))
-					continue;
-
-				if (pThing->rdthing.type != RD_THINGTYPE_MODEL)
-					continue;
-
-				if (((pThing->rdthing).type == RD_THINGTYPE_MODEL))
-					pThing->rdthing.model3->geosetSelect = 0;
-
-				rdMatrix_TransformPoint34(&pThing->screenPos, &pThing->position, &rdCamera_pCurCamera->view_matrix);
-				pThing->rdthing.clippingIdk = rdClip_SphereInFrustrum(rdCamera_pCurCamera->pClipFrustum, &pThing->screenPos, pThing->rdthing.model3->radius);
-				if (pThing->rdthing.clippingIdk == 2)
-					continue;
-
-				sithRender_RenderThing(pThing);
-			}
-
-			sithRender_UpdateLights(backdropSector, 0.0f, 0.0, 0);
-
-			backdropSector = backdropSector->nextBackdropSector;
-		}
-
-		sithCamera_currentCamera->sector = origSector;
-		rdCamera_pCurCamera->view_matrix.scale = viewOriginal.scale;
+		if (!(centerSector->flags & SITH_SECTOR_DRAW_AS_3DO))
+			break;
+		centerSector = centerSector->nextBackdropSector;
 	}
+
+	if (!centerSector)
+		centerSector = sithWorld_pCurrentWorld->backdropSector;
+
+	sithCamera_currentCamera->sector = centerSector;
+
+	rdMatrix34 backdropCamMat = rdCamera_camMatrix;
+	backdropCamMat.scale = centerSector->center;
+	rdMatrix_InvertOrtho34(&rdCamera_pCurCamera->view_matrix, &backdropCamMat);
+
+	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
+
+	rdMatrixMode(RD_MATRIX_MODEL);
+	rdIdentity();
+
+	sithSector* backdropSector = sithWorld_pCurrentWorld->backdropSector;
+	while (backdropSector)
+	{
+		rdColormap_SetCurrent(backdropSector->colormap);
+
+		sithSurface* surface = backdropSector->surfaces;
+		for (int v75 = 0; v75 < backdropSector->numSurfaces; ++surface, v75++)
+		{
+			if (!surface->surfaceInfo.face.geometryMode)
+				continue;
+			sithRender_DrawSurface(surface);
+		}
+
+		int safeguard = 0;
+		for (sithThing* pThing = backdropSector->thingsList; pThing; pThing = pThing->nextThing)
+		{
+			if (++safeguard >= SITH_MAX_THINGS)
+				break;
+
+			if (pThing->thingflags & (SITH_TF_DISABLED | SITH_TF_INVISIBLE | SITH_TF_WILLBEREMOVED))
+				continue;
+
+			if (pThing->rdthing.type != RD_THINGTYPE_MODEL)
+				continue;
+
+			if (((pThing->rdthing).type == RD_THINGTYPE_MODEL))
+				pThing->rdthing.model3->geosetSelect = 0;
+
+			rdMatrix_TransformPoint34(&pThing->screenPos, &pThing->position, &rdCamera_pCurCamera->view_matrix);
+			pThing->rdthing.clippingIdk = rdClip_SphereInFrustrum(rdCamera_pCurCamera->pClipFrustum, &pThing->screenPos, pThing->rdthing.model3->radius);
+			if (pThing->rdthing.clippingIdk == 2)
+				continue;
+
+			sithRender_RenderThing(pThing);
+		}
+
+		sithRender_UpdateLights(backdropSector, 0.0f, 0.0, 0);
+
+		backdropSector = backdropSector->nextBackdropSector;
+	}
+
+	sithCamera_currentCamera->sector = origSector;
+	rdCamera_pCurCamera->view_matrix.scale = viewOriginal.scale;
 }
 #endif
 
@@ -706,17 +737,7 @@ void sithRender_Draw()
 	STD_BEGIN_PROFILER_LABEL();
 
     sithPlayer_SetScreenTint(sithCamera_currentCamera->sector->tint.x, sithCamera_currentCamera->sector->tint.y, sithCamera_currentCamera->sector->tint.z);
-#ifdef FOG
-	if (sithCamera_currentCamera->sector->flags & SITH_SECTOR_UNDERWATER)
-	{
-		rdVector4 fog = { sithCamera_currentCamera->sector->tint.x, sithCamera_currentCamera->sector->tint.y, sithCamera_currentCamera->sector->tint.z, 1.0f };
-		rdSetFog(1, &fog, 0.0f, 10.0f);
-	}
-	else
-	{
-		rdSetFog(sithWorld_pCurrentWorld->fogEnabled, &sithWorld_pCurrentWorld->fogColor, sithWorld_pCurrentWorld->fogStartDepth, sithWorld_pCurrentWorld->fogEndDepth);
-	}
-#endif
+	sithRender_SetCameraFog();
 
 	sithCamera_currentCamera->rdCam.flags &= ~0x1;
 	if ( (sithCamera_currentCamera->sector->flags & 2) != 0 )
@@ -753,15 +774,12 @@ void sithRender_Draw()
     sithRender_sectorsDrawn = 0;
     sithRender_nongeoThingsDrawn = 0;
     sithRender_geoThingsDrawn = 0;
+	sithRender_numSkyPortals = 0;
     rdCamera_ClearLights(rdCamera_pCurCamera);
 
 #ifdef RENDER_DROID2
 	rdSetGlowIntensity(0.4f);
-
-	//if(jkPlayer_enableShadows)
-	//	rdSetAmb (RD_SHADOWS);
-	//else
-	//	rdDisable(RD_SHADOWS);
+	rdSetOverbright(2.0f);
 
 	sithRender_aoFlags = (jkPlayer_enableShadows ? RD_AMBIENT_OCCLUDERS : 0) | (jkPlayer_enableSSAO ? RD_AMBIENT_SCREEN_SPACE : 0);
 	rdSetDecalMode(jkPlayer_enableDecals ? RD_DECALS_ENABLED : RD_DECALS_DISABLED);
@@ -770,35 +788,6 @@ void sithRender_Draw()
 	rdClearLights();
 	rdClearOccluders();
 	rdClearDecals();
-
-	// todo: get this out of here
-	extern int Window_xSize;
-	extern int Window_ySize;
-
-	int32_t tex_w = (int32_t)((double)Window_xSize * jkPlayer_ssaaMultiple);
-	int32_t tex_h = (int32_t)((double)Window_ySize * jkPlayer_ssaaMultiple);
-	tex_w = (tex_w < 320 ? 320 : tex_w);
-	tex_h = tex_w * (float)Window_ySize / Window_xSize;
-	rdViewport(0, 0, tex_w, tex_h);
-
-	rdMatrixMode(RD_MATRIX_PROJECTION);
-	rdIdentity();
-	rdPerspective(rdCamera_pCurCamera->fov, rdCamera_pCurCamera->screenAspectRatio, rdCamera_pCurCamera->pClipFrustum->field_0.y, rdCamera_pCurCamera->pClipFrustum->field_0.z);
-
-	rdMatrixMode(RD_MATRIX_MODEL);
-	rdIdentity();
-
-	sithRender_DrawBackdrop();
-
-	rdRenderPass("sithRender_Draw", 1, RD_RENDERPASS_REFRACTION | RD_RENDERPASS_CLEAR_DEPTH | (jkPlayer_enableSSAO ? RD_RENDERPASS_AMBIENT_OCCLUSION : 0));
-	rdDepthRange(0.0f, 1.0f);
-
-	rdMatrixMode(RD_MATRIX_VIEW);
-	rdIdentity();
-	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
-
-	rdSetCullFlags(1);
-
 #endif
 
     //printf("------\n");
@@ -872,6 +861,37 @@ void sithRender_Draw()
             sithRender_008d409c = 0.0;
         }
     }
+#endif
+
+#ifdef RENDER_DROID2
+	// todo: get this out of here
+	extern int Window_xSize;
+	extern int Window_ySize;
+
+	int32_t tex_w = (int32_t)((double)Window_xSize * jkPlayer_ssaaMultiple);
+	int32_t tex_h = (int32_t)((double)Window_ySize * jkPlayer_ssaaMultiple);
+	tex_w = (tex_w < 320 ? 320 : tex_w);
+	tex_h = tex_w * (float)Window_ySize / Window_xSize;
+	rdViewport(0, 0, tex_w, tex_h);
+
+	rdMatrixMode(RD_MATRIX_PROJECTION);
+	rdIdentity();
+	rdPerspective(rdCamera_pCurCamera->fov, rdCamera_pCurCamera->screenAspectRatio, rdCamera_pCurCamera->pClipFrustum->field_0.y, rdCamera_pCurCamera->pClipFrustum->field_0.z);
+
+	rdMatrixMode(RD_MATRIX_MODEL);
+	rdIdentity();
+
+	if (sithWorld_pCurrentWorld->backdropSector && sithRender_numSkyPortals > 0)
+		sithRender_DrawBackdrop();
+
+	rdRenderPass("sithRender_Draw", 1, RD_RENDERPASS_REFRACTION | RD_RENDERPASS_CLEAR_DEPTH | (jkPlayer_enableSSAO ? RD_RENDERPASS_AMBIENT_OCCLUSION : 0));
+	rdDepthRange(0.0f, 1.0f);
+
+	rdMatrixMode(RD_MATRIX_VIEW);
+	rdIdentity();
+	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
+
+	rdSetCullFlags(1);
 #endif
 
     sithRender_RenderLevelGeometry();
@@ -1013,6 +1033,11 @@ void sithRender_Clip(sithSector *sector, rdClipFrustum *frustumArg, float a3)
 
 				rdCamera_AddLight(rdCamera_pCurCamera, &sithRender_aLights[lightIdx], &center);
 				lightIdx = ++sithRender_numLights;
+			}
+
+			if (sector->surfaces[i].surfaceFlags & (SITH_SURFACE_HORIZON_SKY | SITH_SURFACE_CEILING_SKY))
+			{
+				++sithRender_numSkyPortals;
 			}
 		}
 #endif
@@ -1358,8 +1383,8 @@ void sithRender_DrawSurface(sithSurface* surface)
 		int isWater = 0;
 		if (surface->adjoin && (surface->parent_sector->flags & SITH_SECTOR_UNDERWATER || surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER))
 			isWater = 1;
-		else if (!(surface->parent_sector->flags & SITH_SECTOR_UNDERWATER) && (surface->surfaceFlags & SITH_SURFACE_WATER || surface->surfaceFlags & SITH_SURFACE_PUDDLE || surface->surfaceFlags & SITH_SURFACE_VERYDEEPWATER))
-			isWater = 1;
+		//else if (!(surface->parent_sector->flags & SITH_SECTOR_UNDERWATER) && (surface->surfaceFlags & SITH_SURFACE_WATER || surface->surfaceFlags & SITH_SURFACE_PUDDLE || surface->surfaceFlags & SITH_SURFACE_VERYDEEPWATER))
+			//isWater = 1;
 
 		if (isWater)// if (surface->adjoin && (surface->parent_sector->flags & SITH_SECTOR_UNDERWATER || surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER))//if (surface->adjoin && surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER)
 		{
@@ -1367,9 +1392,9 @@ void sithRender_DrawSurface(sithSurface* surface)
 			rdSetGeoMode(RD_GEOMODE_TEXTURED);
 
 			texMode = RD_TEXTUREMODE_PERSPECTIVE;
-			//rdSetLightMode(RD_LIGHTMODE_SPECULAR);
+			//rdSetLightMode(RD_LIGHTMODE_FULLYLIT);//SPECULAR);
 			rdTexGen(RD_TEXGEN_WATER);
-			if (surface->adjoin)
+			if (surface->adjoin && (surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER))
 				rdTexGenParams(surface->adjoin->sector->tint.x, surface->adjoin->sector->tint.y, surface->adjoin->sector->tint.z, sithTime_curSeconds);
 			else
 				rdTexGenParams(0, 0, 0, sithTime_curSeconds);
@@ -1377,7 +1402,10 @@ void sithRender_DrawSurface(sithSurface* surface)
 			// surface scroll currently causes popping when it loops
 			rdTexOffseti(surface->surfaceInfo.face.clipIdk.x, surface->surfaceInfo.face.clipIdk.y);
 
-			//rdAmbientLightSH(&surface->parent_sector->ambientSH);
+			//if(surface->adjoin)
+			//	rdAmbientLightSH(&surface->adjoin->sector->ambientSH);
+			//else
+			//	rdAmbientLightSH(&surface->parent_sector->ambientSH);
 		}
 		else
 		{
@@ -1490,6 +1518,25 @@ void sithRender_RenderLevelGeometry()
 		rdColormap_SetCurrent(pSector->colormap);
 		//int v68 = pSector->colormap == sithWorld_pCurrentWorld->colormaps;
 		//rdSetProcFaceUserData(pSector->id);
+
+		//if ((pSector->flags & SITH_SECTOR_UNDERWATER) && !(sithCamera_currentCamera->sector->flags & SITH_SECTOR_UNDERWATER))
+		//{
+		//	rdVector4 fog = { pSector->tint.x, pSector->tint.y, pSector->tint.z, 1.0f };
+		//	
+		//	rdVector3 halfFog;
+		//	halfFog.x = fog.x * 0.5f;
+		//	halfFog.y = fog.y * 0.5f;
+		//	halfFog.z = fog.z * 0.5f;
+		//
+		//	fog.x = fog.x - (halfFog.z + halfFog.y);
+		//	fog.y = fog.y - (halfFog.x + halfFog.y);
+		//	fog.z = fog.z - (halfFog.x + halfFog.z);	
+		//	rdSetFog(1, &fog, 0.0f, 2.0f);
+		//}
+		//else
+		//{
+		//	sithRender_SetCameraFog();
+		//}
 
 		sithSurface* surface = pSector->surfaces;
 		for (int v75 = 0; v75 < pSector->numSurfaces; ++surface, v75++)
@@ -1814,6 +1861,8 @@ void sithRender_RenderLevelGeometry()
                     continue;
                 if ( (v65->surfaceFlags & (SITH_SURFACE_HORIZON_SKY|SITH_SURFACE_CEILING_SKY)) != 0 )
                 {
+					++sithRender_numSkySurfacesDrawn;
+
                     geoMode = sithRender_geoMode;
                     if ( sithRender_geoMode > RD_GEOMODE_SOLIDCOLOR)
                         geoMode = RD_GEOMODE_SOLIDCOLOR;
@@ -3023,6 +3072,26 @@ int sithRender_RenderThing(sithThing *pThing)
 #ifdef RENDER_DROID2
 	if (pThing->sector->flags & SITH_SECTOR_UNDERWATER)
 		rdAmbientFlags(sithRender_aoFlags | RD_AMBIENT_CAUSTICS);
+
+	//if ((pThing->sector->flags & SITH_SECTOR_UNDERWATER) && !(sithCamera_currentCamera->sector->flags & SITH_SECTOR_UNDERWATER))
+	//{
+	//	rdVector4 fog = { pThing->sector->tint.x, pThing->sector->tint.y, pThing->sector->tint.z, 1.0f };
+	//	
+	//	rdVector3 halfFog;
+	//	halfFog.x = fog.x * 0.5f;
+	//	halfFog.y = fog.y * 0.5f;
+	//	halfFog.z = fog.z * 0.5f;
+	//
+	//	fog.x = fog.x - (halfFog.z + halfFog.y);
+	//	fog.y = fog.y - (halfFog.x + halfFog.y);
+	//	fog.z = fog.z - (halfFog.x + halfFog.z);
+	//
+	//	rdSetFog(1, &fog, 0.0f, 2.0f);
+	//}
+	//else
+	//{
+	//	sithRender_SetCameraFog();
+	//}
 #endif
 
     ret = rdThing_Draw(&pThing->rdthing, &pThing->lookOrientation);
@@ -3114,6 +3183,27 @@ void sithRender_RenderAlphaSurfaces()
 	{
 		sithSurface* surface = sithRender_aSurfaces[i];
 		sithSector* sector = surface->parent_sector;
+
+		//if ((sector->flags & SITH_SECTOR_UNDERWATER) && !(sithCamera_currentCamera->sector->flags & SITH_SECTOR_UNDERWATER))
+		//{
+		//	rdVector4 fog = { sector->tint.x, sector->tint.y, sector->tint.z, 1.0f };
+		//
+		//	rdVector3 halfFog;
+		//	halfFog.x = fog.x * 0.5f;
+		//	halfFog.y = fog.y * 0.5f;
+		//	halfFog.z = fog.z * 0.5f;
+		//
+		//	fog.x = fog.x - (halfFog.z + halfFog.y);
+		//	fog.y = fog.y - (halfFog.x + halfFog.y);
+		//	fog.z = fog.z - (halfFog.x + halfFog.z);	
+		//	
+		//	rdSetFog(1, &fog, 0.0f, 2.0f);
+		//}
+		//else
+		//{
+		//	sithRender_SetCameraFog();
+		//}
+
 		rdColormap_SetCurrent(sector->colormap);
 		rdSortDistance(rdVector_Dist3(&sithCamera_currentCamera->vec3_1, &sithWorld_pCurrentWorld->vertices[*surface->surfaceInfo.face.vertexPosIdx]));
 		sithRender_DrawSurface(surface);

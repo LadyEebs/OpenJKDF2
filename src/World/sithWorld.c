@@ -264,7 +264,12 @@ sithWorld* sithWorld_New()
 
     result = (sithWorld *)pSithHS->alloc(sizeof(sithWorld));
     if ( result )
+	{
         _memset(result, 0, sizeof(sithWorld));
+#ifdef FOG
+		result->fogLightDir.z = -1.0f;
+#endif
+	}
     return result;
 }
 

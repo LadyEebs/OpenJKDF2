@@ -266,19 +266,13 @@ void rdSetVertexColorMode(int a1)
 #endif
 }
 
-#ifdef FOG
+#if defined(FOG) && !defined(RENDER_DROID2)
 void rdSetFog(int active, const rdVector4* color, float startDepth, float endDepth)
 {
-#ifdef RENDER_DROID2
-	rdSetFogMode(active ? RD_FOG_ENABLED : RD_FOG_DISABLED);
-	rdFogColorf(color->x, color->y, color->z, color->w);
-	rdFogRange(startDepth, endDepth);
-#else
 	rdroid_curFogEnabled = active;
 	rdVector_Copy4(&rdroid_curFogColor, color);
 	rdroid_curFogStartDepth = startDepth;
 	rdroid_curFogEndDepth = endDepth;
-#endif
 }
 #endif
 
@@ -596,6 +590,21 @@ void rdFogColorf(float r, float g, float b, float a)
 	uint32_t ib = stdMath_ClampInt(b * 255, 0, 255);
 	uint32_t ia = stdMath_ClampInt(a * 255, 0, 255);
 	rdFogColor(ir, ig, ib, ia);
+}
+
+void rdFogAnisotropy(float g)
+{
+	rdroid_fogState.anisotropy = g;
+}
+
+void rdFogLightDir(float x, float y, float z)
+{
+	rdVector4 lightDir = {x, y, z, 0.0};
+	rdMatrix_TransformVector44Acc(&lightDir, &rdroid_matrices[RD_MATRIX_VIEW]);
+
+	rdroid_fogState.lightDir.x = lightDir.x;
+	rdroid_fogState.lightDir.y = lightDir.y;
+	rdroid_fogState.lightDir.z = lightDir.z;
 }
 
 // Primitive

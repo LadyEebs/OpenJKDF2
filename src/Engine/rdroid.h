@@ -57,7 +57,7 @@ void rdSetCullFlags(int a1);
 void rdSetProcFaceUserData(int a1);
 void rdSetVertexColorMode(int a1);
 
-#ifdef FOG
+#if defined(FOG) && !defined(RENDER_DROID2)
 void rdSetFog(int active, const rdVector4* color, float startDepth, float endDepth);
 #endif
 
@@ -108,6 +108,8 @@ void rdResetMatrices();
 void rdFogRange(float startDepth, float endDepth);
 void rdFogColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 void rdFogColorf(float r, float g, float b, float a);
+void rdFogAnisotropy(float g);
+void rdFogLightDir(float x, float y, float z);
 
 void rdViewport(float x, float y, float width, float height);
 void rdGetViewport(rdViewportRect* pOut);

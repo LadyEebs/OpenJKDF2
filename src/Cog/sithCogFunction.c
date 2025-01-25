@@ -943,6 +943,13 @@ void sithCogFunction_SetFog(sithCog* ctx)
 	sithWorld_pCurrentWorld->fogColor.x = sithCogExec_PopFlex(ctx);
 	sithWorld_pCurrentWorld->fogEnabled = sithCogExec_PopInt(ctx);
 }
+
+void sithCogFunction_SetFogLightDir(sithCog* ctx)
+{
+	rdVector3 dir;
+	if (sithCogExec_PopVector3(ctx, &dir))
+		sithWorld_pCurrentWorld->fogLightDir = dir;
+}
 #endif
 
 void sithCogFunction_HeapNew(sithCog *ctx)
@@ -1910,6 +1917,7 @@ void sithCogFunction_Startup(void* ctx)
 #endif
 #ifdef FOG
 	sithCogScript_RegisterVerb(ctx, sithCogFunction_SetFog, "setfog");
+	sithCogScript_RegisterVerb(ctx, sithCogFunction_SetFogLightDir, "setfoglightdir");
 #endif
     sithCogScript_RegisterVerb(ctx, sithCogFunction_SetCameraStateFlags, "setcamerastateflags");
     sithCogScript_RegisterVerb(ctx, sithCogFunction_GetCameraStateFlags, "getcamerastateflags");

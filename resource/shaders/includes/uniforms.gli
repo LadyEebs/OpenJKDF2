@@ -39,7 +39,8 @@ layout(std140) uniform fogBlock
 	int   fogEnabled;
 	float fogStart;
 	float fogEnd;
-	int   fogPad0;
+	float fogAnisotropy;
+	vec4  fogLightDir;
 };
 
 // Texture state

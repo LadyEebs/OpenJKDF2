@@ -675,6 +675,47 @@ vec3 PurkinjeShift(vec3 light, float intensity)
     vec3 rgbGain = C * lmsGain * intensity / scale;    
     return rgbGain * lmsr.w + light;
 }
+float HenyeyGreenstein(float g, float costh)
+{
+    return (1.0 - g * g) / (4.0 * 3.141592 * pow(1.0 + g * g - 2.0 * g * costh, 3.0/2.0));
+}
+
+float Schlick(float k, float costh)
+{
+    return (1.0 - k * k) / (4.0 * 3.141592 * pow(1.0 - k * costh, 2.0));
+}
+
+float InScatterDir(vec3 q, vec3 dir, float d)
+{
+   float b = dot(dir, q);
+   float c = dot(q, q) + 0.0005;
+   float s = 1.0 / max(0.001,sqrt(c - b*b));
+   float x = d*s;
+   float y = b*s;
+   float l = s * atan(x/max(0.001,1.+(x+y)*y));
+   return l;
+}
+
+float InScatter(vec3 start, vec3 dir, vec3 lightPos, float d)
+{
+   vec3 q = start - lightPos;
+   return InScatterDir(q, dir, d);
+}
+
+float ChebyshevUpperBound(vec2 Moments, float t)
+{
+	// One-tailed inequality valid if t > Moments.x
+	float p = (t <= Moments.x) ? 1.0 : 0.0;
+	
+	// Compute variance.
+	float Variance = Moments.y - (Moments.x * Moments.x);
+	Variance = max(Variance, 0.0001);
+
+	// Compute probabilistic upper bound.
+	float d = t - Moments.x;
+	float p_max = Variance / (Variance + d * d);
+	return max(p, p_max);
+}
 
 void main(void)
 {
@@ -734,6 +775,7 @@ void main(void)
 
 	vec3 surfaceNormals = normalize(f_normal);
 	vec3 localViewDir = normalize(-viewPos.xyz);
+	float ndotv = dot(surfaceNormals.xyz, localViewDir.xyz);
 	
 	vec3 proc_texcoords = f_uv_nooffset.xyz / f_uv_nooffset.w;
 #ifndef ALPHA_BLEND
@@ -754,24 +796,30 @@ void main(void)
     vec4 emissive = vec4(0.0);
 
 #ifdef REFRACTION
+	vec4 blend_col = vec4(0.0);
 	float disp = 0.0;
 	if (texgen == 3)
 	{
 		float ndotv = dot(surfaceNormals.xyz, localViewDir.xyz);	
 	
 		float fresnel = pow(1.0 - max(ndotv, 0.0), 5.0);
-		float lo = 0.28;//mix(0.4, 0.7, fresnel);
-		float hi = 0.78;//mix(1.4, 1.1, fresnel);
+		float lo = 0.27;//mix(0.4, 0.7, fresnel);
+		float hi = 0.77;//mix(1.4, 1.1, fresnel);
 	
 	   // float p = getwaves(proc_texcoords.xy, 20, texgen_params.w);
 		
 		vec4 s0, s1, s2, s3;
 		vec4 e0, e1, e2, e3;
-		sample_color( adj_texcoords.xy * 1.0/* + 0.1 * texgen_params.w*/, mipBias, s0, e0);
-		sample_color( adj_texcoords.xy * 0.5 + uv_offset.xy/* + 0.1 * texgen_params.w*/, mipBias, s1, e1);
-		sample_color( adj_texcoords.xy * 0.6 + uv_offset.xy * 1.5/* + 0.1 * texgen_params.w*/, mipBias, s2, e2);
-		sample_color( adj_texcoords.xy * 0.3 + uv_offset.xy * 0.8/* + 0.1 * texgen_params.w*/, mipBias, s3, e3);
+		//sample_color( adj_texcoords.xy * 1.0, mipBias, s0, e0);
+		//sample_color( adj_texcoords.yx * 0.5, mipBias, s1, e1);
+		//sample_color( adj_texcoords.xy * 0.5, mipBias, s2, e2);
+		//sample_color( adj_texcoords.yx * 0.25, mipBias, s3, e3);
 		
+		sample_color( adj_texcoords.xy *  1.0 + 0.2 * texgen_params.w, mipBias, s0, e0);
+		sample_color( adj_texcoords.xy *  0.5 - 0.1 * texgen_params.w, mipBias, s1, e1);
+		sample_color( adj_texcoords.xy *  0.5 + 0.2 * texgen_params.w, mipBias, s2, e2);
+		sample_color( adj_texcoords.xy * 0.25 - 0.1 * texgen_params.w, mipBias, s3, e3);
+
 		//s0.rgb /= max(vec3(0.01), fillColor.rgb);
 		//s1.rgb /= max(vec3(0.01), fillColor.rgb);
 		//s2.rgb /= max(vec3(0.01), fillColor.rgb);
@@ -787,14 +835,20 @@ void main(void)
 		float h = dot(s2.rgb + s3.rgb, vec3(0.3333)) * 0.5;
 		if (p + h > hi)
 			alpha = 0.8;
-        
-		adj_texcoords.xy += (p-0.5) * 0.1;
 
-		disp = (s0.y - fillColor.y) * 2.0;
+		//blend_col.rgb = (s0.rgb + s1.rgb + s2.rgb + s3.rgb) * 0.25;
+
+		disp = (s0.y - fillColor.y) * 2.0;		        
+		adj_texcoords.xy += disp * 0.5 * f_depth * 128.0;
+
+		//sampled_color.rgb = (s0.rgb + s1.rgb) * 0.5;
 		sampled_color.rgb = vec3(p);
 		//sample_color(adj_texcoords.xy, mipBias, sampled_color, emissive);
 		//sampled_color.rgb = sampled_color.rgb * p + h * fillColor.rgb;
 		vertex_color.w = alpha;
+
+		blend_col = (s0 + s1) * 0.5;
+		//sample_color(adj_texcoords.xy, mipBias, blend_col, e0);
 	}
 	else
 #endif
@@ -807,7 +861,7 @@ void main(void)
 	{
 		// temp hack, mat16 doesn't output fill correctly
 		if (tex_mode == TEX_MODE_16BPP || tex_mode == TEX_MODE_BILINEAR_16BPP)
-			emissive.xyz *= 0.5;
+			emissive.xyz *= 0.75;
 		else
 			emissive.xyz *= fillColor.xyz * 0.5;
 	}
@@ -873,6 +927,8 @@ void main(void)
 	if(numDecals > 0u)
 		BlendDecals(diffuseColor.xyz, emissive.xyz, bucket_index, viewPos.xyz, surfaceNormals);
 
+	vec3 fogLight = vec3(1.0);
+
 #ifndef UNLIT
 	#ifdef SPECULAR
 		// let's make it happen cap'n
@@ -913,13 +969,12 @@ void main(void)
 		//float w = mix(water_caustics(pos), water_caustics(pos + 1.), 0.5);
 		//ao *= exp(w * 4.0 - 1.0) * 0.5 + 0.5;
 
-		float w = pow(getwaves2(vec3(pos.xyz * 50.0)), 3.0);
-		ao *= w * 2.0 + 0.5;
+		float w = pow(getwaves2(vec3(pos.xyz * 64.0)), 3.0);
+		ao *= w + 0.75;
 	}
 
 	diffuseLight.xyz *= ao;
 
-	float ndotv = dot(surfaceNormals.xyz, localViewDir.xyz);
 	vec3 specAO = mix(ao * ao, vec3(1.0), clamp(-0.3 * ndotv * ndotv, 0.0, 1.0));
 	specularLight.xyz *= specAO;
 
@@ -974,6 +1029,11 @@ void main(void)
     //}
 	//else
 	{
+	#ifdef REFRACTION
+		blend_col.rgb = fillColor.rgb;
+		blend_col.rgb *= diffuseLight.xyz;
+		//blend_col.rgb = diffuseLight.xyz;
+	#endif
 		diffuseLight.xyz *= diffuseColor.xyz;
 		//diffuseLight.xyz = (PurkinjeShift(diffuseLight.xyz, 1.0));
 
@@ -985,6 +1045,14 @@ void main(void)
 		//float lum = luminance(diffuseLight.xyz);
 		//diffuseLight.xyz = mix(vec3(lum), diffuseLight.xyz, min(1.0, lum0 * lum0 * 4.0));
 	}
+
+	//emissive.rgb += max(vec3(0.0), diffuseLight.rgb - 1.0);
+
+	// everything over 1.0 gets mapped back down
+
+	//diffuseLight.r = rolloff(diffuseLight.r, 1.0, 0.2);
+	//diffuseLight.g = rolloff(diffuseLight.g, 1.0, 0.2);
+	//diffuseLight.b = rolloff(diffuseLight.b, 1.0, 0.2);
 
 	vec4 main_color = (vec4(diffuseLight.xyz, vertex_color.w) + vec4(specularLight.xyz, 0.0));// * vec4(sampled_color.xyz, 1.0);   
 
@@ -1005,27 +1073,13 @@ void main(void)
 #endif
 
 	
-#ifdef FOG
-	if(fogEnabled > 0)
-	{
-		float distToCam = length(-viewPos.xyz);
-		float fog_amount = clamp((distToCam - fogStart) / (fogEnd - fogStart), 0.0, 1.0);
-		fog_amount *= fogColor.a;
-
-		main_color.rgb = mix(main_color.rgb, fogColor.rgb, fog_amount);
-		emissive.rgb = mix(emissive.rgb, emissive.rgb, fog_amount);
-	}
-#endif
-
-    fragColor = main_color;
-
 #ifdef REFRACTION
 	//if (texgen == 3)
 	{
 		//float sceneDepth = texture(ztex, screenUV).r;
 		float softIntersect = 1.0;//clamp((sceneDepth - f_depth) / -localViewDir.y * 500.0, 0.0, 1.0);
 		
-		disp *= min(0.05, 0.0001 / f_depth) * softIntersect;
+		disp *= min(0.05, 0.0001 / f_depth);// * softIntersect;
 
 		vec2 refrUV = screenUV + disp;
 		
@@ -1037,30 +1091,159 @@ void main(void)
 			refrDepth = texture(ztex, screenUV).r;
 		}
 
-		vec3 refr = texture(refrtex, refrUV).rgb;
-		if(refrDepth < 0.9999)
+		float waterStart = f_depth * 128.0;
+		float waterEnd = refrDepth * 128.0;
+		float waterDepth = (waterEnd - waterStart);// / -localViewDir.y;			
+	
+		//vec3 refr = vec3(0.0);// textureLod(refrtex, refrUV, min(waterDepth * 4.0, 6.0)).rgb;
+		//		
+		//float distToCam = max(0.0, f_depth * 128.0) / -localViewDir.y;
+		//float fog_amount = 1.0 - exp(-distToCam * 2.5);
+		//
+		//float s = 0.0;
+		//float w;
+		//float l = fog_amount;//(waterDepth * 1.0); 
+		//for (float i = 0.; i < 9.0; i++)
+		//{
+		//	w = pow(l, i);
+		//	refr += w * textureLod(refrtex, refrUV, i).rgb;
+		//	s += w;
+		//}
+		//refr = refr / s;
+		
+		vec3 refr = textureLod(refrtex, refrUV, 0).rgb;
+
+		//if(refrDepth < 0.9999)
+		if ((aoFlags & 0x4) != 0x4)
 		{
-			float waterStart = f_depth * 128.0;
-			float waterEnd = refrDepth * 128.0;
-			float waterFogAmount = clamp((waterEnd - waterStart) / (10.0), 0.0, 1.0);
-			refr.rgb = mix(refr.rgb, fillColor.rgb, softIntersect * waterFogAmount);
+			float waterFogAmount = clamp(waterDepth / (2.0), 0.0, 1.0);
+			//vec3 waterFogColor = exp(-(1.0 / (texgen_params.rgb * texgen_params.rgb)) * (3.0 * waterDepth + 0.5));
+			//float waterFogAmount = 1.0 - exp(-waterDepth * 2.0);
+
+			vec3 waterFogColor = texgen_params.rgb;
+		
+		//	float ndotv = -dot(localViewDir, -surfaceNormals);
+		//
+		//	float k = -0.85;
+		//	//waterFogColor *= (1.0 - k * k) / (pow(1.0 - k * -ndotv, 2.0)); // modified schlick phase
+		//	//waterFogColor *= 8.0 * 3.0 / (16.0 * 3.141592) * (1.0 + ndotv * ndotv); // modified rayleigh phase
+		//	//waterFogColor *= abs(ndotv) * 0.8 + 0.2;
+		//
+		//	vec3 fogLight = vec3(0.0);
+		//	for (int i = 0; i < 8; ++i)
+		//	{			
+		//		//fogLight += ambientSG[i].xyz * InScatterDir(ambientSGBasis[i].xyz, localViewDir, waterDepth);
+		//		float ldotv = dot(ambientSGBasis[i].xyz, localViewDir);
+		//		float phase = (1.0 - k * k) / (4.0 * 3.141592 * pow(1.0 - k * ldotv, 2.0));
+		//		fogLight += vec3(phase);
+		//	}
+		//	waterFogColor *= fogLight * blend_col.rgb;// * 0.128;
+
+			vec3 half_color = waterFogColor.rgb * 0.5;
+			waterFogColor = waterFogColor.rgb - (half_color.brr + half_color.ggb);
+
+			if(fogLightDir.w > 0.0)
+				waterFogColor *= 4.0*3.141592*Schlick(0.35, dot(fogLightDir.xyz, localViewDir));
+
+			if ( any( greaterThan(waterFogColor, vec3(0.0)) ) )
+				refr.rgb = mix(refr.rgb, waterFogColor.rgb, waterFogAmount);
+
+			//vec3 waterFogColor = texgen_params.rgb * 0.5;
+			//vec3 absorption = (1.0 / texgen_params.rgb);
+			//waterFogColor = exp(-absorption * waterDepth);
+
+			//vec3 absorbance = (1.0/waterFogColor) * -waterDepth;
+			//vec3 transmittance = exp(absorbance * 0.1);
+			//
+			//refr.rgb = refr.rgb * transmittance + waterFogColor;
+
+			vec3 extColor = exp(-waterDepth * vec3(3.0));
+			vec3 insColor = exp(-waterDepth * vec3(1.0));
+			//refr = refr * extColor + waterFogColor * (1.0 - insColor);
+
+			//float waterFogAmount = 1.0 - exp(-waterDepth * 10.0);
+			//refr.rgb = mix(refr.rgb, waterFogColor.rgb, waterFogAmount);
 		}
 		
-		vec3 tint = fillColor.rgb * softIntersect;
+		vec3 tint = texgen_params.rgb;
 		vec3 half_tint = tint.rgb * 0.5;
 		vec3 tint_delta = tint.rgb - (half_tint.brr + half_tint.ggb);
 		refr.rgb = clamp(tint_delta.rgb * refr.rgb + refr.rgb, vec3(0.0), vec3(1.0));
 
-		float alpha = fragColor.w * softIntersect;
-		fragColor.rgb = fragColor.rgb * alpha + refr.rgb;
-		fragColor.w = 1.0;
+		float texalpha = 90.0 / 255.0;//mix(90.0, 180.0, min(1.0, waterDepth * 0.1)) / 255.0;
+		//refr.rgb = mix(refr.rgb, blend_col.rgb, texalpha);
+
+		//refr.rgb = mix(refr.rgb, blend_col.rgb, (1.0 - texalpha) * softIntersect);
+
+		float alpha = main_color.w;// + (1.0-softIntersect);
+		main_color.rgb = main_color.rgb * alpha + refr.rgb;
+		main_color.w = 1.0;
+	}
+#endif
+	
+	float clipDepth = texture(cliptex, screenUV).r;
+
+#ifdef FOG
+	if(fogEnabled > 0)
+	{
+		float distToCam = max(0.0, f_depth * 128.0 - clipDepth * 128.0) / -localViewDir.y;
+		//float fog_amount = 1.0 - exp(-distToCam * 2.5);
+		float fog_amount = clamp((distToCam - fogStart) / (fogEnd - fogStart), 0.0, 1.0);
+		fog_amount *= fogColor.a;
+
+		//float k = -0.75;
+		//for (int i = 0; i < 8; ++i)
+		//{			
+		//	//fogLight += ambientSG[i].xyz * InScatterDir(ambientSGBasis[i].xyz, localViewDir, waterDepth);
+		//	float ldotv = dot(ambientSGBasis[i].xyz, localViewDir);
+		//	float phase = (1.0 - k * k) / ( pow(1.0 - k * ldotv, 2.0));
+		//	fogLight += vec3(phase);
+		//}
+		//
+		//for (int i = 0; i < numLights; ++i)
+		//{
+		//	light l = lights[i];
+		//
+		//	//float atten = 1.0 / (l.falloffMin * l.direction_intensity.w);	
+		//	//vec3 c = atten * ( l.position.xyz );
+		//	//vec3 d = atten * viewPos.xyz;
+		//	//
+		//	//float u = dot( c, c ) + 1;
+		//	//float v = -2.0 * dot( c, d );
+		//	//float w =  dot( d, d );
+		//	//float div = 1.0 / sqrt( 4 * u * w - v * v );	
+		//	//		
+		//	//vec2 atan_res = atan( vec2( v + 2 * w, v ) * div );
+		//	//float inscatter = sqrt( w ) * 2.0 * ( atan_res.x - atan_res.y ) * div; 
+		//
+		//	vec3 eye = -l.position.xyz;
+		//
+		//	float mid = -dot(eye, -localViewDir);
+		//	float root = sqrt(max(0,mid * mid + l.falloffMin * l.falloffMin - dot(eye, eye)));
+		//
+		//	float d = max(0, min(mid + root, length(viewPos.xyz)) - max(mid - root, 0));
+		//
+		//	float inscatter = InScatterDir(-l.position.xyz, -localViewDir, d);
+		//	fogLight += l.color.xyz * l.direction_intensity.w * inscatter;
+		//}
+
+		vec3 fog_color = fogColor.rgb;// * fogLight / (4.0 * 3.141592);
+		//vec3 half_color = fog_color.rgb * 0.5;
+		//fog_color = fog_color.rgb - (half_color.brr + half_color.ggb);
+
+		if(fogLightDir.w > 0.0)
+			fog_color *= 4.0*3.141592*Schlick(fogAnisotropy, dot(fogLightDir.xyz, localViewDir));
+
+		main_color.rgb = mix(main_color.rgb, fog_color.rgb+dither, fog_amount);
+		emissive.rgb = mix(emissive.rgb, emissive.rgb, fog_amount);
 	}
 #endif
 
+    fragColor = main_color;
+
 //#if defined(ALPHA_BLEND) || defined(ALPHA_DISCARD)
 	// todo: this is killing early-z for all the passes...
-	float clipDepth = texture(cliptex, screenUV).r;
-	if (clipDepth > f_depth)
+	if (clipDepth >= f_depth)
 		discard;
 //#endif
 

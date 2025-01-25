@@ -919,9 +919,11 @@ static_assert(sizeof(std3D_DrawCallStateBits) == sizeof(uint32_t), "std3D_DrawCa
 
 typedef struct std3D_FogState
 {
-	uint32_t color;
-	float    startDepth;
-	float    endDepth;
+	uint32_t  color;
+	float     startDepth;
+	float     endDepth;
+	float     anisotropy;
+	rdVector3 lightDir;
 } std3D_FogState;
 
 typedef struct std3D_MaterialState
@@ -2379,6 +2381,7 @@ typedef struct sithWorld
 	rdVector4 fogColor;
 	float fogStartDepth;
 	float fogEndDepth;
+	rdVector3 fogLightDir;
 #endif
     sithThing* cameraFocus;
     sithThing* playerThing;

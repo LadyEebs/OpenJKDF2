@@ -196,7 +196,8 @@ typedef struct std3D_FogUniforms
 	int32_t   fogEnabled;
 	float     fogStartDepth;
 	float     fogEndDepth;
-	float     fogPad0;
+	float     fogAnisotropy;
+	rdVector4 fogLightDir;
 } std3D_FogUniforms;
 
 GLuint fog_ubo;
@@ -864,6 +865,7 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//_MIPMAP_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glGenerateMipmap(GL_TEXTURE_2D);
 	
 	// Attach fbTex to our currently bound framebuffer fb
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pFb->ztex, 0);
@@ -3104,13 +3106,15 @@ void std3D_DrawSimpleTex(std3DSimpleTexStage* pStage, std3DIntermediateFbo* pFbo
     glUniform1f(pStage->uniform_param2, param2);
     glUniform1f(pStage->uniform_param3, param3);
 
-	glUniform3fv(pStage->uniform_rt, 1, (float*)&rdCamera_pCurCamera->pClipFrustum->rt);
-	glUniform3fv(pStage->uniform_lt, 1, (float*)&rdCamera_pCurCamera->pClipFrustum->lt);
-	glUniform3fv(pStage->uniform_rb, 1, (float*)&rdCamera_pCurCamera->pClipFrustum->rb);
-	glUniform3fv(pStage->uniform_lb, 1, (float*)&rdCamera_pCurCamera->pClipFrustum->lb);
+	//glUniform3fv(pStage->uniform_rt, 1, (float*)&rdCamera_pCurCamera->pClipFrustum->rt);
+	//glUniform3fv(pStage->uniform_lt, 1, (float*)&rdCamera_pCurCamera->pClipFrustum->lt);
+	//glUniform3fv(pStage->uniform_rb, 1, (float*)&rdCamera_pCurCamera->pClipFrustum->rb);
+	//glUniform3fv(pStage->uniform_lb, 1, (float*)&rdCamera_pCurCamera->pClipFrustum->lb);
     }
     
 	glDrawArrays(GL_TRIANGLES, 0, 3);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	std3D_popDebugGroup();
 }
@@ -4342,6 +4346,11 @@ void std3D_SetFogState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 	fog.fogEnabled = pState->stateBits.fogMode;
 	fog.fogStartDepth = pState->fogState.startDepth;
 	fog.fogEndDepth = pState->fogState.endDepth;
+	fog.fogAnisotropy = pState->fogState.anisotropy;
+	fog.fogLightDir.x = pState->fogState.lightDir.x;
+	fog.fogLightDir.y = pState->fogState.lightDir.y;
+	fog.fogLightDir.z = pState->fogState.lightDir.z;
+	fog.fogLightDir.w = rdVector_Normalize3Acc((rdVector3*)&fog.fogLightDir) > 0.0;
 
 	float a = ((pState->fogState.color >> 24) & 0xFF) / 255.0f;
 	float r = ((pState->fogState.color >> 16) & 0xFF) / 255.0f;
@@ -4606,7 +4615,7 @@ uint16_t* std3D_SortDrawCallIndices(std3D_DrawCallList* pList)
 void std3D_SortDrawCallList(std3D_DrawCallList* pList, std3D_SortFunc sortFunc)
 {
 	STD_BEGIN_PROFILER_LABEL();
-	if(!pList->bSorted)
+	//if(!pList->bSorted)
 		_qsort(pList->drawCallPtrs, pList->drawCallCount, sizeof(std3D_DrawCall*), (int(__cdecl*)(const void*, const void*))sortFunc);
 	pList->bSorted = 1;
 	STD_END_PROFILER_LABEL();
@@ -5063,6 +5072,11 @@ void std3D_FlushDrawCalls()
 
 			// draw color with clipping against the water depth and stencil
 			std3D_FlushColorDrawCallsRefraction(pRenderPass);
+
+			// generate the mip chain
+			//glActiveTexture(GL_TEXTURE0 + TEX_SLOT_REFRACTION);
+			//glBindTexture(GL_TEXTURE_2D, refr.tex);
+			//glGenerateMipmap(GL_TEXTURE_2D);
 
 			// draw refraction surfaces
 			std3D_FlushRefractionDrawCalls(pRenderPass);
