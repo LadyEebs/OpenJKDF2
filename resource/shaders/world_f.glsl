@@ -1253,6 +1253,10 @@ void main(void)
 
 #ifndef ALPHA_BLEND
     fragColorEmiss = emissive * vec4(vec3(emissiveFactor.w), f_color.w);
+
+	// always dither emissive since it gets bloomed
+	// note we subtract instead of add to avoid boosting blacks
+	fragColorEmiss.rgb = min(fragColorEmiss.rgb - dither, vec3(1.0));
 #else
     // Dont include any windows or transparent objects in emissivity output
 	fragColorEmiss = vec4(0.0, 0.0, 0.0, fragColor.w);
