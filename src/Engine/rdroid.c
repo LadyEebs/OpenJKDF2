@@ -827,7 +827,7 @@ int rdBindMaterial(rdMaterial* pMaterial, int cel)
 
 			rdroid_materialState.albedo = RD_PACK_COLOR8F(rdroid_textureState.pTexture->albedo_factor[0], rdroid_textureState.pTexture->albedo_factor[1], rdroid_textureState.pTexture->albedo_factor[2], rdroid_textureState.pTexture->albedo_factor[3]);
 			rdroid_materialState.emissive = (rdroid_materialState.emissive & 0xFF000000) | emissive_rgb;
-			rdroid_materialState.displacement = 0.0f;
+			rdroid_materialState.displacement = rdroid_textureState.pTexture->displacement_factor;
 		}
 		else
 		{
