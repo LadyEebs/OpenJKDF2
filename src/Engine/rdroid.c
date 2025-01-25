@@ -45,6 +45,7 @@ static const rdDirtyBit rdroid_matrixBit[3] =
 
 // todo: completely remove this in favor of a light type
 rdVector4 rdroid_sgBasis[8];
+float    rdroid_overbright = 1.0f;
 
 void rdUpdateDirtyState();
 
@@ -127,7 +128,7 @@ void rdResetLightingState()
 {
 	rdroid_stateBits.lightMode = RD_LIGHTMODE_GOURAUD;
 	memset(&rdroid_lightingState, 0, sizeof(rdroid_lightingState));
-
+	rdroid_overbright = 1.0f;
 	//rdVector_Zero3(&rdroid_lightingState.ambientColor);
 	//rdAmbient_Zero(&rdroid_lightingState.ambientLobes);
 }
@@ -669,10 +670,25 @@ void rdVertex3v(const float* v)
 
 void rdColor4f(float r, float g, float b, float a)
 {
-	uint32_t ir = stdMath_ClampInt(r * 255, 0, 255);
-	uint32_t ig = stdMath_ClampInt(g * 255, 0, 255);
-	uint32_t ib = stdMath_ClampInt(b * 255, 0, 255);
-	uint32_t ia = stdMath_ClampInt(a * 255, 0, 255);
+	float scale = 255.0f / rdroid_overbright;
+	r *= scale;
+	g *= scale;
+	b *= scale;
+	a *= 255.0f;
+
+	float m = fmax(r, fmax(g, b));
+	if (m > 255.0)
+	{
+		float inv = 255.0f / m;
+		r *= inv;
+		b *= inv;
+		g *= inv;
+	}
+
+	uint32_t ir = stdMath_ClampInt(r, 0, 255);
+	uint32_t ig = stdMath_ClampInt(g, 0, 255);
+	uint32_t ib = stdMath_ClampInt(b, 0, 255);
+	uint32_t ia = stdMath_ClampInt(a, 0, 255);
 	rdroid_vertexColorState = RD_PACK_COLOR8(ir, ig, ib, ia);
 }
 
@@ -993,8 +1009,13 @@ void rdSetDecalMode(rdDecalMode_t mode)
 
 }
 
+void rdSetOverbright(float overbright)
+{
+	rdroid_overbright = stdMath_Clamp(overbright, 0.1f, 4.0f);
+}
+
 // Lighting
-int std3D_AddLight(rdLight* light, rdVector3* viewPosition);
+int std3D_AddLight(rdLight* light, rdVector3* viewPosition, float intensity);
 int rdAddLight(rdLight* pLight, rdVector3* pPosition)
 {
 	rdVector4 pos4;
@@ -1003,7 +1024,7 @@ int rdAddLight(rdLight* pLight, rdVector3* pPosition)
 
 	rdVector4 viewPos;
 	rdMatrix_TransformPoint44(&viewPos, &pos4, &rdroid_matrices[RD_MATRIX_VIEW]);
-	return std3D_AddLight(pLight, (rdVector3*)&viewPos);
+	return std3D_AddLight(pLight, (rdVector3*)&viewPos, 1.0f / rdroid_overbright);
 }
 
 void std3D_ClearLights();
@@ -1075,9 +1096,23 @@ void rdAmbientFlags(uint32_t flags)
 
 void rdAmbientLight(float r, float g, float b)
 {
-	uint32_t ir = stdMath_ClampInt(r * 255, 0, 1023);
-	uint32_t ig = stdMath_ClampInt(g * 255, 0, 1023);
-	uint32_t ib = stdMath_ClampInt(b * 255, 0, 1023);
+	float scale = 255.0f / rdroid_overbright; // still rgb8, but with 4x the dynamic range
+	r *= scale;
+	g *= scale;
+	b *= scale;
+
+	float m = fmax(r, fmax(g, b));
+	if (m > 1023.0)
+	{
+		float inv = 255.0f / m;
+		r *= inv;
+		b *= inv;
+		g *= inv;
+	}
+
+	uint32_t ir = stdMath_ClampInt(r, 0, 1023);
+	uint32_t ig = stdMath_ClampInt(g, 0, 1023);
+	uint32_t ib = stdMath_ClampInt(b, 0, 1023);
 	rdroid_lightingState.ambientColor = RD_PACK_COLOR10(ir, ig, ib, 0);
 }
 
@@ -1089,12 +1124,26 @@ void rdAmbientLightSH(rdAmbient* amb)
 		return;
 	}
 
+	float scale = 255.0f / rdroid_overbright; // still rgb8, but with 4x the dynamic range
 	for(int i = 0; i < 8; ++i)
 	{
-		uint32_t r = stdMath_ClampInt(amb->sgs[i].x * 255, 0, 1023);
-		uint32_t g = stdMath_ClampInt(amb->sgs[i].y * 255, 0, 1023);
-		uint32_t b = stdMath_ClampInt(amb->sgs[i].z * 255, 0, 1023);
-		rdroid_lightingState.ambientLobes[i] = RD_PACK_COLOR10(r, g, b, 0);
+		float r = amb->sgs[i].x * scale;
+		float g = amb->sgs[i].y * scale;
+		float b = amb->sgs[i].z * scale;
+
+		float m = fmax(r, fmax(g, b));
+		if (m > 1023.0)
+		{
+			float inv = 255.0f / m;
+			r *= inv;
+			b *= inv;
+			g *= inv;
+		}
+
+		uint32_t ir = stdMath_ClampInt(r, 0, 1023);
+		uint32_t ig = stdMath_ClampInt(g, 0, 1023);
+		uint32_t ib = stdMath_ClampInt(b, 0, 1023);
+		rdroid_lightingState.ambientLobes[i] = RD_PACK_COLOR10(ir, ig, ib, 0);
 	}
 }
 

@@ -4273,7 +4273,8 @@ void std3D_UpdateSharedUniforms()
 
 	uniforms.fade = sithTime_curSeconds;
 
-	uniforms.lightMult = 1.0;//jkGuiBuildMulti_bRendering ? 0.85 : (jkPlayer_enableBloom ? 0.9 : 0.85);
+	extern float rdroid_overbright;
+	uniforms.lightMult = 1.0f / rdroid_overbright;//jkGuiBuildMulti_bRendering ? 0.85 : (jkPlayer_enableBloom ? 0.9 : 0.85);
 	
 	rdVector_Set2(&uniforms.clusterTileSizes, (float)tileSizeX, (float)tileSizeY);
 	rdVector_Set2(&uniforms.clusterScaleBias, sliceScalingFactor, sliceBiasFactor);	
@@ -5100,7 +5101,7 @@ void std3D_ClearLights()
 	lightUniforms.numLights = 0;
 }
 
-int std3D_AddLight(rdLight* light, rdVector3* position)
+int std3D_AddLight(rdLight* light, rdVector3* position, float intensity)
 {
 	if(lightUniforms.numLights >= CLUSTER_MAX_LIGHTS || !light->active)
 		return 0;
@@ -5116,10 +5117,10 @@ int std3D_AddLight(rdLight* light, rdVector3* position)
 	light3d->direction_intensity.x = light->direction.x;
 	light3d->direction_intensity.y = light->direction.y;
 	light3d->direction_intensity.z = light->direction.z;
-	light3d->direction_intensity.w = light->intensity;
-	light3d->color.x = light->color.x;
-	light3d->color.y = light->color.y;
-	light3d->color.z = light->color.z;
+	light3d->direction_intensity.w = light->intensity * intensity;
+	light3d->color.x = light->color.x * intensity;
+	light3d->color.y = light->color.y * intensity;
+	light3d->color.z = light->color.z * intensity;
 	light3d->color.w = fmin(light->color.x, fmin(light->color.y, light->color.z));
 #ifdef JKM_LIGHTING
 	light3d->angleX = light->angleX;

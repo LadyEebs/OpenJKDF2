@@ -932,7 +932,7 @@ void main(void)
 	if (numLights > 0u)
 		CalculatePointLighting(bucket_index, lightMode, f_coord.xyz, surfaceNormals, localViewDir, shadows, diffuseColor.xyz, specularColor.xyz, roughness, diffuseLight, specularLight);
 	
-	diffuseLight.xyz = clamp(diffuseLight.xyz, vec3(0.0), vec3(1.0));	
+	//diffuseLight.xyz = clamp(diffuseLight.xyz, vec3(0.0), vec3(1.0));	
 	//specularLight.xyz = clamp(specularLight.xyz, vec3(0.0), vec3(1.0));	
 
 	// taper off
@@ -951,6 +951,12 @@ void main(void)
 	
 	//diffuseLight.xyz *= diffuseColor.xyz;
 	//specularLight.xyz *= specularColor.xyz;
+
+	diffuseLight *= 1.0 / light_mult;
+
+	//float imax = max( diffuseLight.r, max( diffuseLight.g, diffuseLight.b ) );
+	//if(imax > 1.0)
+	//	diffuseLight.rgb *= 1.0 / imax;
 
 	//if (tex_mode == TEX_MODE_WORLDPAL
     //|| tex_mode == TEX_MODE_BILINEAR

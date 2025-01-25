@@ -167,6 +167,8 @@ void rdTexClampMode(int modeU, int modeV);
 void rdTexOffset(float u, float v);
 void rdTexOffseti(float u, float v);
 
+void rdSetOverbright(float overbright);
+
 int rdAddLight(rdLight* pLight, rdVector3* pPosition);
 void rdAddOccluder(rdVector3* position, float radius);
 void rdAddDecal(rdDecal* decal, rdMatrix34* matrix, rdVector3* color, rdVector3* scale, float angleFade);

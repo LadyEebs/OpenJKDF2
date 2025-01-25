@@ -69,7 +69,7 @@ void main(void)
 
 #ifdef UNLIT
 	if (lightMode == 0)
-		f_light = 1.0;
+		f_light = light_mult;
 	else
 		f_light = 0.0;
 #else
@@ -80,7 +80,7 @@ void main(void)
 
 #ifdef UNLIT
 	if(lightMode == 0) // full lit
-		f_color.xyz = vec3(1.0);
+		f_color.xyz = vec3(light_mult);
 	else if(lightMode == 1) // not lit
 		f_color.xyz = vec3(0.0);
 #else

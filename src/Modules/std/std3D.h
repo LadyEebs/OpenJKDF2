@@ -16,7 +16,7 @@ extern int std3D_bReinitHudElements;
 void std3D_BlitFramebuffer(int x, int y, int width, int height, void* pixels);
 
 void std3D_ClearLights();
-int std3D_AddLight(rdLight* light, rdVector3* viewPosition);
+int std3D_AddLight(rdLight* light, rdVector3* viewPosition, float intensity);
 void std3D_ClearOccluders();
 void std3D_ClearDecals();
 void std3D_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallState, rdVertex* paVertices, int numVertices);
