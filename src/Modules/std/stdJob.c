@@ -43,6 +43,7 @@ typedef struct stdJobSystem
 	SDL_cond*         wakeCondition;
 	SDL_atomic_t      currentLabel;
 	SDL_atomic_t      finishedLabel;
+	SDL_atomic_t      quit; // lazy way to quit
 } stdJobSystem;
 
 typedef struct stdJobGroupArgs
@@ -167,6 +168,9 @@ void stdJob_WorkerThread(void* param)
 	stdJob* job = NULL;
 	while (1)
 	{
+		if(SDL_AtomicGet(&stdJob_jobSystem.quit))
+			break;
+
 		if (stdJob_PopRingBuffer(&jobs->jobPool, &job))
 		{
 			job->function(job->args); // Execute job
@@ -179,7 +183,8 @@ void stdJob_WorkerThread(void* param)
 			SDL_CondWait(jobs->wakeCondition, jobs->wakeMutex);
 			SDL_UnlockMutex(jobs->wakeMutex);
 		}
-	}}
+	}
+}
 
 void stdJob_TestJob(void* data)
 {
@@ -190,6 +195,7 @@ void stdJob_Startup()
 {
 	SDL_AtomicSet(&stdJob_jobSystem.finishedLabel, 0);
 	SDL_AtomicSet(&stdJob_jobSystem.currentLabel, 0);
+	SDL_AtomicSet(&stdJob_jobSystem.quit, 0);
 
 	int cores = SDL_GetCPUCount();
 	uint32_t numCores = (cores > 0) ? (uint32_t)cores : 1;
@@ -240,10 +246,15 @@ void stdJob_Startup()
 
 void stdJob_Shutdown()
 {
-	stdJob_FreeRingBuffer(&stdJob_jobSystem.jobPool);
+	SDL_AtomicSet(&stdJob_jobSystem.quit, 1);
 
-	for (uint32_t i = 0; i < stdJob_jobSystem.numThreads; ++i)
-		SDL_WaitThread(stdJob_jobSystem.workerThreads[i], NULL); // Wait for thread to finish
+	stdJob_Wait();
+	//SDL_CondSignal(stdJob_jobSystem.wakeCondition); // Signal workers
+
+	//for (uint32_t i = 0; i < stdJob_jobSystem.numThreads; ++i)
+		//SDL_WaitThread(stdJob_jobSystem.workerThreads[i], NULL); // Wait for thread to finish
+
+	stdJob_FreeRingBuffer(&stdJob_jobSystem.jobPool);
 
 	SDL_DestroyMutex(stdJob_jobSystem.wakeMutex);
 	SDL_DestroyCond(stdJob_jobSystem.wakeCondition);
