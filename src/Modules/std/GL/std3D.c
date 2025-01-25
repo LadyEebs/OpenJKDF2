@@ -404,10 +404,29 @@ void std3D_initDrawList(std3D_DrawCallList* pList)
 
 void std3D_freeDrawList(std3D_DrawCallList* pList)
 {
-	free(pList->drawCalls);
-	free(pList->drawCallIndices);
-	free(pList->drawCallVertices);
-	free(pList->drawCallPtrs);
+	if (pList->drawCalls)
+	{
+		free(pList->drawCalls);
+		pList->drawCalls = 0;
+	}
+
+	if (pList->drawCallIndices)
+	{
+		free(pList->drawCallIndices);
+		pList->drawCallIndices = 0;
+	}
+
+	if (pList->drawCallVertices)
+	{
+		free(pList->drawCallVertices);
+		pList->drawCallVertices = 0;
+	}
+
+	if (pList->drawCallPtrs)
+	{
+		free(pList->drawCallPtrs);
+		pList->drawCallPtrs = 0;
+	}
 }
 
 void std3D_initRenderPass(std3D_RenderPass* pRenderPass)
@@ -1732,6 +1751,9 @@ int std3D_Startup()
 
     memset(&std3D_ui_colormap, 0, sizeof(std3D_ui_colormap));
     rdColormap_LoadEntry("misc\\cmp\\UIColormap.cmp", &std3D_ui_colormap);
+
+	for (int i = 0; i < STD3D_MAX_RENDER_PASSES; ++i)
+		memset(&std3D_renderPasses[i], 0, sizeof(std3D_RenderPass));
 
     std3D_bReinitHudElements = 1;
 
