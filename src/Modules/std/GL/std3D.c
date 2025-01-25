@@ -1577,13 +1577,16 @@ int init_resources()
 	glGenSamplers(4, nearestSampler);
 	for (int i = 0; i < 4; ++i)
 	{
-		glSamplerParameteri(linearSampler[i], GL_TEXTURE_WRAP_S, wrap[i % 2]);
-		glSamplerParameteri(linearSampler[i], GL_TEXTURE_WRAP_T, wrap[i / 2]);
+		int wrapX = wrap[i % 2];
+		int wrapY = wrap[i / 2];
+
+		glSamplerParameteri(linearSampler[i], GL_TEXTURE_WRAP_S, wrapX);
+		glSamplerParameteri(linearSampler[i], GL_TEXTURE_WRAP_T, wrapY);
 		glSamplerParameteri(linearSampler[i], GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glSamplerParameteri(linearSampler[i], GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		
-		glSamplerParameteri(nearestSampler[i], GL_TEXTURE_WRAP_S, wrap[i % 2]);
-		glSamplerParameteri(nearestSampler[i], GL_TEXTURE_WRAP_T, wrap[i / 2]);
+		glSamplerParameteri(nearestSampler[i], GL_TEXTURE_WRAP_S, wrapX);
+		glSamplerParameteri(nearestSampler[i], GL_TEXTURE_WRAP_T, wrapY);
 		glSamplerParameteri(nearestSampler[i], GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glSamplerParameteri(nearestSampler[i], GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
 	}
@@ -4458,8 +4461,8 @@ void std3D_SetTextureState(std3D_worldStage* pStage, std3D_DrawCallState* pState
 		glActiveTexture(GL_TEXTURE0 + 0);
 		glBindTexture(GL_TEXTURE_2D, tex_id ? tex_id : blank_tex_white);
 
-		int clampX = pTexState->flags & RD_FF_TEX_CLAMP_X;
-		int clampY = pTexState->flags & RD_FF_TEX_CLAMP_Y;
+		int clampX = (pTexState->flags & RD_FF_TEX_CLAMP_X) ? 1 : 0;
+		int clampY = (pTexState->flags & RD_FF_TEX_CLAMP_Y) ? 1 : 0;
 
 		if ((pState->stateBits.texFilter == RD_TEXFILTER_BILINEAR) && pTexture->is_16bit)
 			glBindSampler(0, linearSampler[clampX + clampY * 2]);
@@ -4469,11 +4472,21 @@ void std3D_SetTextureState(std3D_worldStage* pStage, std3D_DrawCallState* pState
 		int emiss_tex_id = pTexture->emissive_texture_id;
 		glActiveTexture(GL_TEXTURE0 + 3);
 		glBindTexture(GL_TEXTURE_2D, emiss_tex_id ? emiss_tex_id : blank_tex);
+		
+		if ((pState->stateBits.texFilter == RD_TEXFILTER_BILINEAR) && pTexture->is_16bit)
+			glBindSampler(3, linearSampler[clampX + clampY * 2]);
+		else
+			glBindSampler(3, nearestSampler[clampX + clampY * 2]);
 
 		int displace_tex_id = pTexture->displacement_texture_id;
 		glActiveTexture(GL_TEXTURE0 + 4);
 		glBindTexture(GL_TEXTURE_2D, displace_tex_id ? displace_tex_id : blank_tex);
 		
+		if ((pState->stateBits.texFilter == RD_TEXFILTER_BILINEAR) && pTexture->is_16bit)
+			glBindSampler(4, linearSampler[clampX + clampY * 2]);
+		else
+			glBindSampler(4, nearestSampler[clampX + clampY * 2]);
+
 		glActiveTexture(GL_TEXTURE0 + 0);
 
 		if (tex_id == 0)
