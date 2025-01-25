@@ -345,8 +345,7 @@ typedef struct std3D_Cluster
 
 static uint32_t std3D_clusterBits[CLUSTER_GRID_TOTAL_SIZE];
 
-// todo: indexing
-#define STD3D_MAX_DRAW_CALLS 8192
+#define STD3D_MAX_DRAW_CALLS 16384
 #define STD3D_MAX_DRAW_CALL_VERTS (STD3D_MAX_DRAW_CALLS * 24)
 #define STD3D_MAX_DRAW_CALL_INDICES (STD3D_MAX_DRAW_CALLS * 66)
 
