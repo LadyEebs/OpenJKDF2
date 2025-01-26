@@ -174,13 +174,13 @@ mat3 construct_tbn(vec2 uv)
     return mat3(t * invmax, b * invmax, n);
 }
 
-vec2 parallax_mapping(vec2 tc)
+// todo: binary search and lower sample count
+vec2 parallax_mapping(vec2 tc, mat3 tbn)
 {
     /*if (f_coord.x < 0.5) {
         return tc;
     }*/
 
-	mat3 tbn = construct_tbn(tc);
 	vec3 localViewDir = normalize(-f_coord.xyz);
     vec3 view_dir = normalize(transpose(tbn) * localViewDir);
 
@@ -727,9 +727,11 @@ void main(void)
 	float mipBias = compute_mip_bias(viewPos.y);
 	mipBias = min(mipBias, float(numMips - 1));
 
+	mat3 tbn = construct_tbn(adj_texcoords.xy);
+
     if(displacement_factor != 0.0)
 	{
-        adj_texcoords.xy = parallax_mapping(adj_texcoords.xy);
+        adj_texcoords.xy = parallax_mapping(adj_texcoords.xy, tbn);
     }
 	else if(uv_mode == 0)
 	{
@@ -973,7 +975,7 @@ void main(void)
 	//}
 	
 	if (numLights > 0u)
-		CalculatePointLighting(bucket_index, lightMode, f_coord.xyz, surfaceNormals, localViewDir, shadows, diffuseColor.xyz, specularColor.xyz, roughness, diffuseLight, specularLight);
+		CalculatePointLighting(bucket_index, lightMode, f_coord.xyz, surfaceNormals, localViewDir, tbn, adj_texcoords.xy, shadows, diffuseColor.xyz, specularColor.xyz, roughness, diffuseLight, specularLight);
 	
 	//diffuseLight.xyz = clamp(diffuseLight.xyz, vec3(0.0), vec3(1.0));	
 	//specularLight.xyz = clamp(specularLight.xyz, vec3(0.0), vec3(1.0));	
