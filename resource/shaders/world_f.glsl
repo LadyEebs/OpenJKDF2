@@ -17,18 +17,6 @@
 #define D3DBLEND_SRCALPHA        (5)
 #define D3DBLEND_INVSRCALPHA     (6)
 
-uniform sampler2D tex;
-uniform sampler2D texEmiss;
-uniform sampler2D worldPalette;
-uniform sampler2D worldPaletteLights;
-uniform sampler2D displacement_map;
-
-
-uniform sampler2D ztex;
-uniform sampler2D ssaotex;
-uniform sampler2D refrtex;
-uniform sampler2D cliptex;
-
 in vec4 f_color;
 in float f_light;
 in vec4 f_uv;

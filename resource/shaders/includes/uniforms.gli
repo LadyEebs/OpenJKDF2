@@ -13,6 +13,18 @@
 #define CLUSTER_GRID_SIZE_XYZ (CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y * CLUSTER_GRID_SIZE_Z)
 #define CLUSTER_GRID_TOTAL_SIZE (CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y * CLUSTER_GRID_SIZE_Z * CLUSTER_BUCKETS_PER_CLUSTER)
 
+// Textures
+uniform sampler2D tex;
+uniform sampler2D texEmiss;
+uniform sampler2D worldPalette;
+uniform sampler2D worldPaletteLights;
+uniform sampler2D displacement_map;
+
+uniform sampler2D ztex;
+uniform sampler2D ssaotex;
+uniform sampler2D refrtex;
+uniform sampler2D cliptex;
+
 // Shared uniforms across batch calls and render passes
 layout(std140) uniform sharedBlock
 {

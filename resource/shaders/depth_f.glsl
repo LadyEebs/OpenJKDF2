@@ -7,12 +7,6 @@
 #define TEX_MODE_16BPP 5
 #define TEX_MODE_BILINEAR_16BPP 6
 
-uniform sampler2D tex;
-uniform sampler2D texEmiss;
-uniform sampler2D worldPalette;
-uniform sampler2D worldPaletteLights;
-uniform sampler2D displacement_map;
-
 uniform int blend_mode;
 uniform int ditherMode;
 
