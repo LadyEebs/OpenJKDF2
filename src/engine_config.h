@@ -186,7 +186,7 @@
 #define SITHREND_NUM_LIGHTS (32) // why is this different than the max in rdCamera?
 #else
 #ifdef RENDER_DROID2
-#define SITHREND_NUM_LIGHTS (256)
+#define SITHREND_NUM_LIGHTS (128)//(256)
 #else
 #define SITHREND_NUM_LIGHTS (64)
 #endif
@@ -309,7 +309,7 @@
 #define RDCAMERA_MAX_LIGHTS 64
 #else
 #ifdef RENDER_DROID2
-#define RDCAMERA_MAX_LIGHTS 256
+#define RDCAMERA_MAX_LIGHTS 128//256
 #else
 #define RDCAMERA_MAX_LIGHTS 128
 

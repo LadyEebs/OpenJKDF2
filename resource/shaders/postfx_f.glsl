@@ -1,3 +1,5 @@
+#include "math.gli"
+
 uniform sampler2D tex;
 uniform vec2 iResolution;
 uniform float param1;
@@ -69,6 +71,7 @@ void main(void)
 	//sampled_color += -0.12487566 * texture(tex, uv + vec2(0.0,-2.907)*invPixelSize);
 	//sampled_color += -0.12487566 * texture(tex, uv + vec2(0.0,2.907)*invPixelSize);    
 
+	//sampled_color.rgb = ycocg2rgb(sampled_color.yxz);
 
 #ifdef RENDER_DROID2
 	sampled_color.rgb += colorEffects_add.rgb;

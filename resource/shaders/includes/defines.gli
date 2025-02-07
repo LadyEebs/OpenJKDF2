@@ -1,0 +1,16 @@
+#ifndef DEFINES_H
+#define DEFINES_H
+
+#define LIGHT_DIVISOR (3.0)
+
+#define TEX_MODE_TEST 0
+#define TEX_MODE_WORLDPAL 1
+#define TEX_MODE_BILINEAR 2
+#define TEX_MODE_16BPP 5
+#define TEX_MODE_BILINEAR_16BPP 6
+
+#define D3DBLEND_ONE             (2)
+#define D3DBLEND_SRCALPHA        (5)
+#define D3DBLEND_INVSRCALPHA     (6)
+
+#endif

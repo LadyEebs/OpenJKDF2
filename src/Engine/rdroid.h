@@ -183,6 +183,10 @@ void rdAmbientFlags(uint32_t flags);
 void rdAmbientLight(float r, float g, float b);
 void rdAmbientLightSH(rdAmbient* amb);
 
+int rdGenShader();
+void rdDeleteShader(int id);
+int rdCompileShader(int id, const char* path);
+
 #endif
 
 #endif // _RDROID_H

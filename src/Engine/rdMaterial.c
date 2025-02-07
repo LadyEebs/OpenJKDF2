@@ -274,6 +274,7 @@ LABEL_22:
             rdDDrawSurface* surface = &texture->alphaMats[j];
             
             surface->emissive_texture_id = 0;
+			surface->specular_texture_id = 0;
             surface->displacement_texture_id = 0;
             surface->emissive_factor[0] = 0.0;
             surface->emissive_factor[1] = 0.0;

@@ -44,21 +44,39 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #define TEX_MODE_16BPP 5
 #define TEX_MODE_BILINEAR_16BPP 6
 
+// legacy names
 #define TEX_SLOT_DIFFUSE         0
-#define TEX_SLOT_WORLD_PAL       1
-#define TEX_SLOT_WORLD_LIGHT_PAL 2
-#define TEX_SLOT_EMISSIVE        3
-#define TEX_SLOT_DISPLACEMENT    4
-#define TEX_SLOT_CLUSTER_BUFFER  5
-#define TEX_SLOT_DECAL_ATLAS     6
-#define TEX_SLOT_DEPTH           7
-#define TEX_SLOT_AO              8
-#define TEX_SLOT_REFRACTION      9
-#define TEX_SLOT_CLIP           10
+#define TEX_SLOT_EMISSIVE        1
+#define TEX_SLOT_DISPLACEMENT    2
+
+#define TEX_SLOT_TEX0			 0
+#define TEX_SLOT_TEX1			 1
+#define TEX_SLOT_TEX2			 2
+#define TEX_SLOT_TEX3			 3
+#define TEX_SLOT_WORLD_PAL       4
+#define TEX_SLOT_WORLD_LIGHT_PAL 5
+#define TEX_SLOT_CLUSTER_BUFFER  6
+#define TEX_SLOT_DECAL_ATLAS     7
+#define TEX_SLOT_DEPTH           8
+#define TEX_SLOT_AO              9
+#define TEX_SLOT_REFRACTION     10
+#define TEX_SLOT_CLIP           11
+#define TEX_SLOT_DITHER         12
+#define TEX_SLOT_DIFFUSE_LIGHT  13
+
+#define UBO_SLOT_LIGHTS        0
+#define UBO_SLOT_OCCLUDERS     1
+#define UBO_SLOT_DECALS        2
+#define UBO_SLOT_SHARED        3
+#define UBO_SLOT_FOG           4
+#define UBO_SLOT_TEX           5
+#define UBO_SLOT_MATERIAL      6
+#define UBO_SLOT_SHADER        7
+#define UBO_SLOT_SHADER_CONSTS 8
 
 #define STD3D_MAX_RENDER_PASSES     3
 
-#define CLUSTER_MAX_LIGHTS          256 // match RDCAMERA_MAX_LIGHTS/SITHREND_NUM_LIGHTS
+#define CLUSTER_MAX_LIGHTS          128 // match RDCAMERA_MAX_LIGHTS/SITHREND_NUM_LIGHTS
 #define CLUSTER_MAX_OCCLUDERS       128
 #define CLUSTER_MAX_DECALS          256
 #define CLUSTER_MAX_ITEMS           (CLUSTER_MAX_LIGHTS + CLUSTER_MAX_OCCLUDERS + CLUSTER_MAX_DECALS)
@@ -80,12 +98,13 @@ typedef struct std3DSimpleTexStage
     GLint attribute_v_norm;
 
     GLint uniform_mvp;
-    GLint uniform_tex;
+	GLint uniform_proj;
+	
+	GLint uniform_tex;
     GLint uniform_tex2;
     GLint uniform_tex3;
 	GLint uniform_tex4;
 	GLint uniform_iResolution;
-	GLint uniform_proj;
 
     GLint uniform_param1;
     GLint uniform_param2;
@@ -95,6 +114,17 @@ typedef struct std3DSimpleTexStage
 	GLint uniform_lt;
 	GLint uniform_rb;
 	GLint uniform_lb;
+
+	GLint uniform_shared;
+	GLint uniform_shader;
+	GLint uniform_shaderConsts;
+	GLint uniform_fog;
+	GLint uniform_tex_block;
+	GLint uniform_material;
+	GLint uniform_lightbuf;
+	GLint uniform_lights;
+	GLint uniform_occluders;
+	GLint uniform_decals;
 
 	GLint uniform_tint;
 	GLint uniform_filter;
@@ -121,9 +151,10 @@ typedef struct std3DFramebuffer
 	int32_t w;
 	int32_t h;
 
-	GLuint rbo;
+	//GLuint rbo;
 	GLuint zfbo;
     GLuint fbo;
+	GLuint ntex;
 	GLuint ztex;
 	GLuint tex0; // color
     GLuint tex1; // emissive
@@ -134,6 +165,7 @@ std3DIntermediateFbo std3D_mainFbo;
 
 int std3D_framebufferFlags = 0;
 
+std3DIntermediateFbo deferred; // opaque lighting prepass
 std3DIntermediateFbo postfx; // temporary composite space for postfx
 std3DIntermediateFbo refr; // refraction tex
 std3DIntermediateFbo refrZ; // refraction z clipping tex
@@ -159,6 +191,8 @@ GLint uniform_light_mult, uniform_displacement_factor, uniform_iResolution, unif
 GLint uniform_fog, uniform_fog_color, uniform_fog_start, uniform_fog_end;
 #endif
 
+// fixme: this shouldn't exist, make matrix part of the render pass
+rdMatrix44* renderPassProj = NULL;
 
 
 float sliceScalingFactor;
@@ -239,7 +273,10 @@ typedef struct std3D_light
 {
 	rdVector4 position;
 	rdVector4 direction_intensity;
-	rdVector4 color;
+
+	//rdVector4 color;
+	uint32_t color;
+	uint32_t pad1, pad2, pad3;
 
 	int32_t   type;
 	float     falloffMin;
@@ -474,11 +511,11 @@ typedef struct std3D_worldStage
 	GLuint program;
 	GLint attribute_coord3d, attribute_v_color, attribute_v_light, attribute_v_uv, attribute_v_norm;
 	GLint uniform_projection, uniform_modelMatrix, uniform_viewMatrix;
-	GLint uniform_ambient_color, uniform_ambient_sg;
-	GLint uniform_geo_mode,  uniform_fillColor, uniform_tex, uniform_texEmiss, uniform_displacement_map, uniform_texDecals, uniform_texz, uniform_texssao, uniform_texrefraction, uniform_texclip;
-	GLint uniform_worldPalette, uniform_worldPaletteLights;
-	GLint uniform_light_mode, uniform_ditherMode, uniform_ao_flags;
-	GLint uniform_shared, uniform_fog, uniform_tex_block, uniform_material, uniform_lightbuf, uniform_lights, uniform_occluders, uniform_decals;
+	GLint uniform_ambient_color, uniform_ambient_sg, uniform_ambient_sg_count;
+	GLint uniform_geo_mode,  uniform_fillColor, uniform_textures, uniform_tex, uniform_texEmiss, uniform_displacement_map, uniform_texDecals, uniform_texz, uniform_texssao, uniform_texrefraction, uniform_texclip;
+	GLint uniform_worldPalette, uniform_worldPaletteLights, uniform_dithertex, uniform_diffuse_light;
+	GLint uniform_light_mode, uniform_ao_flags;
+	GLint uniform_shared, uniform_shader, uniform_shaderConsts, uniform_fog, uniform_tex_block, uniform_material, uniform_lightbuf, uniform_lights, uniform_occluders, uniform_decals;
 	GLint uniform_rightTop;
 	GLint uniform_rt;
 	GLint uniform_lt;
@@ -495,6 +532,7 @@ GLint programMenu_uniform_mvp, programMenu_uniform_tex, programMenu_uniform_disp
 
 std3DSimpleTexStage std3D_uiProgram;
 std3DSimpleTexStage std3D_texFboStage;
+std3DSimpleTexStage std3D_deferredStage;
 std3DSimpleTexStage std3D_postfxStage;
 std3DSimpleTexStage std3D_bloomStage;
 std3DSimpleTexStage std3D_ssaoStage;
@@ -513,6 +551,9 @@ GLuint displaypal_texture;
 void* displaypal_data = NULL;
 GLuint tiledrand_texture;
 rdVector3 tiledrand_data[4 * 4];
+
+GLuint dither_texture;
+uint8_t dither_data[4*4];
 
 GLuint linearSampler[4];
 GLuint nearestSampler[4];
@@ -732,6 +773,361 @@ static inline void std3D_popDebugGroup()
 		glPopDebugGroup();
 }
 
+inline void std3D_bindTexture(int type, int texId, int slot)
+{
+	glActiveTexture(GL_TEXTURE0 + slot);
+	glBindTexture(type, texId);
+}
+
+typedef struct std3D_Shader
+{
+	uint32_t version;
+	uint32_t padding0;
+	uint32_t texCount;
+	uint32_t count;
+	uint32_t texInstr[8];
+	uint32_t instr[16];
+} std3D_Shader;
+
+GLint defaultShaderUBO;
+
+typedef struct std3D_ShaderConsts
+{
+	rdVector4 c[8];
+} std3D_ShaderConsts;
+GLint shaderConstsUbo;
+
+enum
+{
+	// 4 general purpose registers
+	REG_GP0,
+	REG_GP1,
+	REG_GP2,
+	REG_GP3,
+
+	// 2 vertex color registers
+	REG_V0,
+	REG_V1,
+
+	// 2 temporaries for argument storage
+	//REG_TMP0,
+	//REG_TMP1,
+
+	REG_COUNT
+};
+static_assert(REG_COUNT <= 8, "REG_COUNT must not exceed 8 registers.");
+
+enum
+{
+	REG_T0,
+	REG_T1,
+	REG_T2,
+	REG_T3,
+
+	REG_FP_COUNT
+};
+static_assert(REG_FP_COUNT <= 4, "REG_FP_COUNT must not exceed 4 registers.");
+
+enum
+{
+	SRC_MOD_NONE   = 0x0, // no modifier
+	SRC_MOD_NEGATE = 0x1, // -x
+	SRC_MOD_BIAS   = 0x2, // x - 0.5
+	SRC_MOD_BX2    = 0x4, // x * 2 - 1
+	SRC_MOD_INVERT = 0x8, // 1 - x
+
+	SRC_MOD_COUNT = 0x10
+};
+static_assert((SRC_MOD_COUNT>>3) <= 16, "SRC_MOD_COUNT must not exceed 4 bits.");
+
+// only one at a time
+enum
+{
+	DST_MOD_NONE = 0,
+	DST_MOD_X2   = 1,
+	DST_MOD_X4   = 2,
+	DST_MOD_D2   = 3,
+	DST_MOD_D4   = 4,
+
+	DST_MOD_COUNT = 5
+};
+static_assert(DST_MOD_COUNT < 8, "DST_MOD_COUNT must not exceed 3 bits.");
+
+typedef enum std3D_ShaderAluOp
+{
+	OP_NOP,		// no op
+	OP_ADD,		// addition
+	OP_DP3,		// dot3
+	OP_DP4,		// dot4
+	OP_LDC,		// constant load
+	OP_LRP,		// linear interpolation
+	OP_MAD,		// multiply add
+	OP_MAX,		// maximum
+	OP_MIN,		// minimum
+	OP_MOV,		// move
+	OP_MUL,		// multiply
+	MAX_ALU_OPS
+} std3D_ShaderAluOp;
+static_assert(MAX_ALU_OPS <= 32, "std3D_ShaderAluOp must not exceed 32 op codes.");
+
+
+typedef enum std3D_ShaderTexOp
+{
+	// no op
+	OP_TEX = 1,		// texture sample
+	OP_TEXI,		// light indirected clut texture sample
+	OP_TEXOPM,		// offset a UV slot with offset parallax mapping
+	OP_TEXCOORD,	// convert UV to color
+	MAX_TEX_OPS
+} std3D_ShaderTexOp;
+static_assert(MAX_TEX_OPS <= 32, "std3D_ShaderTexOp must not exceed 32 op codes.");
+
+static const char* std3D_shaderOpKeywords[] =
+{
+	"nop",
+	"add",
+	"dp3",
+	"dp4",
+	"ldc",
+	"lrp",
+	"mad",
+	"max",
+	"min",
+	"mov",
+	"mul",
+	"pm",
+	"sub",
+	"tex",
+	"texe",
+};
+
+static const int std3D_shaderOpOperands[] =
+{
+	0, // nop
+	3, // add
+	3, // dp3
+	3, // dp4
+	2, // ldc
+	4, // lrp
+	4, // mad
+	3, // max
+	3, // min
+	2, // mov
+	3, // mul
+	3, // pm
+	3, // sub
+	3, // tex
+	3, // texe
+};
+
+int std3D_GetOpCode(const char* keyword)
+{
+	for (int i = 0; i < MAX_ALU_OPS; ++i)
+	{
+		if (stricmp(keyword, std3D_shaderOpKeywords[i]) == 0)
+			return i;
+	}
+	return -1;
+}
+
+// shader is just a handle around a buffer of code info
+int std3D_GenShader()
+{
+	int buffer;
+	glGenBuffers(1, &buffer);
+	return buffer;
+}
+
+void std3D_DeleteShader(int id)
+{
+	glDeleteBuffers(1, &id);
+}
+
+// layout
+// [src | mod, src | mod, src | mod, dest | mod, op]
+// each src | mod is 7 bits
+// the dest | mod is 6 bits
+// op code is 5 bits
+static uint32_t std3D_buildInstruction(
+	uint32_t op,
+	uint32_t dest,
+	uint32_t modd,
+	uint32_t src0,
+	uint32_t mod0,
+	uint32_t src1,
+	uint32_t mod1,
+	uint32_t src2,
+	uint32_t mod2
+)
+{
+	dest = (dest & 0x7) | ((modd & 0x7) << 3);
+	src0 = (src0 & 0x7) | ((mod0 & 0xF) << 3);
+	src1 = (src1 & 0x7) | ((mod1 & 0xF) << 3);
+	src2 = (src2 & 0x7) | ((mod2 & 0xF) << 3);
+
+	uint32_t instr;
+	instr  = (op   & 0x1F);
+	instr |= (dest & 0x3F) << 5;
+	instr |= (src0 & 0x7F) << 11;
+	instr |= (src1 & 0x7F) << 18;
+	instr |= (src2 & 0x7F) << 25;
+	return instr;
+}
+
+//static void std3D_parseOperand(uint32_t op, const char* operand, uint32_t operandIndex, std3D_Shader* shader, uint32_t* src, uint32_t* mod)
+//{
+//	uint32_t reg = _atoi(operand + 1); // skip the token to get the index
+//
+//	// load ops work directly with load registers
+//	// todo: error handling
+//	if(op == OP_LDC)
+//		return reg;
+//	
+//	if (operand[0] == 'c') // check the token
+//	{
+//		// insert a constant load instruction
+//		//shader->instr[shader->count++] = std3D_buildInstruction(OP_LDC, REG_TMP0 + operandIndex, reg, 0, 0);
+//		reg = REG_TMP0 + operandIndex; // source register is now the temporary
+//	}
+//	return reg;
+//}
+
+// todo: cache stuff?
+int std3D_CompileShaderFromFile(int id, const char* path)
+{
+	if (!stdConffile_OpenRead(path))
+	{
+		stdPlatform_Printf("std3D: ERROR, Failed to open shader '%s'.\n", path);
+		return 0;
+	}
+	
+	int success = 1;
+	/*
+	std3D_Shader shader;
+	memset(&shader, 0, sizeof(shader));
+
+	// read the version number
+	stdConffile_ReadLine();
+	if (_sscanf(stdConffile_aLine, "version %d", &shader.version) != 1)
+	{
+		stdPlatform_Printf("std3D: ERROR, Failed to parse shader 's', couldn't read version number.\n");
+		stdConffile_Close();
+		return 0;
+	}
+
+	// parse the code
+	while (stdConffile_ReadArgs())
+	{
+		if (!stdConffile_entry.numArgs)
+			continue;
+
+		uint32_t op, dest, src0, src1, src2;
+		op = std3D_GetOpCode(stdConffile_entry.args[0].key);
+		if (op < 0)
+		{
+			stdPlatform_Printf("std3D: ERROR, Failed to compile shader '%s'. Invalid operation '%s'.\n", path, stdConffile_entry.args[0].key);
+			success = 0;
+			break;
+		}
+
+		if (stdConffile_entry.numArgs < std3D_shaderOpOperands[op])
+		{
+			stdPlatform_Printf("std3D: ERROR, Failed to compile shader 's'."
+							   "Invalid operands for operation '%s', got %d, expected %d.\n",
+							   path,
+							   stdConffile_entry.args[0].key,
+							   stdConffile_entry.numArgs,
+							   std3D_shaderOpOperands[op]);
+			success = 0;
+			break;
+		}
+
+		dest = _atoi(stdConffile_entry.args[1].value + 1); // skip the helper token
+
+		// todo: handle errors better
+		if (stdConffile_entry.numArgs > 2)
+			src0 = std3D_parseOperand(op, stdConffile_entry.args[2].value, 0, &shader);
+		else
+			src0 = 0;
+
+		if (stdConffile_entry.numArgs > 3)
+			src1 = std3D_parseOperand(op, stdConffile_entry.args[3].value, 1, &shader);
+		else
+			src1 = 0;
+
+		if (stdConffile_entry.numArgs > 4)
+			src2 = std3D_parseOperand(op, stdConffile_entry.args[4].value, 2, &shader);
+		else
+			src2 = 0;
+
+		int idx = shader.count++;
+		if (idx >= 16)
+		{
+			stdPlatform_Printf("std3D: ERROR, Failed to compile shader '%s', instruction count exceeded.\n", path);
+			break;
+		}
+
+		shader.instr[shader.count++] = std3D_buildInstruction(op, dest, src0, src1, src2);
+	}
+
+	if (success)
+	{
+		glBindBuffer(GL_UNIFORM_BUFFER, id);
+		glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_Shader), &shader, GL_STATIC_DRAW);
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	}
+
+	stdConffile_Close();
+	*/
+	return success;
+}
+
+void std3D_initDefaultShader()
+{
+	defaultShaderUBO = std3D_GenShader();
+
+	std3D_Shader shader;
+	memset(&shader, 0, sizeof(shader));
+	shader.version = 1;
+
+	// displace the UVs with the displacement map
+	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEXOPM, REG_T0, DST_MOD_NONE, REG_T2, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
+
+	// sample tex0 from texcoord at temp1 to diffuse
+	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEX, REG_GP0, DST_MOD_NONE, REG_T0, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
+
+	// light sample tex1 from texcoord at temp1
+	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEXI, REG_GP1, DST_MOD_NONE, REG_T1, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
+	
+	// sample specular tex3 from texcoord at temp1
+	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEX, REG_GP2, DST_MOD_NONE, REG_T3, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
+
+	// per pixel lighting to r2
+	//shader.instr[shader.count++] = std3D_buildInstruction(OP_LIT, REG_GP2, DST_MOD_NONE, REG_V0, SRC_MOD_NONE, 0, 0, 0, 0);
+
+	// multiply color0 with diffuse tex
+	shader.instr[shader.count++] = std3D_buildInstruction(OP_MUL, REG_GP0, DST_MOD_NONE, REG_GP0, SRC_MOD_NONE, REG_V0, SRC_MOD_NONE, 0, 0);
+
+	// multiply color1 with specular tex
+	//shader.instr[shader.count++] = std3D_buildInstruction(OP_MAD, REG_GP0, DST_MOD_NONE, REG_GP2, SRC_MOD_NONE, REG_V1, SRC_MOD_NONE, REG_GP0, SRC_MOD_NONE);
+	//shader.instr[shader.count++] = std3D_buildInstruction(OP_ADD, REG_GP0, DST_MOD_NONE, REG_GP0, SRC_MOD_NONE, REG_V1, SRC_MOD_NONE, 0, 0);
+
+	shader.instr[shader.count++] = std3D_buildInstruction(OP_ADD, REG_GP0, DST_MOD_NONE, REG_GP0, SRC_MOD_NONE, REG_V1, SRC_MOD_NONE, 0, 0);
+
+	// add specular
+	//shader.instr[shader.count++] = std3D_buildInstruction(OP_ADD, REG_GP0, DST_MOD_NONE, REG_GP0, SRC_MOD_NONE, REG_V1, SRC_MOD_NONE, 0, 0);
+
+	// multiply color0 with diffuse tex and add specular
+	//shader.instr[shader.count++] = std3D_buildInstruction(OP_MAD, REG_GP0, DST_MOD_NONE, REG_GP0, SRC_MOD_NONE, REG_V0, SRC_MOD_NONE, REG_V1, SRC_MOD_NONE);
+
+	// take max of diffuse and emissive
+	shader.instr[shader.count++] = std3D_buildInstruction(OP_MAX, REG_GP0, DST_MOD_NONE, REG_GP0, SRC_MOD_NONE, REG_GP1, SRC_MOD_NONE, 0, 0);
+		
+	glBindBuffer(GL_UNIFORM_BUFFER, defaultShaderUBO);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_Shader), &shader, GL_STATIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
 void std3D_generateIntermediateFbo(int32_t width, int32_t height, std3DIntermediateFbo* pFbo, uint32_t format, int mipMaps, int useDepth, int rbo)
 {
     // Generate the framebuffer
@@ -780,7 +1176,8 @@ void std3D_generateIntermediateFbo(int32_t width, int32_t height, std3DIntermedi
 		}
 		else
 		{
-			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, rbo, 0);
+			//glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
 		}
 	}
 
@@ -793,7 +1190,8 @@ void std3D_deleteIntermediateFbo(std3DIntermediateFbo* pFbo)
 {
     glDeleteFramebuffers(1, &pFbo->fbo);
     glDeleteTextures(1, &pFbo->tex);
-    glDeleteRenderbuffers(1, &pFbo->rbo);
+	if(pFbo->rbo)
+		glDeleteRenderbuffers(1, &pFbo->rbo);
 }
 
 void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* pFb)
@@ -827,50 +1225,78 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
     // Attach fbTex to our currently bound framebuffer fb
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pFb->tex0, 0);
 
-    // Set up our emissive fb texture
-    glGenTextures(1, &pFb->tex1);
-    glBindTexture(GL_TEXTURE_2D, pFb->tex1);
-    glTexImage2D(GL_TEXTURE_2D, 0, jkPlayer_enable32Bit ? GL_RGB10_A2 : GL_RGB5_A1, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 1);
-    //glGenerateMipmap(GL_TEXTURE_2D);
-    //glGenerateMipmap(GL_TEXTURE_2D);
+	if(jkPlayer_enableBloom)
+	{
+		std3D_framebufferFlags |= 1;
+
+		// Set up our emissive fb texture
+		glGenTextures(1, &pFb->tex1);
+		glBindTexture(GL_TEXTURE_2D, pFb->tex1);
+		glTexImage2D(GL_TEXTURE_2D, 0, jkPlayer_enable32Bit ? GL_RGB10_A2 : GL_RGB5_A1, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 1);
+		//glGenerateMipmap(GL_TEXTURE_2D);
+		//glGenerateMipmap(GL_TEXTURE_2D);
     
-    // Attach fbTex to our currently bound framebuffer fb
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, pFb->tex1, 0);
+		// Attach fbTex to our currently bound framebuffer fb
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, pFb->tex1, 0);
+	}
+	else
+	{
+		std3D_framebufferFlags &= ~1;
+	}
+
+	// Set up our depth buffer texture
+	glGenTextures(1, &pFb->ztex);
+	glBindTexture(GL_TEXTURE_2D, pFb->ztex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH32F_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//_MIPMAP_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//_MIPMAP_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	//glGenerateMipmap(GL_TEXTURE_2D);
+	
+	//glTexImage2D(gl.TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, w, h, 0, GL_DEPTH_STENCIL,
+				// GL_UNSIGNED_INT_24_8, 0);
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, pFb->ztex, 0);
 
     // Set up our render buffer
-    glGenRenderbuffers(1, &pFb->rbo);
-    glBindRenderbuffer(GL_RENDERBUFFER, pFb->rbo);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+   // glGenRenderbuffers(1, &pFb->rbo);
+   // glBindRenderbuffer(GL_RENDERBUFFER, pFb->rbo);
+   // glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
+   // glBindRenderbuffer(GL_RENDERBUFFER, 0);
+   // 
+   // // Bind it to our framebuffer fb
+   // glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, pFb->rbo);
     
-    // Bind it to our framebuffer fb
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, pFb->rbo);
-    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         stdPlatform_Printf("std3D: ERROR, Framebuffer is incomplete!\n");
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	glGenFramebuffers(1, &pFb->zfbo);
 	glBindFramebuffer(GL_FRAMEBUFFER, pFb->zfbo);
 
-	glGenTextures(1, &pFb->ztex);
-	glBindTexture(GL_TEXTURE_2D, pFb->ztex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, width, height, 0, GL_RED, GL_FLOAT, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//_MIPMAP_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//_MIPMAP_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glGenerateMipmap(GL_TEXTURE_2D);
-	
 	// Attach fbTex to our currently bound framebuffer fb
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pFb->ztex, 0);
+	//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pFb->ztex, 0);
+	
+//	// Set up our normal texture
+//	glGenTextures(1, &pFb->ntex);
+//	glBindTexture(GL_TEXTURE_2D, pFb->ntex);
+//	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//_MIPMAP_NEAREST);
+//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//_MIPMAP_NEAREST);
+//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+//	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pFb->ntex, 0);
 
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, pFb->rbo);
+	//glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, pFb->rbo);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, pFb->ztex, 0);
+
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		stdPlatform_Printf("std3D: ERROR, Framebuffer is incomplete!\n");
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -886,7 +1312,7 @@ void std3D_generateExtraFramebuffers(int32_t width, int32_t height)
 		int ssao_h = ssao_w * ((float)height / width);
 
 		std3D_generateIntermediateFbo(width / 2, height / 2, &ssaoDepth, GL_R16F, 0, 0, 0);
-		std3D_generateIntermediateFbo(width, height, &ssao, GL_R8, 0, 1, std3D_framebuffer.rbo);
+		std3D_generateIntermediateFbo(width, height, &ssao, GL_R8, 0, 1, std3D_framebuffer.ztex);
 		std3D_framebufferFlags |= 2;
 	}
 	else
@@ -897,25 +1323,22 @@ void std3D_generateExtraFramebuffers(int32_t width, int32_t height)
 		int bloom_w = width > 320 ? 640 : 320;
 		int bloom_h = bloom_w * ((float)height / width);
 
-		std3D_framebufferFlags |= 1;
 		std3D_generateIntermediateFbo(bloom_w, bloom_h, &bloomLayers[0], GL_RGBA16F, 1, 0, 0);
 		for (int i = 1; i < ARRAY_SIZE(bloomLayers); ++i)
 			std3D_generateIntermediateFbo(bloomLayers[i - 1].w / 2, bloomLayers[i - 1].h / 2, &bloomLayers[i], GL_RGBA16F, 1, 0, 0);
 	}
-	else
-	{
-		std3D_framebufferFlags &= ~1;
-	}
+
+	std3D_generateIntermediateFbo(width, height, &deferred, GL_RGBA8, 0, 0, 0);
 
 	std3D_generateIntermediateFbo(width, height, &postfx, GL_RGB10_A2, 0, 0, 0);
 
 	// the refraction buffers use the same depth-stencil as the main scene
-	std3D_generateIntermediateFbo(width, height, &refr, GL_RGB5_A1, 0, 1, std3D_framebuffer.rbo);
-	std3D_generateIntermediateFbo(width, height, &refrZ, GL_R32F, 0, 1, std3D_framebuffer.rbo);
+	std3D_generateIntermediateFbo(width, height, &refr, GL_RGB5_A1, 0, 1, std3D_framebuffer.ztex);
+	std3D_generateIntermediateFbo(width, height, &refrZ, GL_R32F, 0, 1, std3D_framebuffer.ztex);
 
 	std3D_mainFbo.fbo = std3D_framebuffer.fbo;
 	std3D_mainFbo.tex = std3D_framebuffer.tex1;
-	std3D_mainFbo.rbo = std3D_framebuffer.rbo;
+	//std3D_mainFbo.rbo = std3D_framebuffer.rbo;
 	std3D_mainFbo.w = std3D_framebuffer.w;
 	std3D_mainFbo.h = std3D_framebuffer.h;
 	std3D_mainFbo.iw = std3D_framebuffer.w;
@@ -933,7 +1356,8 @@ void std3D_deleteFramebuffer(std3DFramebuffer* pFb)
     glDeleteFramebuffers(1, &pFb->fbo);
     glDeleteTextures(1, &pFb->tex0);
     glDeleteTextures(1, &pFb->tex1);
-    glDeleteRenderbuffers(1, &pFb->rbo);
+    //glDeleteRenderbuffers(1, &pFb->rbo);
+	//glDeleteTextures(1, &pFb->ntex);
 	glDeleteTextures(1, &pFb->ztex);
 	glDeleteFramebuffers(1, &pFb->zfbo);
 }
@@ -945,6 +1369,7 @@ void std3D_deleteExtraFramebuffers()
 	for (int i = 0; i < ARRAY_SIZE(bloomLayers); ++i)
 		std3D_deleteIntermediateFbo(&bloomLayers[i]);
 
+	std3D_deleteIntermediateFbo(&deferred);
 	std3D_deleteIntermediateFbo(&postfx);
 	std3D_deleteIntermediateFbo(&refr);
 	std3D_deleteIntermediateFbo(&refrZ);
@@ -1268,8 +1693,8 @@ bool std3D_loadSimpleTexProgram(const char* fpath_base, std3DSimpleTexStage* pOu
     pOut->attribute_v_color = std3D_tryFindAttribute(pOut->program, "v_color");
     pOut->attribute_v_uv = std3D_tryFindAttribute(pOut->program, "v_uv");
     pOut->uniform_mvp = std3D_tryFindUniform(pOut->program, "mvp");
+	pOut->uniform_proj = std3D_tryFindUniform(pOut->program, "projMatrix");
     pOut->uniform_iResolution = std3D_tryFindUniform(pOut->program, "iResolution");
-	pOut->uniform_proj = std3D_tryFindUniform(pOut->program, "proj");
     pOut->uniform_tex = std3D_tryFindUniform(pOut->program, "tex");
     pOut->uniform_tex2 = std3D_tryFindUniform(pOut->program, "tex2");
     pOut->uniform_tex3 = std3D_tryFindUniform(pOut->program, "tex3");
@@ -1288,6 +1713,27 @@ bool std3D_loadSimpleTexProgram(const char* fpath_base, std3DSimpleTexStage* pOu
 	pOut->uniform_filter = std3D_tryFindUniform(pOut->program, "colorEffects_filter");
 	pOut->uniform_fade = std3D_tryFindUniform(pOut->program, "colorEffects_fade");
 	pOut->uniform_add = std3D_tryFindUniform(pOut->program, "colorEffects_add");
+	
+	pOut->uniform_lightbuf = std3D_tryFindUniform(pOut->program, "clusterBuffer");
+	pOut->uniform_shared = glGetUniformBlockIndex(pOut->program, "sharedBlock");
+	pOut->uniform_shader = glGetUniformBlockIndex(pOut->program, "shaderBlock");
+	pOut->uniform_shaderConsts = glGetUniformBlockIndex(pOut->program, "shaderConstantsBlock");
+	pOut->uniform_fog = glGetUniformBlockIndex(pOut->program, "fogBlock");
+	pOut->uniform_tex_block = glGetUniformBlockIndex(pOut->program, "textureBlock");
+	pOut->uniform_material = glGetUniformBlockIndex(pOut->program, "materialBlock");
+	pOut->uniform_lights = glGetUniformBlockIndex(pOut->program, "lightBlock");
+	pOut->uniform_occluders = glGetUniformBlockIndex(pOut->program, "occluderBlock");
+	pOut->uniform_decals = glGetUniformBlockIndex(pOut->program, "decalBlock");
+
+	glUniformBlockBinding(pOut->program, pOut->uniform_lights, UBO_SLOT_LIGHTS);
+	glUniformBlockBinding(pOut->program, pOut->uniform_occluders, UBO_SLOT_OCCLUDERS);
+	glUniformBlockBinding(pOut->program, pOut->uniform_decals, UBO_SLOT_DECALS);
+	glUniformBlockBinding(pOut->program, pOut->uniform_shared, UBO_SLOT_SHARED);
+	glUniformBlockBinding(pOut->program, pOut->uniform_fog, UBO_SLOT_FOG);
+	glUniformBlockBinding(pOut->program, pOut->uniform_tex_block, UBO_SLOT_TEX);
+	glUniformBlockBinding(pOut->program, pOut->uniform_material, UBO_SLOT_MATERIAL);
+	glUniformBlockBinding(pOut->program, pOut->uniform_shader, UBO_SLOT_SHADER);
+	glUniformBlockBinding(pOut->program, pOut->uniform_shaderConsts, UBO_SLOT_SHADER_CONSTS);
 
     return true;
 }
@@ -1307,7 +1753,9 @@ int std3D_loadWorldStage(std3D_worldStage* pStage, int isZPass, const char* defi
 	pStage->uniform_viewMatrix = std3D_tryFindUniform(pStage->program, "viewMatrix");
 	pStage->uniform_ambient_color = std3D_tryFindUniform(pStage->program, "ambientColor");
 	pStage->uniform_ambient_sg = std3D_tryFindUniform(pStage->program, "ambientSG");
+	pStage->uniform_ambient_sg_count = std3D_tryFindUniform(pStage->program, "ambientNumSG");
 	pStage->uniform_fillColor = std3D_tryFindUniform(pStage->program, "fillColor");
+	pStage->uniform_textures = std3D_tryFindUniform(pStage->program, "textures");
 	pStage->uniform_tex = std3D_tryFindUniform(pStage->program, "tex");
 	pStage->uniform_texEmiss = std3D_tryFindUniform(pStage->program, "texEmiss");
 	pStage->uniform_worldPalette = std3D_tryFindUniform(pStage->program, "worldPalette");
@@ -1319,12 +1767,15 @@ int std3D_loadWorldStage(std3D_worldStage* pStage, int isZPass, const char* defi
 	pStage->uniform_texrefraction = std3D_tryFindUniform(pStage->program, "refrtex");
 	pStage->uniform_texclip = std3D_tryFindUniform(pStage->program, "cliptex");
 	pStage->uniform_geo_mode = std3D_tryFindUniform(pStage->program, "geoMode");
-	pStage->uniform_ditherMode = std3D_tryFindUniform(pStage->program, "ditherMode");
+	pStage->uniform_dithertex = std3D_tryFindUniform(pStage->program, "dithertex");
+	pStage->uniform_diffuse_light = std3D_tryFindUniform(pStage->program, "diffuseLightTex");
 	pStage->uniform_light_mode = std3D_tryFindUniform(pStage->program, "lightMode");
 	pStage->uniform_ao_flags = std3D_tryFindUniform(pStage->program, "aoFlags");
 
 	pStage->uniform_lightbuf = std3D_tryFindUniform(pStage->program, "clusterBuffer");
 	pStage->uniform_shared = glGetUniformBlockIndex(pStage->program, "sharedBlock");
+	pStage->uniform_shader = glGetUniformBlockIndex(pStage->program, "shaderBlock");
+	pStage->uniform_shaderConsts = glGetUniformBlockIndex(pStage->program, "shaderConstantsBlock");
 	pStage->uniform_fog = glGetUniformBlockIndex(pStage->program, "fogBlock");
 	pStage->uniform_tex_block = glGetUniformBlockIndex(pStage->program, "textureBlock");
 	pStage->uniform_material = glGetUniformBlockIndex(pStage->program, "materialBlock");
@@ -1403,6 +1854,10 @@ void std3D_setupUBOs()
 	glBindBuffer(GL_UNIFORM_BUFFER, shared_ubo);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_SharedUniforms), NULL, GL_DYNAMIC_DRAW);
 
+	glGenBuffers(1, &shaderConstsUbo);
+	glBindBuffer(GL_UNIFORM_BUFFER, shaderConstsUbo);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_ShaderConsts), NULL, GL_DYNAMIC_DRAW);
+
 	// fog buffer
 	glGenBuffers(1, &fog_ubo);
 	glBindBuffer(GL_UNIFORM_BUFFER, fog_ubo);
@@ -1451,13 +1906,15 @@ void std3D_setupUBOs()
 
 void std3D_setupLightingUBO(std3D_worldStage* pStage)
 {
-	glUniformBlockBinding(pStage->program, pStage->uniform_lights, 0);
-	glUniformBlockBinding(pStage->program, pStage->uniform_occluders, 1);
-	glUniformBlockBinding(pStage->program, pStage->uniform_decals, 2);
-	glUniformBlockBinding(pStage->program, pStage->uniform_shared, 3);
-	glUniformBlockBinding(pStage->program, pStage->uniform_fog, 4);
-	glUniformBlockBinding(pStage->program, pStage->uniform_tex_block, 5);	
-	glUniformBlockBinding(pStage->program, pStage->uniform_material, 6);
+	glUniformBlockBinding(pStage->program, pStage->uniform_lights, UBO_SLOT_LIGHTS);
+	glUniformBlockBinding(pStage->program, pStage->uniform_occluders, UBO_SLOT_OCCLUDERS);
+	glUniformBlockBinding(pStage->program, pStage->uniform_decals, UBO_SLOT_DECALS);
+	glUniformBlockBinding(pStage->program, pStage->uniform_shared, UBO_SLOT_SHARED);
+	glUniformBlockBinding(pStage->program, pStage->uniform_fog, UBO_SLOT_FOG);
+	glUniformBlockBinding(pStage->program, pStage->uniform_tex_block, UBO_SLOT_TEX);
+	glUniformBlockBinding(pStage->program, pStage->uniform_material, UBO_SLOT_MATERIAL);
+	glUniformBlockBinding(pStage->program, pStage->uniform_shader, UBO_SLOT_SHADER);
+	glUniformBlockBinding(pStage->program, pStage->uniform_shaderConsts, UBO_SLOT_SHADER_CONSTS);
 }
 
 void std3D_setupDrawCallVAO(std3D_worldStage* pStage)
@@ -1552,6 +2009,7 @@ int init_resources()
 
     if (!std3D_loadSimpleTexProgram("shaders/ui", &std3D_uiProgram)) return false;
     if (!std3D_loadSimpleTexProgram("shaders/texfbo", &std3D_texFboStage)) return false;
+	if (!std3D_loadSimpleTexProgram("shaders/deferred", &std3D_deferredStage)) return false;
 	if (!std3D_loadSimpleTexProgram("shaders/postfx", &std3D_postfxStage)) return false;
 	if (!std3D_loadSimpleTexProgram("shaders/bloom", &std3D_bloomStage)) return false;
 	if (!std3D_loadSimpleTexProgram("shaders/ssao", &std3D_ssaoStage)) return false;
@@ -1701,6 +2159,26 @@ int init_resources()
     
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, 4, 4, 0, GL_RGB, GL_FLOAT, tiledrand_data);
 
+	// Dither texture
+	const uint8_t DITHER_LUT[16] = {
+			0, 4, 1, 5,
+			6, 2, 7, 3,
+			1, 5, 0, 4,
+			7, 3, 6, 2
+	};
+	glGenTextures(1, &dither_texture);
+
+	glBindTexture(GL_TEXTURE_2D, dither_texture);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, 4, 4, 0, GL_RED, GL_UNSIGNED_BYTE, DITHER_LUT);
+
     glGenVertexArrays( 1, &vao );
     glBindVertexArray( vao ); 
 
@@ -1736,6 +2214,8 @@ int init_resources()
 		std3D_setupDrawCallVAO(&worldStages[i]);
 		std3D_setupLightingUBO(&worldStages[i]);
 	}
+
+	std3D_initDefaultShader();
 
     has_initted = true;
     return true;
@@ -1819,6 +2299,9 @@ void std3D_FreeResources()
 
     loaded_colormap = NULL;
 
+	glDeleteTextures(1, &tiledrand_texture);
+	glDeleteTextures(1, &dither_texture);
+
     glDeleteBuffers(STD3D_STAGING_COUNT, world_vbo_all);
     glDeleteBuffers(STD3D_STAGING_COUNT, world_ibo_triangle);
 
@@ -1832,6 +2315,7 @@ void std3D_FreeResources()
 	glDeleteBuffers(1, &tex_ubo);
 	glDeleteBuffers(1, &material_ubo);
 	glDeleteBuffers(1, &shared_ubo);
+	glDeleteBuffers(1, &shaderConstsUbo);
 	glDeleteBuffers(1, &light_ubo);
 	glDeleteBuffers(1, &occluder_ubo);
 	glDeleteBuffers(1, &decal_ubo);
@@ -1840,6 +2324,8 @@ void std3D_FreeResources()
 
 	for (int i = 0; i < STD3D_MAX_RENDER_PASSES; ++i)
 		std3D_freeRenderPass(&std3D_renderPasses[i]);
+
+	std3D_DeleteShader(defaultShaderUBO);
 
     std3D_bReinitHudElements = 1;
 
@@ -3035,6 +3521,7 @@ void std3D_DrawUIRenderList()
     std3D_ResetUIRenderList();
 }
 
+// todo: clean this shit up
 void std3D_DrawSimpleTex(std3DSimpleTexStage* pStage, std3DIntermediateFbo* pFbo, GLuint texId, GLuint texId2, GLuint texId3, float param1, float param2, float param3, int gen_mips, const char* debugName)
 {
 	std3D_pushDebugGroup(debugName);
@@ -3108,6 +3595,12 @@ void std3D_DrawSimpleTex(std3DSimpleTexStage* pStage, std3DIntermediateFbo* pFbo
     glUniform1f(pStage->uniform_param1, param1);
     glUniform1f(pStage->uniform_param2, param2);
     glUniform1f(pStage->uniform_param3, param3);
+
+	glUniform1i(pStage->uniform_tex, TEX_SLOT_DIFFUSE);
+	glUniform1i(pStage->uniform_lightbuf, TEX_SLOT_CLUSTER_BUFFER);
+
+	if(renderPassProj)
+		glUniformMatrix4fv(pStage->uniform_proj, 1, GL_FALSE, (float*)renderPassProj);
 
 	//glUniform3fv(pStage->uniform_rt, 1, (float*)&rdCamera_pCurCamera->pClipFrustum->rt);
 	//glUniform3fv(pStage->uniform_lt, 1, (float*)&rdCamera_pCurCamera->pClipFrustum->lt);
@@ -3216,6 +3709,86 @@ int std3D_ClearZBuffer()
     return 1;
 }
 
+void rgb_to_hsv(float r, float g, float b, float* h, float* s, float* v)
+{
+	float min, max, delta;
+
+	min = fminf(fminf(r, g), b);
+	max = fmaxf(fmaxf(r, g), b);
+	*v = max;
+	delta = max - min;
+
+	if (max != 0.0f)
+	{
+		*s = delta / max;
+	}
+	else
+	{
+		*s = 0.0f;
+	}
+
+	if (delta == 0.0f)
+	{
+		*h = 0.0f;
+	}
+	else
+	{
+		if (r == max)
+		{
+			*h = (g - b) / delta;  // Red is max
+		}
+		else if (g == max)
+		{
+			*h = (b - r) / delta + 2.0f;  // Green is max
+		}
+		else
+		{
+			*h = (r - g) / delta + 4.0f;  // Blue is max
+		}
+		*h *= 60.0f;
+		if (*h < 0.0f)
+		{
+			*h += 360.0f;
+		}
+	}
+}
+
+float color_to_roughness(uint8_t ir, uint8_t ig, uint8_t ib)
+{
+	float r = (float)ir / 255.0f;
+	float g = (float)ig / 255.0f;
+	float b = (float)ib / 255.0f;
+
+	float h, s, v;
+	rgb_to_hsv(r, g, b, &h, &s, &v);
+
+	float roughness = 1.0f - s;  // Inverse relation to saturation
+	roughness *= (1.0f - v); // Brighter colors result in less roughness
+
+	return roughness;
+}
+
+float calculate_saturation(float r, float g, float b)
+{
+	float min_val = fminf(fminf(r, g), b) / 255.0;
+	float max_val = fmaxf(fmaxf(r, g), b) / 255.0;
+	float delta = max_val - min_val;
+
+	if (max_val == 0.0f) return 0.0f;
+	return delta / max_val;
+}
+
+float calculate_luminance(float r, float g, float b)
+{
+	return 0.299f * r + 0.587f * g + 0.114f * b;
+}
+
+float generate_specular(float r, float g, float b, float specular_scale)
+{
+	float luminance = calculate_luminance(r/255.0, g/255.0, b/255.0);
+	return powf(1.0f - luminance, 1.0f) * specular_scale;
+}
+
 int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *texture, int is_alpha_tex, int no_alpha)
 {
     if (Main_bHeadless) return 1;
@@ -3228,6 +3801,9 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
     }
     //printf("Add to texture cache\n");
     
+	GLuint specular_texture = 0;
+	GLuint emissive_texture = 0;
+
     GLuint image_texture;
     glGenTextures(1, &image_texture);
     uint8_t* image_8bpp = (*vbuf)->sdlSurface->pixels;
@@ -3262,10 +3838,12 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
 	}
 
-    if ((*vbuf)->format.format.colorMode)
+	stdVBuffer** vbufIter = vbuf;
+
+    if ((*vbufIter)->format.format.colorMode)
     {
         texture->is_16bit = 1;
-		if ((*vbuf)->format.format.bpp == 32)
+		if ((*vbufIter)->format.format.bpp == 32)
 		{
 			glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 			if (!is_alpha_tex)
@@ -3277,23 +3855,37 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 		{
 			glPixelStorei(GL_UNPACK_ALIGNMENT, 2);
 			if (!is_alpha_tex)
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0,  GL_RGB, GL_UNSIGNED_SHORT_5_6_5_REV, image_8bpp);
+			{
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB565, width, height, 0,  GL_RGB, GL_UNSIGNED_SHORT_5_6_5, image_8bpp);
+			}
 			else
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,  GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, image_8bpp);
+			{
+				if((*vbufIter)->format.format.g_bits == 4) // todo: make this an alpha check or something
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA4, width, height, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, image_8bpp);
+				else
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5_A1, width, height, 0,  GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, image_8bpp);
+			}
 		}
 
 		for(int mip = 1; mip < numMips; ++mip)
 		{
-			++vbuf;
+			++vbufIter;
 
-			image_8bpp = (*vbuf)->sdlSurface->pixels;
-			width = (*vbuf)->format.width;
-			height = (*vbuf)->format.height;
+			image_8bpp = (*vbufIter)->sdlSurface->pixels;
+			width = (*vbufIter)->format.width;
+			height = (*vbufIter)->format.height;
 
 			if (!is_alpha_tex)
-				glTexImage2D(GL_TEXTURE_2D, mip, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5_REV, image_8bpp);
+			{
+				glTexImage2D(GL_TEXTURE_2D, mip, GL_RGB565, width, height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, image_8bpp);
+			}
 			else
-				glTexImage2D(GL_TEXTURE_2D, mip, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, image_8bpp);
+			{
+				if ((*vbufIter)->format.format.g_bits == 4) // todo: make this an alpha check or something
+					glTexImage2D(GL_TEXTURE_2D, mip, GL_RGBA4, width, height, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, image_8bpp);
+				else
+					glTexImage2D(GL_TEXTURE_2D, mip, GL_RGB5_A1, width, height, 0, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, image_8bpp);
+			}
 		}
 
 		// generate the remaining mips
@@ -3305,22 +3897,369 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		
+		//texture->is_16bit = 0;
+        //glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, image_8bpp);
+
 		texture->is_16bit = 0;
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, image_8bpp);
+
+		// it's much faster on GPU side to simply convert to rgba instead of manually bilinear filtering
+		uint16_t* image_data = (uint16_t*)malloc(width * height * 2);
+		texture->pDataDepthConverted = (void*)image_data;
+
+		for (int j = 0; j < height; j++)
+		{
+			for (int i = 0; i < width; i++)
+			{
+				uint32_t index = (i * height) + j;
+				uint16_t val_rgba = 0x0000;
+
+				uint8_t val = image_8bpp[index];
+				
+				rdColor24 color;
+				if (pal)
+				{
+					color.r = pal[(val * 3) + 2];
+					color.g = pal[(val * 3) + 1];
+					color.b = pal[(val * 3) + 0];
+				}
+				else
+				{
+					rdColor24* pal_master = sithWorld_pCurrentWorld ? (rdColor24*)sithWorld_pCurrentWorld->colormaps->colors : stdDisplay_gammaPalette;
+					color = pal_master[val];
+				}
+
+				if(is_alpha_tex)
+				{
+					val_rgba |= (val != /*(*vbufIter)->transparent_color*/0) ? 1 : 0x0000;
+
+					val_rgba |= (((uint32_t)color.r >> 3) << 11);
+					val_rgba |= (((uint32_t)color.g >> 3) << 6);
+					val_rgba |= (((uint32_t)color.b >> 3) << 1);
+				}
+				else
+				{
+					val_rgba |= (((uint32_t)color.r >> 3) << 11);
+					val_rgba |= (((uint32_t)color.g >> 2) << 5);
+					val_rgba |= (((uint32_t)color.b >> 3) << 0);
+				}
+
+				image_data[index] = val_rgba;
+			}
+		}
+
+		glTexImage2D(GL_TEXTURE_2D, 0, is_alpha_tex ? GL_RGB5_A1 : GL_RGB565, width, height, 0, is_alpha_tex ? GL_RGBA : GL_RGB, is_alpha_tex ? GL_UNSIGNED_SHORT_5_5_5_1 : GL_UNSIGNED_SHORT_5_6_5, image_data);
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, numMips - 1);
 		for (int mip = 1; mip < numMips; ++mip)
 		{
-			++vbuf;
+			++vbufIter;
 
-			image_8bpp = (*vbuf)->sdlSurface->pixels;
-			width = (*vbuf)->format.width;
-			height = (*vbuf)->format.height;
+			image_8bpp = (*vbufIter)->sdlSurface->pixels;
+			pal = (*vbufIter)->palette;
 
-			glTexImage2D(GL_TEXTURE_2D, mip, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, image_8bpp);
+			width = (*vbufIter)->format.width;
+			height = (*vbufIter)->format.height;
+
+			for (int j = 0; j < height; j++)
+			{
+				for (int i = 0; i < width; i++)
+				{
+					uint32_t index = (i * height) + j;
+					uint16_t val_rgba = 0x0000;
+
+					uint8_t val = image_8bpp[index];
+
+					rdColor24 color;
+					if (pal)
+					{
+						color.r = pal[(val * 3) + 2];
+						color.g = pal[(val * 3) + 1];
+						color.b = pal[(val * 3) + 0];
+					}
+					else
+					{
+						rdColor24* pal_master = sithWorld_pCurrentWorld ? (rdColor24*)sithWorld_pCurrentWorld->colormaps->colors : stdDisplay_gammaPalette;
+						color = pal_master[val];
+					}
+
+					if (is_alpha_tex)
+					{
+						val_rgba |= (val != /*(*vbufIter)->transparent_color*/0) ? 1 : 0x0000;
+						val_rgba |= (((uint32_t)color.r >> 3) << 11);
+						val_rgba |= (((uint32_t)color.g >> 3) << 6);
+						val_rgba |= (((uint32_t)color.b >> 3) << 1);
+					}
+					else
+					{
+						val_rgba |= (((uint32_t)color.r >> 3) << 11);
+						val_rgba |= (((uint32_t)color.g >> 2) << 5);
+						val_rgba |= (((uint32_t)color.b >> 3) << 0);
+					}
+
+					image_data[index] = val_rgba;
+				}
+			}
+
+			glTexImage2D(GL_TEXTURE_2D, mip, is_alpha_tex ? GL_RGB5_A1 : GL_RGB565, width, height, 0, is_alpha_tex ? GL_RGBA : GL_RGB, is_alpha_tex ? GL_UNSIGNED_SHORT_5_5_5_1 : GL_UNSIGNED_SHORT_5_6_5, image_data);
+			//glTexImage2D(GL_TEXTURE_2D, mip, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, image_8bpp);
 		}
 
-        texture->pDataDepthConverted = NULL;
+		// generate the remaining mips
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, numMips - 1);
+		glGenerateMipmap(GL_TEXTURE_2D);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+
+		// auto generate a specular texture from the indices
+		if(0)
+		{
+			glGenTextures(1, &specular_texture);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, specular_texture);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+			glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+			
+			GLint swizzleMask[] = { GL_RED, GL_RED, GL_RED, GL_RED };
+			glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+
+			if (jkPlayer_enableTextureFilter)
+			{
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			}
+			else
+			{
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+			}
+
+			vbufIter = vbuf;
+
+			image_8bpp = (*vbufIter)->sdlSurface->pixels;
+			pal = (*vbufIter)->palette;
+
+			width = (*vbufIter)->format.width;
+			height = (*vbufIter)->format.height;
+
+			const uint32_t DITHER_LUT[16] = {
+				0, 4, 1, 5,
+				6, 2, 7, 3,
+				1, 5, 0, 4,
+				7, 3, 6, 2
+			};
+
+			for (int j = 0; j < height; j++)
+			{
+				for (int i = 0; i < width; i++)
+				{
+					uint32_t index = (i * height) + j;
+					uint8_t val = image_8bpp[index];
+
+					//uint32_t state = val * 747796405u + 2891336453u;
+					//uint32_t word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+					//val = ((word >> 22u) ^ word) & 0xFFu;
+
+
+					int wrap_x = (i) & 3;
+					int wrap_y = (j) & 3;
+					int wrap_index = wrap_x + wrap_y * 4;
+
+					uint32_t state = val * 747796405u + 2891336453u;
+					val = (state >> 24u) & 0xFFu;
+
+					//val = powf((float)val / 255.0, 0.5f) * 255;
+
+					rdColor24 color;
+					if (pal)
+					{
+						color.r = pal[(val * 3) + 2];
+						color.g = pal[(val * 3) + 1];
+						color.b = pal[(val * 3) + 0];
+					}
+					else
+					{
+						rdColor24* pal_master = sithWorld_pCurrentWorld ? (rdColor24*)sithWorld_pCurrentWorld->colormaps->colors : stdDisplay_gammaPalette;
+						color = pal_master[val];
+					}
+
+					//val = color_to_roughness(color.r, color.g, color.b) * 255;
+					//val *= (DITHER_LUT[wrap_index] / 8.0f)*0.5+0.5;
+					//val = calculate_saturation(color.r, color.g, color.b) * 255;
+					//val *= generate_specular(color.r, color.g, color.b, 0.3f);
+
+					((uint8_t*)image_data)[index] = val;
+				}
+			}
+
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, image_data);
+
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, numMips - 1);
+			for (int mip = 1; mip < numMips; ++mip)
+			{
+				++vbufIter;
+
+				image_8bpp = (*vbufIter)->sdlSurface->pixels;
+				pal = (*vbufIter)->palette;
+
+				width = (*vbufIter)->format.width;
+				height = (*vbufIter)->format.height;
+
+				for (int j = 0; j < height; j++)
+				{
+					for (int i = 0; i < width; i++)
+					{
+						uint32_t index = (i * height) + j;
+						uint8_t val = image_8bpp[index];
+
+						//uint32_t state = val * 747796405u + 2891336453u;
+						//uint32_t word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+						//val = ((word >> 22u) ^ word) & 0xFFu;
+
+						int wrap_x = (i) & 3;
+						int wrap_y = (j) & 3;
+						int wrap_index = wrap_x + wrap_y * 4;
+
+						uint32_t state = val * 747796405u + 2891336453u;
+						val = (state >> 24u) & 0xFFu;
+
+						//val = powf((float)val / 255.0, 0.5f) * 255;
+
+						rdColor24 color;
+						if (pal)
+						{
+							color.r = pal[(val * 3) + 2];
+							color.g = pal[(val * 3) + 1];
+							color.b = pal[(val * 3) + 0];
+						}
+						else
+						{
+							rdColor24* pal_master = sithWorld_pCurrentWorld ? (rdColor24*)sithWorld_pCurrentWorld->colormaps->colors : stdDisplay_gammaPalette;
+							color = pal_master[val];
+						}
+
+						//val = color_to_roughness(color.r, color.g, color.b) * 255;
+						//val *= (DITHER_LUT[wrap_index] / 8.0f) * 0.5 + 0.5;
+						//val = calculate_saturation(color.r, color.g, color.b) * 255;
+						//val *= generate_specular(color.r, color.g, color.b, 0.3f);
+
+						((uint8_t*)image_data)[index] = val;
+					}
+				}
+
+				glTexImage2D(GL_TEXTURE_2D, mip, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, image_data);
+				//glTexImage2D(GL_TEXTURE_2D, mip, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, image_8bpp);
+			}
+
+			// generate the remaining mips
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, numMips - 1);
+			glGenerateMipmap(GL_TEXTURE_2D);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+		}
+	
+		// auto-generate an emissive texture from the light palette
+		uint8_t* light = sithWorld_pCurrentWorld ? (uint8_t*)sithWorld_pCurrentWorld->colormaps->lightlevel : NULL;
+
+		if(light && !pal)
+		{
+			glGenTextures(1, &emissive_texture);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, emissive_texture);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+			glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+
+			if (jkPlayer_enableTextureFilter)
+			{
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			}
+			else
+			{
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+			}
+
+			vbufIter = vbuf;
+
+			image_8bpp = (*vbufIter)->sdlSurface->pixels;
+			pal = (*vbufIter)->palette;
+
+			width = (*vbufIter)->format.width;
+			height = (*vbufIter)->format.height;
+
+			for (int j = 0; j < height; j++)
+			{
+				for (int i = 0; i < width; i++)
+				{
+					uint32_t index = (i * height) + j;
+					uint16_t val_rgba = 0x0000;
+
+					//val_rgba |= (index != (*vbufIter)->transparent_color) ? 0xFF000000 : 0x00000000;
+
+					uint8_t val = light[image_8bpp[index]];
+						
+					rdColor24* pal_master = sithWorld_pCurrentWorld ? (rdColor24*)sithWorld_pCurrentWorld->colormaps->colors : stdDisplay_gammaPalette;
+					rdColor24 color = pal_master[val];
+
+					val_rgba |= (((uint32_t)color.r >> 3) << 11);
+					val_rgba |= (((uint32_t)color.g >> 2) << 5);
+					val_rgba |= (((uint32_t)color.b >> 3) << 0);
+
+					image_data[index] = val_rgba;
+				}
+			}
+
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB565, width, height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, image_data);
+
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, numMips - 1);
+			for (int mip = 1; mip < numMips; ++mip)
+			{
+				++vbufIter;
+
+				image_8bpp = (*vbufIter)->sdlSurface->pixels;
+				pal = (*vbufIter)->palette;
+
+				width = (*vbufIter)->format.width;
+				height = (*vbufIter)->format.height;
+
+				for (int j = 0; j < height; j++)
+				{
+					for (int i = 0; i < width; i++)
+					{
+						uint32_t index = (i * height) + j;
+						uint16_t val_rgba = 0x0000;
+
+						//val_rgba |= (index != (*vbufIter)->transparent_color) ? 0xFF000000 : 0x00000000;
+
+						uint8_t val = light[image_8bpp[index]];
+						rdColor24* pal_master = (rdColor24*)sithWorld_pCurrentWorld->colormaps->colors;//stdDisplay_gammaPalette;
+						rdColor24 color = pal_master[val];
+
+						val_rgba |= (((uint32_t)color.r >> 3u) << 11);
+						val_rgba |= (((uint32_t)color.g >> 2u) << 5);
+						val_rgba |= (((uint32_t)color.b >> 3u) << 0);
+
+						image_data[index] = val_rgba;
+					}
+				}
+
+				glTexImage2D(GL_TEXTURE_2D, mip, GL_RGB565, width, height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, image_data);
+				//glTexImage2D(GL_TEXTURE_2D, mip, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, image_8bpp);
+			}
+		
+			// generate the remaining mips
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, numMips - 1);
+			glGenerateMipmap(GL_TEXTURE_2D);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+		}
+
+        //texture->pDataDepthConverted = NULL;
     }
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     
@@ -3331,7 +4270,8 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
     ext->surfacepaltex = pal_texture;*/
     
     texture->texture_id = image_texture;
-    texture->emissive_texture_id = 0;
+	texture->specular_texture_id = specular_texture;
+    texture->emissive_texture_id = emissive_texture;
     texture->displacement_texture_id = 0;
     texture->texture_loaded = 1;
     texture->emissive_factor[0] = 0.0;
@@ -3704,6 +4644,22 @@ void std3D_UpdateSettings()
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             }
         }
+
+		if (tex->specular_texture_id != 0)
+		{
+			glBindTexture(GL_TEXTURE_2D, tex->specular_texture_id);
+
+			if (jkPlayer_enableTextureFilter)
+			{
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			}
+			else
+			{
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			}
+		}
     }
 
     glBindTexture(GL_TEXTURE_2D, blank_tex);
@@ -3802,6 +4758,11 @@ void std3D_PurgeTextureEntry(int i) {
         glDeleteTextures(1, &tex->emissive_texture_id);
         tex->emissive_texture_id = 0;
     }
+
+	if (tex->specular_texture_id != 0) {
+		glDeleteTextures(1, &tex->specular_texture_id);
+		tex->specular_texture_id = 0;
+	}
 
     if (tex->displacement_texture_id != 0) {
         glDeleteTextures(1, &tex->displacement_texture_id);
@@ -4234,6 +5195,11 @@ void std3D_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallSta
 	else	
 	{
 		shaderID = std3D_GetShaderID(pDrawCallState);
+		
+		//pDrawCallState->stateBits.blend = 0;
+		//pDrawCallState->stateBits.srdBlend = 1;
+		//pDrawCallState->stateBits.dstBlend = 0;
+
 		listIndex = blending ? DRAW_LIST_COLOR_ALPHABLEND : DRAW_LIST_COLOR_NOZPREPASS;
 	}
 
@@ -4297,7 +5263,7 @@ void std3D_UpdateSharedUniforms()
 	uniforms.mipDistances.w = (float)jkPlayer_mipBias;
 
 	glBindBuffer(GL_UNIFORM_BUFFER, shared_ubo);
-	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(std3D_SharedUniforms), &uniforms);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(std3D_SharedUniforms), &uniforms);	
 }
 
 int std3D_DrawCallCompareSortKey(std3D_DrawCall** a, std3D_DrawCall** b)
@@ -4340,7 +5306,13 @@ void std3D_SetRasterState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 	glCullFace(pState->stateBits.cullMode == RD_CULL_MODE_BACK ? GL_BACK : GL_FRONT);
 
 	glUniform1i(pStage->uniform_geo_mode, pState->stateBits.geoMode + 1);
-	glUniform1i(pStage->uniform_ditherMode, pState->stateBits.ditherMode);
+
+	if(pState->stateBits.ditherMode > 0)
+		std3D_bindTexture(GL_TEXTURE_2D, dither_texture, TEX_SLOT_DITHER);
+	else
+		std3D_bindTexture(GL_TEXTURE_2D, blank_tex, TEX_SLOT_DITHER);
+
+	std3D_bindTexture(GL_TEXTURE_2D, deferred.tex, TEX_SLOT_DIFFUSE_LIGHT);
 }
 
 void std3D_SetFogState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
@@ -4426,17 +5398,17 @@ void std3D_SetDepthStencilState(std3D_DrawCallState* pState)
 
 void std3D_SetTransformState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 {
-	rdMatrix44* pProjection = &pState->transformState.proj;
+	renderPassProj = &pState->transformState.proj;
 
-	float fov = 2.0 * atanf(1.0 / pProjection->vC.y);
-	float aspect = pProjection->vC.y / pProjection->vA.x;
-	float znear = -pProjection->vD.z / (pProjection->vB.z + 1.0f);
-	float zfar = -pProjection->vD.z / (pProjection->vB.z - 1.0f);
+	float fov = 2.0 * atanf(1.0 / renderPassProj->vC.y);
+	float aspect = renderPassProj->vC.y / renderPassProj->vA.x;
+	float znear = -renderPassProj->vD.z / (renderPassProj->vB.z + 1.0f);
+	float zfar = -renderPassProj->vD.z / (renderPassProj->vB.z - 1.0f);
 
 	float T = znear * tanf(0.5 * fov);
 	float R = aspect * T;
 
-	glUniformMatrix4fv(pStage->uniform_projection, 1, GL_FALSE, (float*)pProjection);
+	glUniformMatrix4fv(pStage->uniform_projection, 1, GL_FALSE, (float*)renderPassProj);
 	glUniform2f(pStage->uniform_rightTop, R, T);
 
 	glUniformMatrix4fv(pStage->uniform_viewMatrix, 1, GL_FALSE, (float*)&pState->transformState.view);
@@ -4457,37 +5429,49 @@ void std3D_SetTextureState(std3D_worldStage* pStage, std3D_DrawCallState* pState
 
 	if(pTexture)
 	{
-		int tex_id = pTexture->texture_id;
-		glActiveTexture(GL_TEXTURE0 + 0);
-		glBindTexture(GL_TEXTURE_2D, tex_id ? tex_id : blank_tex_white);
+		int tex_id = pTexture->texture_id ? pTexture->texture_id : blank_tex_white;
+		glActiveTexture(GL_TEXTURE0 + TEX_SLOT_DIFFUSE);
+		glBindTexture(GL_TEXTURE_2D, tex_id);
 
 		int clampX = (pTexState->flags & RD_FF_TEX_CLAMP_X) ? 1 : 0;
 		int clampY = (pTexState->flags & RD_FF_TEX_CLAMP_Y) ? 1 : 0;
 
-		if ((pState->stateBits.texFilter == RD_TEXFILTER_BILINEAR) && pTexture->is_16bit)
-			glBindSampler(0, linearSampler[clampX + clampY * 2]);
+		if ((pState->stateBits.texFilter == RD_TEXFILTER_BILINEAR))// && pTexture->is_16bit)
+			glBindSampler(TEX_SLOT_DIFFUSE, linearSampler[clampX + clampY * 2]);
 		else
-			glBindSampler(0, nearestSampler[clampX + clampY * 2]);
+			glBindSampler(TEX_SLOT_DIFFUSE, nearestSampler[clampX + clampY * 2]);
 
 		int emiss_tex_id = pTexture->emissive_texture_id;
-		glActiveTexture(GL_TEXTURE0 + 3);
+		glActiveTexture(GL_TEXTURE0 + TEX_SLOT_EMISSIVE);
 		glBindTexture(GL_TEXTURE_2D, emiss_tex_id ? emiss_tex_id : blank_tex);
 		
-		if ((pState->stateBits.texFilter == RD_TEXFILTER_BILINEAR) && pTexture->is_16bit)
-			glBindSampler(3, linearSampler[clampX + clampY * 2]);
+		if ((pState->stateBits.texFilter == RD_TEXFILTER_BILINEAR))// && pTexture->is_16bit)
+			glBindSampler(TEX_SLOT_EMISSIVE, linearSampler[clampX + clampY * 2]);
 		else
-			glBindSampler(3, nearestSampler[clampX + clampY * 2]);
+			glBindSampler(TEX_SLOT_EMISSIVE, nearestSampler[clampX + clampY * 2]);
 
 		int displace_tex_id = pTexture->displacement_texture_id;
-		glActiveTexture(GL_TEXTURE0 + 4);
+		glActiveTexture(GL_TEXTURE0 + TEX_SLOT_DISPLACEMENT);
 		glBindTexture(GL_TEXTURE_2D, displace_tex_id ? displace_tex_id : blank_tex);
 		
-		if ((pState->stateBits.texFilter == RD_TEXFILTER_BILINEAR) && pTexture->is_16bit)
-			glBindSampler(4, linearSampler[clampX + clampY * 2]);
+		//if ((pState->stateBits.texFilter == RD_TEXFILTER_BILINEAR))// && pTexture->is_16bit)
+			glBindSampler(TEX_SLOT_DISPLACEMENT, linearSampler[clampX + clampY * 2]);
+		//else
+		//	glBindSampler(TEX_SLOT_DISPLACEMENT, nearestSampler[clampX + clampY * 2]);
+
+		int spec_tex_id = pTexture->specular_texture_id;
+		glActiveTexture(GL_TEXTURE0 + TEX_SLOT_TEX3);
+		glBindTexture(GL_TEXTURE_2D, spec_tex_id ? spec_tex_id : blank_tex);
+
+		if ((pState->stateBits.texFilter == RD_TEXFILTER_BILINEAR))
+			glBindSampler(TEX_SLOT_EMISSIVE, linearSampler[clampX + clampY * 2]);
 		else
-			glBindSampler(4, nearestSampler[clampX + clampY * 2]);
+			glBindSampler(TEX_SLOT_EMISSIVE, nearestSampler[clampX + clampY * 2]);
+
 
 		glActiveTexture(GL_TEXTURE0 + 0);
+
+
 
 		if (tex_id == 0)
 		{
@@ -4505,13 +5489,13 @@ void std3D_SetTextureState(std3D_worldStage* pStage, std3D_DrawCallState* pState
 	}
 	else
 	{
-		glActiveTexture(GL_TEXTURE0 + 3);
+		glActiveTexture(GL_TEXTURE0 + TEX_SLOT_EMISSIVE);
 		glBindTexture(GL_TEXTURE_2D, blank_tex); // emissive
-		glActiveTexture(GL_TEXTURE0 + 4);
+		glActiveTexture(GL_TEXTURE0 + TEX_SLOT_DISPLACEMENT);
 		glBindTexture(GL_TEXTURE_2D, blank_tex); // displace
-		glActiveTexture(GL_TEXTURE0 + 0);
+		glActiveTexture(GL_TEXTURE0 + TEX_SLOT_DIFFUSE);
 		glBindTexture(GL_TEXTURE_2D, blank_tex_white);
-		glActiveTexture(GL_TEXTURE0 + 0);
+		glActiveTexture(GL_TEXTURE0);
 
 		tex.tex_mode = TEX_MODE_TEST;
 		rdVector_Set2(&tex.texsize, 1, 1);
@@ -4559,15 +5543,15 @@ void std3D_SetLightingState(std3D_worldStage* pStage, std3D_DrawCallState* pStat
 	float b = ((pState->lightingState.ambientColor >>  0) & 0x3FF) / 255.0f;
 	glUniform3f(pStage->uniform_ambient_color, r, g, b);
 
-	rdVector3 sgs[8];
-	for (int i = 0; i < 8; ++i)
-	{
-		float r = ((pState->lightingState.ambientLobes[i] >> 20) & 0x3FF) / 255.0f;
-		float g = ((pState->lightingState.ambientLobes[i] >> 10) & 0x3FF) / 255.0f;
-		float b = ((pState->lightingState.ambientLobes[i] >>  0) & 0x3FF) / 255.0f;
-		rdVector_Set3(&sgs[i], r, g, b);
-	}
-	glUniform3fv(pStage->uniform_ambient_sg, 8, &sgs[0].x);
+	glUniform1uiv(pStage->uniform_ambient_sg, 8, &pState->lightingState.ambientLobes[0]);
+	glUniform1ui(pStage->uniform_ambient_sg_count, 8);
+}
+
+void std3D_SetShaderState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
+{
+	// todo
+	//glBindBuffer(GL_UNIFORM_BUFFER, shaderConstsUbo);
+	//glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(std3D_ShaderConsts), &uniforms);
 }
 
 void std3D_BindStage(std3D_worldStage* pStage)
@@ -4577,6 +5561,15 @@ void std3D_BindStage(std3D_worldStage* pStage)
 	glBindVertexArray(pStage->vao[bufferIdx]);
 	glBindBuffer(GL_ARRAY_BUFFER, world_vbo_all[bufferIdx]);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_ibo_triangle[bufferIdx]);
+
+	GLuint texids[] = {
+		TEX_SLOT_TEX0,
+		TEX_SLOT_TEX1,
+		TEX_SLOT_TEX2,
+		TEX_SLOT_TEX3,
+	};
+
+	glUniform1iv(pStage->uniform_textures, 4, texids);
 
 	glUniform1i(pStage->uniform_tex,                TEX_SLOT_DIFFUSE);
 	glUniform1i(pStage->uniform_worldPalette,       TEX_SLOT_WORLD_PAL);
@@ -4589,12 +5582,8 @@ void std3D_BindStage(std3D_worldStage* pStage)
 	glUniform1i(pStage->uniform_texssao,            TEX_SLOT_AO);
 	glUniform1i(pStage->uniform_texrefraction,      TEX_SLOT_REFRACTION);
 	glUniform1i(pStage->uniform_texclip,            TEX_SLOT_CLIP);
-}
-
-inline void std3D_bindTexture(int type, int texId, int slot)
-{
-	glActiveTexture(GL_TEXTURE0 + slot);
-	glBindTexture(type, texId);
+	glUniform1i(pStage->uniform_dithertex,          TEX_SLOT_DITHER);
+	glUniform1i(pStage->uniform_diffuse_light,      TEX_SLOT_DIFFUSE_LIGHT);
 }
 
 typedef int(*std3D_SortFunc)(std3D_DrawCall*, std3D_DrawCall*);
@@ -4672,13 +5661,14 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 	
 	std3D_UpdateSharedUniforms();
 
-	glBindBufferBase(GL_UNIFORM_BUFFER, 0, light_ubo);
-	glBindBufferBase(GL_UNIFORM_BUFFER, 1, occluder_ubo);
-	glBindBufferBase(GL_UNIFORM_BUFFER, 2, decal_ubo);
-	glBindBufferBase(GL_UNIFORM_BUFFER, 3, shared_ubo);
-	glBindBufferBase(GL_UNIFORM_BUFFER, 4, fog_ubo);
-	glBindBufferBase(GL_UNIFORM_BUFFER, 5, tex_ubo);
-	glBindBufferBase(GL_UNIFORM_BUFFER, 6, material_ubo);
+	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_LIGHTS, light_ubo);
+	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_OCCLUDERS, occluder_ubo);
+	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_DECALS, decal_ubo);
+	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_SHARED, shared_ubo);
+	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_FOG, fog_ubo);
+	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_TEX, tex_ubo);
+	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_MATERIAL, material_ubo);
+	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_SHADER, defaultShaderUBO);
 
 	std3D_DrawCall* pDrawCall = pList->drawCallPtrs[0];
 	std3D_DrawCallState* pState = &pDrawCall->state;
@@ -4795,6 +5785,9 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 		glDrawElements(std3D_PrimitiveForGeoMode(pDrawCall->state.stateBits.geoMode + 1), batchIndices, GL_UNSIGNED_SHORT, (void*)(indexOffset * sizeof(uint16_t)));
 
 	glBindSampler(0, 0);
+	glBindSampler(TEX_SLOT_DIFFUSE, 0);
+	glBindSampler(TEX_SLOT_EMISSIVE, 0);
+	glBindSampler(TEX_SLOT_DISPLACEMENT, 0);
 
 	std3D_popDebugGroup();
 	STD_END_PROFILER_LABEL();
@@ -4843,17 +5836,23 @@ void std3D_DoSSAO()
 void std3D_setupWorldTextures()
 {
 	GLint aotex = jkPlayer_enableSSAO ? ssao.tex : blank_tex_white;
-	std3D_bindTexture(    GL_TEXTURE_2D,         blank_tex_white,         TEX_SLOT_DIFFUSE);
+	std3D_bindTexture(    GL_TEXTURE_2D,         blank_tex_white,         TEX_SLOT_TEX0);
+	std3D_bindTexture(    GL_TEXTURE_2D,         blank_tex_white,         TEX_SLOT_TEX1);
+	std3D_bindTexture(    GL_TEXTURE_2D,         blank_tex_white,         TEX_SLOT_TEX2);
+	std3D_bindTexture(    GL_TEXTURE_2D,         blank_tex_white,         TEX_SLOT_TEX3);
+		
+	//std3D_bindTexture(    GL_TEXTURE_2D,         blank_tex_white,         TEX_SLOT_DIFFUSE);
+	//std3D_bindTexture(    GL_TEXTURE_2D,               blank_tex,        TEX_SLOT_EMISSIVE);
+	//std3D_bindTexture(    GL_TEXTURE_2D,               blank_tex,    TEX_SLOT_DISPLACEMENT);
 	std3D_bindTexture(    GL_TEXTURE_2D,        worldpal_texture,       TEX_SLOT_WORLD_PAL);
 	std3D_bindTexture(    GL_TEXTURE_2D, worldpal_lights_texture, TEX_SLOT_WORLD_LIGHT_PAL);
-	std3D_bindTexture(    GL_TEXTURE_2D,               blank_tex,        TEX_SLOT_EMISSIVE);
-	std3D_bindTexture(    GL_TEXTURE_2D,               blank_tex,    TEX_SLOT_DISPLACEMENT);
 	std3D_bindTexture(GL_TEXTURE_BUFFER,             cluster_tbo,  TEX_SLOT_CLUSTER_BUFFER);
 	std3D_bindTexture(    GL_TEXTURE_2D,       decalAtlasFBO.tex,     TEX_SLOT_DECAL_ATLAS);
 	std3D_bindTexture(    GL_TEXTURE_2D,  std3D_framebuffer.ztex,           TEX_SLOT_DEPTH);
 	std3D_bindTexture(    GL_TEXTURE_2D,                   aotex,              TEX_SLOT_AO);
 	std3D_bindTexture(    GL_TEXTURE_2D,                refr.tex,      TEX_SLOT_REFRACTION);
 	std3D_bindTexture(    GL_TEXTURE_2D,               blank_tex,            TEX_SLOT_CLIP);
+	std3D_bindTexture(    GL_TEXTURE_2D,          dither_texture,          TEX_SLOT_DITHER);
 }
 
 void std3D_FlushRefractionZDrawCalls(std3D_RenderPass* pRenderPass)
@@ -4960,8 +5959,12 @@ void std3D_FlushDeferred(std3D_RenderPass* pRenderPass)
 {
 	STD_BEGIN_PROFILER_LABEL();
 	std3D_pushDebugGroup("std3D_FlushDeferred");
+	
+	if (pRenderPass->flags & RD_RENDERPASS_AMBIENT_OCCLUSION)
+		std3D_DoSSAO();
 
-	std3D_DoSSAO();
+	// deferred is a lot more expensive at 4k than cramming it all into 1 shader
+	//std3D_DrawSimpleTex(&std3D_deferredStage, &deferred, std3D_framebuffer.ztex, std3D_framebuffer.ntex, 0, 1.0f, 1.0f, 1.0f, 0, "Deferred Opaque");
 
 	std3D_popDebugGroup();
 	STD_END_PROFILER_LABEL();
@@ -5059,7 +6062,7 @@ void std3D_FlushDrawCalls()
 		std3D_FlushZDrawCalls(pRenderPass);
 
 		// do opaque-only deferred stuff
-		if (pRenderPass->flags & RD_RENDERPASS_AMBIENT_OCCLUSION)
+		//if (pRenderPass->flags & RD_RENDERPASS_AMBIENT_OCCLUSION)
 			std3D_FlushDeferred(pRenderPass);
 
 		// draw refraction passes
@@ -5116,6 +6119,9 @@ void std3D_FlushDrawCalls()
 	glDisable(GL_SCISSOR_TEST);
 	glCullFace(GL_FRONT);
 	glBindSampler(0, 0);
+	glBindSampler(TEX_SLOT_DIFFUSE, 0);
+	glBindSampler(TEX_SLOT_EMISSIVE, 0);
+	glBindSampler(TEX_SLOT_DISPLACEMENT, 0);
 
 	std3D_popDebugGroup();
 	STD_END_PROFILER_LABEL();
@@ -5145,10 +6151,19 @@ int std3D_AddLight(rdLight* light, rdVector3* position, float intensity)
 	light3d->direction_intensity.y = light->direction.y;
 	light3d->direction_intensity.z = light->direction.z;
 	light3d->direction_intensity.w = light->intensity * intensity;
-	light3d->color.x = light->color.x * intensity;
-	light3d->color.y = light->color.y * intensity;
-	light3d->color.z = light->color.z * intensity;
-	light3d->color.w = fmin(light->color.x, fmin(light->color.y, light->color.z));
+
+
+	uint32_t r = (uint32_t)fmin(light->color.x * intensity * 1023.0, 1023.0);
+	uint32_t g = (uint32_t)fmin(light->color.y * intensity * 1023.0, 1023.0);
+	uint32_t b = (uint32_t)fmin(light->color.z * intensity * 1023.0, 1023.0);
+	uint32_t a = 1;
+
+	light3d->color = (r << 20u) | (g << 10u) | (b << 0u);
+
+	//light3d->color.x = light->color.x * intensity;
+	//light3d->color.y = light->color.y * intensity;
+	//light3d->color.z = light->color.z * intensity;
+	//light3d->color.w = fmin(light->color.x, fmin(light->color.y, light->color.z));
 #ifdef JKM_LIGHTING
 	light3d->angleX = light->angleX;
 	light3d->cosAngleX = light->cosAngleX;

@@ -19,6 +19,102 @@ int findLSB(uint x)
 }
 #endif
 
+uint findLSB_unsafe(uint x) // same as above but doesn't account for 0 inputs
+{
+#ifndef GL_ARB_gpu_shader5
+	return bitCount(~x & (x - 1u));
+#else // use the intrinsic and cast
+	return uint(findLSB(x));
+#endif
+}
+
+// packing
+vec4 unpack_argb8888(uint packedInput)
+{
+	return vec4((packedInput >> 16u) & 0xFFu, (packedInput >> 8u) & 0xFFu, packedInput & 0xFFu, (packedInput >> 24u) & 0xFFu);
+}
+
+uint pack_argb8888(vec4 unpackedInput)
+{
+	return (uint(unpackedInput.r) << 16u) | (uint(unpackedInput.g) << 8u) | (uint(unpackedInput.b) << 0u) | (uint(unpackedInput.a) << 24u);
+}
+
+vec4 unpack_argb2101010(uint packedInput)
+{
+	return vec4((packedInput >> 20u) & 0x3FFu, (packedInput >> 10u) & 0x3FFu, packedInput & 0x3FFu, (packedInput >> 30u) & 1u);
+}
+
+uint pack_argb2101010(vec4 unpackedInput)
+{
+	return (uint(unpackedInput.r) << 20u) | (uint(unpackedInput.g) << 10u) | (uint(unpackedInput.b) << 0u) | (uint(unpackedInput.a) << 30u);
+}
+
+// encoding
+uint encodeHemiUnitVector(vec3 v) // hemisphere stereographic fp16 encoding
+{
+    v.z = max(v.z, 0.0);
+    float scale = sqrt(2.0 / (1.0 + v.z));
+    return packHalf2x16(v.xy * scale);
+}
+
+vec3 decodeHemiUnitVector(uint enc) // hemisphere stereographic fp16 encoding
+{
+    vec2 xy = unpackHalf2x16(enc);
+    float z = 1.0 - (xy.x * xy.x + xy.y * xy.y) / 2.0;
+    vec3 v = vec3(xy, z);
+    return normalize(v);
+}
+
+vec2 oct_wrap(vec2 v)
+{
+	vec2 signs;
+	signs.x = v.x >= 0.0 ? 1.0 : -1.0;
+	signs.y = v.y >= 0.0 ? 1.0 : -1.0;
+    return (1.0 - abs(v.yx)) * (signs);
+}
+
+vec2 encode_octahedron(vec3 v)
+{
+    v /= abs(v.x) + abs(v.y) + abs(v.z);
+    v.xy = v.z >= 0.0 ? v.xy : oct_wrap(v.xy);
+    return clamp(v.xy * 0.5 + 0.5, vec2(0.0), vec2(1.0));
+}
+
+vec3 decode_octahedron(vec2 p)
+{
+    p = (p * 2.0 - 1.0);
+	vec3 n;
+    n.z = 1.0 - abs(p.x) - abs(p.y);
+    n.xy = n.z >= 0.0 ? p.xy : oct_wrap( p.xy );
+    return normalize(n);
+}
+
+// conversions
+vec3 rgb2ycocg(vec3 RGB)
+{
+    vec3 o;
+    o.x =  0.25 * RGB.r + 0.5 * RGB.g + 0.25 * RGB.b;
+    o.y =   0.5 * RGB.r - 0.5 * RGB.b;
+    o.z = -0.25 * RGB.r + 0.5 * RGB.g - 0.25 * RGB.b;
+
+	o.yz += (0.5 * 256.0 / 255.0);
+
+    return o;
+}
+
+vec3 ycocg2rgb(vec3 YCoCg)
+{
+	YCoCg.yz = YCoCg.yz - (0.5 * 256.0 / 255.0);
+
+    vec3 o;
+    o.r = YCoCg.x + YCoCg.y - YCoCg.z;
+    o.g = YCoCg.x + YCoCg.z;
+    o.b = YCoCg.x - YCoCg.y - YCoCg.z;
+    return o;
+}
+
+// fast math
+
 // https://seblagarde.wordpress.com/2014/12/01/inverse-trigonometric-functions-gpu-optimization-for-amd-gcn-architecture/
 // max absolute error 1.3x10^-3
 // Eberly's odd polynomial degree 5 - respect bounds

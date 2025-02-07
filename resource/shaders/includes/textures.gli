@@ -1,0 +1,240 @@
+#ifndef TEXTURES_H
+#define TEXTURES_H
+
+// Textures
+uniform sampler2D textures[4];
+
+uniform sampler2D tex;
+uniform sampler2D texEmiss;
+uniform sampler2D worldPalette;
+uniform sampler2D worldPaletteLights;
+uniform sampler2D displacement_map;
+
+uniform sampler2D ztex;
+uniform sampler2D ssaotex;
+uniform sampler2D refrtex;
+uniform sampler2D cliptex;
+uniform sampler2D dithertex;
+uniform sampler2D diffuseLightTex;
+
+#ifdef FRAGMENT_SHADER
+
+mat3 construct_tbn(vec2 uv, vec3 pos)
+{
+    vec3 dp1 = dFdx(pos.xyz);
+    vec3 dp2 = dFdy(pos.xyz);
+    vec2 duv1 = dFdx(uv.xy);
+    vec2 duv2 = dFdy(uv.xy);
+
+	vec3 n = normalize(cross(dp1, dp2)); // todo: use f_normal?
+
+    vec3 dp2perp = cross(dp2, n);
+    vec3 dp1perp = cross(n, dp1);
+
+    vec3 t = dp2perp * duv1.x + dp1perp * duv2.x;
+    vec3 b = dp2perp * duv1.y + dp1perp * duv2.y;
+
+    float invmax = inversesqrt(max(dot(t, t), dot(b, b)));
+    return mat3(t * invmax, b * invmax, n);
+}
+
+float compute_mip_bias(float z_min)
+{
+	float mipmap_level = 0.0;
+	mipmap_level = z_min < mipDistances.x ? mipmap_level : 1.0;
+	mipmap_level = z_min < mipDistances.y ? mipmap_level : 2.0;
+	mipmap_level = z_min < mipDistances.z ? mipmap_level : 3.0;
+
+	// dither the mip level
+	//if(ditherMode == 1)
+	//{
+	//	const mat4 bayerIndex = mat4(
+	//		vec4(00.0/16.0, 12.0/16.0, 03.0/16.0, 15.0/16.0),
+	//		vec4(08.0/16.0, 04.0/16.0, 11.0/16.0, 07.0/16.0),
+	//		vec4(02.0/16.0, 14.0/16.0, 01.0/16.0, 13.0/16.0),
+	//		vec4(10.0/16.0, 06.0/16.0, 09.0/16.0, 05.0/16.0)
+	//	);
+	//	ivec2 coord = ivec2(gl_FragCoord.xy);
+	//	mipmap_level += bayerIndex[coord.x & 3][coord.y & 3];
+	//}
+
+	return mipmap_level + mipDistances.w;
+}
+
+vec4 tex_clut(sampler2D s, vec2 tc, float lodbias)
+{
+	float index = texture(s, tc.xy, lodbias).r;
+	return vec4(texture(worldPalette, vec2(index, 0.5)).xyz, (index == 0.0) ? 0.0 : 1.0);
+}
+
+vec4 tex_clut_light(sampler2D s, vec2 tc, float light, float lodbias)
+{
+	float index = texture(s, tc.xy, lodbias).r;
+	index = texture(worldPaletteLights, vec2(index, light)).x;
+	return vec4(texture(worldPalette, vec2(index, 0.5)).xyz, 0.0);
+}
+
+#ifdef CAN_BILINEAR_FILTER
+void bilinear_paletted(vec2 uv, out vec4 color, out vec4 emissive)
+{
+	float mip = texQueryLod(tex, uv);
+	//mip += compute_mip_bias(f_coord.y);
+	mip = min(mip, float(numMips - 1));
+
+	ivec2 ires = textureSize( tex, int(mip) );
+	vec2  fres = vec2( ires );
+
+	vec2 st = uv*fres - 0.5;
+    vec2 i = floor( st );
+    vec2 w = fract( st );
+
+	// textureGather doesn't handle mips, need to sample manually
+	// use textureLod instead of texelFetch/manual textureGather to respect sampler states
+	// this should be quite cache friendly so the overhead is minimal
+    float a = textureLod( tex, (i + vec2(0.5,0.5)) / fres, mip ).x;
+    float b = textureLod( tex, (i + vec2(1.5,0.5)) / fres, mip ).x;
+    float c = textureLod( tex, (i + vec2(0.5,1.5)) / fres, mip ).x;
+    float d = textureLod( tex, (i + vec2(1.5,1.5)) / fres, mip ).x;
+	
+	// read the palette
+	vec4 ca = texture(worldPalette, vec2(a, 0.5));
+    vec4 cb = texture(worldPalette, vec2(b, 0.5));
+    vec4 cc = texture(worldPalette, vec2(c, 0.5));
+    vec4 cd = texture(worldPalette, vec2(d, 0.5));
+
+    if (a == 0.0) {
+        ca.a = 0.0;
+    }
+    if (b == 0.0) {
+        cb.a = 0.0;
+    }
+    if (c == 0.0) {
+        cc.a = 0.0;
+    }
+    if (d == 0.0) {
+        cd.a = 0.0;
+    }
+
+	color = mix(mix(ca, cb, w.x), mix(cc, cd, w.x), w.y);
+
+	// Makes sure light is in a sane range
+    float light = 0.0;// clamp(f_light, 0.0, 1.0);
+
+	// read the light palette
+	a = texture(worldPaletteLights, vec2(a, light)).x;
+	b = texture(worldPaletteLights, vec2(b, light)).x;
+	c = texture(worldPaletteLights, vec2(c, light)).x;
+	d = texture(worldPaletteLights, vec2(d, light)).x;
+
+	ca = texture(worldPalette, vec2(a, 0.5));
+    cb = texture(worldPalette, vec2(b, 0.5));
+    cc = texture(worldPalette, vec2(c, 0.5));
+    cd = texture(worldPalette, vec2(d, 0.5));
+	
+	emissive = mix(mix(ca, cb, w.x), mix(cc, cd, w.x), w.y);
+}
+
+vec4 tex_clut_bilinear(sampler2D s, vec2 uv, float lodbias)
+{
+	float mip = texQueryLod(s, uv);
+	mip += lodbias;
+	mip = min(mip, float(numMips - 1));
+
+	ivec2 ires = textureSize( s, int(mip) );
+	vec2  fres = vec2( ires );
+
+	vec2 st = uv * fres - 0.5;
+    vec2 i = floor( st );
+    vec2 w = fract( st );
+
+	// textureGather doesn't handle mips, need to sample manually
+	// use textureLod instead of texelFetch/manual textureGather to respect sampler states
+	// this should be quite cache friendly so the overhead is minimal
+    float a = textureLod( s, (i + vec2(0.5,0.5)) / fres, mip ).x;
+    float b = textureLod( s, (i + vec2(1.5,0.5)) / fres, mip ).x;
+    float c = textureLod( s, (i + vec2(0.5,1.5)) / fres, mip ).x;
+    float d = textureLod( s, (i + vec2(1.5,1.5)) / fres, mip ).x;
+	
+	// read the palette
+	vec4 ca = texture(worldPalette, vec2(a, 0.5));
+    vec4 cb = texture(worldPalette, vec2(b, 0.5));
+    vec4 cc = texture(worldPalette, vec2(c, 0.5));
+    vec4 cd = texture(worldPalette, vec2(d, 0.5));
+
+    if (a == 0.0) {
+        ca.a = 0.0;
+    }
+    if (b == 0.0) {
+        cb.a = 0.0;
+    }
+    if (c == 0.0) {
+        cc.a = 0.0;
+    }
+    if (d == 0.0) {
+        cd.a = 0.0;
+    }
+
+	return mix(mix(ca, cb, w.x), mix(cc, cd, w.x), w.y);
+}
+
+vec4 tex_clut_bilinear_light(sampler2D s, vec2 uv, float light, float lodbias)
+{
+    light = clamp(light, 0.0, 1.0);
+
+	float mip = texQueryLod(s, uv);
+	mip += lodbias;
+	mip = min(mip, float(numMips - 1));
+
+	ivec2 ires = textureSize( s, int(mip) );
+	vec2  fres = vec2( ires );
+
+	vec2 st = uv * fres - 0.5;
+    vec2 i = floor( st );
+    vec2 w = fract( st );
+
+	// textureGather doesn't handle mips, need to sample manually
+	// use textureLod instead of texelFetch/manual textureGather to respect sampler states
+	// this should be quite cache friendly so the overhead is minimal
+    float a = textureLod( s, (i + vec2(0.5,0.5)) / fres, mip ).x;
+    float b = textureLod( s, (i + vec2(1.5,0.5)) / fres, mip ).x;
+    float c = textureLod( s, (i + vec2(0.5,1.5)) / fres, mip ).x;
+    float d = textureLod( s, (i + vec2(1.5,1.5)) / fres, mip ).x;
+	
+	// read the light palette
+	a = texture(worldPaletteLights, vec2(a, light)).x;
+	b = texture(worldPaletteLights, vec2(b, light)).x;
+	c = texture(worldPaletteLights, vec2(c, light)).x;
+	d = texture(worldPaletteLights, vec2(d, light)).x;
+
+	// read the palette
+	vec4 ca = texture(worldPalette, vec2(a, 0.5));
+    vec4 cb = texture(worldPalette, vec2(b, 0.5));
+    vec4 cc = texture(worldPalette, vec2(c, 0.5));
+    vec4 cd = texture(worldPalette, vec2(d, 0.5));
+
+    if (a == 0.0) {
+        ca.a = 0.0;
+    }
+    if (b == 0.0) {
+        cb.a = 0.0;
+    }
+    if (c == 0.0) {
+        cc.a = 0.0;
+    }
+    if (d == 0.0) {
+        cd.a = 0.0;
+    }
+
+	ca = vec4(texture(worldPalette, vec2(a, 0.5)).rgb, 0.0);
+    cb = vec4(texture(worldPalette, vec2(b, 0.5)).rgb, 0.0);
+    cc = vec4(texture(worldPalette, vec2(c, 0.5)).rgb, 0.0);
+    cd = vec4(texture(worldPalette, vec2(d, 0.5)).rgb, 0.0);
+	
+	return mix(mix(ca, cb, w.x), mix(cc, cd, w.x), w.y);
+}
+
+#endif // CAN_BILINEAR_FILTER
+
+#endif // FRAGMENT_SHADER
+
+#endif

@@ -21,6 +21,7 @@ float rdroid_curFogEndDepth;
 
 #include "General/stdMath.h"
 #include "Primitives/rdQuat.h"
+#include "Modules/std/std3D.h"
 
 typedef uint32_t rdDirtyBit;
 enum RD_DIRTYBIT
@@ -622,8 +623,6 @@ int rdBeginPrimitive(rdPrimitiveType_t type)
 	return 1;
 }
 
-extern void std3D_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallState, rdVertex* paVertices, int numVertices);
-
 void rdEndPrimitive()
 {
 	if (rdroid_vertexCacheNum > 0)
@@ -715,8 +714,6 @@ void rdTexCoord2f(float u, float v)
 	rdroid_vertexTexCoordState.z = 0;
 	rdroid_vertexTexCoordState.w = 1;
 }
-
-void std3D_GetValidDimension(unsigned int inW, unsigned int inH, unsigned int* outW, unsigned int* outH);
 
 void rdTexCoord2i(float u, float v)
 {
@@ -826,6 +823,8 @@ int rdBindMaterial(rdMaterial* pMaterial, int cel)
 		if(sith_tex_sel->has_jkgm_override)
 		{
 			uint32_t emissive_rgb = RD_PACK_COLOR8F(rdroid_textureState.pTexture->emissive_factor[0], rdroid_textureState.pTexture->emissive_factor[1], rdroid_textureState.pTexture->emissive_factor[2], 0.0f);
+			if(!rdroid_textureState.pTexture->emissive_texture_id)
+				emissive_rgb = 0;
 
 			rdroid_materialState.albedo = RD_PACK_COLOR8F(rdroid_textureState.pTexture->albedo_factor[0], rdroid_textureState.pTexture->albedo_factor[1], rdroid_textureState.pTexture->albedo_factor[2], rdroid_textureState.pTexture->albedo_factor[3]);
 			rdroid_materialState.emissive = (rdroid_materialState.emissive & 0xFF000000) | emissive_rgb;
@@ -835,6 +834,8 @@ int rdBindMaterial(rdMaterial* pMaterial, int cel)
 		{
 			rdroid_materialState.albedo = 0xFFFFFFFF;
 			rdroid_materialState.emissive &= 0xFF000000;
+			if(!rdroid_textureState.pTexture->is_16bit)
+				rdroid_materialState.emissive |= 0xFFFFFF;
 			rdroid_materialState.displacement = 0.0f;
 		}
 		rdroid_textureState.numMips = sith_tex_sel->num_mipmaps;
@@ -906,14 +907,12 @@ void rdTexOffseti(float u, float v)
 }
 
 // Framebuffer
-extern void std3D_SetRenderPass(const char* name, int8_t, rdRenderPassFlags_t);
 void rdRenderPass(const char* name, int8_t renderPass, rdRenderPassFlags_t renderPassFlags)
 {
 	std3D_SetRenderPass(name, renderPass, renderPassFlags);
 	rdroid_dcHeader.renderPass = renderPass;
 }
 
-extern void std3D_SetDepthRange(int8_t renderPass, float znearNorm, float zfarNorm);
 void rdDepthRange(float znearNorm, float zfarNorm)
 {
 	std3D_SetDepthRange(rdroid_dcHeader.renderPass, znearNorm, zfarNorm);
@@ -1026,7 +1025,6 @@ void rdSetOverbright(float overbright)
 }
 
 // Lighting
-int std3D_AddLight(rdLight* light, rdVector3* viewPosition, float intensity);
 int rdAddLight(rdLight* pLight, rdVector3* pPosition)
 {
 	rdVector4 pos4;
@@ -1038,9 +1036,6 @@ int rdAddLight(rdLight* pLight, rdVector3* pPosition)
 	return std3D_AddLight(pLight, (rdVector3*)&viewPos, 1.0f / rdroid_overbright);
 }
 
-void std3D_ClearLights();
-void std3D_ClearOccluders();
-void std3D_ClearDecals();
 void rdClearLights()
 {
 	std3D_ClearLights();
@@ -1057,7 +1052,6 @@ void rdClearDecals()
 }
 
 extern int jkPlayer_enableShadows;
-void std3D_DrawOccluder(rdVector3* position, float radius, rdVector3* verts);
 void rdAddOccluder(rdVector3* position, float radius)
 {
 	if (!jkPlayer_enableShadows )
@@ -1073,7 +1067,6 @@ void rdAddOccluder(rdVector3* position, float radius)
 }
 
 extern int jkPlayer_enableDecals;
-void std3D_DrawDecal(stdVBuffer* vbuf, rdDDrawSurface* texture, rdVector3* verts, rdMatrix44* decalMatrix, rdVector3* color, uint32_t flags, float angleFade);
 void rdAddDecal(rdDecal* decal, rdMatrix34* modelMat, rdVector3* color, rdVector3* scale, float angleFade)
 {
 	if(!jkPlayer_enableDecals)
@@ -1131,7 +1124,7 @@ void rdAmbientLightSH(rdAmbient* amb)
 {
 	if (!amb)
 	{
-		memset(&rdroid_lightingState.ambientLobes, 0, sizeof(rdroid_lightingState.ambientLobes));
+		memset(rdroid_lightingState.ambientLobes, 0, 8 * sizeof(uint32_t));
 		return;
 	}
 
@@ -1154,8 +1147,23 @@ void rdAmbientLightSH(rdAmbient* amb)
 		uint32_t ir = stdMath_ClampInt(r, 0, 1023);
 		uint32_t ig = stdMath_ClampInt(g, 0, 1023);
 		uint32_t ib = stdMath_ClampInt(b, 0, 1023);
-		rdroid_lightingState.ambientLobes[i] = RD_PACK_COLOR10(ir, ig, ib, 0);
+		rdroid_lightingState.ambientLobes[i] = RD_PACK_COLOR10(ir, ig, ib, 1);
 	}
+}
+
+int rdGenShader()
+{
+	return std3D_GenShader();
+}
+
+void rdDeleteShader(int id)
+{
+	std3D_DeleteShader(id);
+}
+
+int rdCompileShader(int id, const char* path)
+{
+	return std3D_CompileShaderFromFile(id, path);
 }
 
 #endif

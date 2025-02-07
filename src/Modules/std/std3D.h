@@ -77,6 +77,10 @@ void std3D_DrawDecal(stdVBuffer* vbuf, rdDDrawSurface* texture, rdVector3* verts
 void std3D_DrawLight(rdLight* light, rdVector3* position, rdVector3* verts);
 void std3D_DrawOccluder(rdVector3* position, float radius, rdVector3* verts);
 
+int std3D_GenShader();
+void std3D_DeleteShader(int id);
+int std3D_CompileShaderFromFile(int id, const char* path);
+
 #ifdef HW_VBUFFER
 std3D_DrawSurface* std3D_AllocDrawSurface(stdVBufferTexFmt* fmt, int32_t width, int32_t height);
 void  std3D_FreeDrawSurface(std3D_DrawSurface* surface);

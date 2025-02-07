@@ -1,47 +1,25 @@
+#include "defines.gli"
 #include "uniforms.gli"
 #include "clustering.gli"
 #include "math.gli"
 #include "lighting.gli"
 #include "decals.gli"
 #include "occluders.gli"
+#include "textures.gli"
 
-#define LIGHT_DIVISOR (3.0)
+#include "vm.gli"
 
-#define TEX_MODE_TEST 0
-#define TEX_MODE_WORLDPAL 1
-#define TEX_MODE_BILINEAR 2
-#define TEX_MODE_16BPP 5
-#define TEX_MODE_BILINEAR_16BPP 6
-
-#define D3DBLEND_ONE             (2)
-#define D3DBLEND_SRCALPHA        (5)
-#define D3DBLEND_INVSRCALPHA     (6)
-
-in vec4 f_color;
-in float f_light;
-in vec4 f_uv;
-in vec4 f_uv_nooffset;
+in vec4 f_color[2];
+//in float f_light;
+in vec4 f_uv[4];
+//in vec4 f_uv_nooffset;
 in vec3 f_coord;
 in vec4 f_normal;
 in float f_depth;
 
-noperspective in vec2 f_uv_affine;
+const float f_light = 0.0;
 
-uniform mat4 modelMatrix;
-uniform mat4 projMatrix;
-uniform mat4 viewMatrix;
-
-uniform int  lightMode;
-uniform int  geoMode;
-uniform int  ditherMode;
-
-uniform int aoFlags;
-uniform vec3 ambientColor;
-uniform vec4 ambientSH[3];
-uniform vec3 ambientDominantDir;
-uniform vec3 ambientSG[8];
-
-
+//noperspective in vec2 f_uv_affine;
 
 bool ceiling_intersect(vec3 pos, vec3 dir, vec3 normal, vec3 center, inout float t)
 {
@@ -96,18 +74,19 @@ vec2 do_horizon_uv()
 	return (uv + uv_offset.xy) / texsize.xy;
 }
 
-void do_texgen(inout vec3 uv, inout vec3 viewPos)
+vec3 do_texgen(in vec3 uv, inout vec3 viewPos)
 {
-	if(texgen == 1) // 1 = RD_TEXGEN_HORIZON
-	{
-		uv.xy = do_horizon_uv();
-		uv.z = 0.0;
-	}
-	else if(texgen == 2) // 2 = RD_TEXGEN_CEILING
-	{
-		uv.xy = do_ceiling_uv(viewPos);
-		uv.z = 0;
-	}
+	//if(texgen == 1) // 1 = RD_TEXGEN_HORIZON
+	//{
+	//	uv.xy = do_horizon_uv();
+	//	uv.z = 0.0;
+	//}
+	//else if(texgen == 2) // 2 = RD_TEXGEN_CEILING
+	//{
+	//	uv.xy = do_ceiling_uv(viewPos);
+	//	uv.z = 0;
+	//}
+	return uv.xyz;
 }
 
 
@@ -122,7 +101,7 @@ vec3 CalculateAmbientSpecular(vec3 normal, vec3 view, float roughness, vec3 f0)
 		SG warpedNDF = WarpDistributionSG(ndf, view);
 
 		SG lightSG;
-		lightSG.Amplitude = ambientSG[sg].xyz;
+		lightSG.Amplitude = unpack_argb2101010(ambientSG[sg]).xyz / 255.0;
 		lightSG.Axis = ambientSGBasis[sg].xyz;
 		lightSG.Sharpness = ambientSGBasis[sg].w;
 
@@ -143,35 +122,29 @@ vec3 CalculateAmbientSpecular(vec3 normal, vec3 view, float roughness, vec3 f0)
 	return ambientSpecular;// * 3.141592;
 }
 
+vec3 CalculateAmbientDiffuse(vec3 normal)
+{
+	vec3 ambientDiffuse = vec3(0.0);
+	for(int sg = 0; sg < 8; ++sg)
+	{
+		SG lightSG;
+		lightSG.Amplitude = unpack_argb2101010(ambientSG[sg]).xyz / 255.0;
+		lightSG.Axis = ambientSGBasis[sg].xyz;
+		lightSG.Sharpness = ambientSGBasis[sg].w;
+	
+		vec3 diffuse = SGIrradiancePunctual(lightSG, normal);
+		ambientDiffuse.xyz += diffuse;
+	}
+	return ambientDiffuse;
+}
+
 layout(location = 0) out vec4 fragColor;
-layout(location = 1) out vec4 fragColorEmiss;
+layout(location = 1) out vec4 fragGlow;
 
 vec3 normals(vec3 pos) {
     vec3 fdx = dFdx(pos);
     vec3 fdy = dFdy(pos);
     return normalize(cross(fdx, fdy));
-}
-
-mat3 construct_tbn(vec2 uv)
-{
-	// use face normals for this
-    //vec3 n = normals(f_coord.xyz);
-
-    vec3 dp1 = dFdx(f_coord.xyz);
-    vec3 dp2 = dFdy(f_coord.xyz);
-    vec2 duv1 = dFdx(uv.xy);
-    vec2 duv2 = dFdy(uv.xy);
-
-	vec3 n = normalize(cross(dp1, dp2));
-
-    vec3 dp2perp = cross(dp2, n);
-    vec3 dp1perp = cross(n, dp1);
-
-    vec3 t = dp2perp * duv1.x + dp1perp * duv2.x;
-    vec3 b = dp2perp * duv1.y + dp1perp * duv2.y;
-
-    float invmax = inversesqrt(max(dot(t, t), dot(b, b)));
-    return mat3(t * invmax, b * invmax, n);
 }
 
 // todo: binary search and lower sample count
@@ -212,90 +185,6 @@ vec2 parallax_mapping(vec2 tc, mat3 tbn)
 
     return adj_tc;
 }
-
-float compute_mip_bias(float z_min)
-{
-	float mipmap_level = 0.0;
-	mipmap_level = z_min < mipDistances.x ? mipmap_level : 1.0;
-	mipmap_level = z_min < mipDistances.y ? mipmap_level : 2.0;
-	mipmap_level = z_min < mipDistances.z ? mipmap_level : 3.0;
-
-	// dither the mip level
-	if(ditherMode == 1)
-	{
-		const mat4 bayerIndex = mat4(
-			vec4(00.0/16.0, 12.0/16.0, 03.0/16.0, 15.0/16.0),
-			vec4(08.0/16.0, 04.0/16.0, 11.0/16.0, 07.0/16.0),
-			vec4(02.0/16.0, 14.0/16.0, 01.0/16.0, 13.0/16.0),
-			vec4(10.0/16.0, 06.0/16.0, 09.0/16.0, 05.0/16.0)
-		);
-		ivec2 coord = ivec2(gl_FragCoord.xy);
-		mipmap_level += bayerIndex[coord.x & 3][coord.y & 3];
-	}
-
-	return mipmap_level + mipDistances.w;
-}
-
-#ifdef CAN_BILINEAR_FILTER
-void bilinear_paletted(vec2 uv, out vec4 color, out vec4 emissive)
-{
-	float mip = texQueryLod(tex, uv);
-	mip += compute_mip_bias(f_coord.y);
-	mip = min(mip, float(numMips - 1));
-
-	ivec2 ires = textureSize( tex, int(mip) );
-	vec2  fres = vec2( ires );
-
-	vec2 st = uv*fres - 0.5;
-    vec2 i = floor( st );
-    vec2 w = fract( st );
-
-	// textureGather doesn't handle mips, need to sample manually
-	// use textureLod instead of texelFetch/manual textureGather to respect sampler states
-	// this should be quite cache friendly so the overhead is minimal
-    float a = textureLod( tex, (i + vec2(0.5,0.5)) / fres, mip ).x;
-    float b = textureLod( tex, (i + vec2(1.5,0.5)) / fres, mip ).x;
-    float c = textureLod( tex, (i + vec2(0.5,1.5)) / fres, mip ).x;
-    float d = textureLod( tex, (i + vec2(1.5,1.5)) / fres, mip ).x;
-	
-	// read the palette
-	vec4 ca = texture(worldPalette, vec2(a, 0.5));
-    vec4 cb = texture(worldPalette, vec2(b, 0.5));
-    vec4 cc = texture(worldPalette, vec2(c, 0.5));
-    vec4 cd = texture(worldPalette, vec2(d, 0.5));
-
-    if (a == 0.0) {
-        ca.a = 0.0;
-    }
-    if (b == 0.0) {
-        cb.a = 0.0;
-    }
-    if (c == 0.0) {
-        cc.a = 0.0;
-    }
-    if (d == 0.0) {
-        cd.a = 0.0;
-    }
-
-	color = mix(mix(ca, cb, w.x), mix(cc, cd, w.x), w.y);
-
-	// Makes sure light is in a sane range
-    float light = clamp(f_light, 0.0, 1.0);
-
-	// read the light palette
-	a = texture(worldPaletteLights, vec2(a, light)).x;
-	b = texture(worldPaletteLights, vec2(b, light)).x;
-	c = texture(worldPaletteLights, vec2(c, light)).x;
-	d = texture(worldPaletteLights, vec2(d, light)).x;
-
-	ca = texture(worldPalette, vec2(a, 0.5));
-    cb = texture(worldPalette, vec2(b, 0.5));
-    cc = texture(worldPalette, vec2(c, 0.5));
-    cd = texture(worldPalette, vec2(d, 0.5));
-	
-	emissive = mix(mix(ca, cb, w.x), mix(cc, cd, w.x), w.y);
-}
-#endif
 
 // much thanks to Cary Knoop
 // https://forum.blackmagicdesign.com/viewtopic.php?f=21&t=122108
@@ -394,7 +283,7 @@ vec3 normalPlane(vec2 uv, out vec3 normalMap)
 	normalMap.z = 1.0;
     
     vec3 normal;
-    mat3 TBN = construct_tbn(uv);
+    mat3 TBN = construct_tbn(uv, f_coord.xyz);
     
     normal= TBN * normalMap;
     normal=normalize(normal);
@@ -557,7 +446,7 @@ void sample_color(vec2 uv, float mipBias, inout vec4 sampled_color, inout vec4 e
 		emissive.rgb += sampled_color.rgb * f_light;
 
 		vec4 sampledEmiss = texture(texEmiss, uv.xy, mipBias);
-		emissive.rgb += sampledEmiss.rgb * emissiveFactor.rgb;
+		emissive.rgb += sampledEmiss.bgr * emissiveFactor.rgb;
     }
     else if (tex_mode == TEX_MODE_WORLDPAL
 #ifndef CAN_BILINEAR_FILTER
@@ -705,8 +594,267 @@ float ChebyshevUpperBound(vec2 Moments, float t)
 	return max(p, p_max);
 }
 
+#define USE_VM
+
+void calc_lod_bias()
+{
+	lodbias = min(compute_mip_bias(f_coord.y), float(numMips - 1));
+}
+
+void calc_fog()
+{
+	fog = 0;
+#ifdef FOG
+	if(fogEnabled > 0)
+	{
+		vec3 viewDir = normalize(-f_coord.xyz);
+	
+		float clipDepth = 0.0;
+		float distToCam = max(0.0, f_depth * 128.0 - clipDepth * 128.0) / -viewDir.y;
+		float fog_amount = clamp((distToCam - fogStart) / (fogEnd - fogStart), 0.0, 1.0);
+	
+		vec3 fog_color = fogColor.rgb;
+	
+		// fog light scatter
+		if(fogLightDir.w > 0.0)
+		{
+			float k = fogAnisotropy;
+			float c = 1.0 - k * dot(fogLightDir.xyz, viewDir.xyz);
+			fog_color *= (1.0 - k * k) / (c * c);
+			fog_color /= (1.0 + fog_color);
+		}
+	
+		fog = pack_argb8888(vec4(fog_color.rgb, fog_amount * fogColor.a) * 255.0);
+	}
+#endif
+}
+
+vec3 calc_ambient_specular(float roughness, vec3 normal, vec3 view, vec3 reflected)
+{
+	vec3 ambientSpec = vec3(0.0);
+#ifdef SPECULAR
+	float m2 = roughness;// max(roughness * roughness, 1e-4);
+	float amplitude = 1.0;// / (3.141592 * m2);
+	float sharpness = (2.0 / m2) / (4.0 * max(dot(normal, view), 0.001));
+	
+	for(int sg = 0; sg < ambientNumSG; ++sg)
+	{
+		vec4 sgCol = unpack_argb2101010(ambientSG[sg]);
+		vec3 ambientColor = mix(f_color[0].rgb, sgCol.xyz / 255.0, sgCol.w); // use vertex color if no ambientSG data
+	
+		float umLength = length(sharpness * reflected + (ambientSGBasis[sg].w * ambientSGBasis[sg].xyz));
+		float attenuation = 1.0 - exp(-2.0 * umLength);
+		float nDotL = clamp(dot(normal.xyz, ambientSGBasis[sg].xyz), 0.0, 1.0);
+	
+		float D = (2.0 * 3.141592) * nDotL * attenuation / umLength;
+	
+		float expo = (exp(umLength - sharpness - ambientSGBasis[sg].w) * amplitude);
+		ambientSpec = (D * expo) * ambientColor + ambientSpec;
+	}
+#endif
+	return ambientSpec * 3.141592;
+}
+
+
+// packs light results into color0 and color1
+void calc_light()
+{
+	vec3 diffuse = f_color[0].rgb;
+	vec3 specular = vec3(0.0);//f_color[1].rgb;
+
+	r[4]  = 0;
+	r[5]  =0 ;
+
+	// todo: do we need to pack this?
+	vec3 view = normalize(-f_coord.xyz);
+	vec3 normal = normalize(f_normal.xyz);
+	vec3 reflected = reflect(-view, normal);
+	//float roughness = 0.02;
+	//float roughness = texture(textures[3], f_uv[0].xy, lodbias).r;
+	//roughness = max(roughness, 0.01);
+
+	vec2 sob = sobel(textures[0], f_uv[0].xy);
+	sob.y = 1.0-(sob.y + 3.141592) / (2.0 * 3.14159);
+	float roughness = sob.y;//abs(sob.y / 3.141592);
+	
+	
+	float specMask = 1.0;// 0.5 * pow(roughness, 8.0);
+	//specMask = (1.0-sqrt(sob.x)) * texture(textures[0], f_uv[0].xy, lodbias).x;
+	
+	
+	roughness = 0.1;//pow(roughness, 4.0);
+
+	//normal = bumpFromDepth(textures[0], f_uv[0].xy).xyz;
+	//mat3 tbn = construct_tbn(f_uv[0].xy / f_uv[0].w, f_coord.xyz);
+	//normal = normalize(tbn * normal);
+
+#ifdef UNLIT
+	if (lightMode == 0) // fully lit
+	{
+		r[4] = packRegister(vec4(255.0));
+	#ifdef SPECULAR
+		r[5] = packRegister(vec4(255.0));
+	#endif // SPECULAR
+	}
+	else if (lightMode == 1) // not lit
+	{
+		r[4] = packRegister(vec4(0.0, 0.0, 0.0, f_color[0].w * 255.0));
+	#ifdef SPECULAR
+		r[5] = packRegister(vec4(0.0));
+	#endif // SPECULAR
+	}
+	else // "diffuse"/vertex lit
+	{
+		r[4] = packRegister(f_color[0] * 255.0);
+	#ifdef SPECULAR
+		r[5] = packRegister(f_color[1] * 255.0);
+		//r[5] = packRegister(vec4(calc_ambient_specular(roughness, normal, view, reflected) * 255.0, 255.0));
+	#endif // SPECULAR
+	}
+
+#else // UNLIT
+
+	light_result result;
+	result.diffuse = f_color[0].rgb;
+	
+	#ifdef SPECULAR
+		result.specular = calc_ambient_specular(roughness, normal, view, reflected);
+		//result.specular = f_color[1].rgb;
+	#else
+		result.specular = vec3(0.0);
+	#endif
+
+#if 0// !defined(ALPHA_BLEND) && !defined(ALPHA_DISCARD)
+	
+	// read opaque lighting data
+	vec4 light = texelFetch(diffuseLightTex, ivec2(gl_FragCoord.xy), 0);
+	result.diffuse.rgb += light.rgb;
+#ifdef SPECULAR
+	result.specular.rgb += vec3(light.a);
+#endif // SPECULAR
+
+#else
+	uint cluster = compute_cluster_index(gl_FragCoord.xy, f_coord.y);
+
+	// loop light buckets
+	uint first_item = firstLight;
+	uint last_item = first_item + numLights - 1u;
+	uint first_bucket = first_item >> 5u;
+	uint last_bucket = min(last_item >> 5u, max(0u, CLUSTER_BUCKETS_PER_CLUSTER - 1u));
+	for (uint bucket = first_bucket; bucket <= last_bucket; ++bucket)
+	{
+		uint bucket_bits = uint(texelFetch(clusterBuffer, int(cluster * CLUSTER_BUCKETS_PER_CLUSTER + bucket)).x);
+		while(bucket_bits != 0u)
+		{
+			uint bucket_bit_index = findLSB_unsafe(bucket_bits);
+			uint light_index = (bucket << 5u) + bucket_bit_index;
+			bucket_bits ^= (1u << bucket_bit_index);
+
+			if (light_index >= first_item && light_index <= last_item)
+			{
+				calc_point_light(result, light_index, roughness, f_coord.xyz, normal, reflected);
+			}
+			else if (light_index > last_item)
+			{
+				bucket = CLUSTER_BUCKETS_PER_CLUSTER;
+				break;
+			}
+		}
+	}
+#endif // !defined(ALPHA_BLEND) && !defined(ALPHA_DISCARD)
+
+	result.diffuse.rgb = clamp(result.diffuse.rgb, vec3(0.0), vec3(1.0));
+	result.specular.rgb = clamp(result.specular.rgb, vec3(0.0), vec3(1.0));
+
+	r[4] = packRegister(vec4(result.diffuse.rgb * 255.0, f_color[0].w * 255.0));
+	#ifdef SPECULAR
+		r[5] = packRegister(vec4(result.specular.rgb * specMask * 255.0, f_color[1].w * 255.0));
+	#endif // SPECULAR
+#endif // UNLIT
+}
+
 void main(void)
 {
+#ifdef USE_VM
+	mat3 tbn = construct_tbn(f_uv[0].xy / f_uv[0].w, f_coord.xyz);
+	vec3 viewTS = normalize(transpose(tbn) * normalize(-f_coord.xyz));
+	vdir = viewTS;//encodeHemiUnitVector(viewTS);
+
+	// setup texcoord registers, from here out don't directly access f_uv
+	tr[0] = packTexcoordRegister(f_uv[0]);
+	tr[1] = packTexcoordRegister(f_uv[1]);
+	tr[2] = packTexcoordRegister(f_uv[2]);
+	tr[3] = packTexcoordRegister(f_uv[3]);
+
+	// calculate anything that relies on interpolated data
+	// up front so we can free vgprs for the vm stages
+	// the results are compacted and stored for later
+	calc_lod_bias();
+	calc_fog();
+	calc_light();
+
+	// run the texture stage
+	// todo: how to handle decals?
+	run_tex_stage();
+
+	// sandwhich lighting between the texture stage and the combiner
+	// this writes out the color0 and color1 registers
+	// todo: there's interpolated data coming in here we can probably pack
+	// todo: use the texture data in the lighting? adds overhead..
+	//calc_light();
+
+	// run the combiner stage
+	run_combiner_stage();
+
+	// unpack output registers
+	fragColor = vec4(unpackRegister(r[0])); // unpack r0
+	fragGlow = vec4(unpackRegister(r[1])); // unpack r1
+
+	// apply overbright
+	fragColor.rgb *= 1.0 / light_mult;
+
+	// apply glow multiplier
+	fragGlow.rgb *= emissiveFactor.w;
+
+
+	// grab dither value
+	float dither = texelFetch(dithertex, ivec2(gl_FragCoord.xy) & ivec2(3), 0).r;
+
+#ifdef FOG
+	// apply fog to outputs
+	if(fogEnabled > 0)
+	{
+		vec4 fog_color = unpack_argb8888(fog);
+		fog_color.w *= (1.0/255.0);
+
+		fragColor.rgb = mix(fragColor.rgb, fog_color.rgb + dither, fog_color.w);
+		fragGlow.rgb = mix(fragGlow.rgb, fog_color.rgb + dither, fog_color.w);
+	}
+#endif
+
+	// todo: make ditherMode a per-rt thing
+	// dither the output if needed
+	fragColor.rgb = min(fragColor.rgb * (1.0/255.0) + dither, vec3(1.0));
+	fragColor.a *= (1.0 / 255.0);
+
+	// alpha testing
+#ifdef ALPHA_DISCARD
+    if (fragColor.a < 0.01) // todo: alpha test value
+		discard;
+#endif
+
+//#ifdef ALPHA_BLEND
+	//if (fragColor.a - dither * 255.0/16.0 < 0.0)
+	//	discard;
+//#endif
+
+	// output the main color in YCoCg (useful for rgb565)
+	//fragColor.rgb = rgb2ycocg(fragColor.rgb).yxz;
+
+	// note we subtract instead of add to avoid boosting blacks
+	fragGlow.rgb = min(fragGlow.rgb * (1.0/255.0) + (-dither), vec3(1.0));
+
+#else
 	vec2 screenUV = gl_FragCoord.xy / iResolution.xy;
 
 	const float DITHER_LUT[16] = float[16](
@@ -720,14 +868,14 @@ void main(void)
 	int wrap_index = wrap_x + wrap_y * 4;
 	float dither = DITHER_LUT[wrap_index] / 255.0;
    
-	vec3 adj_texcoords = f_uv.xyz / f_uv.w;
+	vec3 adj_texcoords = f_uv[0].xyz / f_uv[0].w;
 	vec3 viewPos = f_coord.xyz;
 
 	// software actually uses the zmin of the entire face
 	float mipBias = compute_mip_bias(viewPos.y);
 	mipBias = min(mipBias, float(numMips - 1));
 
-	mat3 tbn = construct_tbn(adj_texcoords.xy);
+	mat3 tbn = construct_tbn(adj_texcoords.xy, f_coord.xyz);
 
     if(displacement_factor != 0.0)
 	{
@@ -738,7 +886,7 @@ void main(void)
 		adj_texcoords.xy = f_uv_affine;
 	}
 	
-	do_texgen(adj_texcoords, viewPos);
+	adj_texcoords.xyz = do_texgen(adj_texcoords, viewPos);
 
 	//if(texgen == 1) // 1 = RD_TEXGEN_HORIZON
 	//{
@@ -780,7 +928,7 @@ void main(void)
 	//}
 #endif
 
-    vec4 vertex_color = f_color;
+    vec4 vertex_color = f_color[0];
 	//vertex_color.rgb += sqrt(PurkinjeShift(vec3(1.0 / 255.0), 1.0));
 	vec4 sampled_color = vec4(1.0, 1.0, 1.0, 1.0);
     vec4 emissive = vec4(0.0);
@@ -1229,26 +1377,35 @@ void main(void)
 	}
 #endif
 
-    fragColor = main_color;
+
+
+#ifdef ALPHA_DISCARD
+    if (fragColor.a < 0.01) // todo: alpha test value
+        discard;
+#endif
 
 //#if defined(ALPHA_BLEND) || defined(ALPHA_DISCARD)
 	// todo: this is killing early-z for all the passes...
-	if (clipDepth >= f_depth)
-		discard;
+	//if (clipDepth >= f_depth)
+		//discard;
 //#endif
 
 	// dither the output in case we're using some lower precision output
-	if(ditherMode == 1)
-		fragColor.rgb = min(fragColor.rgb + dither, vec3(1.0));
+	fragColor.rgb = min(fragColor.rgb + dither, vec3(1.0));
 
 #ifndef ALPHA_BLEND
-    fragColorEmiss = emissive * vec4(vec3(emissiveFactor.w), f_color.w);
+    fragGlow = emissive * vec4(vec3(emissiveFactor.w), f_color[0].w);
 
 	// always dither emissive since it gets bloomed
 	// note we subtract instead of add to avoid boosting blacks
-	fragColorEmiss.rgb = min(fragColorEmiss.rgb - dither, vec3(1.0));
+	fragGlow.rgb = min(fragGlow.rgb - dither, vec3(1.0));
 #else
     // Dont include any windows or transparent objects in emissivity output
-	fragColorEmiss = vec4(0.0, 0.0, 0.0, fragColor.w);
+	fragGlow = vec4(0.0, 0.0, 0.0, fragColor.w);
 #endif
+
+
+
+#endif
+
 }

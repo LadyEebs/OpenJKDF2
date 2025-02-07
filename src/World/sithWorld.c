@@ -38,6 +38,9 @@
 #ifdef JOB_SYSTEM
 #include "Modules/std/stdJob.h"
 #endif
+#ifdef RENDER_DROID2
+#include "Modules/sith/World/sithShader.h"
+#endif
 
 // MOTS added
 static sithWorld_ChecksumHandler_t sithWorld_checksumExtraFunc;
@@ -507,6 +510,9 @@ void sithWorld_FreeEntry(sithWorld *pWorld)
 #ifdef POLYLINE_EXT
 	if(pWorld->polylines)
 		sithPolyline_Free(pWorld);
+#endif
+#ifdef RENDER_DROID2
+	sithShader_Free(pWorld);
 #endif
 
     // Added: Fix UAF from previous world's viewmodel anims

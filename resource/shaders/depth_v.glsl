@@ -7,15 +7,12 @@ in vec4 v_color[2];
 in vec4 v_uv[4];
 in vec3 coordVS;
 
-uniform mat4 projMatrix;
 out vec4 f_color;
 out float f_light;
 out vec4 f_uv;
 out vec3 f_coord;
 out vec3 f_normal;
 out float f_depth;
-
-uniform mat4 modelMatrix;
 
 noperspective out vec2 f_uv_affine;
 

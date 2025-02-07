@@ -2,7 +2,7 @@
 #define UNIFORMS_H
 
 // todo: define elsewhere
-#define CLUSTER_MAX_LIGHTS          256u // match RDCAMERA_MAX_LIGHTS/SITHREND_NUM_LIGHTS
+#define CLUSTER_MAX_LIGHTS          128u // match RDCAMERA_MAX_LIGHTS/SITHREND_NUM_LIGHTS
 #define CLUSTER_MAX_OCCLUDERS       128u
 #define CLUSTER_MAX_DECALS          256
 #define CLUSTER_MAX_ITEMS           (CLUSTER_MAX_LIGHTS + CLUSTER_MAX_OCCLUDERS + CLUSTER_MAX_DECALS)
@@ -13,17 +13,20 @@
 #define CLUSTER_GRID_SIZE_XYZ (CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y * CLUSTER_GRID_SIZE_Z)
 #define CLUSTER_GRID_TOTAL_SIZE (CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y * CLUSTER_GRID_SIZE_Z * CLUSTER_BUCKETS_PER_CLUSTER)
 
-// Textures
-uniform sampler2D tex;
-uniform sampler2D texEmiss;
-uniform sampler2D worldPalette;
-uniform sampler2D worldPaletteLights;
-uniform sampler2D displacement_map;
+// todo: move me
+uniform mat4 modelMatrix;
+uniform mat4 projMatrix;
+uniform mat4 viewMatrix;
 
-uniform sampler2D ztex;
-uniform sampler2D ssaotex;
-uniform sampler2D refrtex;
-uniform sampler2D cliptex;
+uniform int lightMode;
+uniform int geoMode;
+uniform int blend_mode;
+//uniform int ditherMode;
+
+uniform int aoFlags;
+uniform vec3 ambientColor;
+uniform uint ambientSG[8];
+uniform uint ambientNumSG; // get around loop unrolling
 
 // Shared uniforms across batch calls and render passes
 layout(std140) uniform sharedBlock
@@ -88,7 +91,10 @@ struct light
 {
 	vec4  position;
 	vec4  direction_intensity;
-	vec4  color;
+	//vec4  color;
+
+	uint color;
+	uint pad1, pad2, pad3;
 	
 	int   type;
 	float falloffMin;
@@ -115,7 +121,7 @@ struct occluder
 	vec4 position;
 };
 
-layout(std140) uniform occluderBlock
+layout(binding=5, std140) uniform occluderBlock
 {
 	uint firstOccluder;
 	uint numOccluders;
@@ -143,6 +149,23 @@ layout(std140) uniform decalBlock
 	uint  numDecals;
 	uint  decalPad0, decalPad1;
 	decal decals[CLUSTER_MAX_DECALS];
+};
+
+// Shader buffer
+layout(std140) uniform shaderBlock
+{	
+	uint  shaderVersion;
+	uint  shaderPadding0;
+	uint  shaderTexInstructionCount;
+	uint  shaderInstructionCount;
+	uvec4 shaderTexInstructions[2];
+	uvec4 shaderInstructions[4]; // std140 wants 16byte alignment, so the uint array is packed as uvec4
+};
+
+// Shader constants buffer
+layout(std140) uniform shaderConstantsBlock
+{
+	vec4 shaderConstants[8];
 };
 
 #endif

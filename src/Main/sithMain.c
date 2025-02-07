@@ -46,7 +46,9 @@
 #ifdef POLYLINE_EXT
 #include "World/sithPolyline.h"
 #endif
-
+#ifdef RENDER_DROID2
+#include "Modules/sith/World/sithShader.h"
+#endif
 
 #ifdef FIXED_TIMESTEP_PHYS
 #include <math.h>
@@ -81,6 +83,10 @@ int sithMain_Startup(HostServices *commonFuncs)
 #if defined(DECAL_RENDERING) || defined(RENDER_DROID2)
 	is_started = sithDecal_Startup() & is_started;
 #endif
+#ifdef RENDER_DROID2
+	is_started = sithShader_Startup() & is_started;
+#endif
+
 #ifdef POLYLINE_EXT
 	sithPolyline_Startup();
 #endif
@@ -113,6 +119,9 @@ int sithMain_Startup(HostServices *commonFuncs)
 void sithMain_Shutdown()
 {
     //sithWeapon
+#ifdef RENDER_DROID2
+	sithShader_Shutdown();
+#endif
 #ifdef POLYLINE_EXT
 	sithPolyline_Shutdown();
 #endif

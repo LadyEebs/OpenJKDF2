@@ -343,6 +343,9 @@ typedef struct rdCanvas rdCanvas;
 #ifdef RGB_AMBIENT
 typedef struct rdAmbient rdAmbient;
 #endif
+#ifdef RENDER_DROID2
+typedef struct rdShader rdShader;
+#endif
 
 typedef struct sithGamesave_Header sithGamesave_Header;
 typedef struct jkGuiStringEntry jkGuiStringEntry;
@@ -1105,6 +1108,7 @@ typedef struct rdDDrawSurface
     rdDDrawSurface* tex_prev;
     rdDDrawSurface* tex_next;
 #ifdef SDL2_RENDER
+	uint32_t specular_texture_id;
     uint32_t emissive_texture_id;
     uint32_t displacement_texture_id;
     float emissive_factor[3];
@@ -2417,6 +2421,9 @@ typedef struct sithWorld
     sDwLaser* pLastLaser;
 #endif
 #ifdef RENDER_DROID2
+	int numShaders;
+	int numShadersLoaded;
+	rdShader* shaders;
 	sithSector* backdropSector;
 #endif
 } sithWorld;

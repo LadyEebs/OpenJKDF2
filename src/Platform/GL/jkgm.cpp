@@ -630,6 +630,7 @@ int jkgm_std3D_AddToTextureCache(stdVBuffer *vbuf, rdDDrawSurface *texture, int 
 
     //printf("Cache %s\n", material->mat_full_fpath);
 
+	texture->specular_texture_id = 0;
     texture->emissive_texture_id = 0;
     texture->emissive_factor[0] = 0.0f;
     texture->emissive_factor[1] = 0.0f;
@@ -730,6 +731,7 @@ int jkgm_std3D_AddToTextureCache(stdVBuffer *vbuf, rdDDrawSurface *texture, int 
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         }
 
+		texture->specular_texture_id = 0;
         texture->emissive_texture_id = 0;
         texture->displacement_texture_id = 0;
         texture->texture_id = 0;
@@ -750,7 +752,11 @@ int jkgm_std3D_AddToTextureCache(stdVBuffer *vbuf, rdDDrawSurface *texture, int 
                 //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, entry->albedo_hasAlpha ? GL_RGBA : GL_RGB, GL_UNSIGNED_INT_8_8_8_8_REV, data);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+			#ifdef RENDER_DROID2
+				glTexImage2D(GL_TEXTURE_2D, 0, entry->albedo_hasAlpha ? GL_RGBA8 : GL_RGB8, entry->albedo_width, entry->albedo_height, 0, entry->albedo_hasAlpha ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE, data);
+			#else
                 glTexImage2D(GL_TEXTURE_2D, 0, entry->albedo_hasAlpha ? GL_RGBA8 : GL_RGB8, entry->albedo_width, entry->albedo_height, 0,  entry->albedo_hasAlpha ?  GL_BGRA : GL_BGR,     GL_UNSIGNED_BYTE, data);
+			#endif
                 //glGetTexImage(GL_TEXTURE_2D, 0, entry->albedo_hasAlpha ? GL_BGRA : GL_BGR, GL_UNSIGNED_BYTE, data);
                 //printf("%x\n", *(uint32_t*)data);
                 texture->texture_id = image_texture;
@@ -766,6 +772,7 @@ int jkgm_std3D_AddToTextureCache(stdVBuffer *vbuf, rdDDrawSurface *texture, int 
                     free(data);
                 }
 
+				texture->specular_texture_id = 0;
                 texture->emissive_texture_id = 0;
                 texture->emissive_factor[0] = 0.0f;
                 texture->emissive_factor[1] = 0.0f;
@@ -821,8 +828,12 @@ int jkgm_std3D_AddToTextureCache(stdVBuffer *vbuf, rdDDrawSurface *texture, int 
                 //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, entry->emissive_hasAlpha ? GL_RGBA : GL_RGB, GL_UNSIGNED_INT_8_8_8_8_REV, data);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+			//#ifdef RENDER_DROID2
+			//	glTexImage2D(GL_TEXTURE_2D, 0, entry->emissive_hasAlpha ? GL_RGBA8 : GL_RGB8, entry->emissive_width, entry->emissive_height, 0, entry->emissive_hasAlpha ? GL_BGRA : GL_BGR, GL_UNSIGNED_BYTE, data);
+			//#else
                 glTexImage2D(GL_TEXTURE_2D, 0, entry->emissive_hasAlpha ? GL_RGBA8 : GL_RGB8, entry->emissive_width, entry->emissive_height, 0,  entry->emissive_hasAlpha ? GL_RGBA : GL_RGB,     GL_UNSIGNED_BYTE, data);
-                //glGetTexImage(GL_TEXTURE_2D, 0, entry->emissive_hasAlpha ? GL_BGRA : GL_BGR, GL_UNSIGNED_BYTE, data);
+            //#endif
+				//glGetTexImage(GL_TEXTURE_2D, 0, entry->emissive_hasAlpha ? GL_BGRA : GL_BGR, GL_UNSIGNED_BYTE, data);
                 //printf("%x\n", *(uint32_t*)data);
                 texture->emissive_texture_id = emiss_texture;
                 texture->emissive_data = data;

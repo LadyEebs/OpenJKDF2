@@ -1,0 +1,525 @@
+// simple dx8 style microcode shader VM
+// note: the packing/unpacking might be a penalty on dx10 era/VLIW hardware
+// should eventually be tested and an alternate path written if necessary
+
+#include "defines.gli"
+#include "uniforms.gli"
+#include "math.gli"
+#include "lighting.gli"
+#include "textures.gli"
+#include "decals.gli"
+#include "occluders.gli"
+
+#ifndef VM_H
+#define VM_H
+
+#ifdef FRAGMENT_SHADER
+
+// arithmetic op codes, must match std3D_ShaderAluOp
+// todo: pass these into the code so they always match the enum
+#define OP_NOP		 0	// no op
+#define OP_ADD		 1	// addition
+#define OP_DP3		 2	// dot3
+#define OP_DP4		 3	// dot4
+#define OP_LDC		 4	// constant load
+#define OP_LRP		 5	// linear interpolation
+#define OP_MAD		 6	// multiply add
+#define OP_MAX		 7	// maximum
+#define OP_MIN		 8	// minimum
+#define OP_MOV		 9	// move
+#define OP_MUL		10	// multiply
+
+// source register modifiers, only applicable to alu instructions
+#define SRC_MOD_NONE   0x0 // no modifier
+#define SRC_MOD_NEGATE 0x1 // -x
+#define SRC_MOD_BIAS   0x2 // x - 0.5
+#define SRC_MOD_BX2    0x4 // x * 2 - 1
+#define SRC_MOD_INVERT 0x8 // 1 - x
+
+// texture op codes, must match std3D_ShaderTexOp
+#define OP_TEX		 1	// texture sample
+#define OP_TEXI      2  // texture sample with emissive scale
+#define OP_TEXOPM    3  // offset a UV slot with offset parallax mapping
+#define OP_TEXCOORD  4  // convert UV to color
+
+// destination register modifiers
+#define DST_MOD_NONE 0 // no modifier
+#define DST_MOD_X2   1 // x * 2
+#define DST_MOD_X4   2 // x * 4
+#define DST_MOD_D2   3 // x / 2
+#define DST_MOD_D4   4 // x / 4
+
+// registers
+vec3  vdir;     // view dir
+uint  fog;      // rgba8 fog register (filled by fixed function fog)
+float lodbias;  // float lod bias, todo: pack?
+uvec2 tr[4];    // uvtw16 texture coordinate registers
+uint  r[6];     // rgba8 general purpose registers (for color math)
+
+vec4 unpackRegister(uint packedInput)
+{
+	return vec4((packedInput >> 16u) & 0xFFu, (packedInput >> 8u) & 0xFFu, packedInput & 0xFFu, (packedInput >> 24u) & 0xFFu);
+}
+
+uint packRegister(vec4 unpackedInput)
+{
+	unpackedInput = clamp(unpackedInput, vec4(0.0), vec4(255.0));
+	return (uint(unpackedInput.r) << 16u) | (uint(unpackedInput.g) << 8u) | (uint(unpackedInput.b) << 0u) | (uint(unpackedInput.a) << 24u);
+}
+
+vec4 read_reg(uint i)
+{
+	uint idx = (i & 0x7);
+	uint mod_bits = (i >> 3) & 0xF;
+	vec4 v = unpackRegister(r[idx]);
+	
+	if ((mod_bits & SRC_MOD_INVERT) != 0)
+		return 255.0 - v;
+    
+	if(mod_bits > 1)
+	{
+		float scale = 1.0 + float((mod_bits & SRC_MOD_BX2) != 0); // y = 2 if BX2, 1 otherwise
+		float bias = float((mod_bits & SRC_MOD_BX2) != 0) * (-255.0) + (float((mod_bits & SRC_MOD_BIAS) != 0) * (-127.5));
+
+		v = v * scale + bias;
+	}
+
+	return (mod_bits & SRC_MOD_NEGATE) != 0 ? -v : v;
+}
+
+void write_reg(uint i, vec4 v)
+{
+	uint idx = (i & 0x7);
+	uint mod_bits = (i >> 3) & 0x7;
+
+	// multiply scale: (1 << (mod_bits & 0x3))
+	// division scale: (1 << (mod_bits >> 2))
+	v *= float(1 << (mod_bits & 0x3)) / float(1 << (mod_bits >> 2));
+
+	r[idx] = packRegister(v);
+}
+
+vec4 unpackTexcoordRegister(uvec2 packedInput)
+{
+	uint packedLow = packedInput.x;
+    uint packedHigh = packedInput.y;
+
+    // Extract 16-bit fixed-point components
+    ivec4 fixedPoint = ivec4(
+        int(packedLow & 0xFFFFu),
+        int((packedLow >> 16) & 0xFFFFu),
+        int(packedHigh & 0xFFFFu),
+        int((packedHigh >> 16) & 0xFFFFu)
+    );
+
+    // Handle two's complement for negative values
+    fixedPoint = ivec4(greaterThan(fixedPoint, ivec4(32767))) * (-65536) + fixedPoint;
+
+    // Convert back to floating point with subpixel precision
+    return vec4(fixedPoint) / 512.0;
+
+	//return vec4(unpackHalf2x16(packedInput.x), unpackHalf2x16(packedInput.y));
+}
+
+uvec2 packTexcoordRegister(vec4 unpackedInput)
+{
+	// Scale values to fixed-point range and clamp to [-128, 128)
+    vec4 scaled = clamp(unpackedInput, -128.0, 128.0 - 1.0 / 512.0) * 512.0;
+
+    // Convert to integers and handle two's complement for negative values
+    ivec4 fixedPoint = ivec4(floor(scaled));//round(scaled));
+    fixedPoint = fixedPoint + ivec4(lessThan(fixedPoint, ivec4(0))) * 65536;
+
+    uint packedLow = (uint(fixedPoint.x) & 0xFFFFu) | ((uint(fixedPoint.y) & 0xFFFFu) << 16);
+    uint packedHigh = (uint(fixedPoint.z) & 0xFFFFu) | ((uint(fixedPoint.w) & 0xFFFFu) << 16);
+
+    return uvec2(packedLow, packedHigh);
+
+	//return uvec2(packHalf2x16(unpackedInput.xy), packHalf2x16(unpackedInput.zw));
+}
+
+vec4 read_texcoord_reg(uint i)
+{
+	return unpackTexcoordRegister(tr[i]);
+}
+
+// must mirror std3D_buildInstruction
+void read_instr(uint instr, out uint op, out uint dest, out uint src0, out uint src1, out uint src2)
+{
+	op   = (instr      ) & 0x1F; // bits 0-5
+	dest = (instr >>  5) & 0x3F; // bits 5-11
+	src0 = (instr >> 11) & 0x7F; // bits 11-18
+	src1 = (instr >> 18) & 0x7F; // bits 18-25
+	src2 = (instr >> 25) & 0x7F; // bits 25-32
+}
+
+// standard texture sample
+vec4 load_tex(in sampler2D s, in vec4 tc)
+{
+	if (tex_mode == TEX_MODE_TEST)
+		return vec4(fillColor * 255.0);
+	return vec4(texture(s, tc.xy / tc.w, lodbias).rgba * 255.0);
+}
+
+// standard texture sample with emissive multiplier
+vec4 load_tex_light(in sampler2D s, in vec4 tc, in float light)
+{
+	if (tex_mode == TEX_MODE_TEST)
+		return vec4(fillColor.rgb * 255.0, 0.0);
+	return vec4(texture(s, tc.xy / tc.w, lodbias).rgba * vec4(emissiveFactor.rgb * 255.0, 0.0));
+}
+
+
+float sampleSobel(in sampler2D s, in vec2 uv)
+{
+    float weight = 1.0;
+	float f = texture(s, uv).r;
+    return f * weight - (weight * 0.5);
+}
+
+vec2 sobel(in sampler2D s, in vec2 uv)
+{   
+    vec2 offset = 1.0/texsize.xy * 1.0;
+    float x = offset.x;
+    float y = offset.y;
+    
+    // |-1  0  1|
+    // |-2  0  2| 
+    // |-1  0  1|
+    
+    float gX = 0.0;
+    gX += -1.0 * sampleSobel(s, uv + vec2(-x, -y));
+    gX += -2.0 * sampleSobel(s, uv + vec2(-x,  0));
+    gX += -1.0 * sampleSobel(s, uv + vec2(-x, +y));
+    gX += +1.0 * sampleSobel(s, uv + vec2(+x, -y));
+    gX += +2.0 * sampleSobel(s, uv + vec2(+x,  0));
+    gX += +1.0 * sampleSobel(s, uv + vec2(+x, +y));
+    
+    // |-1 -2 -1|
+    // | 0  0  0| 
+    // | 1  2  1|
+    
+    float gY = 0.0;
+    gY += -1.0 * sampleSobel(s, uv + vec2(-x, -y));
+    gY += -2.0 * sampleSobel(s, uv + vec2( 0, -y));
+    gY += -1.0 * sampleSobel(s, uv + vec2(+x, -y));
+    gY += +1.0 * sampleSobel(s, uv + vec2(-x, +y));
+    gY += +2.0 * sampleSobel(s, uv + vec2( 0, +y));
+    gY += +1.0 * sampleSobel(s, uv + vec2(+x, +y));
+    
+	return vec2(sqrt(gX * gX + gY * gY), atan(-gY, -gX));
+}
+
+vec4 bumpFromDepth(in sampler2D s, vec2 uv)
+{
+	//vec2 f = sobel(s, uv);
+    //
+    //vec2 gradientDirection = f.x * vec2(cos(f.y), sin(f.y));
+    //vec3 normal = normalize(vec3(gradientDirection, 1.0));
+	//
+	//return vec4(normal, 0.0);
+
+	vec2 texelsize = 1. / texsize.xy;
+
+    float dx = 0.;
+    float dy = 0.;
+    
+    dx -= luminance(texture(s, vec2(uv.x - texelsize.x, uv.y - texelsize.y)).rgb) * 1.0;
+	dx -= luminance(texture(s, vec2(uv.x - texelsize.x, uv.y              )).rgb) * 2.0;
+	dx -= luminance(texture(s, vec2(uv.x - texelsize.x, uv.y + texelsize.y)).rgb) * 1.0;
+	dx += luminance(texture(s, vec2(uv.x + texelsize.x, uv.y - texelsize.y)).rgb) * 1.0;
+	dx += luminance(texture(s, vec2(uv.x + texelsize.x, uv.y              )).rgb) * 2.0;
+	dx += luminance(texture(s, vec2(uv.x + texelsize.x, uv.y + texelsize.y)).rgb) * 1.0;
+    
+    dy -= luminance(texture(s, vec2(uv.x - texelsize.x, uv.y - texelsize.y)).rgb) * 1.0;
+	dy -= luminance(texture(s, vec2(uv.x              , uv.y - texelsize.y)).rgb) * 2.0;
+	dy -= luminance(texture(s, vec2(uv.x + texelsize.x, uv.y - texelsize.y)).rgb) * 1.0;
+	dy += luminance(texture(s, vec2(uv.x - texelsize.x, uv.y + texelsize.y)).rgb) * 1.0;
+	dy += luminance(texture(s, vec2(uv.x              , uv.y + texelsize.y)).rgb) * 2.0;
+	dy += luminance(texture(s, vec2(uv.x + texelsize.x, uv.y + texelsize.y)).rgb) * 1.0;
+    
+    float nx = dx;
+    float ny = dy;
+    vec3 norm = vec3(dx, dy, 0.25 * sqrt(1.0 - dx*dx - dy*dy));
+
+	return vec4(normalize(norm), 0.0);
+
+	//vec2 step = 1.0 / texsize.xy;
+    //
+	//float height = textureLod(s, uv, lodbias).r;
+    //
+	//vec2 dxy = height - vec2(
+    //  textureLod(s, uv + vec2(step.x, 0.), lodbias).r, 
+    //  textureLod(s, uv + vec2(0., step.y), lodbias).r
+	//);
+    //
+	//dxy /= step;
+	//
+	//return vec4(normalize(vec3(dxy, 4.0)), height);
+}
+
+vec2 parallax(in sampler2D s, in vec4 uv)
+{
+	uv.xy /= uv.w;
+	if(abs(displacement_factor) <= 1e-4)
+		return uv.xy;
+
+	vec3 viewDir = vdir;//decodeHemiUnitVector(vdir);
+
+	//if(displacement_factor > 0.0)
+	//{
+	//	float scale = displacement_factor * 0.125;
+	//	for(int i = 0; i < 4; i++)
+	//	{
+	//		vec4 Normal = bumpFromDepth(s, uv.xy);
+	//		float h = Normal.a * scale;
+	//		uv.xy += (h - uv.z) * Normal.z * (viewDir.xy / -viewDir.z);
+	//	}
+	//}
+	//return uv.xy;
+
+	//float height = textureLod(s, uv.xy, lodbias).r;
+	//vec2 p = (viewDir.xy / -viewDir.z) * (height * displacement_factor);
+	//return uv.xy + p;
+
+
+
+
+
+	//steep parallax mapping
+    float layerNum = 32.0;
+    float layerDepth = 1.0 / layerNum;
+
+    vec2 offset = (viewDir.xy / -viewDir.z) * displacement_factor;
+    for(float depth = 1.0; depth >= -0.1; depth -= layerDepth)
+    {
+        if(depth < textureLod(s, uv.xy + offset * depth, lodbias).r)
+        {
+            offset = offset * depth;
+            break;
+        }
+    }
+
+    return uv.xy + offset;
+
+/*
+	float layer_depth = 1.0 / 8.0;
+    float current_layer_depth = 0.0;
+    vec2 shift_per_layer = (viewDir.xy / -viewDir.z) * displacement_factor;
+    vec2 d_tc = shift_per_layer * layer_depth;
+
+	float NB0 = textureLod(s, uv.xy, lodbias).r;
+			
+	float height = layer_depth;
+	vec2 offset = uv.xy - d_tc;
+	float NB1 = textureLod(s, offset, lodbias).r;
+
+	for (int i = 0; i < 8; i++)
+	{
+		if (NB1 >= height)
+			break;
+			
+		NB0 = NB1;
+
+		height += layer_depth;
+		offset.xy -= d_tc;
+
+		NB1 = textureLod(s, offset, lodbias).r;
+	}
+	
+	vec2 offsetBest = offset;
+	float error = 1.0;
+
+	// binary search refinement
+	float t1 = height;
+	float t0 = t1 - layer_depth;
+	
+	float delta1 = t1 - NB1;
+	float delta0 = t0 - NB0;
+
+	vec4 intersect = vec4(d_tc * 8, d_tc * 8 + uv.xy);
+	for (int i = 0; i < 10; i++)
+	{
+		if (abs(error) <= 0.01)
+			break;
+	
+		float denom = delta1 - delta0;
+		float t = (t0 * delta1 - t1 * delta0) / denom;
+		offsetBest.xy = -t * intersect.xy + intersect.zw;
+		
+		float NB = textureLod(s, offsetBest, lodbias).r;
+
+		error = t - NB;
+		if (error < 0)
+		{
+			delta1 = error;
+			t1 = t;
+		}
+		else
+		{
+			delta0 = error;
+			t0 = t;
+		}
+	}
+	
+	return offsetBest.xy;*/
+
+/*
+    vec2 current_tc = uv.xy / uv.w;
+    float current_sample = textureLod(s, current_tc, 0).r;
+
+    while(current_layer_depth < current_sample){
+        current_tc -= d_tc;
+        current_sample = textureLod(s, current_tc, 0).r;
+        current_layer_depth += layer_depth;
+    }
+
+    vec2 prev_tc = current_tc + d_tc;
+
+    float after_col_depth = current_sample - current_layer_depth;
+    float before_col_depth = textureLod(s, prev_tc, 0).r - current_layer_depth + layer_depth;
+
+    float a = after_col_depth / (after_col_depth - before_col_depth);
+    vec2 adj_tc = mix(current_tc, prev_tc, a);
+
+	return adj_tc;
+*/
+}
+
+
+void run_tex_stage()
+{
+	// note: instruction decoding needs to be dynamically uniform/constant for the texture access to work
+	// it works on this machine, but some machines with actual gl3 limits might not
+	for (int pc = 0; pc < shaderTexInstructionCount; ++pc) // program counter
+	{
+		uint op, dest, src0, src1, src2;
+		read_instr(shaderTexInstructions[pc>>2][pc&3], op, dest, src0, src1, src2);
+
+		switch(op)
+		{
+		case OP_TEXOPM:
+			tr[dest&0x7] = packTexcoordRegister(vec4(parallax(textures[src0], read_texcoord_reg(src1)), 0.0, 1.0));
+			break;
+
+		case OP_TEX:
+			write_reg(
+				dest,
+				load_tex(textures[src0], read_texcoord_reg(src1))
+			);
+			break;
+
+		case OP_TEXI:
+			write_reg(
+				dest,
+				load_tex_light(textures[src0], read_texcoord_reg(src1), 0.0)
+			);
+			break;
+
+		case OP_TEXCOORD:
+			write_reg(
+				dest,
+				read_texcoord_reg(src0) * 255.0
+			);
+			break;
+
+		default:
+		case OP_NOP:
+			return;
+		}
+	}
+}
+
+void run_combiner_stage()
+{
+	for (int pc = 0; pc < shaderInstructionCount; ++pc) // program counter
+	{
+		uint op, dest, src0, src1, src2;
+		read_instr(shaderInstructions[pc>>2][pc&3], op, dest, src0, src1, src2);
+
+		switch(op)
+		{
+		case OP_ADD:
+			write_reg(
+				dest,
+				read_reg(src0) + read_reg(src1)
+			);
+			break;
+
+		case OP_DP3:
+			write_reg(
+				dest,
+				vec4(
+					// todo: fix the sign
+					vec3(dot(read_reg(src0).xyz, read_reg(src1).xyz) / (255.0 * 255.0)),
+					(r[dest] >> 24u) & 0xFFu
+				)
+			);
+			break;
+
+		case OP_DP4:
+			write_reg(
+				dest,
+				vec4(
+					// todo: fix the sign
+					dot(read_reg(src0), read_reg(src1)) / (255.0 * 255.0)
+				)
+			);
+			break;
+
+		case OP_LDC:
+			// todo
+			break;
+
+		case OP_LRP:
+			write_reg(
+				dest,
+				(read_reg(src1) - read_reg(src0)) * (read_reg(src2) / 255.0) + read_reg(src0)
+			);
+			break;
+
+		case OP_MAD:
+			write_reg(
+				dest,
+				read_reg(src0) * read_reg(src1) / 255.0 + read_reg(src2)
+			);
+			break;
+
+		case OP_MAX:
+			write_reg(
+				dest,
+				max(read_reg(src0), read_reg(src1))
+			);
+			break;
+			
+		case OP_MIN:
+			write_reg(
+				dest,
+				min(read_reg(src0), read_reg(src1))
+			);
+			break;
+
+		case OP_MOV:
+			write_reg(
+				dest,
+				read_reg(src0)
+			);
+			break;
+
+		case OP_MUL:
+			write_reg(
+				dest,
+				read_reg(src0) * read_reg(src1) / 255.0
+			);
+			break;
+
+		default:
+		case OP_NOP:
+			return;
+		}
+	}
+}
+
+#endif
+
+#endif
