@@ -14,7 +14,7 @@ in vec4 f_color[2];
 in vec4 f_uv[4];
 //in vec4 f_uv_nooffset;
 in vec3 f_coord;
-in vec4 f_normal;
+in vec3 f_normal;
 in float f_depth;
 
 const float f_light = 0.0;
