@@ -22,7 +22,7 @@ in float f_light;
 in vec4 f_uv;
 in vec4 f_uv_nooffset;
 in vec3 f_coord;
-in vec3 f_normal;
+in vec4 f_normal;
 in float f_depth;
 
 noperspective in vec2 f_uv_affine;
@@ -763,7 +763,7 @@ void main(void)
 	//	mipBias -= 2.0 * log2(1.0 + c * c) -12.3 * seam;
 	//}
 
-	vec3 surfaceNormals = normalize(f_normal);
+	vec3 surfaceNormals = normalize(f_normal.xyz);
 	vec3 localViewDir = normalize(-viewPos.xyz);
 	float ndotv = dot(surfaceNormals.xyz, localViewDir.xyz);
 	

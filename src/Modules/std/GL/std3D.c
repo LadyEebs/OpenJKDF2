@@ -1482,11 +1482,11 @@ void std3D_setupDrawCallVAO(std3D_worldStage* pStage)
 
 		glVertexAttribPointer(
 			pStage->attribute_v_norm, // attribute
-			3,                 // number of elements per vertex, here (x,y,z)
-			GL_FLOAT,          // the type of each element
-			GL_FALSE,          // normalize fixed-point data?
+			GL_BGRA,                 // number of elements per vertex, here (x,y,z)
+			GL_UNSIGNED_INT_2_10_10_10_REV,          // the type of each element
+			GL_TRUE,          // normalize fixed-point data?
 			sizeof(rdVertex), // data stride
-			(GLvoid*)offsetof(rdVertex, nx) // offset of first element
+			(GLvoid*)offsetof(rdVertex, norm10a2) // offset of first element
 		);
 		glEnableVertexAttribArray(pStage->attribute_v_norm);
 

@@ -861,8 +861,8 @@ typedef struct rdTexVertex
 
 typedef struct rdVertex
 {
-	float       x, y, z, w;
-	float       nx, ny, nz, nw;
+	float       x, y, z;
+	uint32_t    norm10a2;
 	uint32_t    colors[RD_NUM_COLORS];
 	rdTexVertex texcoords[RD_NUM_TEXCOORDS];
 } rdVertex;

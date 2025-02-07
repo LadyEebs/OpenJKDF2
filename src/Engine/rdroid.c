@@ -658,13 +658,15 @@ void rdVertex3f(float x, float y, float z)
 		return;
 	}
 
+	uint32_t nx = (uint32_t)((rdroid_vertexNormalState.x * 0.5 + 0.5) * 1023.0);
+	uint32_t ny = (uint32_t)((rdroid_vertexNormalState.y * 0.5 + 0.5) * 1023.0);
+	uint32_t nz = (uint32_t)((rdroid_vertexNormalState.z * 0.5 + 0.5) * 1023.0);
+
 	rdVertex* pVert = &rdroid_vertexCache[rdroid_vertexCacheNum++];
 	pVert->x = x;
 	pVert->y = y;
 	pVert->z = z;
-	pVert->nx = rdroid_vertexNormalState.x;
-	pVert->ny = rdroid_vertexNormalState.y;
-	pVert->nz = rdroid_vertexNormalState.z;
+	pVert->norm10a2 = RD_PACK_COLOR10(nx, ny, nz, 0);
 	pVert->texcoords[0].u = rdroid_vertexTexCoordState.x;
 	pVert->texcoords[0].v = rdroid_vertexTexCoordState.y;
 	pVert->texcoords[0].r = rdroid_vertexTexCoordState.z;
