@@ -7,10 +7,8 @@
 
 #define RD_COLOR0 0
 #define RD_COLOR1 1
-#define RD_COLOR2 2
-#define RD_COLOR3 3
 
-#define RD_NUM_COLORS 4
+#define RD_NUM_COLORS 2
 
 #define RD_TEXTURE0 0
 #define RD_TEXTURE1 1
