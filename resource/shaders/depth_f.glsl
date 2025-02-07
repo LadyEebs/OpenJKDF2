@@ -7,7 +7,7 @@ in vec4 f_color;
 in float f_light;
 in vec4 f_uv;
 in vec3 f_coord;
-in vec4 f_normal;
+in vec3 f_normal;
 in float f_depth;
 
 noperspective in vec2 f_uv_affine;
@@ -170,7 +170,7 @@ void main(void)
 		discard;
 
 	// if we want to output some thin gbuffer
-    //fragColorNormal = encode_octahedron(f_normal.xyz);
+    //fragColorNormal = encode_octahedron(f_normal);
 	//fragColorDiffuse = sampled_color;
 
 #endif
