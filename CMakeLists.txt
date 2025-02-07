@@ -187,7 +187,9 @@ file(GLOB ENGINE_SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/*.c
                        ${PROJECT_SOURCE_DIR}/src/*/*.c
                        ${PROJECT_SOURCE_DIR}/src/Modules/std/*.c
 					   ${PROJECT_SOURCE_DIR}/src/Modules/std/*/*.c
+					   ${PROJECT_SOURCE_DIR}/src/Modules/rdroid/*.c
 					   ${PROJECT_SOURCE_DIR}/src/Modules/rdroid/*/*.c
+					   ${PROJECT_SOURCE_DIR}/src/Modules/sith/*.c
 					   ${PROJECT_SOURCE_DIR}/src/Modules/sith/*/*.c
                        ${PROJECT_SOURCE_DIR}/src/General/*.cpp
                        ${PROJECT_SOURCE_DIR}/src/Platform/Common/*.c
