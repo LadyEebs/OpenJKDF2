@@ -1029,7 +1029,7 @@ void sithRender_Clip(sithSector *sector, rdClipFrustum *frustumArg, float a3)
 				rdVector3 center;
 				rdVector_Add3(&center, &sector->surfaces[i].center, &offset);
 
-				sithRender_aLights[lightIdx].intensity = sector->surfaces[i].radius * 3.0 / rdCamera_pCurCamera->attenuationMin;
+				sithRender_aLights[lightIdx].intensity = sector->surfaces[i].radius * 2.0 / rdCamera_pCurCamera->attenuationMin;
 
 				rdCamera_AddLight(rdCamera_pCurCamera, &sithRender_aLights[lightIdx], &center);
 				lightIdx = ++sithRender_numLights;
@@ -1340,7 +1340,7 @@ void sithRender_DrawSurface(sithSurface* surface)
 	{
 		lightMode = sithRender_lightMode;
 	}
-
+	//lightMode = RD_LIGHTMODE_SPECULAR;
 	if ((surface->surfaceFlags & (SITH_SURFACE_HORIZON_SKY | SITH_SURFACE_CEILING_SKY)) != 0)
 		lightMode = RD_LIGHTMODE_FULLYLIT;
 
@@ -2468,7 +2468,7 @@ void sithRender_UpdateLights(sithSector *sector, float prev, float dist, int dep
 				rdVector3 center;
 				rdVector_Add3(&center, &sector->surfaces[i].center, &offset);
 
-				sithRender_aLights[sithRender_numLights].intensity = sector->surfaces[i].radius * 3.0 / rdCamera_pCurCamera->attenuationMin;
+				sithRender_aLights[sithRender_numLights].intensity = sector->surfaces[i].radius * 2.0 / rdCamera_pCurCamera->attenuationMin;
 
 				rdCamera_AddLight(rdCamera_pCurCamera, &sithRender_aLights[sithRender_numLights], &center);
 				++sithRender_numLights;
