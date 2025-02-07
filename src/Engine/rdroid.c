@@ -750,11 +750,11 @@ void rdTexCoord2v(const float* v)
 	rdTexCoord2f(v[0], v[1]);
 }
 
-void rdTexCoord4i(float u, float v, float r, float q)
+void rdTexCoord4i(float u, float v, float t, float w)
 {
 	rdTexCoord2i(u, v);
-	rdroid_vertexTexCoordState.z = r;
-	rdroid_vertexTexCoordState.w = q;
+	rdroid_vertexTexCoordState.z = t;
+	rdroid_vertexTexCoordState.w = w;
 }
 
 void rdNormal3f(float x, float y, float z)

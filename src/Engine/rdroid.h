@@ -123,7 +123,7 @@ void rdVertex3f(float x, float y, float z);
 void rdColor4f(float r, float g, float b, float a);
 void rdTexCoord2f(float u, float v); // normalized
 void rdTexCoord2i(float u, float v); // unnormalized
-void rdTexCoord4i(float u, float v, float r, float q); // unnormalized
+void rdTexCoord4i(float u, float v, float t, float w); // unnormalized
 void rdNormal3f(float x, float y, float z);
 void rdVertex3v(const float* v);
 void rdColor4v(const float* v);
