@@ -894,6 +894,10 @@ int jkgm_std3D_AddToTextureCache(stdVBuffer *vbuf, rdDDrawSurface *texture, int 
                 texture->displacement_texture_id = displace_texture;
                 texture->displacement_data = data;
                 entry->displacement_data = data;
+
+				GLint swizzleMask[] = { GL_RED, GL_RED, GL_RED, GL_RED };
+				glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+
             }
             else
             {
