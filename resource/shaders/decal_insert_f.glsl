@@ -14,15 +14,16 @@ void main(void)
 	vec4 sampled = texture(tex, f_uv);
     vec4 sampled_color = vec4(1.0, 1.0, 1.0, 1.0);
 
-    float index = sampled.r;
-    if (param1 < 5)
-    {
-        sampled_color = texture(tex2, vec2(index, 0.5));
-    }
-    else
-    {
-        sampled_color = vec4(sampled.b, sampled.g, sampled.r, sampled.a);
-    }
+	//float index = sampled.r;
+	//if (param1 < 5)
+	//{
+	//	sampled_color = texture(tex2, vec2(index, 0.5));
+	//}
+	//else
+	//{
+	//	sampled_color = vec4(sampled.b, sampled.g, sampled.r, sampled.a);
+	//}
+	sampled_color = sampled;
 
     fragColor = sampled_color;
 }
