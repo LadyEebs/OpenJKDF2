@@ -626,6 +626,8 @@ void sithRender_SetCameraFog()
 
 void sithRender_DrawBackdrop()
 {
+	// todo: drawing this first hurts fillrate due to overdraw
+	// try to merge it into the main pass or maybe use stenciling or something
 	rdRenderPass("sithRender_DrawBackdrop", 0, RD_RENDERPASS_NO_CLUSTERING);
 	rdDepthRange(0.0f, 0.0f);
 
