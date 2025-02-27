@@ -79,6 +79,7 @@ sithThing* sithRender_alphaDrawThing = NULL; // list of things to render after w
 
 #ifdef RENDER_DROID2
 rdAmbientFlags_t sithRender_aoFlags = 0;
+uint32_t sithRender_numStaticLights = 0;
 #endif
 
 #ifdef RGB_THING_LIGHTS
@@ -780,8 +781,12 @@ void sithRender_Draw()
     rdCamera_ClearLights(rdCamera_pCurCamera);
 
 #ifdef RENDER_DROID2
+	sithRender_numStaticLights = 0;
+
 	rdSetGlowIntensity(0.4f);
-	rdSetOverbright(2.0f);
+	rdSetOverbright(1.5f);
+
+	_memset(sithWorld_pCurrentWorld->lightBuckets, 0, sizeof(uint64_t)*sithWorld_pCurrentWorld->numLightBuckets);
 
 	sithRender_aoFlags = (jkPlayer_enableShadows ? RD_AMBIENT_OCCLUDERS : 0) | (jkPlayer_enableSSAO ? RD_AMBIENT_SCREEN_SPACE : 0);
 	rdSetDecalMode(jkPlayer_enableDecals ? RD_DECALS_ENABLED : RD_DECALS_DISABLED);
@@ -1105,6 +1110,15 @@ void sithRender_Clip(sithSector *sector, rdClipFrustum *frustumArg, float a3)
             }
             thing = thing->nextThing;
         }
+
+#ifdef RENDER_DROID2
+		for (int bucket = 0; bucket < sithWorld_pCurrentWorld->numLightBuckets; ++bucket)
+		{
+			if(sector->lightBuckets)
+				sithWorld_pCurrentWorld->lightBuckets[bucket] |= sector->lightBuckets[bucket];
+		}
+#endif
+
         sithRender_aSectors2[sithRender_numSectors2++] = sector;
     }
 
@@ -1333,6 +1347,14 @@ void sithRender_DrawSurface(sithSurface* surface)
 	rdSetGeoMode(geoMode);
 
 	int lightMode = surface->surfaceInfo.face.lightingMode;
+
+	//float dist = rdVector_Dist3(&sithCamera_currentCamera->vec3_1, &sithWorld_pCurrentWorld->vertices[*surface->surfaceInfo.face.vertexPosIdx]);
+	//if (dist >= (double)sithWorld_pCurrentWorld->gouradDistance)
+	//{
+	//	if (lightMode > RD_LIGHTMODE_DIFFUSE)
+	//		lightMode = RD_LIGHTMODE_DIFFUSE;
+	//}
+
 	if (sithRender_lightingIRMode)
 	{
 		if (lightMode >= RD_LIGHTMODE_DIFFUSE)
@@ -2530,12 +2552,21 @@ void sithRender_UpdateLights(sithSector *sector, float prev, float dist, int dep
             }
         }
     }
+
     if ( prev < 0.8 )
     {
         if ( sithRender_numSectors2 < SITH_MAX_VISIBLE_SECTORS_2 )
         {
             sithRender_aSectors2[sithRender_numSectors2++] = sector;
         }
+
+	#ifdef RENDER_DROID2
+		//for (int bucket = 0; bucket < sithWorld_pCurrentWorld->numLightBuckets; ++bucket)
+		//{
+		//	if(sector->lightBuckets)
+		//		sithWorld_pCurrentWorld->lightBuckets[bucket] |= sector->lightBuckets[bucket];
+		//}
+	#endif
     }
 
     for ( j = sector->adjoins; j; j = j->next )
@@ -2558,6 +2589,24 @@ void sithRender_UpdateLights(sithSector *sector, float prev, float dist, int dep
 void sithRender_RenderDynamicLights()
 {
 #ifdef RENDER_DROID2
+	// scan through the light buckets to add static lights
+	for (int bucket = 0; bucket < sithWorld_pCurrentWorld->numLightBuckets; ++bucket)
+	{
+		uint64_t lightOffset = bucket * 64;
+		uint64_t bucketBits = sithWorld_pCurrentWorld->lightBuckets[bucket];
+		while (bucketBits != 0)
+		{
+			int bitIndex = stdMath_FindLSB64(bucketBits);
+			bucketBits ^= 1ull << bitIndex;
+
+			int lightIndex = bitIndex + lightOffset;
+			++sithRender_numStaticLights;
+			rdAddLight(&sithWorld_pCurrentWorld->lights[lightIndex].rdlight, &sithWorld_pCurrentWorld->lights[lightIndex].pos);
+
+			//rdCamera_AddLight(rdCamera_pCurCamera, &sithWorld_pCurrentWorld->lights[lightIndex].rdlight, &sithWorld_pCurrentWorld->lights[lightIndex].pos);
+		}
+	}
+
 	// this is now done on the GPU
 	for (int i = 0; i < rdCamera_pCurCamera->numLights; i++)
 		rdAddLight(rdCamera_pCurCamera->lights[i], &rdCamera_pCurCamera->lightPositions[i]);

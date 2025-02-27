@@ -175,6 +175,6 @@ void main(void)
 
 #endif
 	vec3 normal = normalize(f_normal.xyz);
-	fragNormalRoughness = vec4(normal * 0.5 + 0.5, 0.05); // todo: better packing
+	fragNormalRoughness = vec4(normal * 0.5 + 0.5, roughnessFactor); // todo: better packing
 	//fragDepth = f_depth;
 }

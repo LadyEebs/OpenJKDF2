@@ -224,6 +224,10 @@ int jkGame_Update()
 #ifdef PUPPET_PHYSICS
 				_sprintf(&std_genBuffer[_strlen(std_genBuffer)], " %da %dr", sithPuppet_activePuppets, sithPuppet_restingPuppets);
 #endif
+#ifdef RENDER_DROID2
+				extern uint32_t sithRender_numStaticLights;
+				_sprintf(&std_genBuffer[_strlen(std_genBuffer)], " %dl", sithRender_numStaticLights);
+#endif
                 jkDev_sub_41FC40(100, std_genBuffer);
                 v3 = Video_dword_5528A8;
             }

@@ -10,6 +10,7 @@
 #include "Cog/sithCog.h"
 #include "Engine/sithKeyFrame.h"
 #include "Engine/sithAnimClass.h"
+#include "Engine/sithCollision.h"
 #include "AI/sithAIClass.h"
 #include "World/sithSoundClass.h"
 #include "stdPlatform.h"
@@ -18,6 +19,7 @@
 #include "Engine/rdColormap.h"
 #include "World/sithThing.h"
 #include "World/sithSector.h"
+#include "Engine/sithIntersect.h"
 #include "World/jkPlayer.h"
 #include "Engine/sithParticle.h"
 #include "World/sithSurface.h"
@@ -27,6 +29,7 @@
 #include "General/util.h"
 #include "Gameplay/sithPlayer.h"
 #include "Platform/std3D.h"
+#include "Primitives/rdMath.h"
 #include "jk.h"
 #include "General/stdMath.h"
 #if defined(DECAL_RENDERING) || defined(RENDER_DROID2)
@@ -40,6 +43,7 @@
 #endif
 #ifdef RENDER_DROID2
 #include "Modules/sith/World/sithShader.h"
+#include "Modules/sith/World/sithLight.h"
 #endif
 
 // MOTS added
@@ -117,6 +121,9 @@ int sithWorld_Startup()
 #endif
 #ifdef POLYLINE_EXT
 	sithWorld_SetSectionParser("polylines", sithPolyline_Load);
+#endif
+#ifdef RENDER_DROID2
+	sithWorld_SetSectionParser("lights", sithLight_Load);
 #endif
 #ifdef STATIC_JKL_EXT
 	for(int i = 0; i < ARRAY_SIZE(sithWorld_pStaticWorlds); ++i)
@@ -284,6 +291,33 @@ void sithWorld_ComputeSectorRGBAmbients(uint32_t jobIdx, uint32_t groupIdx)
 }
 #endif
 
+int SphereIntersectsOrInsideConvex(const sithSector* sector, const rdVector3* pos, float radius)
+{
+	int inside = 1; // Assume inside unless proven otherwise
+
+	for (int i = 0; i < sector->numSurfaces; i++)
+	{
+		sithSurface* surface = &sector->surfaces[i];
+		sithAdjoin* adjoin = surface->adjoin;
+
+		rdVector3* vertices = sithWorld_pCurrentWorld->vertices;
+		float dist = stdMath_ClipPrecision(rdMath_DistancePointToPlane(pos, &surface->surfaceInfo.face.normal, &vertices[*surface->surfaceInfo.face.vertexPosIdx]));
+
+		if (dist < -radius)
+		{
+			// Sphere is completely outside this plane
+			return 0;
+		}
+		else if (dist < 0)
+		{
+			// Sphere center is outside, but intersects the plane
+			inside = 0;
+		}
+	}
+	return inside ? 2 : 1; // 2: completely inside, 1: intersecting, 0: outside
+}
+
+
 int sithWorld_NewEntry(sithWorld *pWorld)
 {
     sithAdjoin *v1; // ebp
@@ -380,6 +414,37 @@ int sithWorld_NewEntry(sithWorld *pWorld)
                     sithPhysics_FindFloor(v16, 1);
                 }
             }
+
+#ifdef RENDER_DROID2
+			// intersect lights with sectors and assign light to buckets
+			for (int i = 0; i < pWorld->numLightsLoaded; ++i)
+			{
+				sithLight* light = &pWorld->lights[i];
+
+				sithSector* lightSector = sithSector_sub_4F8D00(pWorld, &light->pos);
+				if(!lightSector)
+					continue;
+
+				sithSector_AddLight(lightSector, light);
+
+				// find any adjoins the light is also touching and traverse them
+				sithCollision_SearchRadiusForThings(lightSector, NULL, &light->pos, &rdroid_zeroVector3, 0.0, light->rdlight.falloffMin, RAYCAST_400 | SITH_RAYCAST_IGNORE_THINGS);
+				for (sithCollisionSearchEntry* i = sithCollision_NextSearchResult(); i; i = sithCollision_NextSearchResult())
+				{
+					// if we crossed an adjoin, add to the sector
+					if ((i->hitType & SITHCOLLISION_ADJOINCROSS) != 0
+						|| (i->hitType & SITHCOLLISION_ADJOINTOUCH) != 0
+						|| (i->hitType & SITHCOLLISION_THINGADJOINCROSS) != 0)
+					//if ((i->hitType & SITHCOLLISION_WORLD) != 0)
+					{
+						sithSector* adjSector = i->surface->parent_sector;
+						sithSector_AddLight(adjSector, light);
+					}
+				}
+				sithCollision_SearchClose();
+			}
+#endif
+
 #ifdef RGB_AMBIENT
 			// JED doesn't export colored ambient, so compute it on load
 		#ifdef JOB_SYSTEM
@@ -513,6 +578,7 @@ void sithWorld_FreeEntry(sithWorld *pWorld)
 #endif
 #ifdef RENDER_DROID2
 	sithShader_Free(pWorld);
+	sithLight_Free(pWorld);
 #endif
 
     // Added: Fix UAF from previous world's viewmodel anims
@@ -912,6 +978,10 @@ void sithWorld_sub_4D0A20(sithWorld *pWorld)
         }
         sector->renderTick = 0;
     }
+
+#ifdef RENDER_DROID2
+	_memset(pWorld->lightBuckets, 0, sizeof(uint64_t) * pWorld->numLightBuckets);
+#endif
 }
 
 void sithWorld_Free()

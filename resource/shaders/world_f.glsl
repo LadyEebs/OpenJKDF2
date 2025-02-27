@@ -11,7 +11,7 @@
 
 in vec4 f_color[2];
 //in float f_light;
-in vec4 f_uv[4];
+in vec4 f_uv[2];
 //in vec4 f_uv_nooffset;
 in vec3 f_coord;
 in vec3 f_normal;
@@ -101,7 +101,7 @@ vec3 CalculateAmbientSpecular(vec3 normal, vec3 view, float roughness, vec3 f0)
 		SG warpedNDF = WarpDistributionSG(ndf, view);
 
 		SG lightSG;
-		lightSG.Amplitude = unpack_argb2101010(ambientSG[sg]).xyz / 255.0;
+		lightSG.Amplitude = ambientSG[sg].xyz;// unpack_argb2101010(ambientSG[sg]).xyz / 255.0;
 		lightSG.Axis = ambientSGBasis[sg].xyz;
 		lightSG.Sharpness = ambientSGBasis[sg].w;
 
@@ -113,7 +113,7 @@ vec3 CalculateAmbientSpecular(vec3 normal, vec3 view, float roughness, vec3 f0)
 		// no Geometry term
 
 		// Fresnel
-		//vec3 h = normalize(warpedNDF.Axis + view);
+		vec3 h = normalize(warpedNDF.Axis + view);
 		vec3 f = f0;// + (1.0 - f0) * exp2(-8.35 * max(0.0, dot(warpedNDF.Axis, h)));
 		//f *= clamp(dot(f0, vec3(333.0)), 0.0, 1.0); // fade out when spec is less than 0.1% albedo
 		
@@ -128,7 +128,7 @@ vec3 CalculateAmbientDiffuse(vec3 normal)
 	for(int sg = 0; sg < 8; ++sg)
 	{
 		SG lightSG;
-		lightSG.Amplitude = unpack_argb2101010(ambientSG[sg]).xyz / 255.0;
+		lightSG.Amplitude = ambientSG[sg].xyz;//unpack_argb2101010(ambientSG[sg]).xyz / 255.0;
 		lightSG.Axis = ambientSGBasis[sg].xyz;
 		lightSG.Sharpness = ambientSGBasis[sg].w;
 	
@@ -610,7 +610,7 @@ void calc_fog()
 		vec3 viewDir = normalize(-f_coord.xyz);
 	
 		float clipDepth = 0.0;
-		float distToCam = max(0.0, f_depth * 128.0 - clipDepth * 128.0) / -viewDir.y;
+		float distToCam = length(f_coord);// max(0.0, f_depth * 128.0 - clipDepth * 128.0) / -viewDir.y;
 		float fog_amount = clamp((distToCam - fogStart) / (fogEnd - fogStart), 0.0, 1.0);
 	
 		vec3 fog_color = fogColor.rgb;
@@ -628,32 +628,46 @@ void calc_fog()
 	}
 #endif
 }
-
+float GGX_V1(in float m2, in float nDotX)
+{
+    return 1.0f / (nDotX + sqrt(m2 + (1 - m2) * nDotX * nDotX));
+}
 vec3 calc_ambient_specular(float roughness, vec3 normal, vec3 view, vec3 reflected)
 {
+	//return CalculateAmbientSpecular(normal, view, roughness, vec3(1.0));
+
 	vec3 ambientSpec = vec3(0.0);
-#ifdef SPECULAR
-	float m2 = roughness;// max(roughness * roughness, 1e-4);
-	float amplitude = 1.0;// / (3.141592 * m2);
-	float sharpness = (2.0 / m2) / (4.0 * max(dot(normal, view), 0.001));
+	
+	float m = roughness * roughness;
+	float m2 = max(m * m, 1e-5);
+	float amplitude = 1.0 / (3.141592 * m2);
+	float sharpness = (2.0 / m2) / (4.0 * max(dot(normal, view), 0.1));
 	
 	for(int sg = 0; sg < ambientNumSG; ++sg)
 	{
-		vec4 sgCol = unpack_argb2101010(ambientSG[sg]);
-		vec3 ambientColor = mix(f_color[0].rgb, sgCol.xyz / 255.0, sgCol.w); // use vertex color if no ambientSG data
+		vec4 sgCol = ambientSG[sg];//unpack_argb2101010(ambientSG[sg]);
+		vec3 ambientColor = mix(f_color[0].rgb, sgCol.xyz, sgCol.w); // use vertex color if no ambientSG data
 	
 		float umLength = length(sharpness * reflected + (ambientSGBasis[sg].w * ambientSGBasis[sg].xyz));
 		float attenuation = 1.0 - exp(-2.0 * umLength);
-		float nDotL = clamp(dot(normal.xyz, ambientSGBasis[sg].xyz), 0.0, 1.0);
+		float nDotL = clamp(dot(normal.xyz, reflected), 0.0, 1.0);
 	
+		// todo: can we roll this into something like the direct light approx?
 		float D = (2.0 * 3.141592) * nDotL * attenuation / umLength;
+		//float D = (2.0) * nDotL * attenuation / umLength;
 	
 		float expo = (exp(umLength - sharpness - ambientSGBasis[sg].w) * amplitude);
+
+		// fresnel approx as 1 / ldoth at center of the warped lobe
+		//vec3 h = normalize(reflected + view);
+		//D /= clamp(dot(reflected, h), 0.1, 1.0);
+
 		ambientSpec = (D * expo) * ambientColor + ambientSpec;
 	}
-#endif
-	return ambientSpec * 3.141592;
+
+	return ambientSpec;
 }
+
 
 
 // packs light results into color0 and color1
@@ -662,129 +676,338 @@ void calc_light()
 	vec3 diffuse = f_color[0].rgb;
 	vec3 specular = vec3(0.0);//f_color[1].rgb;
 
-	r[4]  = 0;
-	r[5]  =0 ;
+	v[0]  = 0;//uvec2(0);
+	v[1]  = 0;//uvec2(0);
 
-	// todo: do we need to pack this?
 	vec3 view = normalize(-f_coord.xyz);
 	vec3 normal = normalize(f_normal.xyz);
 	vec3 reflected = reflect(-view, normal);
-	//float roughness = 0.02;
-	//float roughness = texture(textures[3], f_uv[0].xy, lodbias).r;
-	//roughness = max(roughness, 0.01);
+	
+	float roughness = roughnessFactor;
+	//roughness = texture(textures[0], f_uv[0].xy, lodbias).r;
 
-	vec2 sob = sobel(textures[0], f_uv[0].xy);
-	sob.y = 1.0-(sob.y + 3.141592) / (2.0 * 3.14159);
-	float roughness = sob.y;//abs(sob.y / 3.141592);
-	
-	
-	float specMask = 1.0;// 0.5 * pow(roughness, 8.0);
-	//specMask = (1.0-sqrt(sob.x)) * texture(textures[0], f_uv[0].xy, lodbias).x;
-	
-	
-	roughness = 0.1;//pow(roughness, 4.0);
+	//float blurred = tex_6x6(textures[0], f_uv[0].xy).r;
+	//roughness = 1.-clamp((roughness - blurred * 0.85) * 4.0, 0.0, 1.0);
+	//roughness *= roughness;
+	//roughness *= roughness;
+	//roughness = roughness * 0.9 + 0.1;
+	//roughness = max(roughness, 0.05);
 
-	//normal = bumpFromDepth(textures[0], f_uv[0].xy).xyz;
+	//vec4 bump = bumpFromDepth(textures[0], f_uv[0].xy);
 	//mat3 tbn = construct_tbn(f_uv[0].xy / f_uv[0].w, f_coord.xyz);
-	//normal = normalize(tbn * normal);
+	//normal = tbn * bump.xyz;
+
 
 #ifdef UNLIT
 	if (lightMode == 0) // fully lit
 	{
-		r[4] = packRegister(vec4(255.0));
+		v[0] = packColorRegister(vec4(light_mult*255.0));
 	#ifdef SPECULAR
-		r[5] = packRegister(vec4(255.0));
+		v[1] = packColorRegister(vec4(light_mult*255.0));
 	#endif // SPECULAR
 	}
 	else if (lightMode == 1) // not lit
 	{
-		r[4] = packRegister(vec4(0.0, 0.0, 0.0, f_color[0].w * 255.0));
+		v[0] = packColorRegister(vec4(0.0, 0.0, 0.0, f_color[0].w * 255.0));
 	#ifdef SPECULAR
-		r[5] = packRegister(vec4(0.0));
+		v[1] = packColorRegister(vec4(0.0));
 	#endif // SPECULAR
 	}
 	else // "diffuse"/vertex lit
 	{
-		r[4] = packRegister(f_color[0] * 255.0);
+		v[0] = packColorRegister(f_color[0] * 255.0);
 	#ifdef SPECULAR
-		r[5] = packRegister(f_color[1] * 255.0);
-		//r[5] = packRegister(vec4(calc_ambient_specular(roughness, normal, view, reflected) * 255.0, 255.0));
+		v[1] = packColorRegister(f_color[1] * 255.0);
+		//v[1] = packColorRegister(vec4(calc_ambient_specular(roughness, normal, view, reflected) * 255.0, 255.0));
 	#endif // SPECULAR
 	}
 
 #else // UNLIT
 
 	light_result result;
-	result.diffuse = f_color[0].rgb;
+	result.diffuse = f_color[0].rgb;// * f_color[0].rgb;
 	
-	#ifdef SPECULAR
-		result.specular = calc_ambient_specular(roughness, normal, view, reflected);
-		//result.specular = f_color[1].rgb;
-	#else
-		result.specular = vec3(0.0);
-	#endif
+	//#ifdef SPECULAR
+	//	//result.specular = calc_ambient_specular(roughness, normal, view, reflected);
+	//	//result.specular = f_color[1].rgb;// * f_color[1].rgb;
+	//	//result.specular = vec3(0.0);
+	//#else
+		result.specular = f_color[1].rgb;//vec3(0.0);
+	//#endif
 
 #if 0// !defined(ALPHA_BLEND) && !defined(ALPHA_DISCARD)
 	
 	// read opaque lighting data
-	vec4 light = texelFetch(diffuseLightTex, ivec2(gl_FragCoord.xy), 0);
-	result.diffuse.rgb += light.rgb;
+	ivec2 crd = ivec2(gl_FragCoord.xy);
+
+	vec4 light = texelFetch(diffuseLightTex, crd, 0);
+	//result.diffuse.rgb += light.rgb;
 #ifdef SPECULAR
-	result.specular.rgb += vec3(light.a);
+	//result.specular.rgb += vec3(light.a);
 #endif // SPECULAR
+
+	// edge-directed reconstruction:
+	vec4 a0 = texelFetch(diffuseLightTex, crd + ivec2(1,0), 0);
+	vec4 a1 = texelFetch(diffuseLightTex, crd - ivec2(1,0), 0);
+	vec4 a2 = texelFetch(diffuseLightTex, crd + ivec2(0,1), 0);
+	vec4 a3 = texelFetch(diffuseLightTex, crd - ivec2(0,1), 0);		
+
+	vec2 chroma;
+	chroma.x = edge_filter(light.rg, a0.rg, a1.rg, a2.rg, a3.rg);
+	chroma.y = edge_filter(light.ba, a0.ba, a1.ba, a2.ba, a3.ba);
+
+	bool pattern = ((crd.x & 1) == (crd.y & 1));
+
+	vec3 col = light.rgg;
+	col.b = chroma.x;
+	col.rgb = (pattern) ? col.rgb : col.rbg;
+	col.rgb = ycocg2rgb(col.rgb);
+
+	result.diffuse.rgb += col.rgb;
+//#ifdef SPECULAR
+	col = light.baa;
+	col.b = chroma.y;
+	col.rgb = (pattern) ? col.rgb : col.rbg;
+	col.rgb = ycocg2rgb(col.rgb);
+
+	col.rgb = log2(col.rgb) / -1.0;
+
+	result.specular.rgb += col.rgb;
+//#endif // SPECULAR
+
 
 #else
 	uint cluster = compute_cluster_index(gl_FragCoord.xy, f_coord.y);
 
-	// loop light buckets
-	uint first_item = firstLight;
-	uint last_item = first_item + numLights - 1u;
-	uint first_bucket = first_item >> 5u;
-	uint last_bucket = min(last_item >> 5u, max(0u, CLUSTER_BUCKETS_PER_CLUSTER - 1u));
-	for (uint bucket = first_bucket; bucket <= last_bucket; ++bucket)
-	{
-		uint bucket_bits = uint(texelFetch(clusterBuffer, int(cluster * CLUSTER_BUCKETS_PER_CLUSTER + bucket)).x);
-		while(bucket_bits != 0u)
-		{
-			uint bucket_bit_index = findLSB_unsafe(bucket_bits);
-			uint light_index = (bucket << 5u) + bucket_bit_index;
-			bucket_bits ^= (1u << bucket_bit_index);
+	float a = roughness;// * roughness;
 
-			if (light_index >= first_item && light_index <= last_item)
+	light_input params;
+	params.pos = f_coord.xyz;
+	params.normal = encode_octahedron_uint(normal.xyz);
+	params.view = encode_octahedron_uint(view);
+	params.reflected = encode_octahedron_uint(reflected.xyz);
+	params.roughness = roughness;
+	params.roughness2 = roughness * roughness;
+	params.normalizationTerm = roughness * 4.0 + 2.0;
+
+	params.a2 = a * a;
+	params.rcp_a2 = 1.0 / params.a2;
+	params.spec_c = get_spec_c(params.rcp_a2);
+	params.rcp_a2 /= 3.141592; // todo: roll pi into specular light intensity?
+	params.tint = pack_argb8888(f_color[0] * 255.0);
+
+	// light mode "gouraud" (a.k.a new per pixel)
+	if (lightMode >= 3)
+	{
+//#ifdef SPECULAR
+		result.specular = calc_ambient_specular(roughness, normal, view, reflected);
+//#endif
+
+		// loop lights
+		if (numLights > 0u)
+		{
+			uint first_item = firstLight;
+			uint last_item = first_item + numLights - 1u;
+			uint first_bucket = first_item >> 5u;
+			uint last_bucket = min(last_item >> 5u, max(0u, CLUSTER_BUCKETS_PER_CLUSTER - 1u));
+			for (uint bucket = first_bucket; bucket <= last_bucket; ++bucket)
 			{
-				calc_point_light(result, light_index, roughness, f_coord.xyz, normal, reflected);
-			}
-			else if (light_index > last_item)
-			{
-				bucket = CLUSTER_BUCKETS_PER_CLUSTER;
-				break;
+				uint bucket_bits = uint(texelFetch(clusterBuffer, int(cluster * CLUSTER_BUCKETS_PER_CLUSTER + bucket)).x);
+				while (bucket_bits != 0u)
+				{
+					uint bucket_bit_index = findLSB_unsafe(bucket_bits);
+					uint light_index = (bucket << 5u) + bucket_bit_index;
+					bucket_bits ^= (1u << bucket_bit_index);
+
+					if (light_index >= first_item && light_index <= last_item)
+					{
+						calc_point_light(result, light_index, params);
+					}
+					else if (light_index > last_item)
+					{
+						bucket = CLUSTER_BUCKETS_PER_CLUSTER;
+						break;
+					}
+				}
 			}
 		}
 	}
-#endif // !defined(ALPHA_BLEND) && !defined(ALPHA_DISCARD)
 
-	result.diffuse.rgb = clamp(result.diffuse.rgb, vec3(0.0), vec3(1.0));
-	result.specular.rgb = clamp(result.specular.rgb, vec3(0.0), vec3(1.0));
+	// loop shadow occluders
+	if ((aoFlags & 0x1) == 0x1 && numOccluders > 0u)
+	{		
+//#if !defined(ALPHA_BLEND) && !defined(ALPHA_DISCARD)
+		float shadow = 1.0;
+		
+		uint first_item = firstOccluder;
+		uint last_item = first_item + numOccluders - 1u;
+		uint first_bucket = first_item >> 5u;
+		uint last_bucket = min(last_item >> 5u, max(0u, CLUSTER_BUCKETS_PER_CLUSTER - 1u));
+		for (uint bucket = first_bucket; bucket <= last_bucket; ++bucket)
+		{
+			uint bucket_bits = uint(texelFetch(clusterBuffer, int(cluster * CLUSTER_BUCKETS_PER_CLUSTER + bucket)).x);
+			while (bucket_bits != 0u)
+			{
+				uint bucket_bit_index = findLSB_unsafe(bucket_bits);
+				uint occluder_index = (bucket << 5u) + bucket_bit_index;
+				bucket_bits ^= (1u << bucket_bit_index);
+			
+				if (occluder_index >= first_item && occluder_index <= last_item)
+				{
+					calc_shadow(shadow, occluder_index - first_item, f_coord.xyz, params.normal);
+				}
+				else if (occluder_index > last_item)
+				{
+					bucket = CLUSTER_BUCKETS_PER_CLUSTER;
+					break;
+				}
+			}
+		}	
+			
+		float ao = shadow * 0.8 + 0.2; // remap so we don't overdarken
+		result.diffuse.xyz *= ao;
 
-	r[4] = packRegister(vec4(result.diffuse.rgb * 255.0, f_color[0].w * 255.0));
+		//float ndotv = dot(normal.xyz, view.xyz);
+		//float specAO = mix(ao * ao, 1.0, clamp(-0.3 * ndotv * ndotv, 0.0, 1.0));
+		result.specular.xyz *= ao;//specAO;
+	#endif
+	}
+//#endif // !defined(ALPHA_BLEND) && !defined(ALPHA_DISCARD)
+
+	//#ifndef SPECULAR
+		// dielectric
+		//result.specular.rgb *= specularFactor.rgb;
+		//result.diffuse.rgb *= 1.0 - specularFactor.rgb;
+		vec3 fresnel = env_brdf( specularFactor.rgb, roughness, clamp(dot(normal.xyz, view.xyz),0.0,1.0) );
+		result.specular.rgb *= fresnel;
+		result.diffuse.rgb *= 1.0 - fresnel;
+	//#endif
+	
+	// gamma hack
+	// Unity "Optimizing PBR"
+	// https://community.arm.com/cfs-file/__key/communityserver-blogs-components-weblogfiles/00-00-00-20-66/siggraph2015_2D00_mmg_2D00_renaldas_2D00_slides.pdf
+	//result.specular.rgb = sqrt(result.specular.rgb) * specularFactor.rgb;
+	
+	//result.diffuse.rgb = sqrt(result.diffuse.rgb);
+
+	// compress
+	//result.specular.rgb = exp2(-1.0 * result.specular.rgb);
+
+	//result.diffuse.rgb = result.diffuse.rgb / (1.0 + result.diffuse.rgb);
+	//result.specular.rgb = result.specular.rgb / (1.0 + result.specular.rgb);
+	result.specular.rgb = 1.0 - exp2(-result.specular.rgb);
+
+	//result.diffuse.rgb = clamp(result.diffuse.rgb, vec3(0.0), vec3(1.0));
+	//result.specular.rgb = clamp(result.specular.rgb, vec3(0.0), vec3(1.0));
+	
+	//result.specular.rgb = sqrt(result.specular.rgb);
+
+	v[0] = packColorRegister(vec4(result.diffuse.rgb * 255.0, f_color[0].w * 255.0));
+	//#ifdef SPECULAR
+		v[1] = packColorRegister(vec4(result.specular.rgb * 255.0, f_color[1].w * 255.0));
+	//#endif // SPECULAR
+
+	// temp hack until material and texture assignments are moved to higher level
 	#ifdef SPECULAR
-		r[5] = packRegister(vec4(result.specular.rgb * specMask * 255.0, f_color[1].w * 255.0));
-	#endif // SPECULAR
+		// metal
+		//v[0] = v[1];
+		//v[1] = 0;//uvec2(0);
+	#endif
+
 #endif // UNLIT
+}
+
+void calc_decals()
+{
+	vec4 color, glow;
+	color = glow = vec4(0,0,0,1);
+//#if !(defined(ALPHA_BLEND) || defined(ALPHA_DISCARD))
+
+	uint cluster_index = compute_cluster_index(gl_FragCoord.xy, f_coord.y);
+	uint bucket_index = cluster_index * CLUSTER_BUCKETS_PER_CLUSTER;
+	if(numDecals > 0u)
+	{
+		uint first_item = firstDecal;
+		uint last_item = first_item + numDecals - 1u;
+		uint first_bucket = first_item >> 5u;
+		uint last_bucket = min(last_item >> 5u, max(0u, CLUSTER_BUCKETS_PER_CLUSTER - 1u));
+		for (uint bucket = first_bucket; bucket <= last_bucket; ++bucket)
+		{
+			uint bucket_bits = uint(texelFetch(clusterBuffer, int(bucket_index + bucket)).x);
+			while(bucket_bits != 0u)
+			{
+				uint bucket_bit_index = findLSB_unsafe(bucket_bits);
+				uint decal_index = (bucket << 5u) + bucket_bit_index;
+				bucket_bits ^= (1u << bucket_bit_index);
+			
+				if (decal_index >= first_item && decal_index <= last_item)
+				{
+					decal dec = decals[decal_index - first_item];
+
+					// wtf is wrong with invDecalMatrix??
+					//vec4 objectPosition = dec.invDecalMatrix * vec4(f_coord.xyz, 1.0);				
+					vec4 objectPosition = inverse(dec.decalMatrix) * vec4(f_coord.xyz, 1.0);				
+					vec3 falloff = 0.5f - abs(objectPosition.xyz);
+					if( any(lessThanEqual(falloff, vec3(0.0))) )
+						continue;
+				
+					vec2 decalTexCoord = objectPosition.xz + 0.5;
+					decalTexCoord = decalTexCoord.xy * dec.uvScaleBias.zw + dec.uvScaleBias.xy;
+				
+					vec4 decalColor = textureLod(decalAtlas, decalTexCoord, 0);
+					if((dec.flags & 0x8u) == 0x8u) // rgb as alpha
+						decalColor.a = max(decalColor.r, max(decalColor.g, decalColor.b));
+
+					if(decalColor.a < 0.001)
+						continue;
+				
+					decalColor.rgb *= dec.color.rgb;
+				
+					if((dec.flags & 0x2u) == 0x2u) // heat
+					{
+						decalColor.rgb = blackbody(decalColor.r);
+						glow.rgb += decalColor.rgb;
+					}
+				
+					float edgeFactor = clamp(abs(objectPosition.z), 0.0, 1.0);
+					edgeFactor *= edgeFactor;
+					edgeFactor *= edgeFactor;
+					edgeFactor *= edgeFactor;
+
+					float edgeBlend = 1.0 - edgeFactor;
+					if((dec.flags & 0x4u) == 0x4u) // additive
+					{
+						color.rgb += edgeBlend * decalColor.rgb;
+					}
+					else
+					{
+						color.rgb = color.rgb * (1.0 - decalColor.w) + decalColor.rgb * decalColor.w;
+						color.w *= 1.0 - decalColor.w;
+					}
+				}
+				else if (decal_index > last_item)
+				{
+					bucket = CLUSTER_BUCKETS_PER_CLUSTER;
+					break;
+				}
+			}
+		}
+	}
+//#endif
+	d[0] = packRegister(color * 255.0);
+	d[1] = packRegister(glow * 255.0);
 }
 
 void main(void)
 {
 #ifdef USE_VM
 	mat3 tbn = construct_tbn(f_uv[0].xy / f_uv[0].w, f_coord.xyz);
-	vec3 viewTS = normalize(transpose(tbn) * normalize(-f_coord.xyz));
-	vdir = viewTS;//encodeHemiUnitVector(viewTS);
-
+	vec3 viewTS = transpose(tbn) * normalize(-f_coord.xyz);
+	vdir = encodeHemiUnitVector(viewTS);
+	
 	// setup texcoord registers, from here out don't directly access f_uv
-	tr[0] = packTexcoordRegister(f_uv[0]);
-	tr[1] = packTexcoordRegister(f_uv[1]);
-	tr[2] = packTexcoordRegister(f_uv[2]);
-	tr[3] = packTexcoordRegister(f_uv[3]);
+	tr[0] = packTexcoordRegister(f_uv[0].xy / f_uv[0].w);
+	tr[1] = packTexcoordRegister(f_uv[1].xy / f_uv[1].w);
 
 	// calculate anything that relies on interpolated data
 	// up front so we can free vgprs for the vm stages
@@ -792,6 +1015,7 @@ void main(void)
 	calc_lod_bias();
 	calc_fog();
 	calc_light();
+	calc_decals();
 
 	// run the texture stage
 	// todo: how to handle decals?
@@ -809,6 +1033,12 @@ void main(void)
 	// unpack output registers
 	fragColor = vec4(unpackRegister(r[0])); // unpack r0
 	fragGlow = vec4(unpackRegister(r[1])); // unpack r1
+	//fragGlow.rgb += unpackColorRegister(v[5]).rgb;
+
+	vec4 decalDiffuse = unpackRegister(d[0]);
+	float decalAlpha = decalDiffuse.w * (1.0/255.0);
+	fragColor.rgb = fragColor.rgb * decalAlpha + decalDiffuse.rgb;
+	//fragGlow.rgb += unpackRegister(d[1]).rgb;
 
 	// apply overbright
 	fragColor.rgb *= 1.0 / light_mult;
@@ -816,9 +1046,10 @@ void main(void)
 	// apply glow multiplier
 	fragGlow.rgb *= emissiveFactor.w;
 
-
-	// grab dither value
-	float dither = texelFetch(dithertex, ivec2(gl_FragCoord.xy) & ivec2(3), 0).r;
+	uvec2 crd = uvec2(gl_FragCoord.xy);
+	float dither = dither_value_float(crd);// texelFetch(dithertex, ivec2(gl_FragCoord.xy) & ivec2(3), 0).r;
+	float scale = 1.0 / float((1 << int(8)) - 1);
+	dither *= scale;
 
 #ifdef FOG
 	// apply fog to outputs
@@ -828,7 +1059,7 @@ void main(void)
 		fog_color.w *= (1.0/255.0);
 
 		fragColor.rgb = mix(fragColor.rgb, fog_color.rgb + dither, fog_color.w);
-		fragGlow.rgb = mix(fragGlow.rgb, fog_color.rgb + dither, fog_color.w);
+		fragGlow.rgb = fragGlow.rgb * (1.0 - fog_color.w);
 	}
 #endif
 
@@ -836,6 +1067,10 @@ void main(void)
 	// dither the output if needed
 	fragColor.rgb = min(fragColor.rgb * (1.0/255.0) + dither, vec3(1.0));
 	fragColor.a *= (1.0 / 255.0);
+
+	//vec3 YCoCg = rgb2ycocg(fragColor.rgb);
+	//fragColor.rg = ((crd.x & 1u) == (crd.y & 1u)) ? YCoCg.rg : YCoCg.rb;
+	fragColor.rg = ((crd.x & 1u) == (crd.y & 1u)) ? fragColor.gr : fragColor.gb;
 
 	// alpha testing
 #ifdef ALPHA_DISCARD
@@ -1102,7 +1337,7 @@ void main(void)
 		vec3 wn = mat3(invView) * surfaceNormals;
 		
 		//pos *= 4.0; // tiling
-		pos += wn.xyz * 0.25 * colorEffects_fade; // animate
+		pos += wn.xyz * 0.25 * timeSeconds; // animate
 		
 		//float w = mix(water_caustics(pos), water_caustics(pos + 1.), 0.5);
 		//ao *= exp(w * 4.0 - 1.0) * 0.5 + 0.5;

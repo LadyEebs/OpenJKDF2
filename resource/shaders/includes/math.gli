@@ -89,7 +89,61 @@ vec3 decode_octahedron(vec2 p)
     return normalize(n);
 }
 
+uint encode_octahedron_uint(vec3 v)
+{
+    //return packHalf2x16(encode_octahedron(v));
+	v /= abs(v.x) + abs(v.y) + abs(v.z);
+    v.xy = v.z >= 0.0 ? v.xy : oct_wrap(v.xy);
+	return packHalf2x16(v.xy);
+}
+
+vec3 decode_octahedron_uint(uint p)
+{
+    //return decode_octahedron(unpackHalf2x16(p));
+	vec2 v = unpackHalf2x16(p);
+	vec3 n;
+    n.z = 1.0 - abs(v.x) - abs(v.y);
+    n.xy = n.z >= 0.0 ? v.xy : oct_wrap( v.xy );
+    return normalize(n);
+}
+
 // conversions
+
+//Source: https://github.com/tobspr/GLSL-Color-Spaces/blob/master/ColorSpaces.inc.glsl
+const float SRGB_ALPHA = 0.055;
+float linear2srgb(float x)
+{
+	if(x <= 0.0031308)
+		return 12.92 * x;
+	else
+		return(1. + SRGB_ALPHA) * pow(x, 1.0 / 2.4) - SRGB_ALPHA;
+}
+vec3 rgb2srgb(vec3 c)
+{
+	return vec3(
+		linear2srgb(c.r),
+		linear2srgb(c.g),
+		linear2srgb(c.b)
+	);
+}
+
+float srgb2linear(float x)
+{
+	if(x <= 0.04045)
+		return x / 12.92;
+	else
+		return pow((x + SRGB_ALPHA) / (1.0 + SRGB_ALPHA), 2.4);
+}
+
+vec3 srgb2rgb(vec3 c)
+{
+	return vec3(
+		srgb2linear(c.r),
+		srgb2linear(c.g),
+		srgb2linear(c.b)
+	);
+}
+
 vec3 rgb2ycocg(vec3 RGB)
 {
     vec3 o;
@@ -112,6 +166,58 @@ vec3 ycocg2rgb(vec3 YCoCg)
     o.b = YCoCg.x - YCoCg.y - YCoCg.z;
     return o;
 }
+
+// Returns the missing chrominance (Co or Cg) of a pixel.
+// a1-a4 are the 4 neighbors of the center pixel a0.
+float edge_filter(vec2 a0, vec2 a1, vec2 a2, vec2 a3, vec2 a4)
+{
+	float THRESH = 30.0/255.0;
+
+	vec4 lum = vec4(a1.x, a2.x , a3.x, a4.x);
+	vec4 w = 1.0 - step(THRESH, abs(lum - a0.x));
+	float W = w.x + w.y + w.z + w.w;
+	
+	// handle the special case where all the weights are zero
+	w.x = (W == 0.0) ? 1.0 : w.x;
+	W = (W == 0.0) ? 1.0 : W;
+	return (w.x * a1.y + w.y * a2.y + w.z * a3.y + w.w * a4.y) / W;
+}
+
+const mat3 yiq_mat = mat3
+(
+    0.2989, 0.5959, 0.2115,
+    0.5870, -0.2744, -0.5229,
+    0.1140, -0.3216, 0.3114
+);
+
+vec3 rgb2yiq(vec3 col)
+{
+    return yiq_mat * col;
+}
+
+const mat3 yiq2rgb_mat = mat3
+(
+    1.0, 1.0, 1.0,
+    0.956, -0.2720, -1.1060,
+    0.6210, -0.6474, 1.7046
+);
+
+vec3 yiq2rgb(vec3 yiq)
+{
+    return yiq2rgb_mat * yiq;
+}
+
+// M matrix, for encoding
+const mat3 logLuvM = mat3(
+    0.2209, 0.3390, 0.4184,
+    0.1138, 0.6780, 0.7319,
+    0.0102, 0.1130, 0.2969);
+
+// Inverse M matrix, for decoding
+const mat3 logLuvInvM = mat3(
+    6.0013,    -2.700,    -1.7995,
+    -1.332,    3.1029,    -5.7720,
+    .3007,    -1.088,    5.6268);   
 
 // fast math
 
@@ -147,10 +253,25 @@ float acosFast(float x)
     return (x >= 0) ? res : 3.141592 - res; 
 }
 
-float luminance(vec3 c_rgb)
+const uint IEEEScale = 0x4B000000;
+const uint IEEEInvScale = 0x34000000;
+const uint IEEEOffset = 0x42FE0000;
+const uint IEEEScaleOffset = 0x4E7E0000;
+
+
+float fastLog2(float v)
 {
-    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
-    return dot(c_rgb, W);
+    return float(floatBitsToUint(v)) * uintBitsToFloat(IEEEInvScale) - uintBitsToFloat(IEEEOffset);
+}
+
+float fastExp2(float v)
+{
+    return uintBitsToFloat(uint(v * uintBitsToFloat(IEEEScale) + uintBitsToFloat(IEEEScaleOffset)));
+}
+
+float fastPow(float b, float p)
+{
+    return uintBitsToFloat(uint(p * float(floatBitsToUint(b)) - (p - 1.0) * uintBitsToFloat(IEEEScaleOffset)));
 }
 
 #endif

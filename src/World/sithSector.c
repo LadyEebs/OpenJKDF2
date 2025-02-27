@@ -65,6 +65,9 @@ int sithSector_Load(sithWorld *world, int tmp)
             v6->numSurfaces = 0;
             v6->surfaces = 0;
             v6->thingsList = 0;
+	#ifdef RENDER_DROID2
+			v6->lightBuckets = 0;
+	#endif
             ++v6;
         }
     }
@@ -224,7 +227,11 @@ void sithSector_Free(sithWorld *world)
     {
         if ( world->sectors[i].verticeIdxs )
             pSithHS->free(world->sectors[i].verticeIdxs);
-    }
+#ifdef RENDER_DROID2
+		if ( world->sectors[i].lightBuckets )
+			pSithHS->free(world->sectors[i].lightBuckets);
+#endif
+	}
     pSithHS->free(world->sectors);
     world->sectors = 0;
     world->numSectors = 0;
@@ -406,5 +413,24 @@ void sithWorld_ComputeSectorRGBAmbient(sithSector* sector)
 	//float avg = fmin(1.0f, rdVector_Dot3(&sector->ambientRGB, &lum) + 1e-5f);
 	//rdVector_Scale3Acc(&sector->ambientRGB, fmin(1.0f, sector->ambientLight) / avg);
 	//rdAmbient_Scale(&sector->ambientSH, fmin(1.0f, sector->ambientLight) / avg);
+}
+#endif
+
+
+#ifdef RENDER_DROID2
+void sithSector_AddLight(sithSector* pSector, sithLight* pLight)
+{
+	if (!pSector->lightBuckets)
+	{
+		pSector->lightBuckets = (uint64_t*)pSithHS->alloc(sizeof(uint64_t) * sithWorld_pCurrentWorld->numLightBuckets);
+		_memset(pSector->lightBuckets, 0, sizeof(uint64_t) * sithWorld_pCurrentWorld->numLightBuckets);
+	}
+
+	if (pSector->lightBuckets)
+	{
+		uint64_t bucketIndex = pLight->id / 64;
+		uint64_t bucketPlace = pLight->id % 64;
+		pSector->lightBuckets[bucketIndex] |= (1ull << bucketPlace);
+	}
 }
 #endif

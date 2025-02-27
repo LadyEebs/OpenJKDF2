@@ -2,7 +2,7 @@
 #define UNIFORMS_H
 
 // todo: define elsewhere
-#define CLUSTER_MAX_LIGHTS          128u // match RDCAMERA_MAX_LIGHTS/SITHREND_NUM_LIGHTS
+#define CLUSTER_MAX_LIGHTS          256u // match RDCAMERA_MAX_LIGHTS/SITHREND_NUM_LIGHTS
 #define CLUSTER_MAX_OCCLUDERS       128u
 #define CLUSTER_MAX_DECALS          256
 #define CLUSTER_MAX_ITEMS           (CLUSTER_MAX_LIGHTS + CLUSTER_MAX_OCCLUDERS + CLUSTER_MAX_DECALS)
@@ -25,7 +25,7 @@ uniform int blend_mode;
 
 uniform int aoFlags;
 uniform vec3 ambientColor;
-uniform uint ambientSG[8];
+uniform vec4 ambientSG[8];
 uniform uint ambientNumSG; // get around loop unrolling
 
 // Shared uniforms across batch calls and render passes
@@ -33,13 +33,9 @@ layout(std140) uniform sharedBlock
 {
 	vec4  ambientSGBasis[8];
 
-	vec4  colorEffects_tint;
-	vec4  colorEffects_filter;
-	vec4  colorEffects_add;
-	
 	vec4  mipDistances;
 
-	float colorEffects_fade;
+	float timeSeconds;
 	float light_mult;
 	vec2  iResolution;
 
@@ -81,9 +77,11 @@ layout(std140) uniform materialBlock
 	vec4 fillColor;
 	vec4 albedoFactor;
 	vec4 emissiveFactor;
+	vec4 specularFactor;
 
 	float displacement_factor;
-	float texPad0, texPad1, texPad2;
+	float roughnessFactor;
+	float texPad1, texPad2;
 };
 
 // Global light buffer
@@ -94,7 +92,7 @@ struct light
 	//vec4  color;
 
 	uint color;
-	uint pad1, pad2, pad3;
+	float radiusSq, pad2, pad3;
 	
 	int   type;
 	float falloffMin;

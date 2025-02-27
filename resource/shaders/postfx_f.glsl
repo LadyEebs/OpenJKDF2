@@ -1,6 +1,7 @@
 #include "math.gli"
 
 uniform sampler2D tex;
+uniform sampler2D tex2;
 uniform vec2 iResolution;
 uniform float param1;
 uniform float param2;
@@ -29,34 +30,53 @@ void main(void)
 	}
 
     vec4 sampled_color = texture(tex, uv);
+	vec2 sourceSize = textureSize(tex, 0).xy;
 
 	// when dithering, try to smooth it out with a classic voodoo style filter
-	if(param2 > 0.0)
-	{
-		vec2 sourceSize = textureSize(tex, 0).xy;
-		
-		vec4 pixel00 = sampled_color;
-		vec4 pixel01, pixel11, pixel10;
+	//if(param2 > 0.0)
+	//{
+	//	vec2 sourceSize = textureSize(tex, 0).xy;
+	//	
+	//	vec4 pixel00 = sampled_color;
+	//	vec4 pixel01, pixel11, pixel10;
+	//
+	//	if(param2 > 1.0) // 4x1
+	//	{
+	//		vec4 pixel01 = texture(tex, uv - vec2(1.0 / sourceSize.x, 0.0));
+	//		vec4 pixel11 = texture(tex, uv + vec2(1.0 / sourceSize.x, 0.0));
+	//		vec4 pixel10 = texture(tex, uv + vec2(2.0 / sourceSize.x, 0.0));
+	//	}
+	//	else // 2x2
+	//	{
+	//		pixel01 = texture(tex, uv + vec2(0.0,                -1.0 / sourceSize.y));
+	//		pixel11 = texture(tex, uv + vec2(1.0 / sourceSize.x, -1.0 / sourceSize.y));
+	//		pixel10 = texture(tex, uv + vec2(1.0 / sourceSize.x,  0.0));
+	//	}	
+	//
+	//	vec4 diff0 = clamp(pixel01 - pixel00, -32.0/255.0, 32.0/255.0);
+	//	vec4 diff1 = clamp(pixel11 - pixel00, -32.0/255.0, 32.0/255.0);
+	//	vec4 diff2 = clamp(pixel10 - pixel00, -32.0/255.0, 32.0/255.0);
+	//	
+	//	sampled_color = (pixel00 + (diff0 + diff1 + diff2) / 3.0);
+	//}
 
-		if(param2 > 1.0) // 4x1
-		{
-			vec4 pixel01 = texture(tex, uv - vec2(1.0 / sourceSize.x, 0.0));
-			vec4 pixel11 = texture(tex, uv + vec2(1.0 / sourceSize.x, 0.0));
-			vec4 pixel10 = texture(tex, uv + vec2(2.0 / sourceSize.x, 0.0));
-		}
-		else // 2x2
-		{
-			pixel01 = texture(tex, uv + vec2(0.0,                -1.0 / sourceSize.y));
-			pixel11 = texture(tex, uv + vec2(1.0 / sourceSize.x, -1.0 / sourceSize.y));
-			pixel10 = texture(tex, uv + vec2(1.0 / sourceSize.x,  0.0));
-		}	
-	
-		vec4 diff0 = clamp(pixel01 - pixel00, -32.0/255.0, 32.0/255.0);
-		vec4 diff1 = clamp(pixel11 - pixel00, -32.0/255.0, 32.0/255.0);
-		vec4 diff2 = clamp(pixel10 - pixel00, -32.0/255.0, 32.0/255.0);
-		
-		sampled_color = (pixel00 + (diff0 + diff1 + diff2) / 3.0);
-	}
+	ivec2 crd = ivec2(uv.xy * sourceSize.xy);
+
+	// edge-directed reconstruction:
+	vec2 a0 = texture(tex, uv + vec2(1.0 / sourceSize.x, 0.0), 0).rg;
+	vec2 a1 = texture(tex, uv - vec2(1.0 / sourceSize.x, 0.0), 0).rg;
+	vec2 a2 = texture(tex, uv + vec2(0.0 ,1.0 / sourceSize.y), 0).rg;
+	vec2 a3 = texture(tex, uv - vec2(0.0 ,1.0 / sourceSize.y), 0).rg;		
+
+	float chroma = edge_filter(sampled_color.rg, a0, a1, a2, a3);
+
+	bool pattern = ((crd.x & 1) == (crd.y & 1));
+
+	sampled_color.b = chroma.x;
+	//sampled_color.rgb = (pattern) ? sampled_color.rgb : sampled_color.rbg;
+	//sampled_color.rgb = ycocg2rgb(sampled_color.rgb);
+
+	sampled_color.rgb = (pattern) ? sampled_color.grb : sampled_color.brg;
 
 	//vec2 invPixelSize = 1.0 / iResolution.xy;
 	//
@@ -72,6 +92,9 @@ void main(void)
 	//sampled_color += -0.12487566 * texture(tex, uv + vec2(0.0,2.907)*invPixelSize);    
 
 	//sampled_color.rgb = ycocg2rgb(sampled_color.yxz);
+
+	vec4 bloom = texture(tex2, uv.xy);
+	sampled_color.rgb = bloom.rgb + sampled_color.rgb * (1.0 - bloom.rgb);
 
 #ifdef RENDER_DROID2
 	sampled_color.rgb += colorEffects_add.rgb;

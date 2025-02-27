@@ -19,10 +19,8 @@
 
 #define RD_TEXCOORD0 0
 #define RD_TEXCOORD1 1
-#define RD_TEXCOORD2 2
-#define RD_TEXCOORD3 3
 
-#define RD_NUM_TEXCOORDS 4
+#define RD_NUM_TEXCOORDS 2
 
 typedef uint8_t rdBlend_t;
 typedef enum RD_BLEND

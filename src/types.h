@@ -1354,6 +1354,14 @@ typedef struct rdMaterial
     rdTexture* textures;
 } rdMaterial;
 
+typedef struct sithLight
+{
+	int frame;
+	int id;
+	rdLight rdlight;
+	rdVector3 pos;
+} sithLight;
+
 #ifndef PUPPET_PHYSICS
 
 struct sithPuppet
@@ -2345,6 +2353,13 @@ typedef struct sithWorld
 	int numPolylines;
 	int numPolylinesLoaded;
 #endif
+#ifdef RENDER_DROID2
+	int numLightsLoaded;
+	int numLights;
+	sithLight* lights;
+	int numLightBuckets;
+	uint64_t* lightBuckets;
+#endif
     int numVertices;
     rdVector3* vertices;
     rdVector3* verticesTransformed;
@@ -2837,6 +2852,7 @@ typedef struct sithSector
     rdClipFrustum* clipFrustum;
 #ifdef RENDER_DROID2
 	sithSector* nextBackdropSector;
+	uint64_t* lightBuckets;
 #endif
 } sithSector;
 

@@ -35,6 +35,10 @@ sithSector* sithSector_sub_4F8D00(sithWorld *pWorld, rdVector3 *pos);
 void sithWorld_ComputeSectorRGBAmbient(sithSector* sector);
 #endif
 
+#ifdef RENDER_DROID2
+void sithSector_AddLight(sithSector* pSector, sithLight* pLight);
+#endif
+
 //static int (*sithSector_LoadThingPhysicsParams)(stdConffileArg *arg, sithThing *thing, int param) = (void*)sithSector_LoadThingPhysicsParams_ADDR;
 //static void (*sithSector_ThingPhysGeneral)(sithThing *thing, float deltaSeconds) = (void*)sithSector_ThingPhysGeneral_ADDR;
 //static void (*sithSector_ThingPhysPlayer)(sithThing *player, float deltaSeconds) = (void*)sithSector_ThingPhysPlayer_ADDR;

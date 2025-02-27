@@ -820,7 +820,7 @@ int rdBindMaterial(rdMaterial* pMaterial, int cel)
 		// todo: move me
 		rdroid_stateBits.alphaTest = (sith_tex_sel->alpha_en & 1) != 0;
 
-		if(sith_tex_sel->has_jkgm_override)
+		//if(sith_tex_sel->has_jkgm_override)
 		{
 			uint32_t emissive_rgb = RD_PACK_COLOR8F(rdroid_textureState.pTexture->emissive_factor[0], rdroid_textureState.pTexture->emissive_factor[1], rdroid_textureState.pTexture->emissive_factor[2], 0.0f);
 			if(!rdroid_textureState.pTexture->emissive_texture_id)
@@ -830,14 +830,15 @@ int rdBindMaterial(rdMaterial* pMaterial, int cel)
 			rdroid_materialState.emissive = (rdroid_materialState.emissive & 0xFF000000) | emissive_rgb;
 			rdroid_materialState.displacement = rdroid_textureState.pTexture->displacement_factor;
 		}
-		else
-		{
-			rdroid_materialState.albedo = 0xFFFFFFFF;
-			rdroid_materialState.emissive &= 0xFF000000;
-			if(!rdroid_textureState.pTexture->is_16bit)
-				rdroid_materialState.emissive |= 0xFFFFFF;
-			rdroid_materialState.displacement = 0.0f;
-		}
+		//else
+		//{
+		//	rdroid_materialState.albedo = 0xFFFFFFFF;
+		//	rdroid_materialState.emissive &= 0xFF000000;
+		//	if(!rdroid_textureState.pTexture->is_16bit)
+		//		rdroid_materialState.emissive |= 0xFFFFFF;
+		//	rdroid_materialState.displacement = 0.0f;
+		//}
+		rdroid_materialState.displacement = rdroid_textureState.pTexture->displacement_factor;
 		rdroid_textureState.numMips = sith_tex_sel->num_mipmaps;
 	}
 
