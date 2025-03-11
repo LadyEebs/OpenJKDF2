@@ -6,12 +6,13 @@
 #include "decals.gli"
 #include "occluders.gli"
 #include "textures.gli"
+#include "framebuffer.gli"
 
 #include "vm.gli"
 
 in vec4 f_color[2];
 //in float f_light;
-in vec4 f_uv[2];
+in vec4 f_uv[4];
 //in vec4 f_uv_nooffset;
 in vec3 f_coord;
 in vec3 f_normal;
@@ -19,7 +20,7 @@ in float f_depth;
 
 const float f_light = 0.0;
 
-//noperspective in vec2 f_uv_affine;
+noperspective in vec2 f_uv_affine;
 
 bool ceiling_intersect(vec3 pos, vec3 dir, vec3 normal, vec3 center, inout float t)
 {
@@ -35,31 +36,25 @@ bool ceiling_intersect(vec3 pos, vec3 dir, vec3 normal, vec3 center, inout float
 	return false;
 }
 
-vec2 do_ceiling_uv(inout vec3 viewPos)
+vec2 do_ceiling_uv()//inout vec3 viewPos)
 {
-	mat4 invMat = inverse(modelMatrix); // fixme: expensive + only works when model component is identity
-	vec3 cam_pos   = (invMat * vec4(0, 0, 0, 1)).xyz;
-
-	mat4 invView = inverse(viewMatrix);
-	vec3 world_pos = (invView * vec4(viewPos.xyz, 1.0)).xyz;
-
-	vec3 ray_dir = normalize(world_pos.xyz - cam_pos.xyz);
-	vec3 view_ceiling = texgen_params.xyz;
-	vec3 view_norm = vec3(0,0,-1);
+	vec3 ray_dir = normalize(-f_coord.xyz);//viewPos);
+	vec3 view_ceiling = (viewMatrix * vec4(texgen_params.xyz, 1.0)).xyz;
+	vec3 view_norm = mat3(viewMatrix) * vec3(0,0,-1);
 
 	float tmp = 0.0;
-	if (!ceiling_intersect(cam_pos, ray_dir, view_norm, view_ceiling.xyz, tmp))
+	if (!ceiling_intersect(vec3(0.0), ray_dir, view_norm, view_ceiling.xyz, tmp))
 		tmp = 1000.0;
 
-    vec3 sky_pos = tmp * ray_dir + cam_pos;
+    vec3 sky_pos = tmp * ray_dir + vec3(0.0);
 	
-	viewPos.y = sky_pos.y;
+	//viewPos.y = sky_pos.y;
 
 	vec2 uv = sky_pos.xy * 16.0;
 
-	vec4 proj_sky = projMatrix * modelMatrix * vec4(sky_pos.xyz, 1.0);
+	vec4 proj_sky = projMatrix * vec4(sky_pos.xyz, 1.0);
 	
-	return (uv + uv_offset.xy) / texsize.xy;
+	return (uv + uv_offset[0].xy) / texsize.xy;
 }
 
 vec2 do_horizon_uv()
@@ -71,21 +66,22 @@ vec2 do_horizon_uv()
 	uv.x = projXY.x * texgen_params.y + (projXY.y * -texgen_params.z);
 	uv.y = projXY.y * texgen_params.y + (projXY.x *  texgen_params.z);
 	
-	return (uv + uv_offset.xy) / texsize.xy;
+	return (uv + uv_offset[0].xy) / texsize.xy;
 }
 
-vec3 do_texgen(in vec3 uv, inout vec3 viewPos)
+// fixme
+vec3 do_texgen(in vec3 uv)//, inout vec3 viewPos)
 {
-	//if(texgen == 1) // 1 = RD_TEXGEN_HORIZON
-	//{
-	//	uv.xy = do_horizon_uv();
-	//	uv.z = 0.0;
-	//}
-	//else if(texgen == 2) // 2 = RD_TEXGEN_CEILING
-	//{
-	//	uv.xy = do_ceiling_uv(viewPos);
-	//	uv.z = 0;
-	//}
+	if(texgen == 1) // 1 = RD_TEXGEN_HORIZON
+	{
+		uv.xy = do_horizon_uv();
+		uv.z = 0.0;
+	}
+	else if(texgen == 2) // 2 = RD_TEXGEN_CEILING
+	{
+		uv.xy = do_ceiling_uv();//viewPos);
+		uv.z = 0;
+	}
 	return uv.xyz;
 }
 
@@ -480,78 +476,6 @@ void sample_color(vec2 uv, float mipBias, inout vec4 sampled_color, inout vec4 e
 #endif
 }
 
-vec3 PurkinjeShift(vec3 light, float intensity)
-{
-	// constant 
-    const vec3 m = vec3(0.63721, 0.39242, 1.6064); // maximal cone sensitivity
-	const vec3 k = vec3(0.2, 0.2, 0.29);           // rod input strength long/medium/short
-	const float K = 45.0;   // scaling constant
-	const float S = 10.0;   // static saturation
-	const float k3 = 0.6;   // surround strength of opponent signal
-	const float rw = 0.139; // ratio of response for white light
-	const float p = 0.6189; // relative weight of L cones
-		
-	// [jpatry21] slide 164
-    // LMSR matrix using Smits method [smits00]
-    // Mij = Integrate[ Ei(lambda) I(lambda) Rj(lambda) d(lambda) ]
-	const mat4x3 M = mat4x3
-    (	
-        7.69684945, 18.4248204, 2.06809497,
-		2.43113687, 18.6979422, 3.01246326,
-		0.28911757, 1.40183293, 13.7922962,
-		0.46638595, 15.5643680, 10.0599647
-	);
-    
-    // [jpatry21] slide 165
-    // M with gain control factored in
-    // note: the result is slightly different, is this correct?
-    // g = rsqrt(1 + (0.33 / m) * (q + k * q.w))
-    const mat4x3 Mg = mat4x3
-    (	
-        vec3(0.33 / m.x, 1, 1) * (M[0] + k.x * M[3]),
-        vec3(1, 0.33 / m.y, 1) * (M[1] + k.y * M[3]),
-        vec3(1, 1, 0.33 / m.z) * (M[2] + k.z * M[3]),
-        M[3]
-	);
-   
-	// [jpatry21] slide 166
-    const mat3x3 A = mat3x3
-    (
-        -1, -1, 1,
-         1, -1, 1,
-         0,  1, 0
-    );
-	
-	// [jpatry21] slide 167
-	// o = (K / S) * N * diag(k) * (diag(m)^-1)
-    const mat3x3 N = mat3x3
-    (
-        -(k3 + rw),     p * k3,         p * S,
-         1.0 + k3 * rw, (1.0 - p) * k3, (1.0 - p) * S,
-         0, 1, 0
-	);
-	const mat3x3 diag_mi = inverse(mat3x3(m.x, 0, 0, 0, m.y, 0, 0, 0, m.z));
-	const mat3x3 diag_k = mat3x3(k.x, 0, 0, 0, k.y, 0, 0, 0, k.z);
-	const mat3x3 O =  (K / S) * N * diag_k * diag_mi;
-
-	// [jpatry21] slide 168
-	// c = M^-1 * A^-1 * o
-    const mat3 Mi = inverse(mat3(M));
-	const mat3x3 C = transpose(Mi) * inverse(A) * O;
-    
-    // map to some kind of mesopic range, this value is arbitrary, use your best approx
-    const float scale = 1000.0;
-    
-    // reference version
-    //vec4 lmsr = (light * scale) * M;
-    //vec3 lmsGain = inversesqrt(1.0f + (0.33f / m) * (lmsr.rgb + k * lmsr.w));
-    
-    // matrix folded version, ever so slightly different but good enough
-	vec4 lmsr = (light * scale) * Mg;
-    vec3 lmsGain = inversesqrt(1.0f + lmsr.rgb);
-    vec3 rgbGain = C * lmsGain * intensity / scale;    
-    return rgbGain * lmsr.w + light;
-}
 float HenyeyGreenstein(float g, float costh)
 {
     return (1.0 - g * g) / (4.0 * 3.141592 * pow(1.0 + g * g - 2.0 * g * costh, 3.0/2.0));
@@ -579,20 +503,6 @@ float InScatter(vec3 start, vec3 dir, vec3 lightPos, float d)
    return InScatterDir(q, dir, d);
 }
 
-float ChebyshevUpperBound(vec2 Moments, float t)
-{
-	// One-tailed inequality valid if t > Moments.x
-	float p = (t <= Moments.x) ? 1.0 : 0.0;
-	
-	// Compute variance.
-	float Variance = Moments.y - (Moments.x * Moments.x);
-	Variance = max(Variance, 0.0001);
-
-	// Compute probabilistic upper bound.
-	float d = t - Moments.x;
-	float p_max = Variance / (Variance + d * d);
-	return max(p, p_max);
-}
 
 #define USE_VM
 
@@ -605,12 +515,14 @@ void calc_fog()
 {
 	fog = 0;
 #ifdef FOG
+#ifndef REFRACTION // tmp, fixme
 	if(fogEnabled > 0)
 	{
 		vec3 viewDir = normalize(-f_coord.xyz);
 	
-		float clipDepth = 0.0;
-		float distToCam = length(f_coord);// max(0.0, f_depth * 128.0 - clipDepth * 128.0) / -viewDir.y;
+		float clipDepth = texelFetch(cliptex, ivec2(gl_FragCoord.xy), 0).r;
+
+		float distToCam = max(0.0, f_depth * 128.0 - clipDepth) / -viewDir.y;
 		float fog_amount = clamp((distToCam - fogStart) / (fogEnd - fogStart), 0.0, 1.0);
 	
 		vec3 fog_color = fogColor.rgb;
@@ -626,6 +538,7 @@ void calc_fog()
 	
 		fog = pack_argb8888(vec4(fog_color.rgb, fog_amount * fogColor.a) * 255.0);
 	}
+#endif
 #endif
 }
 float GGX_V1(in float m2, in float nDotX)
@@ -770,7 +683,7 @@ void calc_light()
 	col.rgb = (pattern) ? col.rgb : col.rbg;
 	col.rgb = ycocg2rgb(col.rgb);
 
-	col.rgb = log2(col.rgb) / -1.0;
+	//col.rgb = log2(col.rgb) / -1.0;
 
 	result.specular.rgb += col.rgb;
 //#endif // SPECULAR
@@ -876,11 +789,11 @@ void calc_light()
 
 	//#ifndef SPECULAR
 		// dielectric
-		//result.specular.rgb *= specularFactor.rgb;
-		//result.diffuse.rgb *= 1.0 - specularFactor.rgb;
-		vec3 fresnel = env_brdf( specularFactor.rgb, roughness, clamp(dot(normal.xyz, view.xyz),0.0,1.0) );
-		result.specular.rgb *= fresnel;
-		result.diffuse.rgb *= 1.0 - fresnel;
+		result.specular.rgb *= specularFactor.rgb;
+		result.diffuse.rgb *= 1.0 - specularFactor.rgb;
+		//vec3 fresnel = env_brdf( specularFactor.rgb, roughness, clamp(dot(normal.xyz, view.xyz),0.0,1.0) );
+		//result.specular.rgb *= fresnel;
+		//result.diffuse.rgb *= 1.0 - fresnel;
 	//#endif
 	
 	// gamma hack
@@ -917,6 +830,7 @@ void calc_light()
 #endif // UNLIT
 }
 
+// todo: do we want to have per-decal shaders? the vm cost could skyrocket..
 void calc_decals()
 {
 	vec4 color, glow;
@@ -944,9 +858,7 @@ void calc_decals()
 				{
 					decal dec = decals[decal_index - first_item];
 
-					// wtf is wrong with invDecalMatrix??
-					//vec4 objectPosition = dec.invDecalMatrix * vec4(f_coord.xyz, 1.0);				
-					vec4 objectPosition = inverse(dec.decalMatrix) * vec4(f_coord.xyz, 1.0);				
+					vec4 objectPosition = dec.invDecalMatrix * vec4(f_coord.xyz, 1.0);				
 					vec3 falloff = 0.5f - abs(objectPosition.xyz);
 					if( any(lessThanEqual(falloff, vec3(0.0))) )
 						continue;
@@ -965,7 +877,8 @@ void calc_decals()
 				
 					if((dec.flags & 0x2u) == 0x2u) // heat
 					{
-						decalColor.rgb = blackbody(decalColor.r);
+						decalColor.rgb = 4.0 * textureLod(blackbodyTex, vec2(decalColor.r, 0.0), 0.0).rgb;
+						//decalColor.rgb = blackbody(decalColor.r);
 						glow.rgb += decalColor.rgb;
 					}
 				
@@ -1006,8 +919,11 @@ void main(void)
 	vdir = encodeHemiUnitVector(viewTS);
 	
 	// setup texcoord registers, from here out don't directly access f_uv
-	tr[0] = packTexcoordRegister(f_uv[0].xy / f_uv[0].w);
+	// todo: fix texgen
+	tr[0] = packTexcoordRegister(do_texgen(f_uv[0].xyz / f_uv[0].w).xy);
 	tr[1] = packTexcoordRegister(f_uv[1].xy / f_uv[1].w);
+	tr[2] = packTexcoordRegister(f_uv[2].xy / f_uv[2].w);
+	tr[3] = packTexcoordRegister(f_uv[3].xy / f_uv[3].w);
 
 	// calculate anything that relies on interpolated data
 	// up front so we can free vgprs for the vm stages
@@ -1058,19 +974,70 @@ void main(void)
 		vec4 fog_color = unpack_argb8888(fog);
 		fog_color.w *= (1.0/255.0);
 
-		fragColor.rgb = mix(fragColor.rgb, fog_color.rgb + dither, fog_color.w);
+		fragColor.rgb = mix(fragColor.rgb, fog_color.rgb, fog_color.w);
 		fragGlow.rgb = fragGlow.rgb * (1.0 - fog_color.w);
 	}
 #endif
 
 	// todo: make ditherMode a per-rt thing
 	// dither the output if needed
-	fragColor.rgb = min(fragColor.rgb * (1.0/255.0) + dither, vec3(1.0));
+	fragColor.rgb = min(fragColor.rgb * (1.0/255.0), vec3(1.0));
 	fragColor.a *= (1.0 / 255.0);
 
-	//vec3 YCoCg = rgb2ycocg(fragColor.rgb);
-	//fragColor.rg = ((crd.x & 1u) == (crd.y & 1u)) ? YCoCg.rg : YCoCg.rb;
-	fragColor.rg = ((crd.x & 1u) == (crd.y & 1u)) ? fragColor.gr : fragColor.gb;
+#ifdef REFRACTION
+	vec3 localViewDir = normalize(-f_coord.xyz);
+	vec2 screenUV = gl_FragCoord.xy / iResolution.xy;
+	//float sceneDepth = textureLod(ztex, screenUV, 0).r;
+	float softIntersect = 1.0;//clamp((sceneDepth - f_depth) / -localViewDir.y * 500.0, 0.0, 1.0);	
+	
+	vec2 disp = unpackRegister(r[5]).xy - 0.5;
+	disp *= 1.0/255.0 * min(0.05, 0.0001 / f_depth);// * softIntersect;
+
+	vec2 refrUV = screenUV + disp;
+		
+	float refrDepth = textureLod(ztex, refrUV, 0).r;
+	if (refrDepth < f_depth)
+	{
+		refrUV = screenUV;
+		refrDepth = textureLod(ztex, screenUV, 0).r;
+	}
+
+	float waterStart = f_depth * 128.0;
+	float waterEnd = refrDepth * 128.0;
+	float waterDepth = (waterEnd - waterStart);// / -localViewDir.y;			
+	vec3 refr = sampleFramebuffer(refrtex, refrUV).rgb;
+	
+	//if ((aoFlags & 0x4) != 0x4)
+	{
+		float waterFogAmount = clamp(waterDepth / (2.0), 0.0, 1.0);
+
+		vec3 half_color = texgen_params.rgb * 0.5;
+		vec3 waterFogColor = texgen_params.rgb - (half_color.brr + half_color.ggb);
+
+		//if(fogLightDir.w > 0.0)
+			///waterFogColor *= 4.0 * 3.141592 * Schlick(0.35, dot(fogLightDir.xyz, localViewDir));
+			//waterFogColor *= textureLod(dithertex, vec2(0.35, dot(fogLightDir.xyz, localViewDir)*0.5+0.5), 0.0).r;
+
+		if ( any( greaterThan(waterFogColor, vec3(0.0)) ) )
+			refr = mix(refr, waterFogColor, waterFogAmount);
+	}
+		
+	vec3 tint = texgen_params.rgb * clamp(waterDepth, 0.0, 1.0);
+	vec3 half_tint = tint.rgb * 0.5;
+	vec3 tint_delta = tint.rgb - (half_tint.brr + half_tint.ggb);
+	refr = clamp(tint_delta * refr + refr + dither, vec3(0.0), vec3(1.0));
+
+	float texalpha = 90.0 / 255.0;
+
+	float alpha = fragColor.w;// + (1.0-softIntersect);
+	fragColor.rgb = fragColor.rgb * alpha + refr.rgb;// mix(fragColor.rgb, refr.rgb, alpha);
+	fragColor.w = 1.0;
+
+
+	//fragColor.rgb = vec3(alpha);
+#endif
+
+	fragColor.rg = subsample(fragColor).rg;
 
 	// alpha testing
 #ifdef ALPHA_DISCARD
@@ -1078,13 +1045,17 @@ void main(void)
 		discard;
 #endif
 
+//#if defined(ALPHA_BLEND) || defined(ALPHA_DISCARD)
+	// todo: this is killing early-z for all the passes...
+	float clipDepth = texelFetch(cliptex, ivec2(gl_FragCoord.xy), 0).r;
+	if (clipDepth >= f_depth)
+		discard;
+//#endif
+
 //#ifdef ALPHA_BLEND
 	//if (fragColor.a - dither * 255.0/16.0 < 0.0)
 	//	discard;
 //#endif
-
-	// output the main color in YCoCg (useful for rgb565)
-	//fragColor.rgb = rgb2ycocg(fragColor.rgb).yxz;
 
 	// note we subtract instead of add to avoid boosting blacks
 	fragGlow.rgb = min(fragGlow.rgb * (1.0/255.0) + (-dither), vec3(1.0));
@@ -1150,7 +1121,7 @@ void main(void)
 	vec3 localViewDir = normalize(-viewPos.xyz);
 	float ndotv = dot(surfaceNormals.xyz, localViewDir.xyz);
 	
-	vec3 proc_texcoords = f_uv_nooffset.xyz / f_uv_nooffset.w;
+	//vec3 proc_texcoords = f_uv_nooffset.xyz / f_uv_nooffset.w;
 #ifndef ALPHA_BLEND
 	//if (texgen == 3)
 	//{
@@ -1627,6 +1598,9 @@ void main(void)
 
 	// dither the output in case we're using some lower precision output
 	fragColor.rgb = min(fragColor.rgb + dither, vec3(1.0));
+
+	uvec2 crd = uvec2(gl_FragCoord.xy);
+	fragColor.rg = ((crd.x & 1u) == (crd.y & 1u)) ? fragColor.gr : fragColor.gb;
 
 #ifndef ALPHA_BLEND
     fragGlow = emissive * vec4(vec3(emissiveFactor.w), f_color[0].w);

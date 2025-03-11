@@ -142,6 +142,10 @@ extern void OpenJKDF2_Globals_Reset();
     from pathlib import Path
 
     embed_files = glob.glob(str(Path(project_root) / "resource" / "shaders" / "*.glsl"))
+    embed_files += glob.glob(str(Path(project_root) / "resource" / "shaders" / "world" / "*.glsl"))
+    embed_files += glob.glob(str(Path(project_root) / "resource" / "shaders" / "deferred" / "*.glsl"))
+    embed_files += glob.glob(str(Path(project_root) / "resource" / "shaders" / "postfx" / "*.glsl"))
+    embed_files += glob.glob(str(Path(project_root) / "resource" / "shaders" / "includes" / "*.gli"))
     embed_files += glob.glob(str(Path(project_root) / "resource" / "ssl" / "*.pem"))
     embed_files += glob.glob(str(Path(project_root) / "resource" / "ui" / "*.uni"))
     embed_files += glob.glob(str(Path(project_root) / "resource" / "ui" / "bm" / "*.bm"))

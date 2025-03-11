@@ -131,9 +131,6 @@ char* load_source(const char* filepath)
 				snprintf(resolved_path, MAX_PATH_LENGTH, "shaders/includes/%s", included_file);
 
 				// Recursively load the included file
-				// todo: we could cache this by preloading includes
-				// and also check if it was already included for this file
-				// since atm the includes get repeatedly included and they bloat the code size
 				char* included_source = load_source(resolved_path);
 				if (included_source)
 				{

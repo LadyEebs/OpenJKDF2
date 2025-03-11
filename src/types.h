@@ -937,17 +937,18 @@ typedef struct std3D_MaterialState
 	float    displacement;
 } std3D_MaterialState;
 
+// todo: make array for each tex slot
 typedef struct std3D_TextureState
 {
 	rdDDrawSurface*      pTexture;
 	rdVector4            texGenParams;
-	rdVector2            texOffset;
+	rdVector2            texOffset[RD_NUM_TEXCOORDS]; // fixme
 	uint32_t             chromaKeyColor;
 	uint32_t             flags;
 	uint8_t              numMips;
 	uint8_t              alphaRef;
 } std3D_TextureState;
-static_assert(sizeof(std3D_TextureState) == sizeof(uint32_t) * 12, "std3D_TextureState not 48 bytes");
+static_assert(sizeof(std3D_TextureState) == sizeof(uint32_t) * 18, "std3D_TextureState not 72 bytes");
 
 typedef struct std3D_LightingState // todo: pack this
 {

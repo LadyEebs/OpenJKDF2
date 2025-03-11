@@ -428,7 +428,7 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 	extern int jkPlayer_enableTextureFilter;
 	rdTexFilterMode(!jkPlayer_enableTextureFilter || (face->type & RD_FF_TEX_FILTER_NEAREST) ? RD_TEXFILTER_NEAREST : RD_TEXFILTER_BILINEAR);
 
-	rdTexOffseti(face->clipIdk.x, face->clipIdk.y);
+	rdTexOffseti(RD_TEXCOORD0, face->clipIdk.x, face->clipIdk.y);
 
 	if(rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
 	{
@@ -438,7 +438,7 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 			if(idxInfo->vertexUVs)
 			{
 				rdVector3* uv = &uvs[i];
-				rdTexCoord4i(uv->x, uv->y, 0.0f, uv->z); // post interpolation uv / q
+				rdTexCoord4i(RD_TEXCOORD0, uv->x, uv->y, 0.0f, uv->z); // post interpolation uv / q
 			}
 			rdVertex3v(&idxInfo->vertices[i].x);
 		}
@@ -446,7 +446,7 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 	}
 
 	rdSortOrder(0);
-	rdTexOffseti(0, 0);
+	rdTexOffseti(RD_TEXCOORD0, 0, 0);
 	rdMatrixMode(RD_MATRIX_VIEW);
 	rdLoadMatrix(&viewMatrix);
 }

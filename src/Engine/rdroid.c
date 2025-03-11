@@ -67,7 +67,7 @@ static rdMatrix44     rdroid_curProjInv;
 static rdMatrix44     rdroid_curViewProjInv;
 
 static uint32_t  rdroid_vertexColorState = 0xFFFFFFFF;
-static rdVector4 rdroid_vertexTexCoordState = { 0.0f, 0.0f, 0.0f, 1.0f };
+static rdVector4 rdroid_vertexTexCoordState[RD_NUM_TEXCOORDS];
 static rdVector3 rdroid_vertexNormalState = { 0.0f, 0.0f, 0.0f };
 
 static int               rdroid_vertexCacheNum = 0;
@@ -113,7 +113,7 @@ void rdResetTextureState()
 	rdroid_textureState.chromaKeyColor = 0;
 	rdroid_textureState.pTexture = NULL;
 	rdroid_textureState.texGenParams.x = rdroid_textureState.texGenParams.y = rdroid_textureState.texGenParams.z = rdroid_textureState.texGenParams.w = 0;
-	rdroid_textureState.texOffset.x = rdroid_textureState.texOffset.y = 0;
+	memset(&rdroid_textureState.texOffset[0], 0, sizeof(rdVector2) * RD_NUM_TEXCOORDS);
 	rdroid_textureState.flags = 0;
 }
 
@@ -644,7 +644,10 @@ void rdEndPrimitive()
 
 	rdroid_vertexCacheNum = 0;
 	rdroid_vertexColorState = 0xFFFFFFFF;
-	rdVector_Set4(&rdroid_vertexTexCoordState, 0.0f, 0.0f, 0.0f, 1.0f);
+	rdVector_Set4(&rdroid_vertexTexCoordState[0], 0.0f, 0.0f, 0.0f, 1.0f);
+	rdVector_Set4(&rdroid_vertexTexCoordState[1], 0.0f, 0.0f, 0.0f, 1.0f);
+	rdVector_Set4(&rdroid_vertexTexCoordState[2], 0.0f, 0.0f, 0.0f, 1.0f);
+	rdVector_Set4(&rdroid_vertexTexCoordState[3], 0.0f, 0.0f, 0.0f, 1.0f);
 	rdVector_Set3(&rdroid_vertexNormalState, 0.0f, 0.0f, 1.0f);
 	rdroid_curPrimitiveType = RD_PRIMITIVE_NONE;
 }
@@ -666,10 +669,13 @@ void rdVertex3f(float x, float y, float z)
 	pVert->y = y;
 	pVert->z = z;
 	pVert->norm10a2 = RD_PACK_COLOR10(nx, ny, nz, 0);
-	pVert->texcoords[0].u = rdroid_vertexTexCoordState.x;
-	pVert->texcoords[0].v = rdroid_vertexTexCoordState.y;
-	pVert->texcoords[0].r = rdroid_vertexTexCoordState.z;
-	pVert->texcoords[0].q = rdroid_vertexTexCoordState.w;
+	for (int i = 0; i < RD_NUM_TEXCOORDS; ++i)
+	{
+		pVert->texcoords[i].u = rdroid_vertexTexCoordState[i].x;
+		pVert->texcoords[i].v = rdroid_vertexTexCoordState[i].y;
+		pVert->texcoords[i].r = rdroid_vertexTexCoordState[i].z;
+		pVert->texcoords[i].q = rdroid_vertexTexCoordState[i].w;
+	}
 	pVert->colors[0] = rdroid_vertexColorState;
 }
 
@@ -707,15 +713,15 @@ void rdColor4v(const float* v)
 	rdColor4f(v[0], v[1], v[2], v[3]);
 }
 
-void rdTexCoord2f(float u, float v)
+void rdTexCoord2f(uint8_t i, float u, float v)
 {
-	rdroid_vertexTexCoordState.x = u;
-	rdroid_vertexTexCoordState.y = v;
-	rdroid_vertexTexCoordState.z = 0;
-	rdroid_vertexTexCoordState.w = 1;
+	rdroid_vertexTexCoordState[i].x = u;
+	rdroid_vertexTexCoordState[i].y = v;
+	rdroid_vertexTexCoordState[i].z = 0;
+	rdroid_vertexTexCoordState[i].w = 1;
 }
 
-void rdTexCoord2i(float u, float v)
+void rdTexCoord2i(uint8_t i, float u, float v)
 {
 	if(rdroid_textureState.pTexture)
 	{
@@ -729,29 +735,29 @@ void rdTexCoord2i(float u, float v)
 		float w_s = (float)rdroid_textureState.pTexture->width / (float)out_width;
 		float h_s = (float)rdroid_textureState.pTexture->height / (float)out_height;
 
-		rdroid_vertexTexCoordState.x = w_s * (float)u / rdroid_textureState.pTexture->width;
-		rdroid_vertexTexCoordState.y = h_s * (float)v / rdroid_textureState.pTexture->height;
+		rdroid_vertexTexCoordState[i].x = w_s * (float)u / rdroid_textureState.pTexture->width;
+		rdroid_vertexTexCoordState[i].y = h_s * (float)v / rdroid_textureState.pTexture->height;
 	}
 	else
 	{
 		rdroid_pHS->warningPrint("rdTexCoord2i: called without a texture bound, using default size of 32 pixels.\n");
-		rdroid_vertexTexCoordState.x = (float)u / 32.0f;
-		rdroid_vertexTexCoordState.y = (float)v / 32.0f;
+		rdroid_vertexTexCoordState[i].x = (float)u / 32.0f;
+		rdroid_vertexTexCoordState[i].y = (float)v / 32.0f;
 	}
-	rdroid_vertexTexCoordState.z = 0;
-	rdroid_vertexTexCoordState.w = 1;
+	rdroid_vertexTexCoordState[i].z = 0;
+	rdroid_vertexTexCoordState[i].w = 1;
 }
 
-void rdTexCoord2v(const float* v)
+void rdTexCoord2v(uint8_t i, const float* v)
 {
-	rdTexCoord2f(v[0], v[1]);
+	rdTexCoord2f(i, v[0], v[1]);
 }
 
-void rdTexCoord4i(float u, float v, float t, float w)
+void rdTexCoord4i(uint8_t i, float u, float v, float t, float w)
 {
-	rdTexCoord2i(u, v);
-	rdroid_vertexTexCoordState.z = t;
-	rdroid_vertexTexCoordState.w = w;
+	rdTexCoord2i(i, u, v);
+	rdroid_vertexTexCoordState[i].z = t;
+	rdroid_vertexTexCoordState[i].w = w;
 }
 
 void rdNormal3f(float x, float y, float z)
@@ -876,13 +882,13 @@ void rdTexClampMode(int modeU, int modeV)
 		rdroid_textureState.flags &= ~RD_FF_TEX_CLAMP_Y;
 }
 
-void rdTexOffset(float u, float v)
+void rdTexOffset(uint8_t i, float u, float v)
 {
-	rdroid_textureState.texOffset.x = u;
-	rdroid_textureState.texOffset.y = v;
+	rdroid_textureState.texOffset[i].x = u;
+	rdroid_textureState.texOffset[i].y = v;
 }
 
-void rdTexOffseti(float u, float v)
+void rdTexOffseti(uint8_t i, float u, float v)
 {
 	if (rdroid_textureState.pTexture)
 	{
@@ -896,14 +902,14 @@ void rdTexOffseti(float u, float v)
 		float w_s = (float)rdroid_textureState.pTexture->width / (float)out_width;
 		float h_s = (float)rdroid_textureState.pTexture->height / (float)out_height;
 
-		rdroid_textureState.texOffset.x = w_s *(float)u / (float)rdroid_textureState.pTexture->width;
-		rdroid_textureState.texOffset.y = h_s * (float)v / (float)rdroid_textureState.pTexture->height;
+		rdroid_textureState.texOffset[i].x = w_s *(float)u / (float)rdroid_textureState.pTexture->width;
+		rdroid_textureState.texOffset[i].y = h_s * (float)v / (float)rdroid_textureState.pTexture->height;
 	}
 	else
 	{
 		//rdroid_pHS->warningPrint("rdTexOffseti: called without a texture bound, using default size of 32 pixels.\n");
-		rdroid_textureState.texOffset.x = 0.0f;// (float)u / 32.0f;
-		rdroid_textureState.texOffset.y = 0.0f;// (float)v / 32.0f;
+		rdroid_textureState.texOffset[i].x = 0.0f;// (float)u / 32.0f;
+		rdroid_textureState.texOffset[i].y = 0.0f;// (float)v / 32.0f;
 	}
 }
 

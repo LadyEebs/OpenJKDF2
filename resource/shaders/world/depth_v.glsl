@@ -28,7 +28,7 @@ void main(void)
     f_color = v_color[0].bgra;
 
     f_uv = v_uv[0];
-	f_uv.xy += uv_offset.xy;
+	//f_uv.xy += uv_offset.xy;
 	f_uv_affine = v_uv[0].xy;
 	f_coord = viewPos.xyz;
 

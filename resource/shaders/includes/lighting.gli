@@ -151,20 +151,20 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	// "Physically Based Shading on Mobile"
 	// https://www.unrealengine.com/en-US/blog/physically-based-shading-on-mobile
 	// approximated energy conserving phong lobe, fresnel and spec color must be applied at the end with env_brdf
-	float rdotv = dot(decode_octahedron_uint(params.reflected), lvec);
-	float d = params.rcp_a2 * exp2( params.spec_c * rdotv + (-params.spec_c) );
+//	float rdotv = dot(decode_octahedron_uint(params.reflected), lvec);
+//	float d = params.rcp_a2 * exp2( params.spec_c * rdotv + (-params.spec_c) );
 	//float d = exp2( params.spec_c * rdotv + (-params.spec_c) );
 
 	// Unity "Optimizing PBR"
 	// https://community.arm.com/cfs-file/__key/communityserver-blogs-components-weblogfiles/00-00-00-20-66/siggraph2015_2D00_mmg_2D00_renaldas_2D00_slides.pdf
 	// approximated microfacet GGX lobe, fresnel approximated with 1/ldoth, spec color applied at the end
-	//vec3 view = decode_octahedron_uint(params.view);
-	//vec3 h = normalize(lvec + view);
-	//float ndoth = clamp(dot(h, normal), 0.0, 1.0);
-	//float ldoth = clamp(dot(h, lvec), 0.0, 1.0);
-	//
-	//float d = (ndoth * ndoth) * (params.roughness2 - 1.0) + 1.00001;
-	//d = params.roughness2 / ((d * d) * max(0.1, ldoth * ldoth) * params.normalizationTerm);
+	vec3 view = decode_octahedron_uint(params.view);
+	vec3 h = normalize(lvec + view);
+	float ndoth = clamp(dot(h, normal), 0.0, 1.0);
+	float ldoth = clamp(dot(h, lvec), 0.0, 1.0);
+	
+	float d = (ndoth * ndoth) * (params.roughness2 - 1.0) + 1.00001;
+	d = params.roughness2 / ((d * d) * max(0.1, ldoth * ldoth) * params.normalizationTerm);
 
 	result.specular = lightColor.rgb * vec3(lightMagnitude * d) + result.specular;
 //#endif

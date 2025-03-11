@@ -105,30 +105,36 @@ void rdPreMultiplyMatrix(const rdMatrix44* pMatrix);
 void rdGetMatrix(rdMatrix44* pOut, rdMatrixMode_t mode);
 void rdResetMatrices();
 
+// fog
 void rdFogRange(float startDepth, float endDepth);
 void rdFogColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 void rdFogColorf(float r, float g, float b, float a);
 void rdFogAnisotropy(float g);
 void rdFogLightDir(float x, float y, float z);
 
+// viewport
 void rdViewport(float x, float y, float width, float height);
 void rdGetViewport(rdViewportRect* pOut);
 
+// scissor
 void rdScissorMode(rdScissorMode_t mode);
 void rdScissor(int x, int y, int width, int height);
 
+// primitives
 int rdBeginPrimitive(rdPrimitiveType_t type);
 void rdEndPrimitive();
 void rdVertex3f(float x, float y, float z);
 void rdColor4f(float r, float g, float b, float a);
-void rdTexCoord2f(float u, float v); // normalized
-void rdTexCoord2i(float u, float v); // unnormalized
-void rdTexCoord4i(float u, float v, float t, float w); // unnormalized
+void rdTexCoord2f(uint8_t i, float u, float v); // normalized
+void rdTexCoord2i(uint8_t i, float u, float v); // unnormalized
+void rdTexCoord4i(uint8_t i, float u, float v, float t, float w); // unnormalized
 void rdNormal3f(float x, float y, float z);
 void rdVertex3v(const float* v);
 void rdColor4v(const float* v);
-void rdTexCoord2v(const float* v);
+void rdTexCoord2v(uint8_t i, const float* v);
 void rdNormal3v(const float* v);
+void rdTexOffset(uint8_t i, float u, float v);
+void rdTexOffseti(uint8_t i, float u, float v);
 
 // render state
 void rdSetZBufferCompare(rdCompare_t compare);
@@ -157,20 +163,21 @@ void rdSetGlowIntensity(float intensity);
 void rdRenderPass(const char* name, int8_t renderPass, rdRenderPassFlags_t renderPassFlags);
 void rdDepthRange(float znearNorm, float zfarNorm);
 
-int rdBindTexture(rdTexture* pTexture);
-int rdBindMaterial(rdMaterial* pMaterial, int cel);
-
 void rdSetDecalMode(rdDecalMode_t mode);
+void rdSetOverbright(float overbright);
+
+// texture
+int rdBindTexture(rdTexture* pTexture);
 
 void rdTexFilterMode(rdTexFilter_t texFilter);
 void rdTexGen(rdTexGen_t texGen);
 void rdTexGenParams(float p0, float p1, float p2, float p3);
 void rdTexClampMode(int modeU, int modeV);
-void rdTexOffset(float u, float v);
-void rdTexOffseti(float u, float v);
 
-void rdSetOverbright(float overbright);
+// material
+int rdBindMaterial(rdMaterial* pMaterial, int cel);
 
+// lighting
 int rdAddLight(rdLight* pLight, rdVector3* pPosition);
 void rdAddOccluder(rdVector3* position, float radius);
 void rdAddDecal(rdDecal* decal, rdMatrix34* matrix, rdVector3* color, rdVector3* scale, float angleFade);
@@ -183,6 +190,7 @@ void rdAmbientFlags(uint32_t flags);
 void rdAmbientLight(float r, float g, float b);
 void rdAmbientLightSH(rdAmbient* amb);
 
+// shaders
 int rdGenShader();
 void rdDeleteShader(int id);
 int rdCompileShader(int id, const char* path);

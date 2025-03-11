@@ -21,21 +21,23 @@
 #define OP_NOP		 0	// no op
 #define OP_ADD		 1	// addition
 #define OP_BBD       2  // blackbody
-#define OP_DP3		 3	// dot3
-#define OP_DP4		 4	// dot4
-#define OP_LDC		 5	// constant load
-#define OP_LRP		 6	// linear interpolation
-#define OP_MAD		 7	// multiply add
-#define OP_MAX		 8	// maximum
-#define OP_MIN		 9	// minimum
-#define OP_MOV		10	// move
-#define OP_MUL		11	// multiply
+#define OP_CMP       3  // compare
+#define OP_CND       4  // condition
+#define OP_DP3		 5	// dot3
+#define OP_DP4		 6	// dot4
+#define OP_LRP		 7	// linear interpolation
+#define OP_LUM       8  // luminance
+#define OP_MAD		 9	// multiply add
+#define OP_MAX		10	// maximum
+#define OP_MIN		11	// minimum
+#define OP_MOV		12	// move
+#define OP_MUL		13	// multiply
 
 // texture op codes, must match std3D_ShaderTexOp
-#define OP_TEX		 1	// texture sample
-#define OP_TEXI      2  // texture sample with emissive scale
-#define OP_TEXOPM    3  // offset a UV slot with offset parallax mapping
-#define OP_TEXCOORD  4  // convert UV to color
+#define OP_TEXCOORD  1  // convert UV to color
+#define OP_TEX		 2	// texture sample
+#define OP_TEXI      3  // texture sample with emissive scale
+#define OP_TEXOPM    4  // offset a UV slot with offset parallax mapping
 
 // source register modifiers, only applicable to alu instructions
 #define SRC_MOD_NONE   0x0 // no modifier
@@ -44,20 +46,24 @@
 #define SRC_MOD_BX2    0x4 // x * 2 - 1
 #define SRC_MOD_INVERT 0x8 // 1 - x
 
+// source register flags for 2 source instructions
+#define SRC_FLAG_NONE       0x0 // nothing
+#define SRC_FLAG_SRC0_CONST 0x1 // src0 is a constant
+#define SRC_FLAG_SRC1_CONST 0x2 // src1 is a constant
+
 // destination register modifiers
 #define DST_MOD_NONE 0 // no modifier
 #define DST_MOD_X2   1 // x * 2
 #define DST_MOD_X4   2 // x * 4
 #define DST_MOD_D2   3 // x / 2
-#define DST_MOD_D4   4 // x / 4
 
 // registers
 float lodbias;  // float lod bias, todo: pack?
 uint  vdir;     // rg16f tangent space view dir
 uint  fog;      // rgba8 fog register (filled by fixed function fog)
-uint  r[4];     // rgba8 temp registers (for color math)
+uint  r[6];     // rgba8 temp registers (for color math)
 uint  v[2];     // rgba8 color registers
-vec2 tr[2];     // uv32 texture coordinate registers
+vec2 tr[4];     // uv32 texture coordinate registers
 uint  d[2];     // decals
 
 vec4 unpackRegister(uint packedInput)
@@ -104,15 +110,9 @@ vec4 read_color_reg(uint i)
 	return unpackColorRegister(v[i]);
 }
 
-vec4 read_reg(uint i)
+vec4 process_reg(vec4 v, uint mod_bits)
 {
-	uint idx = (i & 0x7);
-	uint mod_bits = (i >> 3) & 0xF;
-	vec4 v = idx > 3 ? read_color_reg(idx - 4) : unpackRegister(r[idx]);
-	
 	if ((mod_bits & SRC_MOD_INVERT) != 0)
-		//return  255.0 * log2(v /  255.0) / -1.0;
-		//return pow(v / 255.0, vec4(2.0)) * 255.0;
 		return 255.0 - v;
     
 	if(mod_bits > 1)
@@ -126,26 +126,45 @@ vec4 read_reg(uint i)
 	return (mod_bits & SRC_MOD_NEGATE) != 0 ? -v : v;
 }
 
-void write_reg(uint i, vec4 v)
+vec4 read_reg(uint i)
 {
 	uint idx = (i & 0x7);
-	uint mod_bits = (i >> 3) & 0x7;
+	uint mod_bits = (i >> 3) & 0xF;
+	vec4 v = idx > 5 ? read_color_reg(idx - 6) : unpackRegister(r[idx]);
+	return process_reg(v, mod_bits);
+}
 
-	// multiply scale: (1 << (mod_bits & 0x3))
-	// division scale: (1 << (mod_bits >> 2))
-	v *= float(1 << (mod_bits & 0x3)) / float(1 << (mod_bits >> 2));
+vec4 read_const(uint i)
+{
+	uint idx = (i & 0x7);
+	uint mod_bits = (i >> 3) & 0xF;
+	vec4 v = shaderConstants[idx];
+	return process_reg(v, mod_bits);
+}
 
-	r[idx] = packRegister(v);
+void write_reg(uint i, vec4 v, uint mask)
+{
+	uint idx = (i & 0x7);
+	uint mod_bits = (i >> 3) & 0x3;
+
+	v *= (mod_bits == 0) ? 1.0 : (mod_bits == 1) ? 2.0 : (mod_bits == 2) ? 4.0 : 0.5;
+
+	r[idx] = (r[idx] & ~mask) | (packRegister(v) & mask);
 }
 
 // must mirror std3D_buildInstruction
-void read_instr(uint instr, out uint op, out uint dest, out uint src0, out uint src1, out uint src2)
+void read_instr(uint instr, out uint op, out uint mask, out uint dest, out uint src0, out uint src1, out uint src2)
 {
-	op   = (instr      ) & 0xF;  // bits 0-4
-	dest = (instr >>  4) & 0x3F; // bits 4-10
-	src0 = (instr >> 11) & 0x7F; // bits 11-18
-	src1 = (instr >> 18) & 0x7F; // bits 18-25
-	src2 = (instr >> 25) & 0x7F; // bits 25-32
+	mask = (instr & 0x2);					// bits 0-2	
+	op   = (instr >>  2) &  0xF;			// bits 2-6
+	dest = (instr >>  6) & 0x1F;			// bits 6-10
+	src0 = (instr >> 11) & 0x7F;			// bits 11-18
+	src1 = (instr >> 18) & 0x7F;			// bits 18-25
+	src2 = (instr >> 25) & 0x7F;			// bits 25-32
+
+	// compute the write mask
+	// 0xFFFFFFFF, 0x00FFFFFF, or 0xFF000000
+	mask = (mask == 0) ? 0xFFFFFFFF : (mask == 1) ? 0x00FFFFFF : 0xFF000000;
 }
 
 // standard texture sample
@@ -220,8 +239,8 @@ void run_tex_stage()
 	// it works on this machine, but some machines with actual gl3 limits might not
 	for (int pc = 0; pc < shaderTexInstructionCount; ++pc) // program counter
 	{
-		uint op, dest, src0, src1, src2;
-		read_instr(shaderTexInstructions[pc>>2][pc&3], op, dest, src0, src1, src2);
+		uint op, mask, dest, src0, src1, src2;
+		read_instr(shaderTexInstructions[pc>>2][pc&3], op, mask, dest, src0, src1, src2);
 
 		switch(op)
 		{
@@ -232,21 +251,24 @@ void run_tex_stage()
 		case OP_TEX:
 			write_reg(
 				dest,
-				load_tex(textures[src0], read_texcoord_reg(src1))
+				load_tex(textures[src0], read_texcoord_reg(src1)),
+				mask
 			);
 			break;
 
 		case OP_TEXI:
 			write_reg(
 				dest,
-				load_tex_light(textures[src0], read_texcoord_reg(src1), 0.0)
+				load_tex_light(textures[src0], read_texcoord_reg(src1), 0.0),
+				mask
 			);
 			break;
 
 		case OP_TEXCOORD:
 			write_reg(
 				dest,
-				read_texcoord_reg(src0)
+				read_texcoord_reg(src0),
+				mask
 			);
 			break;
 
@@ -257,19 +279,56 @@ void run_tex_stage()
 	}
 }
 
+vec4 read_src0(uint idx, uint flags)
+{
+	bool isConst = (flags & SRC_FLAG_SRC0_CONST) == SRC_FLAG_SRC0_CONST;
+	return isConst ? read_const(idx) : read_reg(idx);
+}
+
+vec4 read_src1(uint idx, uint flags)
+{
+	bool isConst = (flags & SRC_FLAG_SRC1_CONST) == SRC_FLAG_SRC1_CONST;
+	return isConst ? read_const(idx) : read_reg(idx);
+}
+
 void run_combiner_stage()
 {
 	for (int pc = 0; pc < shaderInstructionCount; ++pc) // program counter
 	{
-		uint op, dest, src0, src1, src2;
-		read_instr(shaderInstructions[pc>>2][pc&3], op, dest, src0, src1, src2);
+		uint op, mask, dest, src0, src1, src2;
+		read_instr(shaderInstructions[pc>>2][pc&3], op, mask, dest, src0, src1, src2);
 
 		switch(op)
 		{
 		case OP_ADD:
 			write_reg(
 				dest,
-				read_reg(src0) + read_reg(src1)
+				read_src0(src0, src2) + read_src1(src1, src2),
+				mask
+			);
+			break;
+
+		case OP_CMP:
+			write_reg(
+				dest,
+				mix(
+					read_reg(src2),
+					read_reg(src1),
+					greaterThan(read_reg(src0), vec4(0.0))
+				),
+				mask
+			);
+			break;
+
+		case OP_CND:
+			write_reg(
+				dest,
+				mix(
+					read_reg(src1),
+					read_reg(src2),
+					lessThanEqual(read_reg(src0), vec4(127.0))
+				),
+				mask
 			);
 			break;
 
@@ -285,9 +344,10 @@ void run_combiner_stage()
 				dest,
 				vec4(
 					// todo: fix the sign
-					vec3(dot(read_reg(src0).xyz, read_reg(src1).xyz) / (255.0 * 255.0)),
+					vec3(dot(read_src0(src0, src2).xyz, read_src1(src1, src2).xyz) / (255.0 * 255.0)),
 					(r[dest] >> 24u) & 0xFFu
-				)
+				),
+				mask
 			);
 			break;
 
@@ -296,54 +356,65 @@ void run_combiner_stage()
 				dest,
 				vec4(
 					// todo: fix the sign
-					dot(read_reg(src0), read_reg(src1)) / (255.0 * 255.0)
-				)
+					dot(read_src0(src0, src2), read_src1(src1, src2)) / (255.0 * 255.0)
+				),
+				mask
 			);
-			break;
-
-		case OP_LDC:
-			// todo
 			break;
 
 		case OP_LRP:
 			write_reg(
 				dest,
-				(read_reg(src1) - read_reg(src0)) * (read_reg(src2) / 255.0) + read_reg(src0)
+				(read_reg(src1) - read_reg(src0)) * (read_reg(src2) / 255.0) + read_reg(src0),
+				mask
+			);
+			break;
+
+		case OP_LUM:
+			write_reg(
+				dest,
+				vec4(luminance(read_src0(src0, src1).rgb/255.0)*255.0),
+				mask
 			);
 			break;
 
 		case OP_MAD:
 			write_reg(
 				dest,
-				read_reg(src0) * read_reg(src1) / 255.0 + read_reg(src2)
+				read_reg(src0) * read_reg(src1) / 255.0 + read_reg(src2),
+				mask
 			);
 			break;
 
 		case OP_MAX:
 			write_reg(
 				dest,
-				max(read_reg(src0), read_reg(src1))
+				max(read_src0(src0, src2), read_src1(src1, src2)),
+				mask
 			);
 			break;
 			
 		case OP_MIN:
 			write_reg(
 				dest,
-				min(read_reg(src0), read_reg(src1))
+				min(read_src0(src0, src2), read_src1(src1, src2)),
+				mask
 			);
 			break;
 
 		case OP_MOV:
 			write_reg(
 				dest,
-				read_reg(src0)
+				read_src0(src0, src1),
+				mask
 			);
 			break;
 
 		case OP_MUL:
 			write_reg(
 				dest,
-				read_reg(src0) * read_reg(src1) / 255.0
+				read_src0(src0, src2) * read_src1(src1, src2) / 255.0,
+				mask
 			);
 			break;
 

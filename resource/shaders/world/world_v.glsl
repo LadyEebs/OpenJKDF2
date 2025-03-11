@@ -6,18 +6,18 @@
 in vec3 coord3d;
 in vec4 v_normal;
 in vec4 v_color[2];
-in vec4 v_uv[2];
+in vec4 v_uv[4];
 in vec3 coordVS;
 
 out vec4 f_color[2];
 //out float f_light;
-out vec4 f_uv[2];
+out vec4 f_uv[4];
 //out vec4 f_uv_nooffset;
 out vec3 f_coord;
 out vec3 f_normal;
 out float f_depth;
 
-//noperspective out vec2 f_uv_affine;
+noperspective out vec2 f_uv_affine;
 
 vec3 CalculateAmbientDiffuse(vec3 normal)
 {
@@ -85,9 +85,14 @@ void main(void)
 
     f_uv[0] = v_uv[0];
     f_uv[1] = v_uv[1];
+    f_uv[2] = v_uv[2];
+    f_uv[3] = v_uv[3];
 	//f_uv_nooffset = v_uv[0];
-	f_uv[0].xy += uv_offset.xy;
-	//f_uv_affine = v_uv[0].xy;
+	f_uv[0].xy += uv_offset[0].xy;
+	f_uv[1].xy += uv_offset[1].xy;
+	f_uv[2].xy += uv_offset[2].xy;
+	f_uv[3].xy += uv_offset[3].xy;
+	f_uv_affine = v_uv[0].xy;
 
 	f_coord = viewPos.xyz;
 	vec3 view = normalize(-viewPos.xyz);

@@ -34,6 +34,8 @@ vec2 encode_result(vec3 color)
 void main(void)
 {
 	float depth = textureLod(tex, f_uv.xy, 0).x;
+	fragOut = vec4(linearize_depth(depth)) / 128.0;
+#if 0
 	float z = depth * 2.0 - 1.0;
 
 	vec4 normalRoughness = textureLod(tex2, f_uv.xy, 0);
@@ -212,4 +214,5 @@ void main(void)
 			}
 		}
 	}
+#endif
 }

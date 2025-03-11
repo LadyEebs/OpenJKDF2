@@ -226,7 +226,7 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	rdTexFilterMode(!jkPlayer_enableTextureFilter || (sprite->face.type & RD_FF_TEX_FILTER_NEAREST) ? RD_TEXFILTER_NEAREST : RD_TEXFILTER_BILINEAR);
 	rdTexClampMode(RD_FF_TEX_CLAMP_X, RD_FF_TEX_CLAMP_Y);
 
-	rdTexOffseti(sprite->face.clipIdk.x, sprite->face.clipIdk.y);
+	rdTexOffseti(RD_TEXCOORD0, sprite->face.clipIdk.x, sprite->face.clipIdk.y);
 
 	float halfWidth = sprite->halfWidth * thing->spriteScale;
 	float halfHeight = sprite->halfHeight * thing->spriteScale;
@@ -271,7 +271,7 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 					uv.x += (float)v24->format.width / 2.0f;
 					uv.y += (float)v24->format.height / 2.0f;
 				}
-				rdTexCoord2i(uv.x, uv.y);
+				rdTexCoord2i(RD_TEXCOORD0, uv.x, uv.y);
 			}
 			rdVertex3v(&rdSprite_inVerts[i].x);
 		}
@@ -280,7 +280,7 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 
 	rdSortOrder(0);
 	rdSortDistance(0);
-	rdTexOffseti(0, 0);
+	rdTexOffseti(RD_TEXCOORD0, 0, 0);
 	rdMatrixMode(RD_MATRIX_VIEW);
 	rdLoadMatrix(&viewMatrix);
 	rdSetZBufferMethod(oldZ);

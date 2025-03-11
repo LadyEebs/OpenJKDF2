@@ -1,0 +1,59 @@
+#ifndef FRAMEBUFFER_H
+#define FRAMEBUFFER_H
+
+#ifdef FRAGMENT_SHADER
+
+// Returns the missing chrominance (Co or Cg) of a pixel.
+// a1-a4 are the 4 neighbors of the center pixel a0.
+float edge_filter(vec2 a0, vec2 a1, vec2 a2, vec2 a3, vec2 a4)
+{
+	float THRESH = 30.0/255.0;
+
+	vec4 lum = vec4(a1.x, a2.x , a3.x, a4.x);
+	vec4 w = 1.0 - step(THRESH, abs(lum - a0.x));
+	float W = w.x + w.y + w.z + w.w;
+	
+	// handle the special case where all the weights are zero
+	w.x = (W == 0.0) ? 1.0 : w.x;
+	W = (W == 0.0) ? 1.0 : W;
+	return (w.x * a1.y + w.y * a2.y + w.z * a3.y + w.w * a4.y) / W;
+}
+
+vec3 sampleFramebuffer(sampler2D s, vec2 uv)
+{
+	vec4 sampled_color = textureLod(s, uv, 0);
+	vec2 sourceSize = textureSize(s, 0).xy;
+
+	ivec2 crd = ivec2(uv.xy * sourceSize.xy);
+
+	// edge-directed reconstruction:
+	vec2 a0 = textureLod(s, uv + vec2(1.0 / sourceSize.x, 0.0), 0).rg;
+	vec2 a1 = textureLod(s, uv - vec2(1.0 / sourceSize.x, 0.0), 0).rg;
+	vec2 a2 = textureLod(s, uv + vec2(0.0 ,1.0 / sourceSize.y), 0).rg;
+	vec2 a3 = textureLod(s, uv - vec2(0.0 ,1.0 / sourceSize.y), 0).rg;		
+
+	float chroma = edge_filter(sampled_color.rg, a0, a1, a2, a3);
+
+	bool pattern = ((crd.x & 1) == (crd.y & 1));
+
+	sampled_color.b = chroma.x;
+	//sampled_color.rgb = (pattern) ? sampled_color.rgb : sampled_color.rbg;
+	//sampled_color.rgb = ycocg2rgb(sampled_color.rgb);
+
+	sampled_color.rgb = (pattern) ? sampled_color.grb : sampled_color.brg;
+
+	return sampled_color.rgb;
+}
+
+vec3 subsample(vec4 color)
+{
+	uvec2 crd = uvec2(gl_FragCoord.xy);
+	//vec3 YCoCg = rgb2ycocg(color.rgb);
+	//color.rg = ((crd.x & 1u) == (crd.y & 1u)) ? YCoCg.rg : YCoCg.rb;
+	color.rg = ((crd.x & 1u) == (crd.y & 1u)) ? color.gr : color.gb;
+	return vec3(color.rg, color.a);
+}
+
+#endif
+
+#endif

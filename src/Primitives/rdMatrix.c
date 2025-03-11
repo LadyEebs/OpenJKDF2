@@ -1060,7 +1060,48 @@ void rdMatrix_BuildFromAxisAngle34(rdMatrix34* m, const rdVector3* axis, float a
 
 void rdMatrix_Invert44(rdMatrix44* out, const rdMatrix44* m)
 {
-	float A2323 = m->vC.z * m->vD.w - m->vC.w * m->vD.z;
+	float
+		a00 = m->vA.x, a01 = m->vA.y, a02 = m->vA.z, a03 = m->vA.w,
+		a10 = m->vB.x, a11 = m->vB.y, a12 = m->vB.z, a13 = m->vB.w,
+		a20 = m->vC.x, a21 = m->vC.y, a22 = m->vC.z, a23 = m->vC.w,
+		a30 = m->vD.x, a31 = m->vD.y, a32 = m->vD.z, a33 = m->vD.w,
+
+		b00 = a00 * a11 - a01 * a10,
+		b01 = a00 * a12 - a02 * a10,
+		b02 = a00 * a13 - a03 * a10,
+		b03 = a01 * a12 - a02 * a11,
+		b04 = a01 * a13 - a03 * a11,
+		b05 = a02 * a13 - a03 * a12,
+		b06 = a20 * a31 - a21 * a30,
+		b07 = a20 * a32 - a22 * a30,
+		b08 = a20 * a33 - a23 * a30,
+		b09 = a21 * a32 - a22 * a31,
+		b10 = a21 * a33 - a23 * a31,
+		b11 = a22 * a33 - a23 * a32,
+
+		det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+
+		out->vA.x = (a11 * b11 - a12 * b10 + a13 * b09) / det;
+		out->vA.y = (a02 * b10 - a01 * b11 - a03 * b09) / det;
+		out->vA.z = (a31 * b05 - a32 * b04 + a33 * b03) / det;
+		out->vA.w = (a22 * b04 - a21 * b05 - a23 * b03) / det;
+
+		out->vB.x = (a12 * b08 - a10 * b11 - a13 * b07) / det;
+		out->vB.y = (a00 * b11 - a02 * b08 + a03 * b07) / det;
+		out->vB.z = (a32 * b02 - a30 * b05 - a33 * b01) / det;
+		out->vB.w = (a20 * b05 - a22 * b02 + a23 * b01) / det;
+
+		out->vC.x = (a10 * b10 - a11 * b08 + a13 * b06) / det;
+		out->vC.y = (a01 * b08 - a00 * b10 - a03 * b06) / det;
+		out->vC.z = (a30 * b04 - a31 * b02 + a33 * b00) / det;
+		out->vC.w = (a21 * b02 - a20 * b04 - a23 * b00) / det;
+
+		out->vD.x = (a11 * b07 - a10 * b09 - a12 * b06) / det;
+		out->vD.y = (a00 * b09 - a01 * b07 + a02 * b06) / det;
+		out->vD.z = (a31 * b01 - a30 * b03 - a32 * b00) / det;
+		out->vD.w = (a20 * b03 - a21 * b01 + a22 * b00) / det;
+
+	/*float A2323 = m->vC.z * m->vD.w - m->vC.w * m->vD.z;
 	float A1323 = m->vC.y * m->vD.w - m->vC.w * m->vD.y;
 	float A1223 = m->vC.y * m->vD.z - m->vC.z * m->vD.y;
 	float A0323 = m->vC.x * m->vD.w - m->vC.w * m->vD.x;
@@ -1107,7 +1148,7 @@ void rdMatrix_Invert44(rdMatrix44* out, const rdMatrix44* m)
 		   det * (m->vA.x * A1223 - m->vA.y * A0223 + m->vA.z * A0123),
 		   det * -(m->vA.x * A1213 - m->vA.y * A0213 + m->vA.z * A0113),
 		   det * (m->vA.x * A1212 - m->vA.y * A0212 + m->vA.z * A0112)
- );
+ );*/
 }
 
 // build a perspective projection matrix from horizontal fov and aspect ratio

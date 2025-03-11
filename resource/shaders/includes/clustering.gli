@@ -5,17 +5,6 @@
 
 uniform usamplerBuffer clusterBuffer;
 
-float linearize_depth(float d)
-{
-    float z_ndc = 2 * d - 1;
-    float M44 = projMatrix[3][3];
-    float M43 = projMatrix[3][2];
-    float M34 = projMatrix[2][3];
-    float M33 = projMatrix[2][2];
-    float z_view = (z_ndc * M44 - M43) / (z_ndc * M34 - M33);
-    return z_view;
-}
-
 uint get_cluster_z_index(float screen_depth)
 {
 	return uint(max(log(screen_depth) * clusterScaleBias.x + clusterScaleBias.y, 0.0));

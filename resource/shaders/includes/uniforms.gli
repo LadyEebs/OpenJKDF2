@@ -64,11 +64,13 @@ layout(std140) uniform textureBlock
 	int   numMips;
 
 	vec2 texsize;
-	vec2 uv_offset;
+	vec2 padding0;
+
+	vec4 uv_offset[4];
 
 	vec4 texgen_params;
 
-	vec4 padding;
+	vec4 padding1;
 };
 
 // Material state
@@ -157,7 +159,7 @@ layout(std140) uniform shaderBlock
 	uint  shaderTexInstructionCount;
 	uint  shaderInstructionCount;
 	uvec4 shaderTexInstructions[2];
-	uvec4 shaderInstructions[4]; // std140 wants 16byte alignment, so the uint array is packed as uvec4
+	uvec4 shaderInstructions[8]; // std140 wants 16byte alignment, so the uint array is packed as uvec4
 };
 
 // Shader constants buffer
@@ -165,5 +167,22 @@ layout(std140) uniform shaderConstantsBlock
 {
 	vec4 shaderConstants[8];
 };
+
+float linearize_depth(float d)
+{
+	float znear = -projMatrix[3].z / (projMatrix[1].z + 1.0);
+	float zfar = -projMatrix[3].z / (projMatrix[1].z - 1.0);
+
+	float z_n = 2.0 * d - 1.0;
+    return 2.0 * znear * zfar / (zfar + znear - z_n * (zfar - znear));
+
+    //float z_ndc = 2 * d - 1;
+    //float M44 = projMatrix[3][3];
+    //float M43 = projMatrix[3][2];
+    //float M34 = projMatrix[2][3];
+    //float M33 = projMatrix[2][2];
+    //float z_view = (z_ndc * M44 - M43) / (z_ndc * M34 - M33);
+    //return z_view;
+}
 
 #endif

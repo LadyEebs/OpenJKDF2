@@ -784,7 +784,7 @@ void sithRender_Draw()
 	sithRender_numStaticLights = 0;
 
 	rdSetGlowIntensity(0.4f);
-	rdSetOverbright(1.5f);
+	rdSetOverbright(2.0f);
 
 	_memset(sithWorld_pCurrentWorld->lightBuckets, 0, sizeof(uint64_t)*sithWorld_pCurrentWorld->numLightBuckets);
 
@@ -1031,7 +1031,7 @@ void sithRender_Clip(sithSector *sector, rdClipFrustum *frustumArg, float a3)
 				//sithSurface_GetCenterRadius(&sector->surfaces[i], &center, &radius);
 
 				rdVector3 offset;
-				rdVector_Scale3(&offset, &sector->surfaces[i].surfaceInfo.face.normal, 0.0075f);
+				rdVector_Scale3(&offset, &sector->surfaces[i].surfaceInfo.face.normal, sector->surfaces[i].radius * 0.015);
 				
 				rdVector3 center;
 				rdVector_Add3(&center, &sector->surfaces[i].center, &offset);
@@ -1328,6 +1328,12 @@ void sithRender_DrawSurface(sithSurface* surface)
 		return;
 	}
 
+	int isWater = 0;
+	if (surface->adjoin && (surface->parent_sector->flags & SITH_SECTOR_UNDERWATER || surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER))
+		isWater = 1;
+	//else if (!(surface->parent_sector->flags & SITH_SECTOR_UNDERWATER) && (surface->surfaceFlags & SITH_SURFACE_WATER || surface->surfaceFlags & SITH_SURFACE_PUDDLE || surface->surfaceFlags & SITH_SURFACE_VERYDEEPWATER))
+		//isWater = 1;
+
 	int wallCel = surface->surfaceInfo.face.wallCel;
 	rdBindMaterial(surface->surfaceInfo.face.material, wallCel);
 
@@ -1393,25 +1399,20 @@ void sithRender_DrawSurface(sithSurface* surface)
 		texMode = texMode > RD_TEXTUREMODE_AFFINE ? RD_TEXTUREMODE_AFFINE : texMode;
 		rdTexGen(RD_TEXGEN_HORIZON);
 		rdTexGenParams(sithSector_flt_8553C0, sithSector_flt_8553C8, sithSector_flt_8553F4, 0);
-		rdTexOffset(sithWorld_pCurrentWorld->horizontalSkyOffs.x + sithSector_flt_8553B8, sithWorld_pCurrentWorld->horizontalSkyOffs.y + sithSector_flt_8553C4);
+		rdTexOffset(RD_TEXCOORD0, sithWorld_pCurrentWorld->horizontalSkyOffs.x + sithSector_flt_8553B8, sithWorld_pCurrentWorld->horizontalSkyOffs.y + sithSector_flt_8553C4);
 	}
 	else if (surface->surfaceFlags & SITH_SURFACE_CEILING_SKY)
 	{
 		texMode = RD_TEXTUREMODE_PERSPECTIVE;
 		rdTexGen(RD_TEXGEN_CEILING);
 		rdTexGenParams(sithSector_zMaxVec.x, sithSector_zMaxVec.y, sithSector_zMaxVec.z, 0);
-		rdTexOffset(sithWorld_pCurrentWorld->ceilingSkyOffs.x, sithWorld_pCurrentWorld->ceilingSkyOffs.y);
+		rdTexOffset(RD_TEXCOORD0, sithWorld_pCurrentWorld->ceilingSkyOffs.x, sithWorld_pCurrentWorld->ceilingSkyOffs.y);
 	}
 	else
 	{
-		int isWater = 0;
-		if (surface->adjoin && (surface->parent_sector->flags & SITH_SECTOR_UNDERWATER || surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER))
-			isWater = 1;
-		//else if (!(surface->parent_sector->flags & SITH_SECTOR_UNDERWATER) && (surface->surfaceFlags & SITH_SURFACE_WATER || surface->surfaceFlags & SITH_SURFACE_PUDDLE || surface->surfaceFlags & SITH_SURFACE_VERYDEEPWATER))
-			//isWater = 1;
-
 		if (isWater)// if (surface->adjoin && (surface->parent_sector->flags & SITH_SECTOR_UNDERWATER || surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER))//if (surface->adjoin && surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER)
 		{
+			rdSetLightMode(RD_LIGHTMODE_FULLYLIT);
 			rdTexFilterMode(RD_TEXFILTER_BILINEAR);
 			rdSetGeoMode(RD_GEOMODE_TEXTURED);
 
@@ -1424,7 +1425,7 @@ void sithRender_DrawSurface(sithSurface* surface)
 				rdTexGenParams(0, 0, 0, sithTime_curSeconds);
 
 			// surface scroll currently causes popping when it loops
-			rdTexOffseti(surface->surfaceInfo.face.clipIdk.x, surface->surfaceInfo.face.clipIdk.y);
+			rdTexOffseti(RD_TEXCOORD0, surface->surfaceInfo.face.clipIdk.x, surface->surfaceInfo.face.clipIdk.y);
 
 			//if(surface->adjoin)
 			//	rdAmbientLightSH(&surface->adjoin->sector->ambientSH);
@@ -1435,7 +1436,7 @@ void sithRender_DrawSurface(sithSurface* surface)
 		{
 			if (surface->parent_sector->flags & SITH_SECTOR_UNDERWATER)
 				rdAmbientFlags(sithRender_aoFlags | RD_AMBIENT_CAUSTICS);
-			rdTexOffseti(surface->surfaceInfo.face.clipIdk.x, surface->surfaceInfo.face.clipIdk.y);
+			rdTexOffseti(RD_TEXCOORD0, surface->surfaceInfo.face.clipIdk.x, surface->surfaceInfo.face.clipIdk.y);
 		}
 	}
 
@@ -1465,6 +1466,9 @@ void sithRender_DrawSurface(sithSurface* surface)
 		rdSetZBufferMethod((surface->surfaceInfo.face.type & RD_FF_ZWRITE_DISABLED) ? RD_ZBUFFER_READ_NOWRITE : RD_ZBUFFER_READ_WRITE);
 	}
 
+	if (isWater)
+		alpha = 1.0f;
+
 	if (rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
 	{
 		for (int j = 0; j < surface->surfaceInfo.face.numVertices; j++)
@@ -1488,7 +1492,20 @@ void sithRender_DrawSurface(sithSurface* surface)
 			{
 				int uvidx = surface->surfaceInfo.face.vertexUVIdx[j];
 				rdVector2* uv = &sithWorld_pCurrentWorld->vertexUVs[uvidx];
-				rdTexCoord2i(uv->x, uv->y);
+				rdTexCoord2i(RD_TEXCOORD0, uv->x, uv->y);
+
+				if(isWater)
+				{
+					rdTexCoord2i(RD_TEXCOORD0, uv->x, uv->y);
+					rdTexCoord2i(RD_TEXCOORD1, uv->x * 0.5, uv->y * 0.5);
+					rdTexCoord2i(RD_TEXCOORD2, uv->x * 0.35, uv->y * 0.35);
+					rdTexCoord2i(RD_TEXCOORD3, uv->x * 0.25, uv->y * 0.25);
+
+					rdTexOffset(RD_TEXCOORD0, 0.2 * sithTime_curSeconds, 0.2 * sithTime_curSeconds);
+					rdTexOffset(RD_TEXCOORD1,-0.1 * sithTime_curSeconds,-0.1 * sithTime_curSeconds);
+					rdTexOffset(RD_TEXCOORD2, 0.2 * sithTime_curSeconds, 0.2 * sithTime_curSeconds);
+					rdTexOffset(RD_TEXCOORD3,-0.1 * sithTime_curSeconds,-0.1 * sithTime_curSeconds);
+				}
 			}
 
 			rdNormal3v(&surface->surfaceInfo.face.normal.x);
@@ -1503,7 +1520,7 @@ void sithRender_DrawSurface(sithSurface* surface)
 	
 	rdTexGen(RD_TEXGEN_NONE);
 	rdTexGenParams(0, 0, 0, 0);
-	rdTexOffset(0, 0);
+	rdTexOffset(RD_TEXCOORD0, 0, 0);
 }
 #endif
 
@@ -2487,7 +2504,7 @@ void sithRender_UpdateLights(sithSector *sector, float prev, float dist, int dep
 				//sithSurface_GetCenterRadius(&sector->surfaces[i], &center, &radius);
 
 				rdVector3 offset;
-				rdVector_Scale3(&offset, &sector->surfaces[i].surfaceInfo.face.normal, 0.0075f);
+				rdVector_Scale3(&offset, &sector->surfaces[i].surfaceInfo.face.normal, sector->surfaces[i].radius * 0.015);
 				
 				rdVector3 center;
 				rdVector_Add3(&center, &sector->surfaces[i].center, &offset);
