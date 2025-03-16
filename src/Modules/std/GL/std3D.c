@@ -81,7 +81,7 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #define CLUSTER_MAX_OCCLUDERS       128
 #define CLUSTER_MAX_DECALS          256
 #define CLUSTER_MAX_ITEMS           (CLUSTER_MAX_LIGHTS + CLUSTER_MAX_OCCLUDERS + CLUSTER_MAX_DECALS)
-#define CLUSTER_BUCKETS_PER_CLUSTER (CLUSTER_MAX_ITEMS / 32)
+#define CLUSTER_BUCKETS_PER_CLUSTER (CLUSTER_MAX_ITEMS >> 5)
 #define CLUSTER_GRID_SIZE_X         16
 #define CLUSTER_GRID_SIZE_Y         8
 #define CLUSTER_GRID_SIZE_Z         24
@@ -210,10 +210,15 @@ typedef struct std3D_SharedUniforms
 
 	float     timeSeconds;
 	float     lightMult;
+	float     invlightMult;
+	uint32_t  pad;
+
 	rdVector2 resolution;
 
 	rdVector2 clusterTileSizes;
 	rdVector2 clusterScaleBias;
+
+	rdVector2 pad1;
 
 } std3D_SharedUniforms;
 
@@ -273,9 +278,12 @@ typedef struct std3D_light
 	rdVector4 position;
 	rdVector4 direction_intensity;
 
-	//rdVector4 color;
-	uint32_t color;
-	float radiusSq, pad2, pad3;
+	rdVector4 color;
+	//uint32_t color;
+	float radiusSqr;
+	uint32_t lux_intensity;
+	float invFalloff;
+	uint32_t pad1;
 
 	int32_t   type;
 	float     falloffMin;
@@ -304,6 +312,8 @@ GLuint light_ubo;
 typedef struct std3D_occluder
 {
 	rdVector4 position;
+	float invRadius;
+	float pad0, pad1, pad2;
 } std3D_occluder;
 
 int occludersDirty = 0;
@@ -489,16 +499,17 @@ typedef enum STD3D_SHADER_ID
 	SHADER_DEPTH_ALPHATEST,
 
 	SHADER_COLOR_UNLIT,
+	SHADER_COLOR_VERTEX_LIT,
 	SHADER_COLOR,
-	SHADER_COLOR_SPEC,
 
 	SHADER_COLOR_ALPHATEST_UNLIT,
+	SHADER_COLOR_ALPHATEST_VERTEXLIT,
 	SHADER_COLOR_ALPHATEST,
-	SHADER_COLOR_ALPHATEST_SPEC,
+	//SHADER_COLOR_ALPHATEST_SPEC,
 
-	SHADER_COLOR_ALPHABLEND_UNLIT,
-	SHADER_COLOR_ALPHABLEND,
-	SHADER_COLOR_ALPHABLEND_SPEC,
+	//SHADER_COLOR_ALPHABLEND_UNLIT,
+	//SHADER_COLOR_ALPHABLEND,
+	//SHADER_COLOR_ALPHABLEND_SPEC,
 
 	SHADER_COLOR_REFRACTION,
 
@@ -786,11 +797,18 @@ typedef struct std3D_Shader
 	uint32_t padding0;
 	uint32_t texCount;
 	uint32_t count;
-	uint32_t texInstr[8];
-	uint32_t instr[32];
+	struct
+	{
+		uint32_t x, y, z, w;
+	} texInstr[8];
+	struct
+	{
+		uint32_t x, y, z, w;
+	} instr[32];
 } std3D_Shader;
 
 GLint defaultShaderUBO;
+GLint jkgmShaderUBO;
 GLint waterShaderUBO; // tmp, need to make parser so this stuff is on a higher level
 
 typedef struct std3D_ShaderConsts
@@ -859,13 +877,14 @@ static_assert((SRC_MOD_COUNT>>3) <= 16, "SRC_MOD_COUNT must not exceed 4 bits.")
 
 enum
 {
-	SRC_FLAG_NONE       = 0x0,
-	SRC_FLAG_SRC0_CONST = 0x1, // src0 is a constant
-	SRC_FLAG_SRC1_CONST = 0x2, // src1 is a constant
-
-	SRC_FLAG_COUNT = 3
+	SRC_OPT_NONE       = 0x0,
+	SRC_OPT_SRC0_CONST = 0x1, // src0 is a constant
+	SRC_OPT_SRC1_CONST = 0x2, // src1 is a constant
+	SRC_OPT_SRC0_IMM   = 0x4, // src0 is an immediate value
+	SRC_OPT_SRC1_IMM   = 0x8, // src1 is an immediate value
+	SRC_OPT_FLAG_COUNT = 0x10
 };
-static_assert(SRC_FLAG_COUNT <= 3, "SRC_FLAG_COUNT must not exceed 2 bits.");
+static_assert((SRC_OPT_FLAG_COUNT >> 3) <= 16, "SRC_OPT_FLAG_COUNT must not exceed 4 bits.");
 
 // only one at a time
 enum
@@ -883,9 +902,9 @@ typedef enum std3D_ShaderAluOp
 {
 	OP_NOP,		// no op
 	OP_ADD,		// addition
-	OP_BBD,     // blackbody
 	OP_CMP,     // compare
 	OP_CND,     // condition
+	OP_DIV,     // division
 	OP_DP3,		// dot3
 	OP_DP4,		// dot4
 	OP_LRP,		// linear interpolation
@@ -895,10 +914,10 @@ typedef enum std3D_ShaderAluOp
 	OP_MIN,		// minimum
 	OP_MOV,		// move
 	OP_MUL,		// multiply
+	OP_POW,		// power
 	MAX_ALU_OPS
 } std3D_ShaderAluOp;
 static_assert(MAX_ALU_OPS <= 16, "std3D_ShaderAluOp must not exceed 16 op codes.");
-
 
 typedef enum std3D_ShaderTexOp
 {
@@ -929,6 +948,11 @@ int std3D_GenShader()
 void std3D_DeleteShader(int id)
 {
 	glDeleteBuffers(1, &id);
+}
+
+static uint32_t std3D_writeImmediate(float value)
+{
+	return roundf(3.0f * value + 3.0f);
 }
 
 // layout
@@ -1081,38 +1105,64 @@ void std3D_initDefaultShader()
 	memset(&shader, 0, sizeof(shader));
 	shader.version = 1;
 
-	// displace the UVs with the displacement map
-	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEXOPM, 0, REG_T0, DST_MOD_NONE, REG_T2, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
+	// sample tex0 from texcoord at t0 to diffuse
+	shader.texInstr[shader.texCount++].x = std3D_buildInstruction(OP_TEX, 0, REG_R0, DST_MOD_NONE, REG_T0, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
 
-	// sample tex0 from texcoord at temp1 to diffuse
-	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEX, 0, REG_R0, DST_MOD_NONE, REG_T0, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
-
-	// light sample tex1 from texcoord at temp1
-	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEXI, 0, REG_R1, DST_MOD_NONE, REG_T1, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
+	// light sample tex1 from texcoord at t0
+	shader.texInstr[shader.texCount++].x = std3D_buildInstruction(OP_TEXI, 0, REG_R1, DST_MOD_NONE, REG_T1, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
 	
-	// sample specular tex3 from texcoord at temp1
-	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEX, 0, REG_R2, DST_MOD_NONE, REG_T3, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
+	// sample specular tex3 from texcoord at t0
+	shader.texInstr[shader.texCount++].x = std3D_buildInstruction(OP_TEX, 0, REG_R2, DST_MOD_NONE, REG_T3, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
 
 	// per pixel lighting to r2
 	//shader.instr[shader.count++] = std3D_buildInstruction(OP_LIT, REG_R2, DST_MOD_NONE, REG_V0, SRC_MOD_NONE, 0, 0, 0, 0);
 
 	// multiply color0 with diffuse tex
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_MUL, 0, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_V0, SRC_MOD_NONE, 0, 0);
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_MUL, 0, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_V0, SRC_MOD_NONE, 0, 0);
 
 	// multiply color1 with specular tex
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_MAD, 0, REG_R0, DST_MOD_NONE, REG_R2, SRC_MOD_NONE, REG_V1, SRC_MOD_NONE, REG_R0, SRC_MOD_NONE);
-	//shader.instr[shader.count++] = std3D_buildInstruction(OP_ADD, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_V1, SRC_MOD_NONE, 0, 0);
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_MAD, 0, REG_R0, DST_MOD_NONE, REG_R2, SRC_MOD_NONE, REG_V1, SRC_MOD_NONE, REG_R0, SRC_MOD_NONE);
+	//shader.instr[shader.count++].x = std3D_buildInstruction(OP_ADD, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_V1, SRC_MOD_NONE, 0, 0);
 
 	// add specular
-	//shader.instr[shader.count++] = std3D_buildInstruction(OP_ADD, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_V1, SRC_MOD_NONE, 0, 0);
+	//shader.instr[shader.count++].x = std3D_buildInstruction(OP_ADD, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_V1, SRC_MOD_NONE, 0, 0);
 
 	// multiply color0 with diffuse tex and add specular
-	//shader.instr[shader.count++] = std3D_buildInstruction(OP_MAD, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_V0, SRC_MOD_NONE, REG_V1, SRC_MOD_NONE);
+	//shader.instr[shader.count++].x = std3D_buildInstruction(OP_MAD, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_V0, SRC_MOD_NONE, REG_V1, SRC_MOD_NONE);
 
 	// take max of diffuse and emissive
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_MAX, 0, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_R1, SRC_MOD_NONE, 0, 0);
-		
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_MAX, 0, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_R1, SRC_MOD_NONE, 0, 0);
+
 	glBindBuffer(GL_UNIFORM_BUFFER, defaultShaderUBO);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_Shader), &shader, GL_STATIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
+// todo: actually use this for jkgm textures
+void std3D_initJkgmShader()
+{
+	jkgmShaderUBO = std3D_GenShader();
+
+	std3D_Shader shader;
+	memset(&shader, 0, sizeof(shader));
+	shader.version = 1;
+
+	// displace the UVs with the displacement map
+	shader.texInstr[shader.texCount++].x = std3D_buildInstruction(OP_TEXOPM, 0, REG_T0, DST_MOD_NONE, REG_T2, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
+
+	// sample tex0 from texcoord at temp1 to diffuse
+	shader.texInstr[shader.texCount++].x = std3D_buildInstruction(OP_TEX, 0, REG_R0, DST_MOD_NONE, REG_T0, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
+
+	// light sample tex1 from texcoord at temp1
+	shader.texInstr[shader.texCount++].x = std3D_buildInstruction(OP_TEXI, 0, REG_R1, DST_MOD_NONE, REG_T1, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
+
+	// multiply color0 with diffuse tex
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_MUL, 0, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_V0, SRC_MOD_NONE, 0, 0);
+
+	// take max of diffuse and emissive
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_MAX, 0, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_R1, SRC_MOD_NONE, 0, 0);
+
+	glBindBuffer(GL_UNIFORM_BUFFER, jkgmShaderUBO);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_Shader), &shader, GL_STATIC_DRAW);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
@@ -1136,49 +1186,49 @@ void std3D_initWaterShader()
 	// tex r1, t0, t1
 	// tex r2, t0, t2
 	// tex r3, t0, t3
-	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEX, WRITE_RGBA, REG_R0, DST_MOD_NONE, REG_T0, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
-	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEX, WRITE_RGBA, REG_R1, DST_MOD_NONE, REG_T0, SRC_MOD_NONE, REG_T1, SRC_MOD_NONE, 0, 0);
-	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEX, WRITE_RGBA, REG_R2, DST_MOD_NONE, REG_T0, SRC_MOD_NONE, REG_T2, SRC_MOD_NONE, 0, 0);
-	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEX, WRITE_RGBA, REG_R3, DST_MOD_NONE, REG_T0, SRC_MOD_NONE, REG_T3, SRC_MOD_NONE, 0, 0);
+	shader.texInstr[shader.texCount++].x = std3D_buildInstruction(OP_TEX, WRITE_RGBA, REG_R0, DST_MOD_NONE, REG_T0, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
+	shader.texInstr[shader.texCount++].x = std3D_buildInstruction(OP_TEX, WRITE_RGBA, REG_R1, DST_MOD_NONE, REG_T0, SRC_MOD_NONE, REG_T1, SRC_MOD_NONE, 0, 0);
+	shader.texInstr[shader.texCount++].x = std3D_buildInstruction(OP_TEX, WRITE_RGBA, REG_R2, DST_MOD_NONE, REG_T0, SRC_MOD_NONE, REG_T2, SRC_MOD_NONE, 0, 0);
+	shader.texInstr[shader.texCount++].x = std3D_buildInstruction(OP_TEX, WRITE_RGBA, REG_R3, DST_MOD_NONE, REG_T0, SRC_MOD_NONE, REG_T3, SRC_MOD_NONE, 0, 0);
 
 	// luminance as offset for refraction
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_LUM, WRITE_RGBA, REG_R5, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, 0, 0, 0, 0);
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_LUM, WRITE_RGBA, REG_R5, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, 0, 0, 0, 0);
 
 	// add_d2 r1, r0, r1 ; (r0 + r1) / 2
 	// lum r1, r1 ; lum(r1)
 	// mov r0, r1 ; output color
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_ADD, WRITE_RGBA, REG_R1,   DST_MOD_D2, REG_R0, SRC_MOD_NONE, REG_R1, SRC_MOD_NONE, 0, 0);
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_LUM, WRITE_RGBA, REG_R1, DST_MOD_NONE, REG_R1, SRC_MOD_NONE,       0,           0, 0, 0);
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_MOV, WRITE_RGBA, REG_R0, DST_MOD_NONE, REG_R1, SRC_MOD_NONE,       0,           0, 0, 0);
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_ADD, WRITE_RGBA, REG_R1,   DST_MOD_D2, REG_R0, SRC_MOD_NONE, REG_R1, SRC_MOD_NONE, 0, 0);
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_LUM, WRITE_RGBA, REG_R1, DST_MOD_NONE, REG_R1, SRC_MOD_NONE,      0,            0, 0, 0);
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_MOV, WRITE_RGBA, REG_R0, DST_MOD_NONE, REG_R1, SRC_MOD_NONE,      0,            0, 0, 0);
 
 	// add_d2 r3, r2, r3 ; (r2 + r3) / 2
 	// lum r2, r3 ; lum(r3)
 	// add r2.a, r2, r1 ; add r1 to r2
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_ADD, WRITE_RGBA,  REG_R3,   DST_MOD_D2, REG_R2, SRC_MOD_NONE, REG_R3, SRC_MOD_NONE, 0, 0);
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_LUM, WRITE_RGBA,  REG_R2, DST_MOD_NONE, REG_R3, SRC_MOD_NONE,      0,            0, 0, 0);
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_ADD, WRITE_ALPHA, REG_R2, DST_MOD_NONE, REG_R2, SRC_MOD_NONE, REG_R1, SRC_MOD_NONE, 0, 0);
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_ADD, WRITE_RGBA,  REG_R3,   DST_MOD_D2, REG_R2, SRC_MOD_NONE, REG_R3, SRC_MOD_NONE, 0, 0);
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_LUM, WRITE_RGBA,  REG_R2, DST_MOD_NONE, REG_R3, SRC_MOD_NONE,      0,            0, 0, 0);
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_ADD, WRITE_ALPHA, REG_R2, DST_MOD_NONE, REG_R2, SRC_MOD_NONE, REG_R1, SRC_MOD_NONE, 0, 0);
 
 	// mov r4, c4 ; move low alpha
 	// mov r0.a, c2 ; move default alpha
 	// add r1.a, r1, -c0 ; subtract low threshold
 	// cmp r0.a, r1, r4, r0 ; r1 > 0 ? r4 (0) : r0 (0.5)
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_MOV,  WRITE_RGBA, REG_R4, DST_MOD_NONE, REG_C4, SRC_MOD_NONE, SRC_FLAG_SRC0_CONST,              0,                   0,            0);
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_MOV, WRITE_ALPHA, REG_R0, DST_MOD_NONE, REG_C2, SRC_MOD_NONE, SRC_FLAG_SRC0_CONST,              0,                   0,            0);
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_ADD, WRITE_ALPHA, REG_R1, DST_MOD_NONE, REG_R1, SRC_MOD_NONE,              REG_C0, SRC_MOD_NEGATE, SRC_FLAG_SRC1_CONST,            0);
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_CMP, WRITE_ALPHA, REG_R0, DST_MOD_NONE, REG_R1, SRC_MOD_NONE,              REG_R4,   SRC_MOD_NONE,              REG_R0, SRC_MOD_NONE);
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_MOV,  WRITE_RGBA, REG_R4, DST_MOD_NONE, REG_C4, SRC_MOD_NONE, SRC_OPT_SRC0_CONST,              0,               0,            0);
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_MOV, WRITE_ALPHA, REG_R0, DST_MOD_NONE, REG_C2, SRC_MOD_NONE, SRC_OPT_SRC0_CONST,              0,               0,            0);
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_ADD, WRITE_ALPHA, REG_R1, DST_MOD_NONE, REG_R1, SRC_MOD_NONE,             REG_C0, SRC_MOD_NEGATE, SRC_OPT_SRC1_CONST,            0);
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_CMP, WRITE_ALPHA, REG_R0, DST_MOD_NONE, REG_R1, SRC_MOD_NONE,             REG_R4,   SRC_MOD_NONE,          REG_R0, SRC_MOD_NONE);
 
 	// mov r4.a, c3 ; move high alpha
 	// add r3.a, r2, -c1 ; subtract high threshold
 	// cmp r0.a, r3, r4, r0 ; r3 > 0 ? r4 (0.8) : r0 (0.5 or 0.0)
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_MOV, WRITE_ALPHA, REG_R4, DST_MOD_NONE, REG_C3, SRC_MOD_NONE, SRC_FLAG_SRC0_CONST,              0,                   0,            0);
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_ADD, WRITE_ALPHA, REG_R3, DST_MOD_NONE, REG_R2, SRC_MOD_NONE,              REG_C1, SRC_MOD_NEGATE, SRC_FLAG_SRC1_CONST,            0);
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_CMP, WRITE_ALPHA, REG_R0, DST_MOD_NONE, REG_R3, SRC_MOD_NONE,              REG_R4,   SRC_MOD_NONE,              REG_R0, SRC_MOD_NONE);
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_MOV, WRITE_ALPHA, REG_R4, DST_MOD_NONE, REG_C3, SRC_MOD_NONE, SRC_OPT_SRC0_CONST,              0,               0,            0);
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_ADD, WRITE_ALPHA, REG_R3, DST_MOD_NONE, REG_R2, SRC_MOD_NONE,             REG_C1, SRC_MOD_NEGATE, SRC_OPT_SRC1_CONST,            0);
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_CMP, WRITE_ALPHA, REG_R0, DST_MOD_NONE, REG_R3, SRC_MOD_NONE,             REG_R4,   SRC_MOD_NONE,          REG_R0, SRC_MOD_NONE);
 
 	// apply vertex light
 	//shader.instr[shader.count++] = std3D_buildInstruction(OP_MUL, WRITE_RGB, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_V0, SRC_MOD_NONE, 0, 0);
 
 	// clear emissive
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_MOV, WRITE_RGBA, REG_R1, DST_MOD_NONE, REG_C4, SRC_MOD_NONE, 1, 0, 0, 0);
+	shader.instr[shader.count++].x = std3D_buildInstruction(OP_MOV, WRITE_RGBA, REG_R1, DST_MOD_NONE, REG_C4, SRC_MOD_NONE, SRC_OPT_SRC0_CONST, 0, 0, 0);
 
 	glBindBuffer(GL_UNIFORM_BUFFER, waterShaderUBO);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_Shader), &shader, GL_STATIC_DRAW);
@@ -1273,7 +1323,7 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 	// we never really use the alpha channel, so for 32bit we use deep color (rgb10a20, and for 16bit we use high color (rgb5a1, to avoid green shift)
     glGenTextures(1, &pFb->tex0);
     glBindTexture(GL_TEXTURE_2D, pFb->tex0);
-    glTexImage2D(GL_TEXTURE_2D, 0, /*jkPlayer_enable32Bit ? GL_RGB10_A2 : GL_RGB5_A1*/ GL_RG8, width, height, 0, GL_RG, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, /*jkPlayer_enable32Bit ? GL_RGB10_A2 : GL_RGB5_A1*/ GL_RG8_SNORM, width, height, 0, GL_RG, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -1289,7 +1339,7 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 		// Set up our emissive fb texture
 		glGenTextures(1, &pFb->tex1);
 		glBindTexture(GL_TEXTURE_2D, pFb->tex1);
-		glTexImage2D(GL_TEXTURE_2D, 0, /*jkPlayer_enable32Bit ? GL_RGB10_A2 :*/ GL_RGB5_A1, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, /*jkPlayer_enable32Bit ? GL_RGB10_A2 :*/ GL_RGB10_A2, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -1388,7 +1438,7 @@ void std3D_generateExtraFramebuffers(int32_t width, int32_t height)
 	std3D_generateIntermediateFbo(width, height, &deferred, /*GL_RGBA8*/GL_R32F, 0, 0, 0);
 
 	// the refraction buffers use the same depth-stencil as the main scene
-	std3D_generateIntermediateFbo(width, height, &refr, GL_RGB5_A1, 0, 1, std3D_framebuffer.ztex);
+	std3D_generateIntermediateFbo(width, height, &refr, GL_RG8_SNORM, 0, 1, std3D_framebuffer.ztex);
 	std3D_generateIntermediateFbo(width, height, &refrZ, GL_R32F, 0, 1, std3D_framebuffer.ztex);
 
 	std3D_mainFbo.fbo = std3D_framebuffer.fbo;
@@ -2052,14 +2102,16 @@ int init_resources()
 	if (!std3D_loadWorldStage(&worldStages[SHADER_DEPTH], 1, "Z_PREPASS")) return false;
 	if (!std3D_loadWorldStage(&worldStages[SHADER_DEPTH_ALPHATEST], 1, "Z_PREPASS;ALPHA_DISCARD")) return false;
 	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR], 0, "")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_SPEC], 0, "SPECULAR")) return false;
+	//if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_SPEC], 0, "SPECULAR")) return false;
 	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_UNLIT], 0, "UNLIT")) return false;
+	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_VERTEX_LIT], 0, "VERTEX_LIT")) return false;
 	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHATEST], 0, "ALPHA_DISCARD")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHATEST_SPEC], 0, "ALPHA_DISCARD;SPECULAR")) return false;
+	//if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHATEST_SPEC], 0, "ALPHA_DISCARD;SPECULAR")) return false;
+	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHATEST_VERTEXLIT], 0, "ALPHA_DISCARD;VERTEX_LIT")) return false;
 	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHATEST_UNLIT], 0, "ALPHA_DISCARD;UNLIT")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHABLEND], 0, "ALPHA_DISCARD;ALPHA_BLEND")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHABLEND_SPEC], 0, "ALPHA_DISCARD;ALPHA_BLEND;SPECULAR")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHABLEND_UNLIT], 0, "ALPHA_DISCARD;ALPHA_BLEND;UNLIT")) return false;
+	//if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHABLEND], 0, "ALPHA_DISCARD;ALPHA_BLEND")) return false;
+	//if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHABLEND_SPEC], 0, "ALPHA_DISCARD;ALPHA_BLEND;SPECULAR")) return false;
+	//if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHABLEND_UNLIT], 0, "ALPHA_DISCARD;ALPHA_BLEND;UNLIT")) return false;
 	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_REFRACTION], 0, "ALPHA_DISCARD;ALPHA_BLEND;REFRACTION")) return false;
 
     if (!std3D_loadSimpleTexProgram("shaders/ui", &std3D_uiProgram)) return false;
@@ -2267,13 +2319,12 @@ int init_resources()
 
 	// blackbody
 	glGenTextures(1, &blackbody_texture);
-	glBindTexture(GL_TEXTURE_2D, blackbody_texture);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+	glBindTexture(GL_TEXTURE_1D, blackbody_texture);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_BASE_LEVEL, 0);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAX_LEVEL, 0);
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 
 	uint32_t bbd[256];
@@ -2322,7 +2373,7 @@ int init_resources()
 		bbd[i] = (r | (g << 10) | (b << 20) | (0 << 30));
 	}
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB10_A2, 256, 1, 0, GL_RGBA, GL_UNSIGNED_INT_2_10_10_10_REV, bbd);
+	glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB10_A2, 256, 0, GL_RGBA, GL_UNSIGNED_INT_2_10_10_10_REV, bbd);
 
     glGenVertexArrays( 1, &vao );
     glBindVertexArray( vao ); 
@@ -2361,6 +2412,7 @@ int init_resources()
 	}
 
 	std3D_initDefaultShader();
+	std3D_initJkgmShader();
 	std3D_initWaterShader();
 
     has_initted = true;
@@ -2474,6 +2526,7 @@ void std3D_FreeResources()
 		std3D_freeRenderPass(&std3D_renderPasses[i]);
 
 	std3D_DeleteShader(defaultShaderUBO);
+	std3D_DeleteShader(jkgmShaderUBO);
 	std3D_DeleteShader(waterShaderUBO);
 
     std3D_bReinitHudElements = 1;
@@ -5295,6 +5348,7 @@ void std3D_DrawOccluder(rdVector3* position, float radius, rdVector3* verts)
 	occ->position.y = position->y;
 	occ->position.z = position->z;
 	occ->position.w = radius;
+	occ->invRadius = 1.0f / radius;
 }
 
 void std3D_BlitFramebuffer(int x, int y, int width, int height, void* pixels)
@@ -5359,16 +5413,17 @@ int std3D_GetShaderID(std3D_DrawCallState* pState)
 	int alphaTest = pState->stateBits.alphaTest & 1;
 	int blending  = pState->stateBits.blend & 1;
 	int lighting  = pState->stateBits.lightMode >= RD_LIGHTMODE_DIFFUSE;
-	int specular  = pState->stateBits.lightMode == RD_LIGHTMODE_SPECULAR;
+	int pixelLit  = pState->stateBits.lightMode > RD_LIGHTMODE_DIFFUSE;
+	//int specular  = pState->stateBits.lightMode == RD_LIGHTMODE_SPECULAR;
 
 	// todo: clean this up by using some array indexing or something
-	if (blending)
-		return SHADER_COLOR_ALPHABLEND_UNLIT + lighting + specular;
+	//if (blending)
+		//return SHADER_COLOR_ALPHABLEND_UNLIT + lighting + specular;
 
 	if (alphaTest)
-		return SHADER_COLOR_ALPHATEST_UNLIT + lighting + specular;
+		return SHADER_COLOR_ALPHATEST_UNLIT + lighting + pixelLit;// + specular;
 
-	return SHADER_COLOR_UNLIT + lighting + specular;
+	return SHADER_COLOR_UNLIT + lighting + pixelLit;// + specular;
 }
 
 void std3D_AddListVertices(std3D_DrawCall* pDrawCall, rdPrimitiveType_t type, std3D_DrawCallList* pList, rdVertex* paVertices, int numVertices)
@@ -5498,8 +5553,9 @@ void std3D_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallSta
 	int alphaTest = pDrawCallState->stateBits.alphaTest & 1;
 	int blending = pDrawCallState->stateBits.blend & 1;
 	int lighting = pDrawCallState->stateBits.lightMode >= RD_LIGHTMODE_DIFFUSE;
-	int specular = pDrawCallState->stateBits.lightMode == RD_LIGHTMODE_SPECULAR;
-	
+	//int specular = pDrawCallState->stateBits.lightMode == RD_LIGHTMODE_SPECULAR;
+	int  pixelLit = pDrawCallState->stateBits.lightMode > RD_LIGHTMODE_DIFFUSE;
+
 	int writesZ = std3D_HasDepthWrites(pDrawCallState);
 	int isWater = pDrawCallState->stateBits.texGen == RD_TEXGEN_WATER;
 
@@ -5541,7 +5597,7 @@ void std3D_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallSta
 		pDrawCallState->textureState.alphaRef       = 0;
 		pDrawCallState->textureState.chromaKeyColor = 0;
 
-		shaderID  = SHADER_COLOR_UNLIT + lighting + specular;
+		shaderID  = SHADER_COLOR_UNLIT + lighting + pixelLit;// + specular;
 		listIndex = DRAW_LIST_COLOR_ZPREPASS;
 	}
 	else	
@@ -5589,7 +5645,8 @@ void std3D_UpdateSharedUniforms()
 
 	extern float rdroid_overbright;
 	uniforms.lightMult = 1.0f / rdroid_overbright;//jkGuiBuildMulti_bRendering ? 0.85 : (jkPlayer_enableBloom ? 0.9 : 0.85);
-	
+	uniforms.invlightMult = rdroid_overbright;
+
 	rdVector_Set2(&uniforms.clusterTileSizes, (float)tileSizeX, (float)tileSizeY);
 	rdVector_Set2(&uniforms.clusterScaleBias, sliceScalingFactor, sliceBiasFactor);	
 	rdVector_Set2(&uniforms.resolution, std3D_framebuffer.w, std3D_framebuffer.h);
@@ -5653,7 +5710,7 @@ void std3D_SetRasterState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 	//else
 	//	std3D_bindTexture(GL_TEXTURE_2D, blank_tex, TEX_SLOT_DITHER);
 	std3D_bindTexture(GL_TEXTURE_2D, phase_texture, TEX_SLOT_DITHER);	
-	std3D_bindTexture(GL_TEXTURE_2D, blackbody_texture, TEX_SLOT_BLACKBODY);
+	std3D_bindTexture(GL_TEXTURE_1D, blackbody_texture, TEX_SLOT_BLACKBODY);
 
 	std3D_bindTexture(GL_TEXTURE_2D, deferred.tex, TEX_SLOT_DIFFUSE_LIGHT);
 }
@@ -5876,8 +5933,9 @@ void std3D_SetMaterialState(std3D_worldStage* pStage, std3D_DrawCallState* pStat
 	//}
 
 	// todo: expose
-	rdVector_Set4(&tex.specular_factor, 0.2209f, 0.2209f, 0.2209f, 0.2209f); // 0.04 in linear, but we're working in srgb
-	tex.roughnessFactor = stdMath_Sqrt(2.0f / 24.0f);
+	float spec = 0.175;//0.02;//0.2209f; / we're working in srgb
+	rdVector_Set4(&tex.specular_factor, spec, spec, spec, spec);
+	tex.roughnessFactor = stdMath_Sqrt(2.0f / 16.0f);
 
 	glBindBuffer(GL_UNIFORM_BUFFER, material_ubo);
 	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(std3D_MaterialUniforms), &tex);
@@ -6246,7 +6304,7 @@ void std3D_setupWorldTextures()
 	std3D_bindTexture(    GL_TEXTURE_2D,                refr.tex,      TEX_SLOT_REFRACTION);
 	std3D_bindTexture(    GL_TEXTURE_2D,               blank_tex,            TEX_SLOT_CLIP);
 	std3D_bindTexture(    GL_TEXTURE_2D,          dither_texture,          TEX_SLOT_DITHER);
-	std3D_bindTexture(    GL_TEXTURE_2D,       blackbody_texture,       TEX_SLOT_BLACKBODY);
+	std3D_bindTexture(    GL_TEXTURE_1D,       blackbody_texture,       TEX_SLOT_BLACKBODY);
 }
 
 void std3D_FlushRefractionZDrawCalls(std3D_RenderPass* pRenderPass)
@@ -6366,7 +6424,12 @@ void std3D_FlushDeferred(std3D_RenderPass* pRenderPass)
 	std3D_pushDebugGroup("std3D_FlushDeferred");
 	
 	// linearize the depth buffer for readback
-	std3D_DoDeferredLighting();
+	int hasRefraction = 0;
+	if (pRenderPass->flags & RD_RENDERPASS_REFRACTION)
+		hasRefraction = pRenderPass->drawCallLists[DRAW_LIST_Z_REFRACTION].drawCallCount > 0;
+
+	if(hasRefraction)
+		std3D_DoDeferredLighting();
 
 	if (pRenderPass->flags & RD_RENDERPASS_AMBIENT_OCCLUSION)
 		std3D_DoSSAO();
@@ -6548,6 +6611,11 @@ void std3D_ClearLights()
 	lightUniforms.numLights = 0;
 }
 
+uint32_t packHalf2x16(float x, float y)
+{
+	return (stdMath_FloatToHalf(y) << 16) | stdMath_FloatToHalf(x);
+}
+
 int std3D_AddLight(rdLight* light, rdVector3* position, float intensity)
 {
 	if(lightUniforms.numLights >= CLUSTER_MAX_LIGHTS || !light->active)
@@ -6561,23 +6629,24 @@ int std3D_AddLight(rdLight* light, rdVector3* position, float intensity)
 	light3d->position.x = position->x;
 	light3d->position.y = position->y;
 	light3d->position.z = position->z;
+
 	light3d->direction_intensity.x = light->direction.x;
 	light3d->direction_intensity.y = light->direction.y;
 	light3d->direction_intensity.z = light->direction.z;
 	light3d->direction_intensity.w = light->intensity * intensity;
 
 
-	uint32_t r = (uint32_t)fmin(light->color.x * intensity * 1023.0, 1023.0);
-	uint32_t g = (uint32_t)fmin(light->color.y * intensity * 1023.0, 1023.0);
-	uint32_t b = (uint32_t)fmin(light->color.z * intensity * 1023.0, 1023.0);
-	uint32_t a = 1;
+	uint32_t r = (uint32_t)fmin(light->color.x * intensity * 255.0, 255.0);
+	uint32_t g = (uint32_t)fmin(light->color.y * intensity * 255.0, 255.0);
+	uint32_t b = (uint32_t)fmin(light->color.z * intensity * 255.0, 255.0);
+	uint32_t a = 0;
 
-	light3d->color = (r << 20u) | (g << 10u) | (b << 0u);
+	//light3d->color = (r << 20u) | (g << 10u) | (b << 0u);
 
-	//light3d->color.x = light->color.x * intensity;
-	//light3d->color.y = light->color.y * intensity;
-	//light3d->color.z = light->color.z * intensity;
-	//light3d->color.w = fmin(light->color.x, fmin(light->color.y, light->color.z));
+	light3d->color.x = light->color.x * intensity;
+	light3d->color.y = light->color.y * intensity;
+	light3d->color.z = light->color.z * intensity;
+	light3d->color.w = fmin(light->color.x, fmin(light->color.y, light->color.z));
 #ifdef JKM_LIGHTING
 	light3d->angleX = light->angleX;
 	light3d->cosAngleX = light->cosAngleX;
@@ -6585,9 +6654,13 @@ int std3D_AddLight(rdLight* light, rdVector3* position, float intensity)
 	light3d->cosAngleY = light->cosAngleY;
 	light3d->lux = light->lux;
 #endif
-	light3d->radiusSq = light->falloffMin * light->falloffMin;
+	light3d->radiusSqr = light->falloffMin * light->falloffMin;
+	light3d->invFalloff = 1.0f / light->falloffMin;
 	light3d->falloffMin = light->falloffMin;
 	light3d->falloffMax = light->falloffMax;
+
+	light3d->lux_intensity = packHalf2x16(light->lux, light->intensity * intensity);
+
 	return 1;
 }
 

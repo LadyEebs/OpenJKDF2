@@ -958,3 +958,64 @@ float stdMath_Cos(float angle)
 	stdMath_SinCos(angle, &s, &c);
 	return c;
 }
+
+typedef union uif32
+{
+	float f;
+	uint32_t i;
+} uif32;
+
+uint16_t stdMath_FloatToHalf(float value)
+{
+	uint32_t result;
+	uint32_t integer = ((uint32_t*)(&value))[0];
+	uint32_t sign = (integer & 0x80000000u) >> 16u;
+	integer = integer & 0X7FFFFFFFu;
+	if (integer <= 0X47FFEFFFu)
+	{
+		if (integer < 0x38800000u)
+		{
+			uint32_t shift = 113u - (integer >> 23u);
+			integer = shift < 32 ? (0x800000u | (integer & 0x7FFFFFu)) >> shift : 0;
+		}
+		else
+		{
+			integer += 0xc8000000u;
+		}
+		result = ((integer + 0x0FFFu + ((integer >> 13u) & 1u)) >> 13u) & 0x7FFFu;
+	}
+	else
+	{
+		result = 0x7FFFu;
+	}
+	return (uint16_t)(result | sign);
+}
+
+float stdMath_HalfToFloat(uint16_t value)
+{
+	uint32_t mantissa = (uint32_t)(value & 0x03FF);
+	uint32_t exponent;
+	if ((value & 0x7C00) != 0)
+	{
+		exponent = (uint32_t)((value >> 10) & 0x1F);
+	}
+	else if (mantissa != 0)
+	{
+		exponent = 1;
+
+		do
+		{
+			exponent--;
+			mantissa <<= 1;
+		} while ((mantissa & 0x0400) == 0);
+
+		mantissa &= 0x03ff;
+	}
+	else
+	{
+		exponent = (uint32_t)-112;
+	}
+
+	uint32_t result = ((value & 0x8000) << 16) | ((exponent + 112) << 23) | (mantissa << 13);
+	return *(float*)&result;
+}

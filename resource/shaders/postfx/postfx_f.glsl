@@ -18,6 +18,7 @@ in vec2 f_uv;
 in vec3 f_coord;
 out vec4 fragColor;
 
+
 vec3 PurkinjeShift(vec3 light, float intensity)
 {
 	// constant 

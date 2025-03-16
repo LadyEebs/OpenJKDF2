@@ -50,31 +50,21 @@ void main(void)
 	vec3 reflected = reflect(-view, normal);
 
 	light_result result;
-	result.diffuse = vec3(0.0);
-	result.specular = vec3(0.0);
+	result.diffuse = packF2x11_1x10(vec3(0.0));
+	result.specular = packF2x11_1x10(vec3(0.0));
 
 	float shadow = 1.0;
 
 	uint cluster = compute_cluster_index(gl_FragCoord.xy, viewPos.y);
 
-	float a = roughness * roughness;
-
 	light_input params;
-	params.pos = viewPos.xyz;
-	params.normal = encode_octahedron_uint(normal.xyz);
-	params.view = encode_octahedron_uint(view);
+	params.pos       = viewPos.xyz;
+	params.normal    = encode_octahedron_uint(normal.xyz);
+	params.view      = encode_octahedron_uint(view);
 	params.reflected = encode_octahedron_uint(reflected.xyz);
-
-	params.roughness = roughness;
-	params.roughness2 = roughness * roughness;
-	params.normalizationTerm = roughness * 4.0 + 2.0;
-
-	params.a2 = a * a;
-	params.rcp_a2 = 1.0 / params.a2;
-	params.spec_c = get_spec_c(params.rcp_a2);
-	params.rcp_a2 /= 3.141592; // todo: roll pi into specular light intensity?
-	//params.tint = f_color[0].rgb;
-	params.tint = 0xFFFFFFFF;
+	params.spec_c    = calc_spec_c(roughness);
+	//params.tint    = f_color[0].rgb;
+	params.tint      = 0xFFFFFFFF;
 
 	// loop lights
 	if (numLights > 0u)
@@ -141,10 +131,8 @@ void main(void)
 		result.specular.xyz *= specAO;
 	}
 
-	result.specular.rgb = exp2(-result.specular.rgb);
-
 	// we kinda throw out some color info here so we could probably do all the math in ycocg
-	fragOut = vec4(encode_result(result.diffuse.rgb), encode_result(result.specular.rgb));
+	fragOut = vec4(encode_result(unpackF2x11_1x10(result.diffuse)), encode_result(unpackF2x11_1x10(result.specular)));
 
 	//fragOut.x = pack_argb2101010(vec4(result.diffuse.rgb, 1.0));
 	//fragOut.y = pack_argb2101010(vec4(result.specular.rgb, 1.0));

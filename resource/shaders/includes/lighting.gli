@@ -7,31 +7,44 @@
 #ifndef LIGHTING_H
 #define LIGHTING_H
 
+// the long streaky lobe of GGX/blinn-phong is just way nicer than phong...
+//#define GGX
+
 struct light_result
 {
-	vec3 diffuse;
-	vec3 specular;
+	// r11g11b10f accumulators
+	uint diffuse;
+	uint specular;
 };
 
 struct light_input
 {
-	vec3 pos;
-	uint normal;
-	uint view;
-	uint reflected;
-	float roughness;
-	float roughness2;
-	float normalizationTerm; // roughness * 4.0 + 2.0
-
-	float a2;
-	float rcp_a2;
+	uvec2 pos;		// 16:16:16 view space pos
+	uint  normal;	// 16:16 octahedral normal
+	uint  view;		// 16:16 octahedral view vector (ggx)
+	uint  reflected; // 16:16 octahedral reflection vector (phong)
+#ifdef GGX	
+	uint  spec_c;    // 16:16 specular coeffs
+#else
 	float spec_c;
-	uint tint;
+#endif
+	uint  tint;      // tint rgba
 };
 
-float get_spec_c(float rcp_a2)
+#ifdef GGX	
+uint calc_spec_c(float a)
+#else
+float calc_spec_c(float a)
+#endif
 {
+#ifdef GGX	
+	vec2 coeffs = vec2(a * a, a * float(4.0) + float(2.0));
+	return packHalf2x16(coeffs);
+#else
+	// phong
+	float rcp_a2 = 1.0 / (a * a);
 	return 0.72134752 * rcp_a2 + 0.39674113;
+#endif
 }
 
 // https://www.unrealengine.com/en-US/blog/physically-based-shading-on-mobile
@@ -80,16 +93,17 @@ vec3 fresnel_approx(vec3 f0, float costh)
 
 void calc_point_light(inout light_result result, uint light_index, light_input params)
 {
-	vec3 lvec = lights[light_index].position.xyz - params.pos.xyz;
+	vec3 viewPos = unpackHalf4x16(params.pos).xyz; // f_coord.xyz;
+
+	vec3 lvec = lights[light_index].position.xyz - viewPos.xyz;
 	
-	float len = dot(lvec, lvec);
-	if (len > lights[light_index].radiusSq)
+	float dotVector = dot(lvec, lvec);
+	if (dotVector > lights[light_index].radiusSqr)
 		return;
 
-	len = sqrt(len);
-	vec3 lvec_un = lvec;
-	float rcpLen = len > 0.0 ? 1.0 / len : 0.0;
-	lvec *= rcpLen;
+	float rcpLen = inversesqrt(dotVector);
+	float len    = rcpLen * dotVector;
+	lvec         = lvec * rcpLen;
 
 	float intensity = lights[light_index].direction_intensity.w;
 	//if(lights[light_index].type == 3)
@@ -99,7 +113,7 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	//		continue;
 	//
 	//	if (angle < lights[light_index].cosAngleX)
-    //        intensity = (1.0 - (lights[light_index].cosAngleX - angle) * lights[light_index].lux) * intensity;
+    //        intensity = (1.0 - (lights[light_index].cosAngleX - angle) * lights[light_index].lux.x) * intensity;
 	//}
 
 	// this is JK's dynamic light attenuation model
@@ -111,65 +125,72 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	}
 	else // jed attenuation for static lights
 	{
-		float range = (lights[light_index].falloffMin - len) / lights[light_index].falloffMin;
+		float range = 1.0 - len * lights[light_index].invFalloff;
+
 		//range *= range; // squared
 		intensity *= range * range; // gamma 2.0 compensation
 	}
 
-	if (intensity <= 0.0)
+	if (intensity <= float(0.0))
 		return;
 
 	vec3 normal = decode_octahedron_uint(params.normal);
-	float lightMagnitude = dot(normal.xyz, lvec);
-	float signedMagnitude = lightMagnitude;
-	lightMagnitude = max(lightMagnitude, 0.0) * intensity;
+	float lightMagnitude = clamp( dot(normal.xyz, lvec), 0.0, 1.0 );
+	//float signedMagnitude = lightMagnitude;
+	//lightMagnitude = max(lightMagnitude, float(0.0)) * intensity;
 
-	vec3 cd = vec3(lightMagnitude);
-	if (lightMode == 5)
-	{
-		// https://www.shadertoy.com/view/dltGWl
-		// exp -> exp2, 3.0 * 1.4427 = 4.3281
-		vec3 sss = exp2((-4.3281 * abs(signedMagnitude)) / (fillColor.rgb + 0.001));
-		cd.xyz += fillColor.rgb * sss * (0.2 * intensity);
-	}
-	else if(signedMagnitude <= 0.0)
-	{
-		return;
-	}
+	vec3 cd = vec3(lightMagnitude * intensity);
+	//if (lightMode == 5)
+	//{
+	//	// https://www.shadertoy.com/view/dltGWl
+	//	// exp -> exp2, 3.0 * 1.4427 = 4.3281
+	//	vec3 sss = exp2((-4.3281 * abs(signedMagnitude)) / (fillColor.rgb + 0.001));
+	//	cd.xyz += fillColor.rgb * sss * (0.2 * intensity);
+	//}
+	//else
+	//if(signedMagnitude <= 0.0)
+	//{
+	//	return;
+	//}
 
-	vec3 lightColor = (unpack_argb2101010(lights[light_index].color).xyz / 1023.0);
+	vec3 lightColor = lights[light_index].color.xyz;
 	if (lights[light_index].type > 0)
 	{
-		result.diffuse = cd.rgb * lightColor.rgb + result.diffuse;
+	 	result.diffuse = packF2x11_1x10(cd.rgb * lightColor.rgb + unpackF2x11_1x10(result.diffuse));
+		//result.diffuse = cd.rgb * lightColor.rgb + result.diffuse;
 	}
 	else
 	{
-		lightColor *= unpack_argb8888(params.tint).rgb / 255.0;
+		lightColor *= vec3(unpackUnorm4x8(params.tint).rgb);
 	}
 
-//#ifdef SPECULAR				
+//#ifdef SPECULAR	
+#ifdef GGX	
+	// Unity "Optimizing PBR"
+	// https://community.arm.com/cfs-file/__key/communityserver-blogs-components-weblogfiles/00-00-00-20-66/siggraph2015_2D00_mmg_2D00_renaldas_2D00_slides.pdf
+	// approximated microfacet GGX lobe, fresnel and visibility approximated with ldoth, spec color applied at the end
+	vec2 coeffs = unpackHalf2x16(params.spec_c);
+	vec3  view  = decode_octahedron_uint(params.view);
+	vec3  h     = normalize(lvec + view);
+	float ndoth = clamp(dot(h, normal), float(0.0), float(1.0));
+	float ldoth = clamp(dot(h, lvec), float(0.0), float(1.0));
+	
+	float d       = (ndoth * ndoth) * (coeffs.x - float(1.0)) + float(1.00001);
+	      d       = coeffs.x / ((d * d) * max(float(0.1), ldoth * ldoth) * coeffs.y);
+#else
 	// "Physically Based Shading on Mobile"
 	// https://www.unrealengine.com/en-US/blog/physically-based-shading-on-mobile
 	// approximated energy conserving phong lobe, fresnel and spec color must be applied at the end with env_brdf
-//	float rdotv = dot(decode_octahedron_uint(params.reflected), lvec);
-//	float d = params.rcp_a2 * exp2( params.spec_c * rdotv + (-params.spec_c) );
-	//float d = exp2( params.spec_c * rdotv + (-params.spec_c) );
+	float rdotv  = dot(decode_octahedron_uint(params.reflected), lvec);
+	float d      = exp2( params.spec_c * rdotv + (-params.spec_c) );
+#endif
 
-	// Unity "Optimizing PBR"
-	// https://community.arm.com/cfs-file/__key/communityserver-blogs-components-weblogfiles/00-00-00-20-66/siggraph2015_2D00_mmg_2D00_renaldas_2D00_slides.pdf
-	// approximated microfacet GGX lobe, fresnel approximated with 1/ldoth, spec color applied at the end
-	vec3 view = decode_octahedron_uint(params.view);
-	vec3 h = normalize(lvec + view);
-	float ndoth = clamp(dot(h, normal), 0.0, 1.0);
-	float ldoth = clamp(dot(h, lvec), 0.0, 1.0);
-	
-	float d = (ndoth * ndoth) * (params.roughness2 - 1.0) + 1.00001;
-	d = params.roughness2 / ((d * d) * max(0.1, ldoth * ldoth) * params.normalizationTerm);
+	result.specular = packF2x11_1x10((lightMagnitude * d) * lightColor.rgb + unpackF2x11_1x10(result.specular));
 
-	result.specular = lightColor.rgb * vec3(lightMagnitude * d) + result.specular;
+	//result.specular = lightColor.rgb * vec3(lightMagnitude * d) + result.specular;
 //#endif
 }
-
+#if 0
 
 // todo: split the spotlights out
 void CalculatePointLighting(
@@ -325,5 +346,6 @@ void CalculatePointLighting(
 	//diffuseLight.rgb = temperature(overdraw * 0.125);
 }
 
+#endif
 
 #endif

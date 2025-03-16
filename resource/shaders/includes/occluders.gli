@@ -10,33 +10,32 @@ void calc_shadow(inout float shadow, uint occluder_index, vec3 pos, uint normal)
 {
 	occluder occ = occluders[occluder_index];
 
-	vec3 direction = (occ.position.xyz - pos.xyz);
-	float len = dot(direction, direction);
-	if (len >= occ.position.w * occ.position.w)
-		return;
+	vec3 direction = vec3(occ.position.xyz - pos.xyz);
+
+	float dotVector = dot(direction, direction);
+	//if (dotVector >= occ.position.w * occ.position.w)
+		//return;
 				
-	len = sqrt(len);
-	float rcpLen = len > 0.0 ? 1.0 / len : 0.0;
-	direction *= rcpLen;
+	float rcpLen = inversesqrt(dotVector);
+	float len = rcpLen * dotVector;
+	direction = direction * rcpLen;
 				
-	float ndotl = dot(decode_octahedron_uint(normal), direction);
-	if(ndotl <= 0.0)
-		return;
+	float ndotl = clamp(dot(decode_octahedron_uint(normal), direction), 0.0, 1.0);
+	//if(ndotl <= 0.0)
+	//	return;
 				
-	// simplified smoothstep falloff, equivalent to smoothstep(0, occ.position.w, occ.position.w - len)
-	float falloff = clamp((occ.position.w - len) / occ.position.w, 0.0, 1.0);
-	//falloff = falloff * falloff * (3.0 - 2.0 * falloff);
-	if(falloff <= 0.0)
-		return;
+	float falloff = clamp((occ.position.w - len) * occ.invRadius, 0.0, 1.0);
+	//if(falloff <= 0.0)
+	//	return;
 				
 	float x = occ.position.w * rcpLen;
 	//float solidAngle = (1.0 - cos(atanFast(x)));
 
-	float theta = x / (0.28 * (x * x) + 1.0); // approximate atan(x)
-	float solidAngle = 0.5 * theta * theta; // simplified form
-	if (solidAngle <= 0.0)
-		return;
-				
+	float theta = x * fastRcpNR1(0.28 * (x * x) + 1.0); // approximate atan(x)
+	float solidAngle = (0.5 * theta) * theta; // simplified form
+	//if (solidAngle <= 0.0)
+	//	return;
+
 	float integralSolidAngle = ndotl * solidAngle * falloff;
 	shadow *= 1.0 - integralSolidAngle;
 }

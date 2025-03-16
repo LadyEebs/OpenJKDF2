@@ -203,7 +203,16 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 
 #if defined(WIN64_STANDALONE)
     version = "#version 330\n";
-    extensions = "#extension GL_ARB_texture_gather : enable\n#extension GL_ARB_gpu_shader5 : enable\n#extension GL_ARB_texture_query_lod : enable\n";
+    extensions =	"#extension GL_ARB_texture_gather : enable\n"
+					"#extension GL_ARB_gpu_shader5 : enable\n"
+					"#extension GL_ARB_texture_query_lod : enable\n"
+					"#extension GL_ARB_shading_language_packing : enable\n"
+					// eebs: supporting fp16 turned out be a real mess and didn't help much
+					//"#extension GL_AMD_gpu_shader_half_float : enable\n"
+					//"#extension GL_AMD_gpu_shader_half_float_fetch : enable\n"
+					"#extension GL_ARB_shader_ballot : enable\n"
+					"#extension GL_KHR_shader_subgroup : enable\n"
+					;
     defines = "#define CAN_BILINEAR_FILTER\n#define HAS_MIPS\n";
 #endif
 
@@ -273,7 +282,19 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 		"#  define lowp                      \n"
 		"#  define mediump                   \n"
 		"#  define highp                     \n"
-		"#endif                              \n";
+		"#endif                              \n"
+		// fp16, fallback to fp32 if not present
+		//"#ifndef GL_AMD_gpu_shader_half_float\n"
+		//"#	define float16_t float\n"
+		//"#	define f16vec2 vec2\n"
+		//"#	define f16vec3 vec3\n"
+		//"#	define f16vec4 vec4\n"
+		//"#endif\n"
+		//"#ifndef GL_AMD_gpu_shader_half_float_fetch\n"
+		//"#	define f16sampler1D	sampler1D\n"
+		//"#	define f16sampler2D sampler2D\n"
+		//"#endif								\n"
+		;
 
 	// custom intrinsics
 	const char* intrinsics =
@@ -453,7 +474,46 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 		"		return float2(unpackSnorm1x16(p & uint(0xffff)),\n"
 		"					  unpackSnorm1x16(p >> uint(16)));\n"
 		"	}\n"
-		"#endif\n";
+		"#endif\n"
+		//"#ifndef GL_AMD_gpu_shader_half_float\n"
+		//"uint packFloat2x16(vec2 v)\n"
+		//"{\n"
+		//"	return packHalf2x16(v);	\n"
+		//"}\n"
+		//"vec2 unpackFloat2x16(uint v)\n"
+		//"{\n"
+		//"	return unpackHalf2x16(v);\n"
+		//"}\n"
+		//"#endif\n"
+		"uint packF2x11_1x10(vec3 rgb)\n"
+		"{\n"
+		"	uint r = (packHalf2x16(vec2(rgb.x)) << 17) & 0xFFE00000;\n"
+		"	uint g = (packHalf2x16(vec2(rgb.y)) <<  6) & 0x001FFC00;\n"
+		"	uint b = (packHalf2x16(vec2(rgb.z)) >>  5) & 0x000003FF;\n"
+		"	return uint(r | g | b);\n"
+		"}\n"
+		"vec3 unpackF2x11_1x10(uint rgb)\n"
+		"{\n"
+		"	float r = unpackHalf2x16((rgb >> 17) & 0x7FF0).x;\n"
+		"	float g = unpackHalf2x16((rgb >> 6) & 0x7FF0).x;\n"
+		"	float b = unpackHalf2x16((rgb << 5) & 0x7FE0).x;\n"
+		"	return vec3(r, g, b); \n"
+		"}\n"
+		//"uint packF16_2x11_1x10(vec3 rgb)\n"
+		//"{\n" 
+		//"	uint r = (packFloat2x16(vec2(rgb.x)) << 17) & 0xFFE00000;\n"
+		//"	uint g = (packFloat2x16(vec2(rgb.y)) <<  6) & 0x001FFC00;\n"
+		//"	uint b = (packFloat2x16(vec2(rgb.z)) >>  5) & 0x000003FF;\n"
+		//"	return uint(r | g | b);\n"
+		//"}\n"
+		//"vec3 unpackF16_2x11_1x10(uint rgb)\n"
+		//"{\n"
+		//"	float r = unpackFloat2x16((rgb >> 17) & 0x7FF0).x;\n"
+		//"	float g = unpackFloat2x16((rgb >> 6) & 0x7FF0).x;\n"
+		//"	float b = unpackFloat2x16((rgb << 5) & 0x7FE0).x;\n"
+		//"	return vec3(r, g, b); \n"
+		//"}\n"
+		;
 
 	const GLchar* sources[] = {
 		version,

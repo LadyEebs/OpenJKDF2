@@ -586,9 +586,11 @@ void rdFogColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 
 void rdFogColorf(float r, float g, float b, float a)
 {
-	uint32_t ir = stdMath_ClampInt(r * 255, 0, 255);
-	uint32_t ig = stdMath_ClampInt(g * 255, 0, 255);
-	uint32_t ib = stdMath_ClampInt(b * 255, 0, 255);
+	float scale = 255.0f / rdroid_overbright;
+
+	uint32_t ir = stdMath_ClampInt(r * scale, 0, 255);
+	uint32_t ig = stdMath_ClampInt(g * scale, 0, 255);
+	uint32_t ib = stdMath_ClampInt(b * scale, 0, 255);
 	uint32_t ia = stdMath_ClampInt(a * 255, 0, 255);
 	rdFogColor(ir, ig, ib, ia);
 }

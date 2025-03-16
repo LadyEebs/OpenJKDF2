@@ -784,7 +784,7 @@ void sithRender_Draw()
 	sithRender_numStaticLights = 0;
 
 	rdSetGlowIntensity(0.4f);
-	rdSetOverbright(2.0f);
+	rdSetOverbright(1.5f);
 
 	_memset(sithWorld_pCurrentWorld->lightBuckets, 0, sizeof(uint64_t)*sithWorld_pCurrentWorld->numLightBuckets);
 

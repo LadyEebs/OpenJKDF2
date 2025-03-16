@@ -37,10 +37,10 @@ vec3 sampleFramebuffer(sampler2D s, vec2 uv)
 	bool pattern = ((crd.x & 1) == (crd.y & 1));
 
 	sampled_color.b = chroma.x;
-	//sampled_color.rgb = (pattern) ? sampled_color.rgb : sampled_color.rbg;
-	//sampled_color.rgb = ycocg2rgb(sampled_color.rgb);
+	sampled_color.rgb = (pattern) ? sampled_color.rgb : sampled_color.rbg;
+	sampled_color.rgb = ycocg2rgb(sampled_color.rgb);
 
-	sampled_color.rgb = (pattern) ? sampled_color.grb : sampled_color.brg;
+	//sampled_color.rgb = (pattern) ? sampled_color.grb : sampled_color.brg;
 
 	return sampled_color.rgb;
 }
@@ -48,9 +48,9 @@ vec3 sampleFramebuffer(sampler2D s, vec2 uv)
 vec3 subsample(vec4 color)
 {
 	uvec2 crd = uvec2(gl_FragCoord.xy);
-	//vec3 YCoCg = rgb2ycocg(color.rgb);
-	//color.rg = ((crd.x & 1u) == (crd.y & 1u)) ? YCoCg.rg : YCoCg.rb;
-	color.rg = ((crd.x & 1u) == (crd.y & 1u)) ? color.gr : color.gb;
+	vec3 YCoCg = rgb2ycocg(color.rgb);
+	color.rg = ((crd.x & 1u) == (crd.y & 1u)) ? YCoCg.rg : YCoCg.rb;
+	//color.rg = ((crd.x & 1u) == (crd.y & 1u)) ? color.gr : color.gb;
 	return vec3(color.rg, color.a);
 }
 

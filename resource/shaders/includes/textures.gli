@@ -16,17 +16,16 @@ uniform sampler2D refrtex;
 uniform sampler2D cliptex;
 uniform sampler2D dithertex;
 uniform sampler2D diffuseLightTex;
-uniform sampler2D blackbodyTex;
-
+uniform sampler1D blackbodyTex;
 
 uint dither_value(uvec2 xy)
 {
     uvec2 half_xy = (xy & 3u) >> 1u;
-    uvec2 odd_xy  = xy & 1u;
+    uvec2 odd_xy  =  xy & 1u;
 
 	// x4 and x2 can be modifiers on AMD, so group those together to reduce instruction count
-    uint base   = half_xy.y * 8u + (half_xy.x * 4u); // coarse 2x2 grid pattern
-    uint offset = odd_xy.x * 4u + (odd_xy.y * 2u); // fine 2x2 offset pattern
+    uint base   = (half_xy.y << 3u) + (half_xy.x << 2u); // coarse 2x2 grid pattern
+    uint offset =  (odd_xy.x << 2u) + ( odd_xy.y << 1u); // fine 2x2 offset pattern
 
     return base + offset;
 }
@@ -38,17 +37,12 @@ float dither_value_float(uvec2 xy)
 
 float luminance(vec3 c_rgb)
 {
-    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
-    return dot(c_rgb, W);
-}
-
-float luminance_pow(vec3 c_rgb)
-{
-	return pow(luminance(c_rgb), 4.0);
+    return dot(c_rgb, vec3(0.2125, 0.7154, 0.0721));
 }
 
 #ifdef FRAGMENT_SHADER
 
+#if 0
 vec4 tex_6x6(sampler2D s, vec2 uv)
 {
 	float mip = texQueryLod(s, uv);
@@ -60,27 +54,28 @@ vec4 tex_6x6(sampler2D s, vec2 uv)
 	vec2 PixSize = 2.0 / vec2(ires.xy);
     
 	// 6x6 downscale/upscale
-    vec4 s0 = textureLod(s, uv.xy + vec2( 0.000000000, 0.000000000) * PixSize.xy, mip);
-	vec4 s1 = textureLod(s, uv.xy + vec2( 0.604077935, 0.000000000) * PixSize.xy, mip);
-	vec4 s2 = textureLod(s, uv.xy + vec2( 0.000000000, 0.604077935) * PixSize.xy, mip);
-	vec4 s3 = textureLod(s, uv.xy + vec2(-0.604077935, 0.000000000) * PixSize.xy, mip);
-	vec4 s4 = textureLod(s, uv.xy + vec2( 0.000000000,-0.604077935) * PixSize.xy, mip);		
-	vec4 s5 = textureLod(s, uv.xy + vec2( 0.604077935, 0.604077935) * PixSize.xy, mip);
-	vec4 s6 = textureLod(s, uv.xy + vec2(-0.604077935, 0.604077935) * PixSize.xy, mip);
-	vec4 s7 = textureLod(s, uv.xy + vec2( 0.604077935,-0.604077935) * PixSize.xy, mip);
-	vec4 s8 = textureLod(s, uv.xy + vec2(-0.604077935,-0.604077935) * PixSize.xy, mip);
+    vec4 s0 = textureLod(s, vec2( 0.000000000, 0.000000000) * PixSize.xy + uv.xy, mip);
+	vec4 s1 = textureLod(s, vec2( 0.604077935, 0.000000000) * PixSize.xy + uv.xy, mip);
+	vec4 s2 = textureLod(s, vec2( 0.000000000, 0.604077935) * PixSize.xy + uv.xy, mip);
+	vec4 s3 = textureLod(s, vec2(-0.604077935, 0.000000000) * PixSize.xy + uv.xy, mip);
+	vec4 s4 = textureLod(s, vec2( 0.000000000,-0.604077935) * PixSize.xy + uv.xy, mip);		
+	vec4 s5 = textureLod(s, vec2( 0.604077935, 0.604077935) * PixSize.xy + uv.xy, mip);
+	vec4 s6 = textureLod(s, vec2(-0.604077935, 0.604077935) * PixSize.xy + uv.xy, mip);
+	vec4 s7 = textureLod(s, vec2( 0.604077935,-0.604077935) * PixSize.xy + uv.xy, mip);
+	vec4 s8 = textureLod(s, vec2(-0.604077935,-0.604077935) * PixSize.xy + uv.xy, mip);
 		
 	vec4 Color = s0 * 0.145904019;
-	Color += 0.11803490998 * (s1 + s2 + s3 + s4);
-	Color += 0.09548908532 * (s5 + s6 + s7 + s8);
+	Color     += 0.11803490998 * (s1 + s2 + s3 + s4);
+	Color     += 0.09548908532 * (s5 + s6 + s7 + s8);
 
 	return Color;
 }
+#endif
 
 mat3 construct_tbn(vec2 uv, vec3 pos)
 {
-    vec3 dp1 = dFdx(pos.xyz);
-    vec3 dp2 = dFdy(pos.xyz);
+    vec3 dp1  = dFdx(pos.xyz);
+    vec3 dp2  = dFdy(pos.xyz);
     vec2 duv1 = dFdx(uv.xy);
     vec2 duv2 = dFdy(uv.xy);
 
@@ -98,10 +93,10 @@ mat3 construct_tbn(vec2 uv, vec3 pos)
 
 float compute_mip_bias(float z_min)
 {
-	float mipmap_level = 0.0;
-	mipmap_level = z_min < mipDistances.x ? mipmap_level : 1.0;
-	mipmap_level = z_min < mipDistances.y ? mipmap_level : 2.0;
-	mipmap_level = z_min < mipDistances.z ? mipmap_level : 3.0;
+	float mipmap_level = float(0.0);
+	mipmap_level           = z_min < mipDistances.x ? mipmap_level : float(1.0);
+	mipmap_level           = z_min < mipDistances.y ? mipmap_level : float(2.0);
+	mipmap_level           = z_min < mipDistances.z ? mipmap_level : float(3.0);
 
 	// dither the mip level
 	//if(ditherMode == 1)
@@ -116,9 +111,10 @@ float compute_mip_bias(float z_min)
 	//	mipmap_level += bayerIndex[coord.x & 3][coord.y & 3];
 	//}
 
-	return mipmap_level + mipDistances.w;
+	return mipmap_level + float(mipDistances.w);
 }
 
+#if 0
 float sampleSobel(in sampler2D s, in vec2 uv)
 {
     float weight = 1.0;
@@ -236,11 +232,16 @@ vec4 bumpFromDepth(in sampler2D s, vec2 uv)
 	
 	return vec4(normalize(vec3(-dxy, 10.0)), height);
 }
+#endif
 
+#if 0
 vec4 tex_clut(sampler2D s, vec2 tc, float lodbias)
 {
 	float index = texture(s, tc.xy, lodbias).r;
-	return vec4(texture(worldPalette, vec2(index, 0.5)).xyz, (index == 0.0) ? 0.0 : 1.0);
+	return vec4(
+		texture(worldPalette, vec2(index, 0.5)).xyz,
+		(index == 0.0) ? 0.0 : 1.0
+	);
 }
 
 vec4 tex_clut_light(sampler2D s, vec2 tc, float light, float lodbias)
@@ -249,6 +250,7 @@ vec4 tex_clut_light(sampler2D s, vec2 tc, float light, float lodbias)
 	index = texture(worldPaletteLights, vec2(index, light)).x;
 	return vec4(texture(worldPalette, vec2(index, 0.5)).xyz, 0.0);
 }
+#endif
 
 #ifdef CAN_BILINEAR_FILTER
 void bilinear_paletted(vec2 uv, out vec4 color, out vec4 emissive)

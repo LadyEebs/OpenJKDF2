@@ -4,17 +4,13 @@
 in vec3 coord3d;
 in vec4 v_normal;
 in vec4 v_color[2];
-in vec4 v_uv[2];
+in vec4 v_uv[4];
 in vec3 coordVS;
 
 out vec4 f_color;
-out float f_light;
 out vec4 f_uv;
-out vec3 f_coord;
 out vec3 f_normal;
 out float f_depth;
-
-noperspective out vec2 f_uv_affine;
 
 void main(void)
 {
@@ -28,10 +24,6 @@ void main(void)
     f_color = v_color[0].bgra;
 
     f_uv = v_uv[0];
-	//f_uv.xy += uv_offset.xy;
-	f_uv_affine = v_uv[0].xy;
-	f_coord = viewPos.xyz;
 
-    f_light = 0.0;
  	f_depth = pos.w / 128.0;
 }

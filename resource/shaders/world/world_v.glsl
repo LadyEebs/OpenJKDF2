@@ -10,14 +10,19 @@ in vec4 v_uv[4];
 in vec3 coordVS;
 
 out vec4 f_color[2];
-//out float f_light;
-out vec4 f_uv[4];
-//out vec4 f_uv_nooffset;
-out vec3 f_coord;
-out vec3 f_normal;
-out float f_depth;
 
-noperspective out vec2 f_uv_affine;
+#ifdef REFRACTION
+out vec3 f_uv[4];
+#else
+out vec3 f_uv[1];
+#endif
+
+out vec4 f_coord;
+out vec3 f_normal;
+
+flat out float f_lodbias;
+
+//noperspective out vec2 f_uv_affine;
 
 vec3 CalculateAmbientDiffuse(vec3 normal)
 {
@@ -37,34 +42,46 @@ vec3 CalculateAmbientDiffuse(vec3 normal)
 
 vec3 CalculateAmbientSpecular(float roughness, vec3 normal, vec3 view, vec3 reflected)
 {
-	vec3 result = vec3(0.0);
+	vec3 ambientSpec = vec3(0.0);
 //#ifdef SPECULAR
 	float m = roughness * roughness;
 	float m2 = max(m * m, 1e-4);
-	float amplitude = 1.0 / (3.141592 * m2);
-	float sharpness = (2.0 / m2) / (4.0 * max(dot(normal, view), 0.1));
+	float amplitude = 1.0 * fastRcpNR0(3.141592 * m2);
+	float sharpness = (2.0 * fastRcpNR0(m2)) * fastRcpNR0(4.0 * max(dot(normal, view), 0.1));
 	
 	for(int sg = 0; sg < 8; ++sg)
 	{
 		vec4 sgCol = ambientSG[sg];//unpack_argb2101010(ambientSG[sg]);
-		vec3 color = mix(f_color[0].rgb, sgCol.xyz, sgCol.w); // use vertex color if no ambientSG data
+		vec3 ambientColor = mix(v_color[0].rgb, sgCol.xyz, sgCol.w); // use vertex color if no ambientSG data
 	
 		float umLength = length(sharpness * reflected + (ambientSGBasis[sg].w * ambientSGBasis[sg].xyz));
 		float attenuation = 1.0 - exp(-2.0 * umLength);
 		float nDotL = clamp(dot(normal.xyz, reflected), 0.0, 1.0);
 	
-		//float D = (2.0 * 3.141592) * nDotL * attenuation / umLength;
-		float D = (2.0 * 3.141592) * nDotL * attenuation / umLength;
+		// todo: can we roll this into something like the direct light approx?
+		//float D = (2.0 * 3.141592) * nDotL * attenuation * fastRcpNR1(umLength);
+		float D = (2.0 * nDotL) * attenuation * fastRcpNR1(umLength);
 		
-		// fresnel approx as 1 / ldoth
+		float expo = (exp(umLength - sharpness - ambientSGBasis[sg].w) * amplitude);
+
+		// fresnel approx as 1 / ldoth at center of the warped lobe
 		//vec3 h = normalize(reflected + view);
 		//D /= clamp(dot(reflected, h), 0.1, 1.0);
 
-		float expo = (exp(umLength - sharpness - ambientSGBasis[sg].w) * amplitude);
-		result = (D * expo) * color + result;
+		ambientSpec = (D * expo) * ambientColor + ambientSpec;
 	}
 //#endif
-	return result;// * 3.141592;
+	return ambientSpec;// * 3.141592;
+}
+
+
+float compute_mip_bias(float z_min)
+{
+	float mipmap_level = float(0.0);
+	mipmap_level        = z_min < mipDistances.x ? mipmap_level : float(1.0);
+	mipmap_level        = z_min < mipDistances.y ? mipmap_level : float(2.0);
+	mipmap_level        = z_min < mipDistances.z ? mipmap_level : float(3.0);
+	return mipmap_level + float(mipDistances.w);
 }
 
 void main(void)
@@ -73,29 +90,31 @@ void main(void)
     vec4 pos = projMatrix * viewPos;
 
 	mat3 normalMatrix = transpose(inverse(mat3(modelMatrix))); // if we ever need scaling
-	f_normal = normalMatrix * (v_normal.xyz * 2.0 - 1.0);
-	f_normal = normalize(f_normal);
+	vec3 normal = normalMatrix * (v_normal.xyz * 2.0 - 1.0);
+	normal = normalize(normal);
+	f_normal.xyz = vec3(normal);
+	f_lodbias = min(compute_mip_bias(viewPos.y), (numMips - 1));
 
 	//if(lightMode < 3)
 		//f_normal = face_normal;
 
     gl_Position = pos;
-    f_color[0] = clamp(v_color[0].bgra, vec4(0.0), vec4(1.0));
-	f_color[1] = clamp(v_color[1].bgra, vec4(0.0), vec4(1.0));
+    f_color[0] = vec4(clamp(v_color[0].bgra, vec4(0.0), vec4(1.0)));
+	f_color[1] = vec4(clamp(v_color[1].bgra, vec4(0.0), vec4(1.0)));
 
-    f_uv[0] = v_uv[0];
-    f_uv[1] = v_uv[1];
-    f_uv[2] = v_uv[2];
-    f_uv[3] = v_uv[3];
-	//f_uv_nooffset = v_uv[0];
+    f_uv[0] = v_uv[0].xyw;
 	f_uv[0].xy += uv_offset[0].xy;
+
+#ifdef REFRACTION
+    f_uv[1] = v_uv[1].xyw;
+    f_uv[2] = v_uv[2].xyw;
+    f_uv[3] = v_uv[3].xyw;
+	//f_uv_nooffset = v_uv[0];
 	f_uv[1].xy += uv_offset[1].xy;
 	f_uv[2].xy += uv_offset[2].xy;
 	f_uv[3].xy += uv_offset[3].xy;
-	f_uv_affine = v_uv[0].xy;
-
-	f_coord = viewPos.xyz;
-	vec3 view = normalize(-viewPos.xyz);
+	//f_uv_affine = v_uv[0].xy;
+#endif
 
 //#ifdef UNLIT
 //	if (lightMode == 0)
@@ -106,10 +125,17 @@ void main(void)
 //    f_light = 0.0;
 //#endif
 
- 	f_depth = pos.w / 128.0;
+ 	f_coord.xyz = viewPos.xyz;
+	f_coord.w = pos.w / 128.0;
+	
+	vec3 view = normalize(-viewPos.xyz);
+
+	f_color[1].a = 0.0;
+	if(fogEnabled > 0)
+		f_color[1].a = clamp((pos.w - fogStart) / (fogEnd - fogStart), 0.0, 1.0);
 
 #ifdef UNLIT
-	f_color[1] = vec4(0.0);
+	f_color[1].rgb = vec3(0.0);
 	if(lightMode == 0) // full lit
 		f_color[0].xyz = vec3(light_mult);
 	else if(lightMode == 1) // not lit
@@ -120,49 +146,44 @@ void main(void)
 		f_color[0].xyz = max(f_color[0].xyz, ambientColor.xyz);
 	
 	if(lightMode >= 2)
-		f_color[0].xyz += CalculateAmbientDiffuse(f_normal);
+		f_color[0].xyz += CalculateAmbientDiffuse(normal);
 
-	f_color[1] = vec4(0.0);
+	f_color[1].rgb = vec3(0.0);
 	//if (lightMode == 4)
-		//f_color[1].xyz = CalculateAmbientSpecular(0.05, f_normal, view, reflect(-view, f_normal));
+		f_color[1].xyz = CalculateAmbientSpecular(roughnessFactor, normal, view, reflect(-view, normal));
 
 	#ifdef SPECULAR
 		// metal
-		//f_color[1].xyz = CalculateAmbientSpecular(0.25, f_normal, view, reflect(-view, f_normal));
+		//f_color[1].xyz = CalculateAmbientSpecular(0.25, normal, view, reflect(-view, normal));
 	#endif
 
+	//f_color[0].rgb *= (255.0);
+	//f_color[1].rgb *= (255.0);
+
+
 	// light mode "diffuse" (a.k.a new gouraud)
-	if (lightMode == 2)
+#ifdef VERTEX_LIT
 	{
 		light_result result;
-		result.diffuse = vec3(0.0);
-		result.specular = vec3(0.0);
+		result.diffuse = packF2x11_1x10(f_color[0].rgb);
+		result.specular = packF2x11_1x10(f_color[1].rgb);
 
 	//#ifdef SPECULAR
-		result.specular = CalculateAmbientSpecular(roughnessFactor, f_normal, view, reflect(-view, f_normal));
+		//result.specular = packF2x11_1x10(CalculateAmbientSpecular(roughnessFactor, normal, view, reflect(-view, normal)));
 	//#endif
-
 
 		if(numLights > 0u)
 		{
 			float a = roughnessFactor;// * roughnessFactor;
 
-			uint cluster = compute_cluster_index((pos.xy / pos.w * 0.5 + 0.5) * iResolution.xy, f_coord.y);
+			uint cluster = compute_cluster_index(clamp(pos.xy / pos.w * 0.5 + 0.5, vec2(0.0), vec2(1.0)) * iResolution.xy, f_coord.y);
 			light_input params;
-			params.pos = f_coord.xyz;
-			//params.normal = f_normal.xyz;
-			params.normal = encode_octahedron_uint(f_normal.xyz);
-			params.view = encode_octahedron_uint(view);
-			params.reflected = encode_octahedron_uint(reflect(-view, f_normal));
-			params.roughness = roughnessFactor;
-			params.roughness2 = roughnessFactor * roughnessFactor;
-			params.normalizationTerm = roughnessFactor * 4.0 + 2.0;
-
-			params.a2 = a * a;
-			params.rcp_a2 = 1.0 / params.a2;
-			params.spec_c = get_spec_c(params.rcp_a2);
-			params.rcp_a2 /= 3.141592; // todo: roll pi into specular light intensity?
-			params.tint = pack_argb8888(f_color[0] * 255.0);
+			params.pos       = uvec2(packHalf2x16(f_coord.xy), packHalf2x16(vec2(f_coord.z, f_coord.w)));
+			params.normal    = encode_octahedron_uint(normal.xyz);
+			params.view      = encode_octahedron_uint(view);
+			params.reflected = encode_octahedron_uint(reflect(-view, normal));
+			params.spec_c    = calc_spec_c(a);
+			params.tint      = packUnorm4x8(f_color[0]);
 
 			// loop light buckets
 			uint first_item = firstLight;
@@ -190,11 +211,11 @@ void main(void)
 				}
 			}
 	
-			f_color[0].xyz += result.diffuse.rgb;
-			f_color[1].xyz += result.specular.rgb;
+			f_color[0].rgb = unpackF2x11_1x10(result.diffuse);
+			f_color[1].rgb = unpackF2x11_1x10(result.specular);
 		}
 	}
-
+#endif
 
 #endif
 }

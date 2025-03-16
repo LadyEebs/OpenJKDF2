@@ -6,12 +6,12 @@
 #define CLUSTER_MAX_OCCLUDERS       128u
 #define CLUSTER_MAX_DECALS          256
 #define CLUSTER_MAX_ITEMS           (CLUSTER_MAX_LIGHTS + CLUSTER_MAX_OCCLUDERS + CLUSTER_MAX_DECALS)
-#define CLUSTER_BUCKETS_PER_CLUSTER (CLUSTER_MAX_ITEMS / 32u)
+#define CLUSTER_BUCKETS_PER_CLUSTER (CLUSTER_MAX_ITEMS >> 5u)
 #define CLUSTER_GRID_SIZE_X         16u
 #define CLUSTER_GRID_SIZE_Y         8u
 #define CLUSTER_GRID_SIZE_Z         24u
-#define CLUSTER_GRID_SIZE_XYZ (CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y * CLUSTER_GRID_SIZE_Z)
-#define CLUSTER_GRID_TOTAL_SIZE (CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y * CLUSTER_GRID_SIZE_Z * CLUSTER_BUCKETS_PER_CLUSTER)
+#define CLUSTER_GRID_SIZE_XYZ      (CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y * CLUSTER_GRID_SIZE_Z)
+#define CLUSTER_GRID_TOTAL_SIZE    (CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y * CLUSTER_GRID_SIZE_Z * CLUSTER_BUCKETS_PER_CLUSTER)
 
 // todo: move me
 uniform mat4 modelMatrix;
@@ -37,10 +37,13 @@ layout(std140) uniform sharedBlock
 
 	float timeSeconds;
 	float light_mult;
+	float invlightMult;
+	float pad;
 	vec2  iResolution;
 
 	vec2  clusterTileSizes;
 	vec2  clusterScaleBias;
+	vec2  pad1;
 };
 
 // Fog state
@@ -91,10 +94,13 @@ struct light
 {
 	vec4  position;
 	vec4  direction_intensity;
-	//vec4  color;
 
-	uint color;
-	float radiusSq, pad2, pad3;
+	vec4 color;
+
+	float radiusSqr;
+	uint lux_intensity;
+	float invFalloff;
+	uint pad1;
 	
 	int   type;
 	float falloffMin;
@@ -119,9 +125,11 @@ layout(std140) uniform lightBlock
 struct occluder
 {
 	vec4 position;
+	float invRadius;
+	float pad0, pad1, pad2;
 };
 
-layout(binding=5, std140) uniform occluderBlock
+layout(std140) uniform occluderBlock
 {
 	uint firstOccluder;
 	uint numOccluders;
@@ -158,8 +166,8 @@ layout(std140) uniform shaderBlock
 	uint  shaderPadding0;
 	uint  shaderTexInstructionCount;
 	uint  shaderInstructionCount;
-	uvec4 shaderTexInstructions[2];
-	uvec4 shaderInstructions[8]; // std140 wants 16byte alignment, so the uint array is packed as uvec4
+	uvec4 shaderTexInstructions[8];
+	uvec4 shaderInstructions[32];
 };
 
 // Shader constants buffer
@@ -171,18 +179,11 @@ layout(std140) uniform shaderConstantsBlock
 float linearize_depth(float d)
 {
 	float znear = -projMatrix[3].z / (projMatrix[1].z + 1.0);
-	float zfar = -projMatrix[3].z / (projMatrix[1].z - 1.0);
+	float zfar  = -projMatrix[3].z / (projMatrix[1].z - 1.0);
 
 	float z_n = 2.0 * d - 1.0;
     return 2.0 * znear * zfar / (zfar + znear - z_n * (zfar - znear));
-
-    //float z_ndc = 2 * d - 1;
-    //float M44 = projMatrix[3][3];
-    //float M43 = projMatrix[3][2];
-    //float M34 = projMatrix[2][3];
-    //float M33 = projMatrix[2][2];
-    //float z_view = (z_ndc * M44 - M43) / (z_ndc * M34 - M33);
-    //return z_view;
 }
+
 
 #endif
