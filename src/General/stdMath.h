@@ -67,6 +67,7 @@ float stdMath_Dist3D2(float a1, float a2, float a3);
 float stdMath_Dist3D3(float a1, float a2, float a3);
 float stdMath_Floor(float a);
 float stdMath_Sqrt(float a);
+float stdMath_Frac(float a);
 
 // Added
 float stdMath_ClipPrecision(float val);

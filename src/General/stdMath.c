@@ -503,6 +503,11 @@ float stdMath_Sqrt(float a)
     return sqrtf(a);
 }
 
+float stdMath_Frac(float a)
+{
+	return a - stdMath_Floor(a);
+}
+
 float stdMath_Tan(float a1)
 {
     double v1; // st7
