@@ -1,0 +1,37 @@
+// debug utilities
+
+#ifndef DEBUG_H
+#define DEBUG_H
+
+vec3 temperature(float t)
+{
+    vec3 c[10] = vec3[10](
+        vec3(   0.0/255.0,   2.0/255.0,  91.0f/255.0 ),
+        vec3(   0.0/255.0, 108.0/255.0, 251.0f/255.0 ),
+        vec3(   0.0/255.0, 221.0/255.0, 221.0f/255.0 ),
+        vec3(  51.0/255.0, 221.0/255.0,   0.0f/255.0 ),
+        vec3( 255.0/255.0, 252.0/255.0,   0.0f/255.0 ),
+        vec3( 255.0/255.0, 180.0/255.0,   0.0f/255.0 ),
+        vec3( 255.0/255.0, 104.0/255.0,   0.0f/255.0 ),
+        vec3( 226.0/255.0,  22.0/255.0,   0.0f/255.0 ),
+        vec3( 191.0/255.0,   0.0/255.0,  83.0f/255.0 ),
+        vec3( 145.0/255.0,   0.0/255.0,  65.0f/255.0 ) 
+    );
+
+    float s = t * 10.0;
+
+    int cur = int(s) <= 9 ? int(s) : 9;
+    int prv = cur >= 1 ? cur - 1 : 0;
+    int nxt = cur < 9 ? cur + 1 : 9;
+
+    float blur = 0.8;
+
+    float wc = smoothstep( float(cur) - blur, float(cur) + blur, s ) * (1.0 - smoothstep(float(cur + 1) - blur, float(cur + 1) + blur, s) );
+    float wp = 1.0 - smoothstep( float(cur) - blur, float(cur) + blur, s );
+    float wn = smoothstep( float(cur + 1) - blur, float(cur + 1) + blur, s );
+
+    vec3 r = wc * c[cur] + wp * c[prv] + wn * c[nxt];
+    return vec3( clamp(r.x, 0.0f, 1.0), clamp(r.y, 0.0, 1.0), clamp(r.z, 0.0, 1.0) );
+}
+
+#endif

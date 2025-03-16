@@ -1,17 +1,9 @@
+// uniforms and uniform buffers
+
+#include "defines.gli"
+
 #ifndef UNIFORMS_H
 #define UNIFORMS_H
-
-// todo: define elsewhere
-#define CLUSTER_MAX_LIGHTS          256u // match RDCAMERA_MAX_LIGHTS/SITHREND_NUM_LIGHTS
-#define CLUSTER_MAX_OCCLUDERS       128u
-#define CLUSTER_MAX_DECALS          256
-#define CLUSTER_MAX_ITEMS           (CLUSTER_MAX_LIGHTS + CLUSTER_MAX_OCCLUDERS + CLUSTER_MAX_DECALS)
-#define CLUSTER_BUCKETS_PER_CLUSTER (CLUSTER_MAX_ITEMS >> 5u)
-#define CLUSTER_GRID_SIZE_X         16u
-#define CLUSTER_GRID_SIZE_Y         8u
-#define CLUSTER_GRID_SIZE_Z         24u
-#define CLUSTER_GRID_SIZE_XYZ      (CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y * CLUSTER_GRID_SIZE_Z)
-#define CLUSTER_GRID_TOTAL_SIZE    (CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y * CLUSTER_GRID_SIZE_Z * CLUSTER_BUCKETS_PER_CLUSTER)
 
 // todo: move me
 uniform mat4 modelMatrix;
@@ -176,6 +168,7 @@ layout(std140) uniform shaderConstantsBlock
 	vec4 shaderConstants[8];
 };
 
+
 float linearize_depth(float d)
 {
 	float znear = -projMatrix[3].z / (projMatrix[1].z + 1.0);
@@ -184,6 +177,5 @@ float linearize_depth(float d)
 	float z_n = 2.0 * d - 1.0;
     return 2.0 * znear * zfar / (zfar + znear - z_n * (zfar - znear));
 }
-
 
 #endif

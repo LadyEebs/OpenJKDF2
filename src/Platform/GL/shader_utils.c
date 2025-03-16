@@ -212,6 +212,7 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 					//"#extension GL_AMD_gpu_shader_half_float_fetch : enable\n"
 					"#extension GL_ARB_shader_ballot : enable\n"
 					"#extension GL_KHR_shader_subgroup : enable\n"
+					"#extension GL_AMD_shader_trinary_minmax : enable\n"
 					;
     defines = "#define CAN_BILINEAR_FILTER\n#define HAS_MIPS\n";
 #endif
@@ -298,6 +299,14 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 
 	// custom intrinsics
 	const char* intrinsics =
+		"#ifndef GL_AMD_shader_trinary_minmax\n"
+		"#define max3(x, y, z) max( (x), max( (y), (z) ) )\n"
+		"#define min3(x, y, z) min( (x), min( (y), (z) ) )\n"
+		"#endif\n"
+		"#define sat1(x) clamp((x),		 0.0 ,		1.0 )\n"
+		"#define sat2(x) clamp((x), vec2(0.0), vec2(1.0))\n"
+		"#define sat3(x) clamp((x), vec3(0.0), vec3(1.0))\n"
+		"#define sat4(x) clamp((x), vec4(0.0), vec4(1.0))\n"
 		"#ifndef VERTEX_SHADER\n"
 		"#ifdef GL_ARB_texture_query_lod\n"
 		"	float texQueryLod(sampler2D tex, vec2 uv)\n"
@@ -429,7 +438,7 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 		"	}\n"
 		"	uint packUnorm1x16(float s)\n"
 		"	{\n"
-		"		return uint(round(saturate(s) * 65535.0));\n"
+		"		return uint(round(sat1(s) * 65535.0));\n"
 		"	}\n"
 		"	float unpackUnorm1x16(uint p)\n"
 		"	{\n"
@@ -485,6 +494,14 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 		//"	return unpackHalf2x16(v);\n"
 		//"}\n"
 		//"#endif\n"
+		"uvec2 packHalf4x16(vec4 unpackedInput)\n"
+		"{\n"
+		"	return uvec2(packHalf2x16(unpackedInput.xy), packHalf2x16(unpackedInput.zw));\n"
+		"}\n"
+		"vec4 unpackHalf4x16(uvec2 packedInput)\n"
+		"{\n"
+		"	return vec4(unpackHalf2x16(packedInput.x), unpackHalf2x16(packedInput.y));\n"
+		"}\n"
 		"uint packF2x11_1x10(vec3 rgb)\n"
 		"{\n"
 		"	uint r = (packHalf2x16(vec2(rgb.x)) << 17) & 0xFFE00000;\n"

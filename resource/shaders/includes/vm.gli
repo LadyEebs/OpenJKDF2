@@ -1,12 +1,4 @@
 // simple dx8 style microcode shader VM
-//
-// all instruction reads and operations are dynamically uniform/wave invariant (scalar ops on AMD)
-// everything reflecting that intent is prefixed with an s_
-//
-// the packing/unpacking might be potentially be an issue on dx10 era/VLIW hardware or mobile (lol mobile)
-// this should eventually be tested and changes made as needed (or even a simple alternative path with fixed shading)
-// ....what I would give for packed math support or 8 bit arithmetic on older gpus *sobs*
-//
 // I'm seeing big performance gains from amd driver 22.7.1 and higher (the release notes indicate boosts in minecraft, related?)
 // unfortunately those don't work with renderdoc's assembly view, ugh...
 
@@ -17,265 +9,13 @@
 #include "textures.gli"
 #include "decals.gli"
 #include "occluders.gli"
+#include "isa.gli"
+#include "reg.gli"
 
 #ifndef VM_H
 #define VM_H
 
 #ifdef FRAGMENT_SHADER
-
-// arithmetic op codes, must match std3D_ShaderAluOp
-// todo: pass these into the code so they always match the enum
-#define OP_NOP		 0	// no op
-#define OP_ADD		 1	// addition
-#define OP_CMP       2  // compare
-#define OP_CND       3  // condition
-#define OP_DIV       4  // division
-#define OP_DP3		 5	// dot3
-#define OP_DP4		 6	// dot4
-#define OP_LRP		 7	// interpolate
-#define OP_MAD		 8	// multiply add
-#define OP_MAX		 9	// maximum
-#define OP_MIN		10	// minimum
-#define OP_MOV		11	// move
-#define OP_MUL		12	// multiply
-#define OP_POW      13  // power
-
-// texture op codes, must match std3D_ShaderTexOp
-#define OP_TEXCOORD  1  // convert UV to color
-#define OP_TEX		 2	// texture sample
-#define OP_TEXI      3  // texture sample with emissive scale
-#define OP_TEXOPM    4  // offset a UV slot with offset parallax mapping
-
-// source modifiers
-#define SRC_MOD_NONE   0x0 // no modifier
-#define SRC_MOD_NEGATE 0x1 // -x
-#define SRC_MOD_BIAS   0x2 // x - 0.5
-#define SRC_MOD_BX2    0x4 // x * 2 - 1
-#define SRC_MOD_INVERT 0x8 // 1 - x
-
-// source options
-#define SRC_OPT_NONE        0x0 // nothing
-#define SRC_OPT_SRC0_CONST  0x1 // src0 is a constant
-#define SRC_OPT_SRC1_CONST  0x2 // src1 is a constant
-#define SRC_OPT_SRC0_IMM    0x4 // src0 is an immediate value from -1 to 1
-#define SRC_OPT_SRC1_IMM    0x8 // src1 is an immediate value from -1 to 1
-
-// destination modifiers
-#define DST_MOD_NONE 0 // no modifier
-#define DST_MOD_X2   1 // x * 2
-#define DST_MOD_X4   2 // x * 4
-#define DST_MOD_D2   3 // x / 2
-
-// todo: this should be permutations
-#ifdef REFRACTION
-#define REG_COUNT    6
-#define REG_FP_COUNT 4
-#else
-#define REG_COUNT    3
-#define REG_FP_COUNT 1
-#endif
-
-// registers
-uint  c_l;				//       16:16 - cluster index | lod bias (float)
-uint  vdir;				//       16:16 - tangent space view dir
-uint  r[REG_COUNT];     //     8:8:8:8 - temp registers (for color math)
-uint  v[2];				//     8:8:8:8 - color registers
-uvec2 vpos;				// 16:16:16:16 - view space position + depth
-
-// something like GL_AMD_shader_explicit_vertex_parameter could
-// allow us to prevent keeping vertex attributes around in VGPRs
-// unfortunately I don't have that extension and can't test the results
-uint tr[REG_FP_COUNT]; //   16:16 - texture coordinate registers
-
-vec4 unpackRegister(uint packedInput)
-{
-	return unpackUnorm4x8(packedInput);
-}
-
-uint packRegister(vec4 unpackedInput)
-{
-	return packUnorm4x8(unpackedInput);
-}
-
-uint packTexcoordRegister(vec2 unpackedInput)
-{
-	return packHalf2x16(unpackedInput.xy - 0.5);
-}
-
-vec2 read_texcoord_reg(uint i)
-{
-	return unpackHalf2x16(tr[i]).xy + 0.5;
-}
-
-vec4 unpackColorRegister(uint packedInput)
-{
-	return unpackUnorm4x8(packedInput);
-}
-
-uint packColorRegister(vec4 unpackedInput)
-{
-	return packUnorm4x8(unpackedInput);
-}
-
-vec4 read_color_reg(uint i)
-{
-	return unpackColorRegister(v[i]);
-}
-
-vec4 process_reg(vec4 v, uint s_mods)
-{
-	if ((s_mods & SRC_MOD_INVERT) != 0)
-		return 1.0 - v;
-	else if ((s_mods & SRC_MOD_BX2) != 0)
-		v = v * 2.0 + 1.0;
-	else if ((s_mods & SRC_MOD_BIAS) != 0)
-		v -= 0.5;
-	return (s_mods & SRC_MOD_NEGATE) != 0 ? -v : v;
-}
-
-vec4 read_reg(uint s_src)
-{
-	uint s_idx  = (s_src     ) & 0x7;
-	uint s_mods = (s_src >> 3) & 0xF;
-
-	if (s_idx > 5)
-		return process_reg(read_color_reg(s_idx - 6), s_mods);
-	else
-		return process_reg(unpackRegister(r[s_idx]), s_mods);
-}
-
-vec4 read_const(uint s_src)
-{
-	uint s_idx  = (s_src     ) & 0x7;
-	uint s_mods = (s_src >> 3) & 0xF;
-	return process_reg(shaderConstants[s_idx], s_mods);
-}
-
-void write_reg(uint s_dest, vec4 v, uint s_mask)
-{
-	uint s_idx  = (s_dest     ) & 0x7;
-	uint s_mods = (s_dest >> 3) & 0x3;
-
-	if (s_mods == DST_MOD_X2)
-		v *= 2.0;
-	else if (s_mods == DST_MOD_X4)
-		v *= 4.0;
-	else if (s_mods == DST_MOD_D2)
-		v *= 0.5;
-
-	r[s_idx] = (r[s_idx] & ~s_mask) | (packRegister(v) & s_mask);
-}
-
-vec4 read_immediate(uint idx)
-{
-	float immmmm[8] = float[](
-		-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0, 4.0
-	);
-	return vec4(immmmm[idx]);
-}
-
-vec4 read_src0(uint idx, uint flags)
-{
-	if ((flags & SRC_OPT_SRC0_IMM) != 0)
-		return read_immediate(idx);
-	else if ((flags & SRC_OPT_SRC0_CONST) != 0)
-		return read_const(idx);
-	else
-		return read_reg(idx);
-}
-
-vec4 read_src1(uint idx, uint flags)
-{
-	if ((flags & SRC_OPT_SRC1_IMM) != 0)
-		return read_immediate(idx);
-	else if ((flags & SRC_OPT_SRC1_CONST) != 0)
-		return read_const(idx);
-	else
-		return read_reg(idx);
-}
-
-// must mirror std3D_buildInstruction
-// note: there isn't really a difference loading uint vs vec4
-//       so we could easily go for a thicker instruction,
-//       could add more complex swizzling, more ops, more modifiers...
-void s_read_instr(uint s_instr, out uint s_op, out uint s_mask, out uint s_dest, out uint s_src0, out uint s_src1, out uint s_src2)
-{
-	s_mask = (s_instr & 0x2);					// bits 0-2	
-	s_op   = (s_instr >>  2) &  0xF;			// bits 2-6
-	s_dest = (s_instr >>  6) & 0x1F;			// bits 6-10
-	s_src0 = (s_instr >> 11) & 0x7F;			// bits 11-18
-	s_src1 = (s_instr >> 18) & 0x7F;			// bits 18-25
-	s_src2 = (s_instr >> 25) & 0x7F;			// bits 25-32
-
-	// compute the write mask
-	// 0xFFFFFFFF, 0x00FFFFFF, or 0xFF000000
-	s_mask = (s_mask == 0) ? 0xFFFFFFFF : (s_mask == 1) ? 0x00FFFFFF : 0xFF000000;
-}
-
-// standard texture sample
-vec4 load_tex(in sampler2D s, in vec2 tc)
-{
-	if (tex_mode == TEX_MODE_TEST)
-		return vec4(fillColor);
-	return texture(s, tc.xy, unpackHalf2x16(c_l).y).rgba;
-}
-
-// standard texture sample with emissive multiplier
-vec4 load_tex_light(in sampler2D s, in vec2 tc, in float light)
-{
-	if (tex_mode == TEX_MODE_TEST)
-		return vec4(fillColor.rgb, 0.0);
-	return clamp(texture(s, tc.xy, unpackHalf2x16(c_l).y).rgba * vec4(emissiveFactor.rgb, 0.0), vec4(0.0), vec4(1.0));
-}
-
-/*vec2 steep_parallax(in sampler2D s, in vec2 uv)
-{
-	if(abs(displacement_factor) <= 1e-4)
-		return uv.xy;
-
-	vec3 view_dir = decodeHemiUnitVector(vdir);
-
-	const float min_layers = float(32.0);
-    const float max_layers = float(128.0);
-    float num_layers = mix(max_layers, min_layers, abs(view_dir.z));
-	float inv_num_layers = float(1.0) / num_layers;
-
-    float layer_depth = inv_num_layers;
-    float current_layer_depth = float(0.0);
-    vec2 shift_per_layer = (view_dir.xy / (view_dir.z)) * displacement_factor;
-	vec2 d_tc = shift_per_layer * inv_num_layers;
-
-    vec2 current_tc = uv.xy;
-    float current_sample = textureLod(s, current_tc, 0).r;
-
-    while(current_layer_depth < current_sample)
-	{
-        current_tc -= d_tc;
-        current_sample = textureLod(s, current_tc, 0).r;
-        current_layer_depth += layer_depth;
-    }
-
-    vec2 prev_tc = current_tc + d_tc;
-
-    float after_col_depth = current_sample - current_layer_depth;
-    float before_col_depth = float(textureLod(s, prev_tc, 0).r) - current_layer_depth + layer_depth;
-
-    float a = after_col_depth / (after_col_depth - before_col_depth);
-    vec2 adj_tc = mix(current_tc, prev_tc, a);
-
-    return adj_tc;
-}*/
-
-vec2 parallax(in sampler2D s, in vec2 uv)
-{
-	if(abs(displacement_factor) <= float(1e-4))
-		return uv.xy;
-
-	float height = textureLod(s, uv.xy, 0).r * displacement_factor;
-
-	vec3 view_dir = decodeHemiUnitVector(vdir);
-	return view_dir.xy * height + uv.xy;
-}
 
 void run_tex_stage()
 {
@@ -284,19 +24,21 @@ void run_tex_stage()
 	for (int s_pc = 0; s_pc < shaderTexInstructionCount; ++s_pc) // program counter
 	{
 		uint s_op, s_mask, s_dest, s_src0, s_src1, s_src2;
-		s_read_instr(shaderTexInstructions[s_pc>>2][s_pc&3], s_op, s_mask, s_dest, s_src0, s_src1, s_src2);
+		s_read_instr(shaderTexInstructions[s_pc >> 2][s_pc & 3], s_op, s_mask, s_dest, s_src0, s_src1, s_src2);
 
 		switch(s_op)
 		{
 		case OP_TEXOPM:
-			tr[(s_dest & 0x7)] = packTexcoordRegister(parallax(textures[s_src0], read_texcoord_reg(s_src1)));
+			tr[(s_dest & 0x7)] = packTexcoordRegister(
+				parallax(textures[s_src0], read_texcoord_reg(s_src1), decodeHemiUnitVector(vdir))
+			);
 			break;
 
 		case OP_TEX:
 			write_reg(
 				s_dest,
 				process_reg(
-					load_tex(textures[s_src0], read_texcoord_reg(s_src1)),
+					load_tex(textures[s_src0], read_texcoord_reg(s_src1), unpackHalf2x16(c_l).y),
 					s_src2),
 				s_mask
 			);
@@ -306,7 +48,7 @@ void run_tex_stage()
 			write_reg(
 				s_dest,
 				process_reg(
-					load_tex_light(textures[s_src0], read_texcoord_reg(s_src1), float(0.0)),
+					load_tex_light(textures[s_src0], read_texcoord_reg(s_src1), float(0.0), unpackHalf2x16(c_l).y),
 					s_src2),
 				s_mask
 			);
@@ -332,7 +74,7 @@ void run_combiner_stage()
 	for (int s_pc = 0; s_pc < shaderInstructionCount; ++s_pc) // program counter
 	{
 		uint s_op, s_mask, s_dest, s_src0, s_src1, s_src2;
-		s_read_instr(shaderInstructions[s_pc>>2][s_pc&3], s_op, s_mask, s_dest, s_src0, s_src1, s_src2);
+		s_read_instr(shaderInstructions[s_pc >> 2][s_pc & 3], s_op, s_mask, s_dest, s_src0, s_src1, s_src2);
 
 		// most common ops first
 		switch(s_op)
@@ -340,9 +82,9 @@ void run_combiner_stage()
 		case OP_MOV:
 			write_reg(
 				s_dest,
-				clamp(
+				sat4(
 					read_src0(s_src0, s_src1)
-					, vec4(0.0), vec4(1.0)),
+				),
 				s_mask
 			);
 			break;
@@ -350,9 +92,8 @@ void run_combiner_stage()
 		case OP_ADD:
 			write_reg(
 				s_dest,
-				clamp(
-					read_src0(s_src0, s_src2) + read_src1(s_src1, s_src2)
-					, vec4(0.0), vec4(1.0)),
+				sat4(
+					read_src0(s_src0, s_src2) + read_src1(s_src1, s_src2)),
 				s_mask
 			);
 			break;
@@ -360,9 +101,9 @@ void run_combiner_stage()
 		case OP_MAD:
 			write_reg(
 				s_dest,
-				clamp(
+				sat4(
 					read_reg(s_src0) * read_reg(s_src1) + read_reg(s_src2)
-					, vec4(0.0), vec4(1.0)),
+				),
 				s_mask
 			);
 			break;
@@ -370,9 +111,9 @@ void run_combiner_stage()
 		case OP_MUL:
 			write_reg(
 				s_dest,
-				clamp(
+				sat4(
 					read_src0(s_src0, s_src2) * read_src1(s_src1, s_src2)
-					, vec4(0.0), vec4(1.0)),
+				),
 				s_mask
 			);
 			break;
@@ -404,9 +145,9 @@ void run_combiner_stage()
 		case OP_DIV:
 			write_reg(
 				s_dest,
-				clamp(
+				sat4(
 					read_src0(s_src0, s_src2) / read_src1(s_src1, s_src2)
-					, vec4(0.0), vec4(1.0)),
+				),
 				s_mask
 			);
 			break;
@@ -415,9 +156,7 @@ void run_combiner_stage()
 			write_reg(
 				s_dest,
 				vec4(
-					clamp(
-						dot(read_src0(s_src0, s_src2).xyz, read_src1(s_src1, s_src2).xyz)
-						, 0.0, 1.0)
+					sat1(dot(read_src0(s_src0, s_src2).xyz, read_src1(s_src1, s_src2).xyz))
 				),
 				s_mask
 			);
@@ -427,9 +166,9 @@ void run_combiner_stage()
 			write_reg(
 				s_dest,
 				vec4(
-					clamp(
+					sat1(
 						dot(read_src0(s_src0, s_src2), read_src1(s_src1, s_src2))
-						, 0.0, 1.0)
+					)
 				),
 				s_mask
 			);
@@ -438,9 +177,9 @@ void run_combiner_stage()
 		case OP_LRP:
 			write_reg(
 				s_dest,
-				clamp(
+				sat4(
 					mix(read_reg(s_src0), read_reg(s_src1), read_reg(s_src2))
-					, vec4(0.0), vec4(1.0)),
+				),
 				s_mask
 			);
 			break;

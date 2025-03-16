@@ -1,3 +1,6 @@
+// spherical gaussian utilities
+// todo: deprecate the actual SG stuff is kinda heavy
+
 #ifndef SG_H
 #define SG_H
 

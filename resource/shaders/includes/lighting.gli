@@ -1,3 +1,5 @@
+// lighting functionality
+
 #include "uniforms.gli"
 #include "math.gli"
 #include "clustering.gli"
@@ -19,9 +21,9 @@ struct light_result
 
 struct light_input
 {
-	uvec2 pos;		// 16:16:16 view space pos
-	uint  normal;	// 16:16 octahedral normal
-	uint  view;		// 16:16 octahedral view vector (ggx)
+	uvec2 pos;		 // 16:16:16 view space pos
+	uint  normal;	 // 16:16 octahedral normal
+	uint  view;		 // 16:16 octahedral view vector (ggx)
 	uint  reflected; // 16:16 octahedral reflection vector (phong)
 	uint  spec_c;    // 16:16 specular coeffs
 	uint  tint;      // tint rgba
@@ -70,12 +72,6 @@ vec3 env_brdf_refit(vec3 f0, float roughness, float ndotv)
 vec3 env_brdf( vec3 f0, float roughness, float ndotv )
 {
 	return env_brdf_refit(f0, roughness, ndotv);
-
-//#ifdef SPECULAR
-//	return env_brdf_approx(f0, roughness, ndotv);
-//#else
-//	return vec3(env_brdf_nonmetal(roughness, ndotv));
-//#endif
 }
 
 vec3 fresnel_approx(vec3 f0, float costh)
@@ -127,7 +123,7 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 		return;
 
 	vec3 normal = decode_octahedron_uint(params.normal);
-	float lightMagnitude = clamp( dot(normal.xyz, lvec) * intensity, 0.0, 1.0 );
+	float lightMagnitude = sat1( dot(normal.xyz, lvec) * intensity );
 	//float signedMagnitude = lightMagnitude;
 	//lightMagnitude = max(lightMagnitude, float(0.0)) * intensity;
 
@@ -156,7 +152,6 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 		lightColor *= vec3(unpackUnorm4x8(params.tint).rgb);
 	}
 
-//#ifdef SPECULAR	
 	vec2 coeffs = unpackHalf2x16(params.spec_c);
 #ifdef GGX	
 	// Unity "Optimizing PBR"
@@ -178,166 +173,7 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 #endif
 
 	result.specular = packF2x11_1x10((lightMagnitude * d) * lightColor.rgb + unpackF2x11_1x10(result.specular));
-
 	//result.specular = lightColor.rgb * vec3(lightMagnitude * d) + result.specular;
-//#endif
 }
-#if 0
-
-// todo: split the spotlights out
-void CalculatePointLighting(
-	uint bucket_index,
-	int lightMode,
-	vec3 position,
-	vec3 normal,
-	vec3 view,
-	mat3 tbn,
-	vec2 uv,
-	vec4 shadows,
-	vec3 albedo,
-	vec3 f0,
-	float roughness,
-	inout vec3 diffuseLight,
-	inout vec3 specularLight
-)
-{	
-	// precompute some terms
-	float a = roughness;// * roughness;
-	float a2 = a;// * a;
-	float rcp_a2 = 1.0 / a2;
-	float aperture = max(sqrt(1.0 - shadows.w), 0.01);
-	vec3 reflVec = reflect(-view, normal);
-
-	float scalar = 0.4; // todo: needs to come from rdCamera_pCurCamera->attenuationMin
-	vec3 sssRadius = fillColor.rgb;
-
-	float overdraw = 0.0;
-
-	uint first_item = firstLight;
-	uint last_item = first_item + numLights - 1u;
-	uint first_bucket = first_item / 32u;
-	uint last_bucket = min(last_item / 32u, max(0u, CLUSTER_BUCKETS_PER_CLUSTER - 1u));
-	for (uint bucket = first_bucket; bucket <= last_bucket; ++bucket)
-	{
-		uint bucket_bits = uint(texelFetch(clusterBuffer, int(bucket_index + bucket)).x);
-		while(bucket_bits != 0u)
-		{
-			uint bucket_bit_index = uint(findLSB(bucket_bits));
-			uint light_index = bucket * 32u + bucket_bit_index;
-			bucket_bits ^= (1u << bucket_bit_index);
-				
-		#ifdef SPECULAR
-			if (light_index >= first_item && light_index <= last_item)
-		#else
-			if (light_index >= first_item && light_index <= last_item)// && any(lessThan(diffuseLight, vec3(1.0))))
-		#endif
-			{
-				overdraw += 1.0;
-
-				light l = lights[light_index];
-				vec3 diff = l.position.xyz - position.xyz;
-
-				float len;
-
-				// diffuse uses dist to plane
-				//if (lightMode == 2)
-				//	len = dot(l.position.xyz - position.xyz, normal.xyz);
-				//else
-					len = length(diff);
-
-				if ( len >= l.falloffMin )
-					continue;
-
-				float rcpLen = len > 1e-6 ? 1.0 / len : 0.0;
-				diff *= rcpLen;
-
-				float intensity = l.direction_intensity.w;
-				if(l.type == 3)
-				{
-					float angle = dot(l.direction_intensity.xyz, diff);
-					if (angle <= l.cosAngleY)
-						continue;
-
-					if (angle < l.cosAngleX)
-                        intensity = (1.0 - (l.cosAngleX - angle) * l.lux) * intensity;
-				}
-
-				// this is JK's attenuation model, note it depends on scalar value matching whatever was used to calculate the intensity, it seems
-				intensity = max(0.0, intensity - len * scalar);
-
-				//if ((aoFlags & 0x1) == 0x1 && numOccluders > 0u)
-				{
-					//float localShadow = clamp(dot(shadows.xyz, diff.xyz) / (aperture * 0.3 + 0.7), 0.0, 1.0);
-					//intensity *= localShadow;// * localShadow;
-				}
-
-				if (intensity <= 0.0)
-					continue;
-				
-				float lightMagnitude = dot(normal, diff);
-				float signedMagnitude = lightMagnitude;
-				lightMagnitude = max(lightMagnitude, 0.0);
-
-				vec3 cd = vec3(lightMagnitude);
-				if (lightMode == 5)
-				{
-					// https://www.shadertoy.com/view/dltGWl
-					vec3 sss = 0.2 * exp(-3.0 * abs(signedMagnitude) / (sssRadius.xyz + 0.001));
-					cd.xyz += sssRadius.xyz * sss;
-				}
-				else if(signedMagnitude <= 0.0)
-				{
-					continue;
-				}
-#ifdef FRAGMENT_SHADER
-				//// pom shadow
-				//if(displacement_factor != 0.0)
-				//{
-				//	vec3 lightT = transpose(tbn) * diff.xyz;
-				//	vec2 lightDelta = -lightT.xy * displacement_factor;
-      			//
-				//	float h0 = 1.0-textureLod(displacement_map, uv.xy, 0.0).r;
-				//	float h = h0;    
-				//	h = max(0, 1.0-textureLod(displacement_map, uv.xy + 1.000 * lightDelta, 0.0).r); 
-				//	h = max(h, 1.0-textureLod(displacement_map, uv.xy + 0.875 * lightDelta, 0.0).r); 
-				//	h = max(h, 1.0-textureLod(displacement_map, uv.xy + 0.750 * lightDelta, 0.0).r);
-				//	h = max(h, 1.0-textureLod(displacement_map, uv.xy + 0.625 * lightDelta, 0.0).r);
-				//	h = max(h, 1.0-textureLod(displacement_map, uv.xy + 0.500 * lightDelta, 0.0).r);
-				//	h = max(h, 1.0-textureLod(displacement_map, uv.xy + 0.375 * lightDelta, 0.0).r);
-				//	h = max(h, 1.0-textureLod(displacement_map, uv.xy + 0.250 * lightDelta, 0.0).r);
-				//	h = max(h, 1.0-textureLod(displacement_map, uv.xy + 0.125 * lightDelta, 0.0).r);
-        		//
-				//	float shadow = 1.0 - clamp((h - h0) * 3.0, 0.0, 1.0);
-				//	intensity *= shadow;
-				//}
-#endif
-
-				diffuseLight += unpack_argb2101010(l.color).xyz * cd * intensity;
-
-			#ifdef SPECULAR
-				//vec3 h = normalize(diff + view);
-				vec3 f = f0;// + (1.0 - f0) * exp2(-8.35 * max(0.0, dot(diff, h)));
-				//f *= clamp(dot(f0, vec3(333.0)), 0.0, 1.0); // fade out when spec is less than 0.1% albedo
-					
-				float c = 0.72134752 * rcp_a2 + 0.39674113;
-				float d = exp2( c * dot(reflVec, diff) - c ) * (rcp_a2 / 3.141592);
-
-				vec3 cs = f * (lightMagnitude * d);
-
-				specularLight += unpack_argb2101010(l.color).xyz * cs * intensity;
-			#endif
-			}
-			else if (light_index > last_item)
-			{
-				bucket = CLUSTER_BUCKETS_PER_CLUSTER;
-				break;
-			}
-		}
-	}
-
-	//diffuseLight.rgb = temperature(overdraw * 0.125);
-}
-
-#endif
 
 #endif

@@ -2,27 +2,7 @@
 #include "clustering.gli"
 #include "math.gli"
 #include "lighting.gli"
-
-in vec3 coord3d;
-in vec4 v_normal;
-in vec4 v_color[2];
-in vec4 v_uv[4];
-in vec3 coordVS;
-
-out vec4 f_color[2];
-
-#ifdef REFRACTION
-out vec3 f_uv[4];
-#else
-out vec3 f_uv[1];
-#endif
-
-out vec4 f_coord;
-out vec3 f_normal;
-
-flat out float f_lodbias;
-
-//noperspective out vec2 f_uv_affine;
+#include "attr.gli"
 
 vec3 CalculateAmbientDiffuse(vec3 normal)
 {
@@ -43,7 +23,7 @@ vec3 CalculateAmbientDiffuse(vec3 normal)
 vec3 CalculateAmbientSpecular(float roughness, vec3 normal, vec3 view, vec3 reflected)
 {
 	vec3 ambientSpec = vec3(0.0);
-//#ifdef SPECULAR
+
 	float m = roughness * roughness;
 	float m2 = max(m * m, 1e-4);
 	float amplitude = 1.0 * fastRcpNR0(3.141592 * m2);
@@ -70,8 +50,7 @@ vec3 CalculateAmbientSpecular(float roughness, vec3 normal, vec3 view, vec3 refl
 
 		ambientSpec = (D * expo) * ambientColor + ambientSpec;
 	}
-//#endif
-	return ambientSpec;// * 3.141592;
+	return ambientSpec;
 }
 
 
@@ -149,13 +128,8 @@ void main(void)
 		f_color[0].xyz += CalculateAmbientDiffuse(normal);
 
 	f_color[1].rgb = vec3(0.0);
-	//if (lightMode == 4)
+	if(lightMode >= 2)
 		f_color[1].xyz = CalculateAmbientSpecular(roughnessFactor, normal, view, reflect(-view, normal));
-
-	#ifdef SPECULAR
-		// metal
-		//f_color[1].xyz = CalculateAmbientSpecular(0.25, normal, view, reflect(-view, normal));
-	#endif
 
 	//f_color[0].rgb *= (255.0);
 	//f_color[1].rgb *= (255.0);
@@ -167,10 +141,6 @@ void main(void)
 		light_result result;
 		result.diffuse = packF2x11_1x10(f_color[0].rgb);
 		result.specular = packF2x11_1x10(f_color[1].rgb);
-
-	//#ifdef SPECULAR
-		//result.specular = packF2x11_1x10(CalculateAmbientSpecular(roughnessFactor, normal, view, reflect(-view, normal)));
-	//#endif
 
 		if(numLights > 0u)
 		{

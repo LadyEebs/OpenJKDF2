@@ -1,3 +1,5 @@
+// framebuffer utilities
+
 #ifndef FRAMEBUFFER_H
 #define FRAMEBUFFER_H
 
@@ -15,14 +17,14 @@ float edge_filter(vec2 a0, vec2 a1, vec2 a2, vec2 a3, vec2 a4)
 	
 	// handle the special case where all the weights are zero
 	w.x = (W == 0.0) ? 1.0 : w.x;
-	W = (W == 0.0) ? 1.0 : W;
-	return (w.x * a1.y + w.y * a2.y + w.z * a3.y + w.w * a4.y) / W;
+	W   = (W == 0.0) ? 1.0 : W;
+	return (w.x * a1.y + (w.y * a2.y + (w.z * a3.y + (w.w * a4.y)))) / W;
 }
 
 vec3 sampleFramebuffer(sampler2D s, vec2 uv)
 {
 	vec4 sampled_color = textureLod(s, uv, 0);
-	vec2 sourceSize = textureSize(s, 0).xy;
+	vec2 sourceSize    = textureSize(s, 0).xy;
 
 	ivec2 crd = ivec2(uv.xy * sourceSize.xy);
 
@@ -36,7 +38,8 @@ vec3 sampleFramebuffer(sampler2D s, vec2 uv)
 
 	bool pattern = ((crd.x & 1) == (crd.y & 1));
 
-	sampled_color.b = chroma.x;
+	sampled_color.b = chroma;
+
 	sampled_color.rgb = (pattern) ? sampled_color.rgb : sampled_color.rbg;
 	sampled_color.rgb = ycocg2rgb(sampled_color.rgb);
 
@@ -47,10 +50,13 @@ vec3 sampleFramebuffer(sampler2D s, vec2 uv)
 
 vec3 subsample(vec4 color)
 {
-	uvec2 crd = uvec2(gl_FragCoord.xy);
+	uvec2 crd  = uvec2(gl_FragCoord.xy);
+	
 	vec3 YCoCg = rgb2ycocg(color.rgb);
-	color.rg = ((crd.x & 1u) == (crd.y & 1u)) ? YCoCg.rg : YCoCg.rb;
+	color.rg   = ((crd.x & 1u) == (crd.y & 1u)) ? YCoCg.rg : YCoCg.rb;
+	
 	//color.rg = ((crd.x & 1u) == (crd.y & 1u)) ? color.gr : color.gb;
+	
 	return vec3(color.rg, color.a);
 }
 

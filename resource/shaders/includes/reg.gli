@@ -1,0 +1,147 @@
+// register file for simple dx8 style shader VM
+//
+// the packing/unpacking might be potentially be an issue on dx10 era/VLIW hardware or mobile (lol mobile)
+// this should eventually be tested and changes made as needed (or even a simple alternative path with fixed shading)
+// ....what I would give for packed math support or 8 bit arithmetic on older gpus *sobs*
+
+#include "defines.gli"
+#include "uniforms.gli"
+#include "math.gli"
+#include "isa.gli"
+
+#ifndef REG_H
+#define REG_H
+
+#ifdef FRAGMENT_SHADER
+
+// todo: this should be permutations
+#ifdef REFRACTION
+#define REG_COUNT    6
+#define REG_FP_COUNT 4
+#else
+#define REG_COUNT    3
+#define REG_FP_COUNT 1
+#endif
+
+// registers
+uint  c_l;				//       16:16 - cluster index | lod bias (float)
+uint  vdir;				//       16:16 - tangent space view dir
+uint  r[REG_COUNT];     //     8:8:8:8 - temp registers (for color math)
+uint  v[2];				//     8:8:8:8 - color registers
+uvec2 vpos;				// 16:16:16:16 - view space position + depth
+
+// something like GL_AMD_shader_explicit_vertex_parameter could
+// allow us to prevent keeping vertex attributes around in VGPRs
+// unfortunately I don't have that extension and can't test the results
+uint tr[REG_FP_COUNT]; //   16:16 - texture coordinate registers
+
+vec4 unpackRegister(uint packedInput)
+{
+	return unpackUnorm4x8(packedInput);
+}
+
+uint packRegister(vec4 unpackedInput)
+{
+	return packUnorm4x8(unpackedInput);
+}
+
+uint packTexcoordRegister(vec2 unpackedInput)
+{
+	return packHalf2x16(unpackedInput.xy - 0.5);
+}
+
+vec2 read_texcoord_reg(uint i)
+{
+	return unpackHalf2x16(tr[i]).xy + 0.5;
+}
+
+vec4 unpackColorRegister(uint packedInput)
+{
+	return unpackUnorm4x8(packedInput);
+}
+
+uint packColorRegister(vec4 unpackedInput)
+{
+	return packUnorm4x8(unpackedInput);
+}
+
+vec4 read_color_reg(uint i)
+{
+	return unpackColorRegister(v[i]);
+}
+
+vec4 process_reg(vec4 v, uint s_mods)
+{
+	if ((s_mods & SRC_MOD_INVERT) != 0)
+		return 1.0 - v;
+	else if ((s_mods & SRC_MOD_BX2) != 0)
+		v = v * 2.0 + 1.0;
+	else if ((s_mods & SRC_MOD_BIAS) != 0)
+		v -= 0.5;
+	return (s_mods & SRC_MOD_NEGATE) != 0 ? -v : v;
+}
+
+vec4 read_reg(uint s_src)
+{
+	uint s_idx  = (s_src     ) & 0x7;
+	uint s_mods = (s_src >> 3) & 0xF;
+
+	if (s_idx > 5)
+		return process_reg(read_color_reg(s_idx - 6), s_mods);
+	else
+		return process_reg(unpackRegister(r[s_idx]), s_mods);
+}
+
+vec4 read_const(uint s_src)
+{
+	uint s_idx  = (s_src     ) & 0x7;
+	uint s_mods = (s_src >> 3) & 0xF;
+	return process_reg(shaderConstants[s_idx], s_mods);
+}
+
+void write_reg(uint s_dest, vec4 v, uint s_mask)
+{
+	uint s_idx  = (s_dest     ) & 0x7;
+	uint s_mods = (s_dest >> 3) & 0x3;
+
+	if (s_mods == DST_MOD_X2)
+		v *= 2.0;
+	else if (s_mods == DST_MOD_X4)
+		v *= 4.0;
+	else if (s_mods == DST_MOD_D2)
+		v *= 0.5;
+
+	r[s_idx] = (r[s_idx] & ~s_mask) | (packRegister(v) & s_mask);
+}
+
+vec4 read_immediate(uint idx)
+{
+	float immmmm[8] = float[](
+		-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0, 4.0
+	);
+	return vec4(immmmm[idx]);
+}
+
+vec4 read_src0(uint idx, uint flags)
+{
+	if ((flags & SRC_OPT_SRC0_IMM) != 0)
+		return read_immediate(idx);
+	else if ((flags & SRC_OPT_SRC0_CONST) != 0)
+		return read_const(idx);
+	else
+		return read_reg(idx);
+}
+
+vec4 read_src1(uint idx, uint flags)
+{
+	if ((flags & SRC_OPT_SRC1_IMM) != 0)
+		return read_immediate(idx);
+	else if ((flags & SRC_OPT_SRC1_CONST) != 0)
+		return read_const(idx);
+	else
+		return read_reg(idx);
+}
+
+#endif
+
+#endif

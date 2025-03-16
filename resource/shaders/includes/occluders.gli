@@ -1,3 +1,5 @@
+// occluder/shadow functionality
+
 #include "uniforms.gli"
 #include "math.gli"
 #include "clustering.gli"
@@ -38,87 +40,6 @@ void calc_shadow(inout float shadow, uint occluder_index, vec3 pos, uint normal)
 
 	float integralSolidAngle = ndotl * solidAngle * falloff;
 	shadow *= 1.0 - integralSolidAngle;
-}
-
-
-vec4 CalculateIndirectShadows(uint bucket_index, vec3 pos, vec3 normal)
-{
-	vec4 shadowing = vec4(normal.xyz, 1.0);
-	float overdraw = 0.0;
-
-	uint first_item = firstOccluder;
-	uint last_item = first_item + numOccluders - 1u;
-	uint first_bucket = first_item / 32u;
-	uint last_bucket = min(last_item / 32u, max(0u, CLUSTER_BUCKETS_PER_CLUSTER - 1u));
-	for (uint bucket = first_bucket; bucket <= last_bucket; ++bucket)
-	//for (int occluder_index = 0; occluder_index < numOccluders; ++occluder_index)
-	{
-		uint bucket_bits = uint(texelFetch(clusterBuffer, int(bucket_index + bucket)).x);
-		while(bucket_bits != 0u)
-		{
-			uint bucket_bit_index = uint(findLSB(bucket_bits));
-			uint occluder_index = bucket * 32u + bucket_bit_index;
-			bucket_bits ^= (1u << bucket_bit_index);
-			
-			if (occluder_index >= first_item && occluder_index <= last_item)
-			{
-				overdraw += 1.0;				
-				//occluder occ = occluders[occluder_index];
-
-				occluder occ = occluders[occluder_index - first_item];
-
-				//vec3 direction = (occ.position.xyz - pos.xyz);
-				//float len = length(direction);
-				//float rcpLen = len > 1e-6 ? 1.0 / len : 0.0;
-				//
-				//// the radius is the total range of the effect
-				//float radius = occ.position.w * sqrt(occ.position.w);// * 0.5 / 3.14159;
-				//
-				//float heightAboveHorizon = dot(normal, direction);	
-				//float cosAlpha = dot( normal, direction * rcpLen );
-				//
-				//float horizonScale = clamp((heightAboveHorizon + radius) / (2.0 * radius), 0.0, 1.0);
-				//float factor = radius / len;
-				//float occlusion = cosAlpha * (factor * factor) * horizonScale;
-				//
-				//shadowing.w *= 1.0 - occlusion;
-				//shadowing.xyz -= direction * occlusion;
-
-				vec3 direction = (occ.position.xyz - pos.xyz);
-				float len = length(occ.position.xyz - pos.xyz);
-				if (len >= occ.position.w)
-					continue;
-				
-				float rcpLen = len > 1e-6 ? 1.0 / len : 0.0;
-				direction *= rcpLen;
-				
-				float cosTheta = dot(normal, direction);
-				if(cosTheta <= 0.0)
-					continue;
-				
-				// simplified smoothstep falloff, equivalent to smoothstep(0, occ.position.w, occ.position.w - len)
-				float falloff = clamp((occ.position.w - len) / occ.position.w, 0.0, 1.0);
-				//falloff = falloff * falloff * (3.0 - 2.0 * falloff);
-				if(falloff <= 0.0)
-					continue;
-				
-				float solidAngle = (1.0 - cos(atanFast(occ.position.w * rcpLen)));
-				if(solidAngle <= 0.0)
-					continue;
-				
-				float integralSolidAngle = cosTheta * solidAngle * falloff;
-				shadowing.w *= 1.0 - integralSolidAngle;
-				shadowing.xyz -= direction * integralSolidAngle;// * 0.5;
-			}
-			else if (occluder_index > last_item)
-			{
-				bucket = CLUSTER_BUCKETS_PER_CLUSTER;
-				break;
-			}
-		}
-	}
-	shadowing.xyz = normalize(shadowing.xyz);
-	return shadowing;
 }
 
 #endif

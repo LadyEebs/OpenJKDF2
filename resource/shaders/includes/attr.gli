@@ -1,0 +1,35 @@
+// common vertex attribute layout
+
+#include "defines.gli"
+
+#ifndef ATTR_H
+#define ATTR_H
+
+#ifdef VERTEX_SHADER
+
+// input assembler attributes
+in vec3 coord3d;	// vertex position
+in vec4 v_normal;	// vertex normal
+in vec4 v_color[2];	// up to 2 vertex colors
+in vec4 v_uv[4];	// up to 4 texcoords
+
+// attributes are exported
+#define VAPI out
+
+#else
+
+// attributes are imported
+#define VAPI in
+
+#endif
+
+VAPI vec4 f_color[COLOR_SETS];
+
+VAPI vec3 f_uv[UV_SETS];
+
+VAPI vec4 f_coord;
+VAPI vec3 f_normal;
+
+VAPI float f_lodbias;
+
+#endif

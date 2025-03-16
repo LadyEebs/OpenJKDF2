@@ -6,92 +6,10 @@
 #include "decals.gli"
 #include "occluders.gli"
 #include "textures.gli"
+#include "texgen.gli"
 #include "framebuffer.gli"
-
-in vec4 f_color[2];
-
-#ifdef REFRACTION
-in vec3 f_uv[4];
-#else
-in vec3 f_uv[1];
-#endif
-
-in vec4 f_coord;
-in vec3 f_normal;
-
-flat in float f_lodbias;
-
-const float f_light = 0.0;
-
-//noperspective in vec2 f_uv_affine;
-
+#include "attr.gli"
 #include "vm.gli"
-
-bool ceiling_intersect(vec3 pos, vec3 dir, vec3 normal, vec3 center, inout float t)
-{
-	float denom = dot(dir, normal);
-	if (abs(denom) > 1e-6)
-	{
-		t = dot(center - pos, normal) / denom;
-		if (t >= 0.0 && t < 1000.0)
-		{
-			return true;
-		}
-	}
-	return false;
-}
-
-vec2 do_ceiling_uv()//inout vec3 viewPos)
-{
-	vec3 ray_dir = normalize(-f_coord.xyz);//viewPos);
-	vec3 view_ceiling = (viewMatrix * vec4(texgen_params.xyz, 1.0)).xyz;
-	vec3 view_norm = mat3(viewMatrix) * vec3(0,0,-1);
-
-	float tmp = 0.0;
-	if (!ceiling_intersect(vec3(0.0), ray_dir, view_norm, view_ceiling.xyz, tmp))
-		tmp = 1000.0;
-
-    vec3 sky_pos = tmp * ray_dir + vec3(0.0);
-	
-	//viewPos.y = sky_pos.y;
-
-	vec2 uv = sky_pos.xy * 16.0;
-
-	vec4 proj_sky = projMatrix * vec4(sky_pos.xyz, 1.0);
-	
-	return (uv + uv_offset[0].xy) / texsize.xy;
-}
-
-vec2 do_horizon_uv()
-{
-	vec2 projXY = vec2(0.5,-0.5) * (gl_FragCoord.xy / iResolution.xy);
-	projXY = projXY.xy * iResolution.xy * (texgen_params.x / gl_FragCoord.w);
-
-	vec2 uv;
-	uv.x = projXY.x * texgen_params.y + (projXY.y * -texgen_params.z);
-	uv.y = projXY.y * texgen_params.y + (projXY.x *  texgen_params.z);
-	
-	return (uv + uv_offset[0].xy) / texsize.xy;
-}
-
-// fixme
-vec3 do_texgen(in vec3 uv)//, inout vec3 viewPos)
-{
-	if(texgen == 1) // 1 = RD_TEXGEN_HORIZON
-	{
-		uv.xy = do_horizon_uv();
-		uv.z = 0.0;
-	}
-	else if(texgen == 2) // 2 = RD_TEXGEN_CEILING
-	{
-		uv.xy = do_ceiling_uv();//viewPos);
-		uv.z = 0;
-	}
-	return uv.xyz;
-}
-
-layout(location = 0) out vec4 fragColor;
-layout(location = 1) out vec4 fragGlow;
 
 float upsample_ssao(in vec2 texcoord, in float linearDepth)
 {
@@ -113,7 +31,7 @@ float upsample_ssao(in vec2 texcoord, in float linearDepth)
 
 	// reject samples that have depth discontinuities
 	vec4 diff = abs(depths / linearDepth - 1.0) * 32.0;
-	vec4 weights = clamp(1.0 - diff, vec4(0.0), vec4(1.0));
+	vec4 weights = sat4(1.0 - diff);
 
 	// total weight
 	float totalWeight = weights.x + weights.y + weights.z + weights.w;
@@ -125,47 +43,11 @@ float upsample_ssao(in vec2 texcoord, in float linearDepth)
 	return dot(weights / totalWeight, values);
 }
 
-float Schlick(float k, float costh)
-{
-    return (1.0 - k * k) / (4.0 * 3.141592 * pow(1.0 - k * costh, 2.0));
-}
-
 void calc_lod_bias()
 {
 	uint cluster = compute_cluster_index(gl_FragCoord.xy, f_coord.y) * CLUSTER_BUCKETS_PER_CLUSTER;
 	c_l = (cluster & 0xFFFF) | packHalf2x16(vec2(0.0, f_lodbias));
 }
-
-//void calc_fog()
-//{
-//	fog = 0;
-//#ifdef FOG
-//#ifndef REFRACTION // tmp, fixme
-//	if(fogEnabled > 0)
-//	{
-//		vec3 viewDir = normalize(-f_coord.xyz);
-//	
-//		float clipDepth = texelFetch(cliptex, ivec2(gl_FragCoord.xy), 0).r;
-//
-//		float distToCam = max(0.0, f_coord.w * 128.0 - clipDepth) * fastRcpNR1(-viewDir.y);
-//		float fog_amount = clamp((distToCam - fogStart) * fastRcpNR1(fogEnd - fogStart), 0.0, 1.0);
-//	
-//		vec3 fog_color = fogColor.rgb;
-//	
-//		// fog light scatter
-//		if(fogLightDir.w > 0.0)
-//		{
-//			float k = fogAnisotropy;
-//			float c = 1.0 - k * dot(fogLightDir.xyz, viewDir.xyz);
-//			fog_color *= (1.0 - k * k) * fastRcpNR0(c * c);
-//			//fog_color *= fastRcpNR0(1.0 + fog_color);
-//		}
-//	
-//		fog = packUnorm4x8(vec4(fog_color.rgb, fog_amount * fogColor.a));
-//	}
-//#endif
-//#endif
-//}
 
 // packs light results into color0 and color1
 void calc_light()
@@ -173,9 +55,9 @@ void calc_light()
 	v[0] = 0;
 	v[1] = 0;
 
-	vec3 viewPos = vec3(unpackHalf2x16(vpos.x), unpackHalf2x16(vpos.y).x); // f_coord.xyz;
-	vec3 view = normalize(-viewPos.xyz);
-	vec3 normal = normalize(f_normal.xyz);
+	vec3 viewPos   = vec3(unpackHalf2x16(vpos.x), unpackHalf2x16(vpos.y).x); // f_coord.xyz;
+	vec3 view      = normalize(-viewPos.xyz);
+	vec3 normal    = normalize(f_normal.xyz);
 	vec3 reflected = reflect(-view, normal);
 	
 	float fog = 0.0;
@@ -185,7 +67,7 @@ void calc_light()
 		float clipDepth = 0;//texelFetch(cliptex, ivec2(gl_FragCoord.xy), 0).r;
 
 		float distToCam = max(0.0, unpackHalf2x16(vpos.y).y * 128.0 - clipDepth) * fastRcpNR1(-view.y);
-		fog = clamp((distToCam - fogStart) * fastRcpNR1(fogEnd - fogStart), 0.0, 1.0);
+		fog = sat1((distToCam - fogStart) * fastRcpNR1(fogEnd - fogStart));
 	}
 #endif
 
@@ -195,24 +77,6 @@ void calc_light()
 	v[1] = packColorRegister(vec4(f_color[1].rgb, fog));
 
 #ifdef UNLIT
-	/*if (lightMode == 0) // fully lit
-	{
-		uint v0 = packColorRegister(vec4(light_mult)) & 0x00FFFFFF;
-
-		v[0] = (v[0] & 0xFF000000) | v0;
-		v[1] = (v[1] & 0xFF000000) | v0;
-	}
-	else if (lightMode == 1) // not lit
-	{
-		v[0] = (v[0] & 0xFF000000);
-		v[1] = (v[1] & 0xFF000000);
-	}
-	else // "diffuse"/vertex lit
-	{
-		v[0] = packColorRegister(f_color[0]);
-		v[1] = packColorRegister(vec4(f_color[1].rgb, fog));
-	}*/
-
 	if (lightMode == 0) // fully lit
 	{
 		v[0] = packColorRegister(vec4(vec3(light_mult), f_color[0].w));
@@ -327,7 +191,7 @@ void calc_light()
 		result.diffuse = packF2x11_1x10(unpackF2x11_1x10(result.diffuse) * shadow);
 
 		//float ndotv = dot(normal.xyz, view.xyz);
-		//float specAO = mix(ao * ao, 1.0, clamp(-0.3 * ndotv * ndotv, 0.0, 1.0));
+		//float specAO = mix(ao * ao, 1.0, sat1(-0.3 * ndotv * ndotv));
 		result.specular = packF2x11_1x10(unpackF2x11_1x10(result.specular) * shadow);
 	}
 #endif
@@ -378,60 +242,8 @@ void calc_decals()
 
 				if (decal_index >= s_first_item && decal_index <= s_last_item)
 				{
-					decal dec = decals[decal_index - s_first_item];
-
-					vec3 viewPos = unpackHalf4x16(vpos).xyz; // f_coord.xyz;
-					vec3 objectPosition = vec3(transform44(dec.invDecalMatrix, viewPos.xyz));				
-					vec3 falloff        = (0.5) - abs(objectPosition.xyz);
-					if( any(lessThanEqual(falloff, vec3(0.0))) )
-						continue;
-				
-					vec2 decalTexCoord = objectPosition.xz + (0.5);
-					decalTexCoord         = decalTexCoord.xy * dec.uvScaleBias.zw + dec.uvScaleBias.xy;
-				
-					vec4 decalColor = vec4(textureLod(decalAtlas, decalTexCoord, 0));
-					if((dec.flags & 0x8u) == 0x8u) // rgb as alpha
-						decalColor.a = max(decalColor.r, max(decalColor.g, decalColor.b));
-
-					if(decalColor.a < (0.001))
-						continue;
-				
-					decalColor.rgb *= vec3(dec.color.rgb);
-				
-					if((dec.flags & 0x2u) == 0x2u) // heat
-					{
-						decalColor.rgb = (4.0) * vec3(textureLod(blackbodyTex, decalColor.r, 0.0).rgb);
-						//decalColor.rgb = blackbody(decalColor.r);
-						
-						vec4 glow = unpackRegister(r[1]);
-						glow.rgb     = decalColor.rgb * (255.0) + glow.rgb;
-						r[1]         = packRegister(glow);
-					}
-
-					//decalColor.rgb *= (255.0);
-				
-					// attenuate when facing away from the decal direction
-					float edgeFactor = clamp(abs(objectPosition.z), (0.0), (1.0));
-					edgeFactor      *= edgeFactor;
-					edgeFactor      *= edgeFactor;
-					edgeFactor      *= edgeFactor;
-					edgeFactor       = (1.0) - edgeFactor;
-
-					vec4 color = unpackRegister(r[0]);
-
-					if((dec.flags & 0x4u) == 0x4u) // additive
-					{
-						color.rgb = edgeFactor * decalColor.rgb + color.rgb;
-					}
-					else
-					{
-						color.rgb = mix(color.rgb, decalColor.rgb, decalColor.w * edgeFactor);
-
-						//color.rgb = color.rgb * (1.0 - decalColor.w) + decalColor.rgb * decalColor.w;
-						//color.w *= 1.0 - decalColor.w;
-					}
-
-					r[0] = packRegister(color);
+					vec3 viewPos = unpackHalf4x16(vpos).xyz;
+					calc_decal(r[0], r[1], decal_index - s_first_item, viewPos);
 				}
 				//else if (decal_index > last_item)
 				//{
@@ -443,6 +255,9 @@ void calc_decals()
 	}
 }
 
+layout(location = 0) out vec4 fragColor;
+layout(location = 1) out vec4 fragGlow;
+
 void main(void)
 {
 	mat3 tbn    = construct_tbn(f_uv[0].xy / f_uv[0].z, f_coord.xyz);
@@ -451,7 +266,7 @@ void main(void)
 	vpos        = packHalf4x16(f_coord);
 
 	// setup texcoord registers, from here out don't directly access f_uv
-	//tr[0] = packTexcoordRegister(do_texgen(f_uv[0].xyz / f_uv[0].z).xy);
+	//tr[0] = packTexcoordRegister(do_texgen(f_uv[0].xyz / f_uv[0].z, f_coord.xyz, gl_FragCoord.xy, gl_FragCoord.w).xy);
 
 	tr[0] = packTexcoordRegister(f_uv[0].xy / f_uv[0].z);
 #ifdef REFRACTION
@@ -476,12 +291,8 @@ void main(void)
 	// blend in the decals
 	calc_decals();
 
-	// unpack output registers
+	// unpack color and do fog and whatever else
 	vec4 outColor = unpackRegister(r[0]); // unpack r0
-	fragGlow = vec4(unpackRegister(r[1])); // unpack r1
-
-	// apply glow multiplier
-	fragGlow.rgb *= emissiveFactor.w;
 
 	//uvec2 crd = uvec2(floor(gl_FragCoord.xy));
 	//float dither = dither_value_float(crd);// texelFetch(dithertex, ivec2(gl_FragCoord.xy) & ivec2(3), 0).r;
@@ -501,7 +312,7 @@ void main(void)
 
 	// todo: make ditherMode a per-rt thing
 	// dither the output if needed
-	outColor.rgb = clamp(outColor.rgb * invlightMult, vec3(0.0), vec3(1.0));
+	outColor.rgb = sat3(outColor.rgb * invlightMult);
 
 #ifdef REFRACTION
 	//vec3 localViewDir = normalize(-f_coord.xyz);
@@ -528,23 +339,19 @@ void main(void)
 	
 	//if ((aoFlags & 0x4) != 0x4)
 	{
-		float waterFogAmount = clamp(waterDepth / (2.0), 0.0, 1.0);
+		float waterFogAmount = sat1(waterDepth / (2.0));
 
 		vec3 half_color = texgen_params.rgb * 0.5;
 		vec3 waterFogColor = texgen_params.rgb - (half_color.brr + half_color.ggb);
-
-		//if(fogLightDir.w > 0.0)
-			///waterFogColor *= 4.0 * 3.141592 * Schlick(0.35, dot(fogLightDir.xyz, localViewDir));
-			//waterFogColor *= textureLod(dithertex, vec2(0.35, dot(fogLightDir.xyz, localViewDir)*0.5+0.5), 0.0).r;
 
 		if ( any( greaterThan(waterFogColor, vec3(0.0)) ) )
 			refr = mix(refr, waterFogColor, waterFogAmount);
 	}
 		
-	vec3 tint = texgen_params.rgb * clamp(waterDepth, 0.0, 1.0);
+	vec3 tint = texgen_params.rgb * sat1(waterDepth);
 	vec3 half_tint = tint.rgb * 0.5;
 	vec3 tint_delta = tint.rgb - (half_tint.brr + half_tint.ggb);
-	refr = clamp(tint_delta * refr + refr, vec3(0.0), vec3(1.0));
+	refr = sat3(tint_delta * refr + refr);
 
 	float texalpha = 90.0 / 255.0;
 
@@ -554,6 +361,7 @@ void main(void)
 #endif
 
 	fragColor.rg = subsample(vec4(outColor)).rg;
+	fragColor.b = 0;
 	fragColor.a = outColor.a;
 
 	// alpha testing
@@ -574,7 +382,13 @@ void main(void)
 	//	discard;
 //#endif
 
+	// unpack glow and output
+	fragGlow = vec4(unpackRegister(r[1])); // unpack r1
+
+	// apply glow multiplier
+	fragGlow.rgb *= emissiveFactor.w;
+
 	// note we subtract instead of add to avoid boosting blacks
 	//fragGlow.rgb = min(fragGlow.rgb + (-dither), vec3(1.0));
-	fragGlow.rgb = clamp(fragGlow.rgb, vec3(0.0), vec3(1.0));
+	fragGlow.rgb = sat3(fragGlow.rgb);
 }

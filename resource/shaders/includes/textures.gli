@@ -1,3 +1,5 @@
+// texture utilities
+
 #ifndef TEXTURES_H
 #define TEXTURES_H
 
@@ -71,6 +73,71 @@ vec4 tex_6x6(sampler2D s, vec2 uv)
 	return Color;
 }
 #endif
+
+// standard texture sample
+vec4 load_tex(in sampler2D s, in vec2 tc, float lodbias)
+{
+	if (tex_mode == TEX_MODE_TEST)
+		return vec4(fillColor);
+	return texture(s, tc.xy, lodbias).rgba;
+}
+
+// standard texture sample with emissive multiplier
+vec4 load_tex_light(in sampler2D s, in vec2 tc, in float light, float lodbias)
+{
+	if (tex_mode == TEX_MODE_TEST)
+		return vec4(fillColor.rgb, 0.0);
+	return sat4(
+		texture(s, tc.xy, lodbias).rgba * vec4(emissiveFactor.rgb, 0.0)
+	);
+}
+
+
+/*vec2 steep_parallax(in sampler2D s, in vec2 uv, vec3 view_dir)
+{
+	if(abs(displacement_factor) <= 1e-4)
+		return uv.xy;
+
+	const float min_layers = float(32.0);
+    const float max_layers = float(128.0);
+    float num_layers = mix(max_layers, min_layers, abs(view_dir.z));
+	float inv_num_layers = float(1.0) / num_layers;
+
+    float layer_depth = inv_num_layers;
+    float current_layer_depth = float(0.0);
+    vec2 shift_per_layer = (view_dir.xy / (view_dir.z)) * displacement_factor;
+	vec2 d_tc = shift_per_layer * inv_num_layers;
+
+    vec2 current_tc = uv.xy;
+    float current_sample = textureLod(s, current_tc, 0).r;
+
+    while(current_layer_depth < current_sample)
+	{
+        current_tc -= d_tc;
+        current_sample = textureLod(s, current_tc, 0).r;
+        current_layer_depth += layer_depth;
+    }
+
+    vec2 prev_tc = current_tc + d_tc;
+
+    float after_col_depth = current_sample - current_layer_depth;
+    float before_col_depth = float(textureLod(s, prev_tc, 0).r) - current_layer_depth + layer_depth;
+
+    float a = after_col_depth / (after_col_depth - before_col_depth);
+    vec2 adj_tc = mix(current_tc, prev_tc, a);
+
+    return adj_tc;
+}*/
+
+vec2 parallax(in sampler2D s, in vec2 uv, vec3 view_dir)
+{
+	if(abs(displacement_factor) <= float(1e-4))
+		return uv.xy;
+
+	float height = textureLod(s, uv.xy, 0).r * displacement_factor;
+
+	return view_dir.xy * height + uv.xy;
+}
 
 mat3 construct_tbn(vec2 uv, vec3 pos)
 {

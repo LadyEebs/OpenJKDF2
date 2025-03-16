@@ -1,0 +1,77 @@
+// instruction set for simple dx8 style shader VM
+//
+// all instruction reads and operations are dynamically uniform/wave invariant (scalar ops on AMD)
+// everything reflecting that intent is prefixed with an s_
+
+#include "defines.gli"
+#include "uniforms.gli"
+
+#ifndef ISA_H
+#define ISA_H
+
+#ifdef FRAGMENT_SHADER
+
+// arithmetic op codes, must match std3D_ShaderAluOp
+// todo: pass these into the code so they always match the enum
+#define OP_NOP		 0	// no op
+#define OP_ADD		 1	// addition
+#define OP_CMP       2  // compare
+#define OP_CND       3  // condition
+#define OP_DIV       4  // division
+#define OP_DP3		 5	// dot3
+#define OP_DP4		 6	// dot4
+#define OP_LRP		 7	// interpolate
+#define OP_MAD		 8	// multiply add
+#define OP_MAX		 9	// maximum
+#define OP_MIN		10	// minimum
+#define OP_MOV		11	// move
+#define OP_MUL		12	// multiply
+#define OP_POW      13  // power
+
+// texture op codes, must match std3D_ShaderTexOp
+#define OP_TEXCOORD  1  // convert UV to color
+#define OP_TEX		 2	// texture sample
+#define OP_TEXI      3  // texture sample with emissive scale
+#define OP_TEXOPM    4  // offset a UV slot with offset parallax mapping
+
+// source modifiers
+#define SRC_MOD_NONE   0x0 // no modifier
+#define SRC_MOD_NEGATE 0x1 // -x
+#define SRC_MOD_BIAS   0x2 // x - 0.5
+#define SRC_MOD_BX2    0x4 // x * 2 - 1
+#define SRC_MOD_INVERT 0x8 // 1 - x
+
+// source options
+#define SRC_OPT_NONE        0x0 // nothing
+#define SRC_OPT_SRC0_CONST  0x1 // src0 is a constant
+#define SRC_OPT_SRC1_CONST  0x2 // src1 is a constant
+#define SRC_OPT_SRC0_IMM    0x4 // src0 is an immediate value from -1 to 1
+#define SRC_OPT_SRC1_IMM    0x8 // src1 is an immediate value from -1 to 1
+
+// destination modifiers
+#define DST_MOD_NONE 0 // no modifier
+#define DST_MOD_X2   1 // x * 2
+#define DST_MOD_X4   2 // x * 4
+#define DST_MOD_D2   3 // x / 2
+
+// must mirror std3D_buildInstruction
+// note: there isn't really a difference loading uint vs vec4
+//       so we could easily go for a thicker instruction,
+//       could add more complex swizzling, more ops, more modifiers...
+void s_read_instr(uint s_instr, out uint s_op, out uint s_mask, out uint s_dest, out uint s_src0, out uint s_src1, out uint s_src2)
+{
+	s_mask = (s_instr & 0x2);					// bits 0-2	
+	s_op   = (s_instr >>  2) &  0xF;			// bits 2-6
+	s_dest = (s_instr >>  6) & 0x1F;			// bits 6-10
+	s_src0 = (s_instr >> 11) & 0x7F;			// bits 11-18
+	s_src1 = (s_instr >> 18) & 0x7F;			// bits 18-25
+	s_src2 = (s_instr >> 25) & 0x7F;			// bits 25-32
+
+	// compute the write mask
+	// 0xFFFFFFFF, 0x00FFFFFF, or 0xFF000000
+	s_mask = (s_mask == 0) ? 0xFFFFFFFF : (s_mask == 1) ? 0x00FFFFFF : 0xFF000000;
+}
+
+#endif
+
+#endif

@@ -1,3 +1,7 @@
+// math utilities
+
+#include "fastmath.gli"
+
 #ifndef MATH_H
 #define MATH_H
 
@@ -47,16 +51,6 @@ uint pack_argb2101010(vec4 unpackedInput)
 		 | (uint(unpackedInput.a) << 30u);
 }
 
-uvec2 packHalf4x16(vec4 unpackedInput)
-{
-	return uvec2(packHalf2x16(unpackedInput.xy), packHalf2x16(unpackedInput.zw));
-}
-
-vec4 unpackHalf4x16(uvec2 packedInput)
-{
-	return vec4(unpackHalf2x16(packedInput.x), unpackHalf2x16(packedInput.y));
-}
-
 // encoding
 uint encodeHemiUnitVector(vec3 v)
 {
@@ -74,82 +68,24 @@ vec3 decodeHemiUnitVector(uint enc)
 	return normalize(n);
 }
 
-//vec3 decodeHemiUnitVector16(uint enc)
-//{
-//    vec2   v = unpackFloat2x16(enc);
-//	vec2 val = vec2(v.x + v.y, v.x - v.y) * float(0.5);
-//    vec3   n = vec3(val, float(1.0) - (abs(v.x) + abs(v.y)));
-//
-//    return normalize(n);
-//}
-
-vec2 oct_wrap(vec2 v)
-{
-	vec2 signs;
-	signs.x = v.x >= 0.0 ? 1.0 : -1.0;
-	signs.y = v.y >= 0.0 ? 1.0 : -1.0;
-    return (1.0 - abs(v.yx)) * (signs);
-}
-
-vec2 encode_octahedron(vec3 v)
-{
-    v /= abs(v.x) + abs(v.y) + abs(v.z);
-    v.xy = v.z >= 0.0 ? v.xy : oct_wrap(v.xy);
-    return clamp(v.xy * 0.5 + 0.5, vec2(0.0), vec2(1.0));
-}
-
-vec3 decode_octahedron(vec2 p)
-{
-    p = (p * 2.0 - 1.0);
-	vec3 n;
-    n.z = 1.0 - abs(p.x) - abs(p.y);
-    n.xy = n.z >= 0.0 ? p.xy : oct_wrap( p.xy );
-    return normalize(n);
-}
-
 uint encode_octahedron_uint(vec3 v)
 {
-    //return packHalf2x16(encode_octahedron(v));
 	v /= abs(v.x) + abs(v.y) + abs(v.z);
-    //v.xy = v.z >= 0.0 ? v.xy : oct_wrap(v.xy);	
-	float t = clamp(-v.z, 0.0, 1.0);
+
+	float t = sat1(-v.z);
 	return packHalf2x16(v.xy + vec2(v.x >= 0.0 ? t : -t, v.y >= 0.0 ? t : -t));
 }
 
 vec3 decode_octahedron_uint(uint p)
 {
-    //return decode_octahedron(unpackHalf2x16(p));
 	vec2 v = unpackHalf2x16(p);
-	
-	//vec3 n;
-    //n.z = 1.0 - abs(v.x) - abs(v.y);
-    //n.xy = n.z >= 0.0 ? v.xy : oct_wrap( v.xy );
-    //return normalize(n);
 
 	vec3  n = vec3(v.x, v.y, 1.0 - abs(v.x) - abs(v.y));
-    float t = clamp(-n.z, 0.0, 1.0);
+    float t = sat1(-n.z);
     n.xy   += vec2(n.x >= 0.0 ? -t : t, n.y >= 0.0 ? -t : t);
 
     return normalize(n);
 }
-
-//uint encode_octahedron_uint16(vec3 v)
-//{
-//	v /= abs(v.x) + abs(v.y) + abs(v.z);
-//	float t = clamp(-v.z, float(0.0), float(1.0));
-//	return packFloat2x16(v.xy + vec2(v.x >= float(0.0) ? t : -t, v.y >= float(0.0) ? t : -t));
-//}
-//
-//vec3 decode_octahedron_uint16(uint p)
-//{
-//	vec2 v = vec2(unpackHalf2x16(p));
-//
-//	vec3 n = vec3(v.x, v.y, float(1.0) - abs(v.x) - abs(v.y));
-//    float t = max(-n.z, float(0.0));
-//    n.xy += vec2(n.x >= float(0.0) ? -t : t, n.y >= float(0.0) ? -t : t);
-//
-//    return normalize(n);
-//}
 
 // conversions
 
@@ -253,245 +189,18 @@ vec3 transform44(mat4 m, vec3 a) // transform a vec3 with w = 1
 	return a.x * m[0].xyz + (a.y * m[1].xyz + (a.z * m[2].xyz + m[3].xyz));
 }
 
-// fast math
-
-// https://seblagarde.wordpress.com/2014/12/01/inverse-trigonometric-functions-gpu-optimization-for-amd-gcn-architecture/
-// max absolute error 1.3x10^-3
-// Eberly's odd polynomial degree 5 - respect bounds
-// 4 VGPR, 14 FR (10 FR, 1 QR), 2 scalar
-// input [0, infinity] and output [0, PI/2]
-float atanPos(float x) 
-{ 
-    float t0 = (x < 1.0) ? x : 1.0 / x;
-    float t1 = t0 * t0;
-    float poly = 0.0872929;
-    poly = -0.301895 + poly * t1;
-    poly = 1.0 + poly * t1;
-    poly = poly * t0;
-    return (x < 1.0) ? poly : 1.570796 - poly;
-}
-
-// 4 VGPR, 16 FR (12 FR, 1 QR), 2 scalar
-// input [-infinity, infinity] and output [-PI/2, PI/2]
-float atanFast(float x) 
-{     
-    float t0 = atanPos(abs(x));     
-    return (x < 0.0) ? -t0: t0; 
-}
-
-float atan2Fast(float y, float x)
+// misc
+float Schlick(float k, float costh)
 {
-    return atanFast(y / x) + (y >= 0.0 ? 3.141592 : -3.141592) * (x < 0.0 ? 1.0 : 0.0);
+    return (1.0 - k * k) / (4.0 * 3.141592 * pow(1.0 - k * costh, 2.0));
 }
 
-float acosFast(float x) 
-{ 
-    x = abs(x); 
-    float res = -0.156583 * x + 1.570796; 
-    res *= sqrt(1.0 - x); 
-    return (x >= 0) ? res : 3.141592 - res; 
-}
-
-const uint IEEEScale = 0x4B000000;
-const uint IEEEInvScale = 0x34000000;
-const uint IEEEOffset = 0x42FE0000;
-const uint IEEEScaleOffset = 0x4E7E0000;
-
-
-float fastLog2(float v)
+float simplePhase(vec3 viewDir, vec3 lightDir, float anisotropy)
 {
-    return float(floatBitsToUint(v)) * uintBitsToFloat(IEEEInvScale) - uintBitsToFloat(IEEEOffset);
+	//return textureLod(dithertex, vec2(anisotropy, dot(lightDir.xyz, viewDir) * 0.5 + 0.5), 0.0).r;
+	float k = anisotropy;
+	float c = 1.0 - k * dot(lightDir.xyz, viewDir.xyz);
+	return (1.0 - k * k) * fastRcpNR0(c * c);
 }
-
-float fastExp2(float v)
-{
-    return uintBitsToFloat(uint(v * uintBitsToFloat(IEEEScale) + uintBitsToFloat(IEEEScaleOffset)));
-}
-
-float fastPow(float b, float p)
-{
-    return uintBitsToFloat(uint(p * float(floatBitsToUint(b)) - (p - 1.0) * uintBitsToFloat(IEEEScaleOffset)));
-}
-
-const int IEEE_INT_RCP_CONST_NR0 = 0x7EF311C2;
-const int IEEE_INT_RCP_CONST_NR1 = 0x7EF311C3;
-const int IEEE_INT_RCP_CONST_NR2 = 0x7EF312AC;
-
-const int IEEE_INT_SQRT_CONST_NR0 =  0x1FBD1DF5;
-
-// Biases for global ranges
-// 0-1 or 1-2 specific ranges might improve from different bias
-// Derived from batch testing
-const int IEEE_INT_RCP_SQRT_CONST_NR0        = 0x5f3759df;
-const int IEEE_INT_RCP_SQRT_CONST_NR1        = 0x5F375A86;
-const int IEEE_INT_RCP_SQRT_CONST_NR2        = 0x5F375A86;
-
-// Normalized range [0,1] Constants
-const int IEEE_INT_RCP_CONST_NR0_SNORM       = 0x7EEF370B;
-const int IEEE_INT_SQRT_CONST_NR0_SNORM      = 0x1FBD1DF5;
-const int IEEE_INT_RCP_SQRT_CONST_NR0_SNORM  = 0x5F341A43;
-
-//
-// RCP SQRT
-//
-
-// Approximate guess using integer float arithmetics based on IEEE floating point standard
-float rcpSqrtIEEEIntApproximation(float inX, const int inRcpSqrtConst)
-{
-	int x = floatBitsToInt(inX);
-	x = inRcpSqrtConst - (x >> 1);
-	return intBitsToFloat(x);
-}
-
-float rcpSqrtNewtonRaphson(float inXHalf, float inRcpX)
-{
-	return inRcpX * (-inXHalf * (inRcpX * inRcpX) + 1.5f);
-}
-
-//
-// Using 0 Newton Raphson iterations
-// Relative error : ~3.4% over full
-// Precise format : ~small float
-// 2 ALU
-//
-float fastRcpSqrtNR0(float inX)
-{
-	float  xRcpSqrt = rcpSqrtIEEEIntApproximation(inX, IEEE_INT_RCP_SQRT_CONST_NR0);
-	return xRcpSqrt;
-}
-
-//
-// Using 1 Newton Raphson iterations
-// Relative error : ~0.2% over full
-// Precise format : ~half float
-// 6 ALU
-//
-float fastRcpSqrtNR1(float inX)
-{
-	float  xhalf = 0.5f * inX;
-	float  xRcpSqrt = rcpSqrtIEEEIntApproximation(inX, IEEE_INT_RCP_SQRT_CONST_NR1);
-	xRcpSqrt = rcpSqrtNewtonRaphson(xhalf, xRcpSqrt);
-	return xRcpSqrt;
-}
-
-//
-// Using 2 Newton Raphson iterations
-// Relative error : ~4.6e-004%  over full
-// Precise format : ~full float
-// 9 ALU
-//
-float fastRcpSqrtNR2(float inX)
-{
-	float  xhalf = 0.5f * inX;
-	float  xRcpSqrt = rcpSqrtIEEEIntApproximation(inX, IEEE_INT_RCP_SQRT_CONST_NR2);
-	xRcpSqrt = rcpSqrtNewtonRaphson(xhalf, xRcpSqrt);
-	xRcpSqrt = rcpSqrtNewtonRaphson(xhalf, xRcpSqrt);
-	return xRcpSqrt;
-}
-
-
-//
-// SQRT
-//
-float sqrtIEEEIntApproximation(float inX, const int inSqrtConst)
-{
-	int x = floatBitsToInt(inX);
-	x = inSqrtConst + (x >> 1);
-	return intBitsToFloat(x);
-}
-
-//
-// Using 0 Newton Raphson iterations
-// Relative error : < 0.7% over full
-// Precise format : ~small float
-// 1 ALU
-//
-float fastSqrtNR0(float inX)
-{
-	float  xRcp = sqrtIEEEIntApproximation(inX, IEEE_INT_SQRT_CONST_NR0);
-	return xRcp;
-}
-
-//
-// Use inverse Rcp Sqrt
-// Using 1 Newton Raphson iterations
-// Relative error : ~0.2% over full
-// Precise format : ~half float
-// 6 ALU
-//
-float fastSqrtNR1(float inX)
-{
-	// Inverse Rcp Sqrt
-	return inX * fastRcpSqrtNR1(inX);
-}
-
-//
-// Use inverse Rcp Sqrt
-// Using 2 Newton Raphson iterations
-// Relative error : ~4.6e-004%  over full
-// Precise format : ~full float
-// 9 ALU
-//
-float fastSqrtNR2(float inX)
-{
-	// Inverse Rcp Sqrt
-	return inX * fastRcpSqrtNR2(inX);
-}
-
-//
-// RCP
-//
-
-float rcpIEEEIntApproximation(float inX, const int inRcpConst)
-{
-	int x = floatBitsToInt(inX);
-	x = inRcpConst - x;
-	return intBitsToFloat(x);
-}
-
-float rcpNewtonRaphson(float inX, float inRcpX)
-{
-	return inRcpX * (-inRcpX * inX + 2.0);
-}
-
-//
-// Using 0 Newton Raphson iterations
-// Relative error : < 0.4% over full
-// Precise format : ~small float
-// 1 ALU
-//
-float fastRcpNR0(float inX)
-{
-	float  xRcp = rcpIEEEIntApproximation(inX, IEEE_INT_RCP_CONST_NR0);
-	return xRcp;
-}
-
-//
-// Using 1 Newton Raphson iterations
-// Relative error : < 0.02% over full
-// Precise format : ~half float
-// 3 ALU
-//
-float fastRcpNR1(float inX)
-{
-	float  xRcp = rcpIEEEIntApproximation(inX, IEEE_INT_RCP_CONST_NR1);
-	xRcp = rcpNewtonRaphson(inX, xRcp);
-	return xRcp;
-}
-
-//
-// Using 2 Newton Raphson iterations
-// Relative error : < 5.0e-005%  over full
-// Precise format : ~full float
-// 5 ALU
-//
-float fastRcpNR2(float inX)
-{
-	float  xRcp = rcpIEEEIntApproximation(inX, IEEE_INT_RCP_CONST_NR2);
-	xRcp = rcpNewtonRaphson(inX, xRcp);
-	xRcp = rcpNewtonRaphson(inX, xRcp);
-	return xRcp;
-}
-
 
 #endif

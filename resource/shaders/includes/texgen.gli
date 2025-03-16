@@ -1,0 +1,65 @@
+// texcoord utilities
+
+#include "uniforms.gli"
+
+#ifndef TEXGEN_H
+#define TEXGEN_H
+
+bool ceiling_intersect(vec3 pos, vec3 dir, vec3 normal, vec3 center, inout float t)
+{
+	float denom = dot(dir, normal);
+	if (abs(denom) > 1e-6)
+	{
+		t = dot(center - pos, normal) / denom;
+		if (t >= 0.0 && t < 1000.0)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+vec2 do_ceiling_uv(vec3 viewPos)
+{
+	vec3 ray_dir = normalize(-viewPos);
+	vec3 view_ceiling = (viewMatrix * vec4(texgen_params.xyz, 1.0)).xyz;
+	vec3 view_norm = mat3(viewMatrix) * vec3(0,0,-1);
+
+	float tmp = 0.0;
+	if (!ceiling_intersect(vec3(0.0), ray_dir, view_norm, view_ceiling.xyz, tmp))
+		tmp = 1000.0;
+
+    vec3 sky_pos  = tmp * ray_dir + vec3(0.0);
+	vec2 uv       = sky_pos.xy * 16.0;
+	return (uv + uv_offset[0].xy) / texsize.xy;
+}
+
+vec2 do_horizon_uv(vec2 fc, float depth)
+{
+	vec2 projXY = vec2(0.5,-0.5) * fc.xy;
+	projXY = projXY.xy * (texgen_params.x / depth);
+
+	vec2 uv;
+	uv.x = projXY.x * texgen_params.y + (projXY.y * -texgen_params.z);
+	uv.y = projXY.y * texgen_params.y + (projXY.x *  texgen_params.z);
+	
+	return (uv + uv_offset[0].xy) / texsize.xy;
+}
+
+// fixme
+vec3 do_texgen(in vec3 uv, in vec3 viewPos, in vec2 fc, in float depth)
+{
+	if(texgen == 1) // 1 = RD_TEXGEN_HORIZON
+	{
+		uv.xy = do_horizon_uv(fc, depth);
+		uv.z = 0.0;
+	}
+	else if(texgen == 2) // 2 = RD_TEXGEN_CEILING
+	{
+		uv.xy = do_ceiling_uv(viewPos);
+		uv.z = 0;
+	}
+	return uv.xyz;
+}
+
+#endif
