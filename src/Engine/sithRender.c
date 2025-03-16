@@ -1518,10 +1518,10 @@ void sithRender_DrawSurface(sithSurface* surface)
 					rdTexCoord2i(RD_TEXCOORD2, uv->x * 0.35, uv->y * 0.35);
 					rdTexCoord2i(RD_TEXCOORD3, uv->x * 0.25, uv->y * 0.25);
 
-					rdTexOffset(RD_TEXCOORD0, 0.2 * sithTime_curSeconds, 0.2 * sithTime_curSeconds);
-					rdTexOffset(RD_TEXCOORD1,-0.1 * sithTime_curSeconds,-0.1 * sithTime_curSeconds);
-					rdTexOffset(RD_TEXCOORD2, 0.2 * sithTime_curSeconds, 0.2 * sithTime_curSeconds);
-					rdTexOffset(RD_TEXCOORD3,-0.1 * sithTime_curSeconds,-0.1 * sithTime_curSeconds);
+					rdTexOffset(RD_TEXCOORD0,stdMath_Frac( 0.2 * sithTime_curSeconds),stdMath_Frac( 0.2 * sithTime_curSeconds));
+					rdTexOffset(RD_TEXCOORD1,stdMath_Frac(-0.1 * sithTime_curSeconds),stdMath_Frac(-0.1 * sithTime_curSeconds));
+					rdTexOffset(RD_TEXCOORD2,stdMath_Frac( 0.2 * sithTime_curSeconds),stdMath_Frac( 0.2 * sithTime_curSeconds));
+					rdTexOffset(RD_TEXCOORD3,stdMath_Frac(-0.1 * sithTime_curSeconds),stdMath_Frac(-0.1 * sithTime_curSeconds));
 				}
 			}
 
@@ -1535,6 +1535,8 @@ void sithRender_DrawSurface(sithSurface* surface)
 
 	rdAmbientFlags(sithRender_aoFlags);
 	
+	rdSetShader(0);
+
 	rdTexGen(RD_TEXGEN_NONE);
 	rdTexGenParams(0, 0, 0, 0);
 	rdTexOffset(RD_TEXCOORD0, 0, 0);

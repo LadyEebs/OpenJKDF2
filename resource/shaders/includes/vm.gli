@@ -77,10 +77,10 @@
 
 // registers
 uint  c_l;				//       16:16 - cluster index | lod bias (float)
-uvec2 vpos;				// 16:16:16:16 - view space position + depth
 uint  vdir;				//       16:16 - tangent space view dir
 uint  r[REG_COUNT];     //     8:8:8:8 - temp registers (for color math)
 uint  v[2];				//     8:8:8:8 - color registers
+uvec2 vpos;				// 16:16:16:16 - view space position + depth
 
 // something like GL_AMD_shader_explicit_vertex_parameter could
 // allow us to prevent keeping vertex attributes around in VGPRs
