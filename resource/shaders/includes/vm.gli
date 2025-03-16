@@ -46,21 +46,21 @@
 #define OP_TEXI      3  // texture sample with emissive scale
 #define OP_TEXOPM    4  // offset a UV slot with offset parallax mapping
 
-// source register modifiers, only applicable to alu instructions
+// source modifiers
 #define SRC_MOD_NONE   0x0 // no modifier
 #define SRC_MOD_NEGATE 0x1 // -x
 #define SRC_MOD_BIAS   0x2 // x - 0.5
 #define SRC_MOD_BX2    0x4 // x * 2 - 1
 #define SRC_MOD_INVERT 0x8 // 1 - x
 
-// source register options
+// source options
 #define SRC_OPT_NONE        0x0 // nothing
 #define SRC_OPT_SRC0_CONST  0x1 // src0 is a constant
 #define SRC_OPT_SRC1_CONST  0x2 // src1 is a constant
 #define SRC_OPT_SRC0_IMM    0x4 // src0 is an immediate value from -1 to 1
 #define SRC_OPT_SRC1_IMM    0x8 // src1 is an immediate value from -1 to 1
 
-// destination register modifiers
+// destination modifiers
 #define DST_MOD_NONE 0 // no modifier
 #define DST_MOD_X2   1 // x * 2
 #define DST_MOD_X4   2 // x * 4
@@ -295,7 +295,9 @@ void run_tex_stage()
 		case OP_TEX:
 			write_reg(
 				s_dest,
-				load_tex(textures[s_src0], read_texcoord_reg(s_src1)),
+				process_reg(
+					load_tex(textures[s_src0], read_texcoord_reg(s_src1)),
+					s_src2),
 				s_mask
 			);
 			break;
@@ -303,7 +305,9 @@ void run_tex_stage()
 		case OP_TEXI:
 			write_reg(
 				s_dest,
-				load_tex_light(textures[s_src0], read_texcoord_reg(s_src1), float(0.0)),
+				process_reg(
+					load_tex_light(textures[s_src0], read_texcoord_reg(s_src1), float(0.0)),
+					s_src2),
 				s_mask
 			);
 			break;
@@ -311,7 +315,7 @@ void run_tex_stage()
 		case OP_TEXCOORD:
 			write_reg(
 				s_dest,
-				vec4(read_texcoord_reg(s_src0), 0, 0),
+				process_reg(vec4(read_texcoord_reg(s_src0), 0, 0), s_src1),
 				s_mask
 			);
 			break;
