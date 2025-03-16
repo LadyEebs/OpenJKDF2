@@ -52,15 +52,15 @@ vec3 CalculateAmbientSpecular(float roughness, vec3 normal, vec3 view, vec3 refl
 	for(int sg = 0; sg < 8; ++sg)
 	{
 		vec4 sgCol = ambientSG[sg];//unpack_argb2101010(ambientSG[sg]);
-		vec3 ambientColor = mix(v_color[0].rgb, sgCol.xyz, sgCol.w); // use vertex color if no ambientSG data
+		vec3 ambientColor = mix(v_color[0].bgr, sgCol.xyz, sgCol.w); // use vertex color if no ambientSG data
 	
 		float umLength = length(sharpness * reflected + (ambientSGBasis[sg].w * ambientSGBasis[sg].xyz));
 		float attenuation = 1.0 - exp(-2.0 * umLength);
 		float nDotL = clamp(dot(normal.xyz, reflected), 0.0, 1.0);
 	
 		// todo: can we roll this into something like the direct light approx?
-		//float D = (2.0 * 3.141592) * nDotL * attenuation * fastRcpNR1(umLength);
-		float D = (2.0 * nDotL) * attenuation * fastRcpNR1(umLength);
+		float D = (2.0 * 3.141592) * nDotL * attenuation * fastRcpNR1(umLength);
+		//float D = (2.0 * nDotL) * attenuation * fastRcpNR1(umLength);
 		
 		float expo = (exp(umLength - sharpness - ambientSGBasis[sg].w) * amplitude);
 
@@ -109,11 +109,11 @@ void main(void)
     f_uv[1] = v_uv[1].xyw;
     f_uv[2] = v_uv[2].xyw;
     f_uv[3] = v_uv[3].xyw;
-	//f_uv_nooffset = v_uv[0];
+
 	f_uv[1].xy += uv_offset[1].xy;
 	f_uv[2].xy += uv_offset[2].xy;
 	f_uv[3].xy += uv_offset[3].xy;
-	//f_uv_affine = v_uv[0].xy;
+
 #endif
 
 //#ifdef UNLIT

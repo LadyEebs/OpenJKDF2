@@ -960,6 +960,12 @@ typedef struct std3D_LightingState // todo: pack this
 } std3D_LightingState;
 static_assert(sizeof(std3D_LightingState) == sizeof(uint32_t) * 10, "std3D_TextureState not 40 bytes");
 
+typedef struct std3D_ShaderState
+{
+	// temp
+	uint32_t shaderId;
+} std3D_ShaderState;
+
 typedef struct std3D_TransformState
 {
 	rdMatrix44     modelView;
@@ -983,6 +989,7 @@ typedef struct std3D_DrawCallState
 	std3D_MaterialState     materialState;
 	std3D_TextureState      textureState;
 	std3D_LightingState     lightingState;
+	std3D_ShaderState       shaderState;
 } std3D_DrawCallState;
 
 typedef struct std3D_DrawCall

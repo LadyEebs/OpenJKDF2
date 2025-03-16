@@ -23,28 +23,20 @@ struct light_input
 	uint  normal;	// 16:16 octahedral normal
 	uint  view;		// 16:16 octahedral view vector (ggx)
 	uint  reflected; // 16:16 octahedral reflection vector (phong)
-#ifdef GGX	
 	uint  spec_c;    // 16:16 specular coeffs
-#else
-	float spec_c;
-#endif
 	uint  tint;      // tint rgba
 };
 
-#ifdef GGX	
 uint calc_spec_c(float a)
-#else
-float calc_spec_c(float a)
-#endif
 {
 #ifdef GGX	
 	vec2 coeffs = vec2(a * a, a * float(4.0) + float(2.0));
-	return packHalf2x16(coeffs);
 #else
 	// phong
 	float rcp_a2 = 1.0 / (a * a);
-	return 0.72134752 * rcp_a2 + 0.39674113;
+	vec2 coeffs = vec2(rcp_a2 / 3.141592, 0.72134752 * rcp_a2 + 0.39674113);
 #endif
+	return packHalf2x16(coeffs);
 }
 
 // https://www.unrealengine.com/en-US/blog/physically-based-shading-on-mobile
@@ -98,7 +90,7 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	vec3 lvec = lights[light_index].position.xyz - viewPos.xyz;
 	
 	float dotVector = dot(lvec, lvec);
-	if (dotVector > lights[light_index].radiusSqr)
+	if (dotVector >= lights[light_index].radiusSqr)
 		return;
 
 	float rcpLen = inversesqrt(dotVector);
@@ -135,11 +127,11 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 		return;
 
 	vec3 normal = decode_octahedron_uint(params.normal);
-	float lightMagnitude = clamp( dot(normal.xyz, lvec), 0.0, 1.0 );
+	float lightMagnitude = clamp( dot(normal.xyz, lvec) * intensity, 0.0, 1.0 );
 	//float signedMagnitude = lightMagnitude;
 	//lightMagnitude = max(lightMagnitude, float(0.0)) * intensity;
 
-	vec3 cd = vec3(lightMagnitude * intensity);
+	vec3 cd = vec3(lightMagnitude);
 	//if (lightMode == 5)
 	//{
 	//	// https://www.shadertoy.com/view/dltGWl
@@ -165,11 +157,11 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	}
 
 //#ifdef SPECULAR	
+	vec2 coeffs = unpackHalf2x16(params.spec_c);
 #ifdef GGX	
 	// Unity "Optimizing PBR"
 	// https://community.arm.com/cfs-file/__key/communityserver-blogs-components-weblogfiles/00-00-00-20-66/siggraph2015_2D00_mmg_2D00_renaldas_2D00_slides.pdf
 	// approximated microfacet GGX lobe, fresnel and visibility approximated with ldoth, spec color applied at the end
-	vec2 coeffs = unpackHalf2x16(params.spec_c);
 	vec3  view  = decode_octahedron_uint(params.view);
 	vec3  h     = normalize(lvec + view);
 	float ndoth = clamp(dot(h, normal), float(0.0), float(1.0));
@@ -182,7 +174,7 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	// https://www.unrealengine.com/en-US/blog/physically-based-shading-on-mobile
 	// approximated energy conserving phong lobe, fresnel and spec color must be applied at the end with env_brdf
 	float rdotv  = dot(decode_octahedron_uint(params.reflected), lvec);
-	float d      = exp2( params.spec_c * rdotv + (-params.spec_c) );
+	float d      = coeffs.x * exp2( coeffs.y * rdotv + (-coeffs.y) );
 #endif
 
 	result.specular = packF2x11_1x10((lightMagnitude * d) * lightColor.rgb + unpackF2x11_1x10(result.specular));

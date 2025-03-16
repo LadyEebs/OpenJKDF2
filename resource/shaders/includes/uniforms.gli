@@ -166,8 +166,8 @@ layout(std140) uniform shaderBlock
 	uint  shaderPadding0;
 	uint  shaderTexInstructionCount;
 	uint  shaderInstructionCount;
-	uvec4 shaderTexInstructions[8];
-	uvec4 shaderInstructions[32];
+	uvec4 shaderTexInstructions[2];
+	uvec4 shaderInstructions[8];
 };
 
 // Shader constants buffer

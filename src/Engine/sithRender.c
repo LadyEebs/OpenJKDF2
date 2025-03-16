@@ -1030,13 +1030,15 @@ void sithRender_Clip(sithSector *sector, rdClipFrustum *frustumArg, float a3)
 				//rdVector3 center;
 				//sithSurface_GetCenterRadius(&sector->surfaces[i], &center, &radius);
 
+				float radius = fmax(sector->surfaces[i].radius * 2.0, 0.05f);
+
 				rdVector3 offset;
-				rdVector_Scale3(&offset, &sector->surfaces[i].surfaceInfo.face.normal, sector->surfaces[i].radius * 0.015);
+				rdVector_Scale3(&offset, &sector->surfaces[i].surfaceInfo.face.normal, radius * 0.015);
 				
 				rdVector3 center;
 				rdVector_Add3(&center, &sector->surfaces[i].center, &offset);
 
-				sithRender_aLights[lightIdx].intensity = sector->surfaces[i].radius * 2.0 / rdCamera_pCurCamera->attenuationMin;
+				sithRender_aLights[lightIdx].intensity = radius / rdCamera_pCurCamera->attenuationMin;
 
 				rdCamera_AddLight(rdCamera_pCurCamera, &sithRender_aLights[lightIdx], &center);
 				lightIdx = ++sithRender_numLights;
@@ -1333,6 +1335,21 @@ void sithRender_DrawSurface(sithSurface* surface)
 		isWater = 1;
 	//else if (!(surface->parent_sector->flags & SITH_SECTOR_UNDERWATER) && (surface->surfaceFlags & SITH_SURFACE_WATER || surface->surfaceFlags & SITH_SURFACE_PUDDLE || surface->surfaceFlags & SITH_SURFACE_VERYDEEPWATER))
 		//isWater = 1;
+
+	if (isWater)
+	{
+		rdSetShader(1);
+	}
+	else if (jkPlayer_bEnableJkgm
+		&& surface->surfaceInfo.face.material->textures
+		&& surface->surfaceInfo.face.material->textures->has_jkgm_override)
+	{
+		rdSetShader(2);
+	}
+	else
+	{
+		rdSetShader(0);
+	}		
 
 	int wallCel = surface->surfaceInfo.face.wallCel;
 	rdBindMaterial(surface->surfaceInfo.face.material, wallCel);
@@ -2503,13 +2520,15 @@ void sithRender_UpdateLights(sithSector *sector, float prev, float dist, int dep
 				//rdVector3 center;
 				//sithSurface_GetCenterRadius(&sector->surfaces[i], &center, &radius);
 
+				float radius = fmax(sector->surfaces[i].radius * 2.0, 0.05f);
+
 				rdVector3 offset;
-				rdVector_Scale3(&offset, &sector->surfaces[i].surfaceInfo.face.normal, sector->surfaces[i].radius * 0.015);
+				rdVector_Scale3(&offset, &sector->surfaces[i].surfaceInfo.face.normal, radius * 0.015);
 				
 				rdVector3 center;
 				rdVector_Add3(&center, &sector->surfaces[i].center, &offset);
 
-				sithRender_aLights[sithRender_numLights].intensity = sector->surfaces[i].radius * 2.0 / rdCamera_pCurCamera->attenuationMin;
+				sithRender_aLights[sithRender_numLights].intensity = radius / rdCamera_pCurCamera->attenuationMin;
 
 				rdCamera_AddLight(rdCamera_pCurCamera, &sithRender_aLights[sithRender_numLights], &center);
 				++sithRender_numLights;

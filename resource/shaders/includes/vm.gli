@@ -29,13 +29,12 @@
 #define OP_DP3		 5	// dot3
 #define OP_DP4		 6	// dot4
 #define OP_LRP		 7	// interpolate
-#define OP_LUM       8  // luminance
-#define OP_MAD		 9	// multiply add
-#define OP_MAX		10	// maximum
-#define OP_MIN		11	// minimum
-#define OP_MOV		12	// move
-#define OP_MUL		13	// multiply
-#define OP_POW      14  // power
+#define OP_MAD		 8	// multiply add
+#define OP_MAX		 9	// maximum
+#define OP_MIN		10	// minimum
+#define OP_MOV		11	// move
+#define OP_MUL		12	// multiply
+#define OP_POW      13  // power
 
 // texture op codes, must match std3D_ShaderTexOp
 #define OP_TEXCOORD  1  // convert UV to color
@@ -87,16 +86,11 @@ uint tr[REG_FP_COUNT]; //   16:16 - texture coordinate registers
 vec4 unpackRegister(uint packedInput)
 {
 	return unpackUnorm4x8(packedInput);
-
-//	return vec4((packedInput >> 16u) & 0xFFu, (packedInput >> 8u) & 0xFFu, packedInput & 0xFFu, (packedInput >> 24u) & 0xFFu);
 }
 
 uint packRegister(vec4 unpackedInput)
 {
 	return packUnorm4x8(unpackedInput);
-
-//	unpackedInput = clamp(unpackedInput, vec4(0.0), vec4(255.0));
-//	return (uint(unpackedInput.r) << 16u) | (uint(unpackedInput.g) << 8u) | (uint(unpackedInput.b) << 0u) | (uint(unpackedInput.a) << 24u);
 }
 
 uint packTexcoordRegister(vec2 unpackedInput)
@@ -109,27 +103,19 @@ vec2 read_texcoord_reg(uint i)
 	return unpackHalf2x16(tr[i]).xy + 0.5;
 }
 
-vec4 unpackColorRegister(/*uvec2*/ uint packedInput)
+vec4 unpackColorRegister(uint packedInput)
 {
 	return unpackUnorm4x8(packedInput);
-
-	//return vec4(unpackHalf2x16(packedInput.x), unpackHalf2x16(packedInput.y));
-	//return vec4((packedInput >> 16u) & 0xFFu, (packedInput >> 8u) & 0xFFu, packedInput & 0xFFu, (packedInput >> 24u) & 0xFFu);
 }
 
-/*uvec2*/ uint packColorRegister(vec4 unpackedInput)
+uint packColorRegister(vec4 unpackedInput)
 {
 	return packUnorm4x8(unpackedInput);
-
-//	unpackedInput = clamp(unpackedInput, vec4(0.0), vec4(255.0));
-//	return (uint(unpackedInput.r) << 16u) | (uint(unpackedInput.g) << 8u) | (uint(unpackedInput.b) << 0u) | (uint(unpackedInput.a) << 24u);
 }
 
 vec4 read_color_reg(uint i)
 {
-	return unpackUnorm4x8(v[i]);
-
-//	return unpackColorRegister(v[i]);
+	return unpackColorRegister(v[i]);
 }
 
 vec4 process_reg(vec4 v, uint s_mods)
@@ -176,6 +162,34 @@ void write_reg(uint s_dest, vec4 v, uint s_mask)
 	r[s_idx] = (r[s_idx] & ~s_mask) | (packRegister(v) & s_mask);
 }
 
+vec4 read_immediate(uint idx)
+{
+	float immmmm[8] = float[](
+		-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0, 4.0
+	);
+	return vec4(immmmm[idx]);
+}
+
+vec4 read_src0(uint idx, uint flags)
+{
+	if ((flags & SRC_OPT_SRC0_IMM) != 0)
+		return read_immediate(idx);
+	else if ((flags & SRC_OPT_SRC0_CONST) != 0)
+		return read_const(idx);
+	else
+		return read_reg(idx);
+}
+
+vec4 read_src1(uint idx, uint flags)
+{
+	if ((flags & SRC_OPT_SRC1_IMM) != 0)
+		return read_immediate(idx);
+	else if ((flags & SRC_OPT_SRC1_CONST) != 0)
+		return read_const(idx);
+	else
+		return read_reg(idx);
+}
+
 // must mirror std3D_buildInstruction
 void s_read_instr(uint s_instr, out uint s_op, out uint s_mask, out uint s_dest, out uint s_src0, out uint s_src1, out uint s_src2)
 {
@@ -204,7 +218,7 @@ vec4 load_tex_light(in sampler2D s, in vec2 tc, in float light)
 {
 	if (tex_mode == TEX_MODE_TEST)
 		return vec4(fillColor.rgb, 0.0);
-	return texture(s, tc.xy, unpackHalf2x16(c_l).y).rgba * vec4(emissiveFactor.rgb, 0.0);
+	return clamp(texture(s, tc.xy, unpackHalf2x16(c_l).y).rgba * vec4(emissiveFactor.rgb, 0.0), vec4(0.0), vec4(1.0));
 }
 
 /*vec2 steep_parallax(in sampler2D s, in vec2 uv)
@@ -253,7 +267,6 @@ vec2 parallax(in sampler2D s, in vec2 uv)
 	float height = textureLod(s, uv.xy, 0).r * displacement_factor;
 
 	vec3 view_dir = decodeHemiUnitVector(vdir);
-	//return (view_dir.xy / view_dir.z) * vec2(height) + uv.xy;
 	return view_dir.xy * height + uv.xy;
 }
 
@@ -264,7 +277,7 @@ void run_tex_stage()
 	for (int s_pc = 0; s_pc < shaderTexInstructionCount; ++s_pc) // program counter
 	{
 		uint s_op, s_mask, s_dest, s_src0, s_src1, s_src2;
-		s_read_instr(shaderTexInstructions[s_pc].x, s_op, s_mask, s_dest, s_src0, s_src1, s_src2);
+		s_read_instr(shaderTexInstructions[s_pc>>2][s_pc&3], s_op, s_mask, s_dest, s_src0, s_src1, s_src2);
 
 		switch(s_op)
 		{
@@ -303,40 +316,12 @@ void run_tex_stage()
 	}
 }
 
-vec4 read_immediate(uint idx)
-{
-	float immmmm[8] = float[](
-		-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0, 4.0
-	);
-	return vec4(immmmm[idx]);
-}
-
-vec4 read_src0(uint idx, uint flags)
-{
-	if ((flags & SRC_OPT_SRC0_IMM) != 0)
-		return read_immediate(idx);
-	else if ((flags & SRC_OPT_SRC0_CONST) != 0)
-		return read_const(idx);
-	else
-		return read_reg(idx);
-}
-
-vec4 read_src1(uint idx, uint flags)
-{
-	if ((flags & SRC_OPT_SRC1_IMM) != 0)
-		return read_immediate(idx);
-	else if ((flags & SRC_OPT_SRC1_CONST) != 0)
-		return read_const(idx);
-	else
-		return read_reg(idx);
-}
-
 void run_combiner_stage()
 {
 	for (int s_pc = 0; s_pc < shaderInstructionCount; ++s_pc) // program counter
 	{
 		uint s_op, s_mask, s_dest, s_src0, s_src1, s_src2;
-		s_read_instr(shaderInstructions[s_pc].x, s_op, s_mask, s_dest, s_src0, s_src1, s_src2);
+		s_read_instr(shaderInstructions[s_pc>>2][s_pc&3], s_op, s_mask, s_dest, s_src0, s_src1, s_src2);
 
 		// most common ops first
 		switch(s_op)
@@ -344,7 +329,9 @@ void run_combiner_stage()
 		case OP_MOV:
 			write_reg(
 				s_dest,
-				read_src0(s_src0, s_src1),
+				clamp(
+					read_src0(s_src0, s_src1)
+					, vec4(0.0), vec4(1.0)),
 				s_mask
 			);
 			break;
@@ -352,7 +339,9 @@ void run_combiner_stage()
 		case OP_ADD:
 			write_reg(
 				s_dest,
-				read_src0(s_src0, s_src2) + read_src1(s_src1, s_src2),
+				clamp(
+					read_src0(s_src0, s_src2) + read_src1(s_src1, s_src2)
+					, vec4(0.0), vec4(1.0)),
 				s_mask
 			);
 			break;
@@ -360,7 +349,9 @@ void run_combiner_stage()
 		case OP_MAD:
 			write_reg(
 				s_dest,
-				read_reg(s_src0) * read_reg(s_src1) + read_reg(s_src2),
+				clamp(
+					read_reg(s_src0) * read_reg(s_src1) + read_reg(s_src2)
+					, vec4(0.0), vec4(1.0)),
 				s_mask
 			);
 			break;
@@ -368,7 +359,9 @@ void run_combiner_stage()
 		case OP_MUL:
 			write_reg(
 				s_dest,
-				read_src0(s_src0, s_src2) * read_src1(s_src1, s_src2),
+				clamp(
+					read_src0(s_src0, s_src2) * read_src1(s_src1, s_src2)
+					, vec4(0.0), vec4(1.0)),
 				s_mask
 			);
 			break;
@@ -400,7 +393,9 @@ void run_combiner_stage()
 		case OP_DIV:
 			write_reg(
 				s_dest,
-				read_src0(s_src0, s_src2) / (read_src1(s_src1, s_src2)),
+				clamp(
+					read_src0(s_src0, s_src2) / read_src1(s_src1, s_src2)
+					, vec4(0.0), vec4(1.0)),
 				s_mask
 			);
 			break;
@@ -409,7 +404,9 @@ void run_combiner_stage()
 			write_reg(
 				s_dest,
 				vec4(
-					dot(read_src0(s_src0, s_src2).xyz, read_src1(s_src1, s_src2).xyz)
+					clamp(
+						dot(read_src0(s_src0, s_src2).xyz, read_src1(s_src1, s_src2).xyz)
+						, 0.0, 1.0)
 				),
 				s_mask
 			);
@@ -419,7 +416,9 @@ void run_combiner_stage()
 			write_reg(
 				s_dest,
 				vec4(
-					dot(read_src0(s_src0, s_src2), read_src1(s_src1, s_src2))
+					clamp(
+						dot(read_src0(s_src0, s_src2), read_src1(s_src1, s_src2))
+						, 0.0, 1.0)
 				),
 				s_mask
 			);
@@ -428,19 +427,9 @@ void run_combiner_stage()
 		case OP_LRP:
 			write_reg(
 				s_dest,
-				(read_reg(s_src1) - read_reg(s_src0)) * read_reg(s_src2) + read_reg(s_src0),
-				s_mask
-			);
-			break;
-
-		case OP_LUM:
-			write_reg(
-				s_dest,
-				vec4(
-					dot(read_src0(s_src0, s_src1).rgb,
-						vec3(0.2125, 0.7154, 0.0721)
-					)
-				),
+				clamp(
+					mix(read_reg(s_src0), read_reg(s_src1), read_reg(s_src2))
+					, vec4(0.0), vec4(1.0)),
 				s_mask
 			);
 			break;

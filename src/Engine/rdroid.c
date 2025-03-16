@@ -58,6 +58,7 @@ static std3D_FogState          rdroid_fogState;
 static std3D_MaterialState     rdroid_materialState;
 static std3D_TextureState      rdroid_textureState;
 static std3D_LightingState     rdroid_lightingState;
+static std3D_ShaderState       rdroid_shaderState;
 
 static rdMatrixMode_t rdroid_curMatrixMode = RD_MATRIX_MODEL;
 static rdMatrix44     rdroid_matrices[RD_MATRIX_TYPES];
@@ -133,6 +134,11 @@ void rdResetLightingState()
 	//rdVector_Zero3(&rdroid_lightingState.ambientColor);
 	//rdAmbient_Zero(&rdroid_lightingState.ambientLobes);
 }
+
+void rdResetShaderState()
+{
+	rdroid_shaderState.shaderId = 0;
+}
 #endif
 
 int rdStartup(HostServices *p_hs)
@@ -153,6 +159,7 @@ int rdStartup(HostServices *p_hs)
 	rdResetTextureState();
 	rdResetMaterialState();
 	rdResetLightingState();
+	rdResetShaderState();
 	rdroid_dcHeader.sortOrder = 0;
 	rdroid_dcHeader.sortDistance = 0;
 #endif
@@ -395,6 +402,7 @@ void rdFinishFrame()
   rdResetTextureState();
   rdResetMaterialState();
   rdResetLightingState();
+  rdResetShaderState();
 #endif
 }
 
@@ -640,7 +648,8 @@ void rdEndPrimitive()
 		memcpy(&state.materialState,  &rdroid_materialState,  sizeof(std3D_MaterialState));
 		memcpy(&state.textureState,   &rdroid_textureState,   sizeof(std3D_TextureState));
 		memcpy(&state.lightingState,  &rdroid_lightingState,  sizeof(std3D_LightingState));
-	
+		memcpy(&state.shaderState,    &rdroid_shaderState,    sizeof(std3D_ShaderState));
+
 		std3D_AddDrawCall(rdroid_curPrimitiveType, &state, rdroid_vertexCache, rdroid_vertexCacheNum);
 	}
 
@@ -1031,6 +1040,12 @@ void rdSetDecalMode(rdDecalMode_t mode)
 void rdSetOverbright(float overbright)
 {
 	rdroid_overbright = stdMath_Clamp(overbright, 0.1f, 4.0f);
+}
+
+// todo: actually get IDs from renderer..
+void rdSetShader(int shaderId)
+{
+	rdroid_shaderState.shaderId = shaderId;
 }
 
 // Lighting

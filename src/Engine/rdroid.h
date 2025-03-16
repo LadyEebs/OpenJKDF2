@@ -166,6 +166,10 @@ void rdDepthRange(float znearNorm, float zfarNorm);
 void rdSetDecalMode(rdDecalMode_t mode);
 void rdSetOverbright(float overbright);
 
+// shader
+// todo: actually get IDs from renderer..
+void rdSetShader(int shaderId);
+
 // texture
 int rdBindTexture(rdTexture* pTexture);
 

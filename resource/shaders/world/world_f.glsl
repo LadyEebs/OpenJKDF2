@@ -197,10 +197,10 @@ void calc_light()
 #ifdef UNLIT
 	/*if (lightMode == 0) // fully lit
 	{
-		uint v0 = packColorRegister(vec4(light_mult));
+		uint v0 = packColorRegister(vec4(light_mult)) & 0x00FFFFFF;
 
-		v[0] = (v[0] & 0xFF000000) | (v0 & 0x00FFFFFF);
-		v[1] = (v[1] & 0xFF000000) | (v0 & 0x00FFFFFF);
+		v[0] = (v[0] & 0xFF000000) | v0;
+		v[1] = (v[1] & 0xFF000000) | v0;
 	}
 	else if (lightMode == 1) // not lit
 	{
@@ -337,9 +337,7 @@ void calc_light()
 	// https://community.arm.com/cfs-file/__key/communityserver-blogs-components-weblogfiles/00-00-00-20-66/siggraph2015_2D00_mmg_2D00_renaldas_2D00_slides.pdf
 	//result.specular.rgb = sqrt(result.specular.rgb) * specularFactor.rgb;
 	
-	float normFactor = (1.0 / (roughness * roughness)) / 3.141592;
-
-	vec3 specularScale = normFactor * specularFactor.rgb;
+	vec3 specularScale = specularFactor.rgb;
 	vec3 diffuseScale  = 1.0 - specularFactor.rgb;
 
 	vec3 diffuse  = unpackF2x11_1x10(result.diffuse);
@@ -466,9 +464,7 @@ void main(void)
 	// up front so we can free vgprs for the vm stages
 	// the results are compacted and stored for later
 	calc_lod_bias();
-	//calc_fog();
 	calc_light();
-	//calc_decals();
 
 	// run the texture stage
 	// todo: how to handle decals?
