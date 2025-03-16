@@ -1,10 +1,14 @@
 // simple dx8 style microcode shader VM
-// note: the packing/unpacking might be a penalty on dx10 era/VLIW hardware
-// should eventually be tested and an alternate path written if necessary
-// what I would give for packed math support or 8 bit formats on older gpus *sobs*
 //
-// note: I'm seeing big performance gains from amd driver 22.7.1 and higher (the release notes indicate boosts in minecraft, related?)
-// unfortunately those don't work with renderdoc's assembly view, bummer...
+// all instruction reads and operations are dynamically uniform/wave invariant (scalar ops on AMD)
+// everything reflecting that intent is prefixed with an s_
+//
+// the packing/unpacking might be potentially be an issue on dx10 era/VLIW hardware or mobile (lol mobile)
+// this should eventually be tested and changes made as needed (or even a simple alternative path with fixed shading)
+// ....what I would give for packed math support or 8 bit arithmetic on older gpus *sobs*
+//
+// I'm seeing big performance gains from amd driver 22.7.1 and higher (the release notes indicate boosts in minecraft, related?)
+// unfortunately those don't work with renderdoc's assembly view, ugh...
 
 #include "defines.gli"
 #include "uniforms.gli"
@@ -191,6 +195,9 @@ vec4 read_src1(uint idx, uint flags)
 }
 
 // must mirror std3D_buildInstruction
+// note: there isn't really a difference loading uint vs vec4
+//       so we could easily go for a thicker instruction,
+//       could add more complex swizzling, more ops, more modifiers...
 void s_read_instr(uint s_instr, out uint s_op, out uint s_mask, out uint s_dest, out uint s_src0, out uint s_src1, out uint s_src2)
 {
 	s_mask = (s_instr & 0x2);					// bits 0-2	
