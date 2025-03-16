@@ -5981,6 +5981,9 @@ void std3D_SetShaderState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 	{
 		glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_SHADER, jkgmShaderUBO);
 	}
+	else
+		glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_SHADER, defaultShaderUBO);
+
 }
 
 void std3D_BindStage(std3D_worldStage* pStage)
@@ -6027,6 +6030,7 @@ enum STD3D_DIRTYBIT
 	STD3D_TEXTURE   = 0x10,
 	STD3D_FOG       = 0x20,
 	STD3D_LIGHTING  = 0x40,
+	STD3D_SHADER_ID = 0x80
 };
 
 static uint16_t std3D_drawCallIndicesSorted[STD3D_MAX_DRAW_CALL_INDICES];
@@ -6114,6 +6118,7 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 	std3D_SetMaterialState(pStage, pState);
 	std3D_SetLightingState(pStage, pState);	
 	std3D_SetTransformState(pStage, pState);
+	std3D_SetShaderState(pStage, pState);
 	
 	int batchIndices = 0;
 	int indexOffset = 0;
@@ -6134,6 +6139,7 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 		dirtyBits |= (memcmp(&lastState.materialState, &pDrawCall->state.materialState, sizeof(std3D_MaterialState)) != 0) ? STD3D_TEXTURE : 0;
 		dirtyBits |= (memcmp(&lastState.lightingState, &pDrawCall->state.lightingState, sizeof(std3D_LightingState)) != 0) ? STD3D_LIGHTING : 0;
 		dirtyBits |= (memcmp(&lastState.transformState, &pDrawCall->state.transformState, sizeof(std3D_TransformState)) != 0) ? STD3D_TRANSFORM : 0;
+		dirtyBits |= (memcmp(&lastState.shaderState, &pDrawCall->state.shaderState, sizeof(std3D_ShaderState)) != 0) ? STD3D_SHADER_ID : 0;
 
 		if (dirtyBits)
 		{
@@ -6172,6 +6178,9 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 			//if ((dirtyBits & STD3D_TRANSFORM)) // fixme: not working?
 				std3D_SetTransformState(pStage, pState);
 		
+			if ((dirtyBits & STD3D_SHADER_ID))
+				std3D_SetShaderState(pStage, pState);
+
 			// if the projection matrix changed then all lighting is invalid, rebuild clusters and assign lights
 			// perhaps all of this would be better if we just flushed the pipeline on matrix change instead
 
