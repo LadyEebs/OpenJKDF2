@@ -38,6 +38,8 @@ void stdString_CStrToLower(char *a1);
 char* stdString_SafeStrCopy(char* pDst, const char* pSrc, uint32_t lenDst);
 wchar_t* stdString_SafeWStrCopy(wchar_t* pDst, const wchar_t* pSrc, uint32_t lenDst);
 
+char* stdString_GetEnclosedStringContents(char* in, char* out, int out_size, char first, char second);
+
 #ifdef __cplusplus
 }
 #endif

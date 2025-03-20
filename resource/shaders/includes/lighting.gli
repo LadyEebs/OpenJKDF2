@@ -32,7 +32,7 @@ struct light_input
 uint calc_spec_c(float a)
 {
 #ifdef GGX	
-	vec2 coeffs = vec2(a * a, a * float(4.0) + float(2.0));
+	vec2 coeffs = vec2(a * a, a * a - 1.0);// a * float(4.0) + float(2.0));
 #else
 	// phong
 	float rcp_a2 = 1.0 / (a * a);
@@ -157,19 +157,23 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	// Unity "Optimizing PBR"
 	// https://community.arm.com/cfs-file/__key/communityserver-blogs-components-weblogfiles/00-00-00-20-66/siggraph2015_2D00_mmg_2D00_renaldas_2D00_slides.pdf
 	// approximated microfacet GGX lobe, fresnel and visibility approximated with ldoth, spec color applied at the end
-	vec3  view  = decode_octahedron_uint(params.view);
-	vec3  h     = normalize(lvec + view);
-	float ndoth = clamp(dot(h, normal), float(0.0), float(1.0));
-	float ldoth = clamp(dot(h, lvec), float(0.0), float(1.0));
-	
-	float d       = (ndoth * ndoth) * (coeffs.x - float(1.0)) + float(1.00001);
-	      d       = coeffs.x / ((d * d) * max(float(0.1), ldoth * ldoth) * coeffs.y);
+	//vec3  view  = decode_octahedron_uint(params.view);
+	//vec3  h     = normalize(lvec + view);
+	//float ndoth = clamp(dot(h, normal), float(0.0), float(1.0));
+	//float ldoth = clamp(dot(h, lvec), float(0.0), float(1.0));
+	//
+	//float d       = (ndoth * ndoth) * (coeffs.x - float(1.0)) + float(1.00001);
+	//      d       = coeffs.x / ((d * d) * max(float(0.1), ldoth * ldoth) * coeffs.y);
+
+	float rdotv = dot(decode_octahedron_uint(params.reflected), lvec);
+	float     d = (rdotv * rdotv) * coeffs.y + 1.00001;
+	          d = coeffs.x * fastRcpNR1(d * d);
 #else
 	// "Physically Based Shading on Mobile"
 	// https://www.unrealengine.com/en-US/blog/physically-based-shading-on-mobile
 	// approximated energy conserving phong lobe, fresnel and spec color must be applied at the end with env_brdf
 	float rdotv  = dot(decode_octahedron_uint(params.reflected), lvec);
-	float d      = coeffs.x * exp2( coeffs.y * rdotv + (-coeffs.y) );
+	float d      = coeffs.x * fastExp2( coeffs.y * rdotv + (-coeffs.y) );
 #endif
 
 	result.specular = packF2x11_1x10((lightMagnitude * d) * lightColor.rgb + unpackF2x11_1x10(result.specular));

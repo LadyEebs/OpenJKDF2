@@ -31,6 +31,7 @@
 #include "General/stdHashTable.h"
 #include "Modules/std/stdJob.h"
 #include "Modules/std/stdProfiler.h"
+#include "General/stdString.h"
 
 #ifdef WIN32
 // Force Optimus/AMD to use non-integrated GPUs by default.
@@ -250,7 +251,8 @@ typedef struct std3D_TextureUniforms
 	int32_t   numMips;
 
 	rdVector2 texsize;
-	rdVector2 padding0;
+	int32_t  texwidth;
+	int32_t  texheight;
 
 	rdVector4 uv_offset[RD_NUM_TEXCOORDS];
 
@@ -414,12 +416,14 @@ typedef enum STD3D_DRAW_LIST
 typedef struct std3D_DrawCallList
 {
 	int              bSorted;
+	int              bPosOnly;
 	uint32_t         drawCallCount;
 	uint32_t         drawCallIndexCount;
 	uint32_t         drawCallVertexCount;
 	std3D_DrawCall*  drawCalls;
 	uint16_t*        drawCallIndices;
 	rdVertex*        drawCallVertices;
+	rdVector3*       drawCallPosVertices;
 	std3D_DrawCall** drawCallPtrs;
 } std3D_DrawCallList;
 
@@ -444,8 +448,12 @@ void std3D_initDrawList(std3D_DrawCallList* pList)
 {
 	pList->drawCalls = malloc(sizeof(std3D_DrawCall) * STD3D_MAX_DRAW_CALLS);
 	pList->drawCallIndices = malloc(sizeof(uint16_t) * STD3D_MAX_DRAW_CALL_INDICES);
-	pList->drawCallVertices = malloc(sizeof(rdVertex) * STD3D_MAX_DRAW_CALL_VERTS);
 	pList->drawCallPtrs = malloc(sizeof(std3D_DrawCall*) * STD3D_MAX_DRAW_CALLS);
+
+	if (pList->bPosOnly)
+		pList->drawCallPosVertices = malloc(sizeof(rdVector3) * STD3D_MAX_DRAW_CALL_VERTS);
+	else
+		pList->drawCallVertices = malloc(sizeof(rdVertex) * STD3D_MAX_DRAW_CALL_VERTS);
 }
 
 void std3D_freeDrawList(std3D_DrawCallList* pList)
@@ -468,6 +476,12 @@ void std3D_freeDrawList(std3D_DrawCallList* pList)
 		pList->drawCallVertices = 0;
 	}
 
+	if (pList->drawCallPosVertices)
+	{
+		free(pList->drawCallPosVertices);
+		pList->drawCallPosVertices = 0;
+	}
+
 	if (pList->drawCallPtrs)
 	{
 		free(pList->drawCallPtrs);
@@ -479,7 +493,10 @@ void std3D_initRenderPass(std3D_RenderPass* pRenderPass)
 {
 	memset(pRenderPass, 0, sizeof(std3D_RenderPass));
 	for(int i = 0; i < DRAW_LIST_COUNT; ++i)
+	{
+		pRenderPass->drawCallLists[i].bPosOnly = (i <= DRAW_LIST_Z_REFRACTION);
 		std3D_initDrawList(&pRenderPass->drawCallLists[i]);
+	}
 }
 
 void std3D_freeRenderPass(std3D_RenderPass* pRenderPass)
@@ -518,6 +535,8 @@ typedef enum STD3D_SHADER_ID
 
 typedef struct std3D_worldStage
 {
+	int bPosOnly;
+
 	GLuint program;
 	GLint attribute_coord3d, attribute_v_color, attribute_v_light, attribute_v_uv, attribute_v_norm;
 	GLint uniform_projection, uniform_modelMatrix, uniform_viewMatrix;
@@ -791,14 +810,17 @@ inline void std3D_bindTexture(int type, int texId, int slot)
 	glBindTexture(type, texId);
 }
 
+typedef struct std3D_Instr
+{
+	uint32_t op_dst, src0, src1, src2;
+} std3D_Instr;
+
 typedef struct std3D_Shader
 {
-	uint32_t version;
-	uint32_t padding0;
-	uint32_t texCount;
-	uint32_t count;
-	uint32_t texInstr[8];
-	uint32_t instr[32];
+	float       version;
+	uint32_t    padding0, padding1;
+	uint32_t    count;
+	std3D_Instr instr[32];
 } std3D_Shader;
 
 GLint defaultShaderUBO;
@@ -813,7 +835,7 @@ GLint shaderConstsUbo;
 
 std3D_ShaderConsts waterShaderConsts;
 
-enum
+typedef enum
 {
 	// 6 general purpose registers
 	REG_R0,
@@ -823,15 +845,21 @@ enum
 	REG_R4,
 	REG_R5,
 
+	REG_COUNT
+} std3D_ShaderTempRegisters;
+static_assert(REG_COUNT <= 8, "REG_COUNT must not exceed 8.");
+
+typedef enum
+{
 	// 2 vertex color registers
 	REG_V0,
 	REG_V1,
 
-	REG_COUNT
-};
-static_assert(REG_COUNT <= 8, "REG_COUNT must not exceed 8 registers.");
+	REG_V_COUNT
+} std3D_ShaderVertexRegisters;
+static_assert(REG_V_COUNT <= 2, "REG_V_COUNT must not exceed 2.");
 
-enum
+typedef enum
 {
 	REG_T0,
 	REG_T1,
@@ -839,10 +867,10 @@ enum
 	REG_T3,
 
 	REG_FP_COUNT
-};
-static_assert(REG_FP_COUNT <= 4, "REG_FP_COUNT must not exceed 4 registers.");
+} std3D_ShaderTextureRegisters;
+static_assert(REG_FP_COUNT <= 4, "REG_FP_COUNT must not exceed 4.");
 
-enum
+typedef enum CONSTANT_REG
 {
 	REG_C0,
 	REG_C1,
@@ -854,80 +882,187 @@ enum
 	REG_C7,
 
 	REG_CONST_COUNT
-};
-static_assert(REG_CONST_COUNT <= 8, "REG_CONST_COUNT must not exceed 8 registers.");
+} std3D_ShaderConstantRegisters;
+static_assert(REG_CONST_COUNT <= 8, "REG_CONST_COUNT must not exceed 8.");
 
-enum
+typedef enum
 {
-	SRC_MOD_NONE   = 0x0, // no modifier
-	SRC_MOD_NEGATE = 0x1, // -x
-	SRC_MOD_BIAS   = 0x2, // x - 0.5
-	SRC_MOD_BX2    = 0x4, // x * 2 - 1
-	SRC_MOD_INVERT = 0x8, // 1 - x
+	REG_TYPE_GPR,		// register
+	REG_TYPE_CLR,		// color
+	REG_TYPE_CON,		// constant
+	REG_TYPE_TEX,		// texcoord
+	REG_TYPE_IMM,		// 8 bit immediate value
+	REG_TYPE_RSV0,		// reserved for future use
+	REG_TYPE_RSV1,		// reserved for future use
+	REG_TYPE_SYS,		// system value
 
-	SRC_MOD_COUNT = 0x10
-};
-static_assert((SRC_MOD_COUNT>>3) <= 16, "SRC_MOD_COUNT must not exceed 4 bits.");
+	REG_TYPE_COUNT
+} std3D_ShaderRegisterTypes;
+static_assert(REG_TYPE_COUNT <= 8, "REG_TYPE_GPR must not exceed 8.");
 
-enum
+static const char std3D_registerTypePrefix[] =
 {
-	SRC_OPT_NONE       = 0x0,
-	SRC_OPT_SRC0_CONST = 0x1, // src0 is a constant
-	SRC_OPT_SRC1_CONST = 0x2, // src1 is a constant
-	SRC_OPT_SRC0_IMM   = 0x4, // src0 is an immediate value
-	SRC_OPT_SRC1_IMM   = 0x8, // src1 is an immediate value
-	SRC_OPT_FLAG_COUNT = 0x10
+	'r', 'v', 'c', 't', 'i', 'u', 'k', 's'
 };
-static_assert((SRC_OPT_FLAG_COUNT >> 3) <= 16, "SRC_OPT_FLAG_COUNT must not exceed 4 bits.");
+
+typedef enum
+{
+	SRC_NEG_INV_NONE,
+	SRC_NEG_INV_NEG,	// negate: -x
+	SRC_NEG_INV_INV,	// invert: 1 - x
+	SRC_NEG_INV_RSV,	// reserved for future use
+
+	SRC_NEG_INV_COUNT
+} std3D_ShaderSrcNegateInvertMode;
+static_assert(SRC_NEG_INV_COUNT <= 4, "SRC_NEG_INV_COUNT must not exceed 4.");
+
+typedef enum
+{
+	SRC_SCALE_BIAS_NONE,
+	SRC_SCALE_BIAS_2X,		// x * 2
+	SRC_SCALE_BIAS_4X,		// x * 4
+	SRC_SCALE_BIAS_D2,		// x / 2
+	SRC_SCALE_BIAS_D4,		// x / 4
+	SRC_SCALE_BIAS_BIAS,	// x - 0.5
+	SRC_SCALE_BIAS_BX2,		// x * 2 - 1
+	SRC_SCALE_BIAS_RSV,		// reserved for future use
+
+	SRC_SCALE_BIAS_COUNT
+} std3D_ShaderSrcBiasScaleMode;
+static_assert(SRC_SCALE_BIAS_COUNT <= 8, "SRC_NEG_INV_COUNT must not exceed 8.");
+
+uint8_t std3D_parseScaleBias(const char* token)
+{
+	if (strcmp(token, "mul:2") == 0) return SRC_SCALE_BIAS_2X;
+	if (strcmp(token, "mul:4") == 0) return SRC_SCALE_BIAS_4X;
+	if (strcmp(token, "div:2") == 0) return SRC_SCALE_BIAS_D2;
+	if (strcmp(token, "div:4") == 0) return SRC_SCALE_BIAS_D4;
+	if (strcmp(token, "expand") == 0) return SRC_SCALE_BIAS_BX2;
+	if (strcmp(token, "bias") == 0) return SRC_SCALE_BIAS_BIAS;
+	return SRC_SCALE_BIAS_NONE; // Unknown keyword
+}
+
+typedef enum
+{
+	SRC_RED_NONE,
+	SRC_RED_LUM,      // dot(xyz, lum)
+	SRC_RED_SUM,      // x+y+z
+	SRC_RED_AVG,      // (x+y+z)/3
+	SRC_RED_MIN,      // min(x,y,z)
+	SRC_RED_MAX,      // max(x,y,z)
+	SRC_RED_MAG,      // length(xyz)
+	SRC_RED_RSV,      // reserved
+
+	SRC_RED_COUNT
+} std3D_ShaderSrcReductions;
+static_assert(SRC_RED_COUNT <= 8, "SRC_RED_COUNT must not exceed 8.");
+
+static const char* std3D_reductionKeywords[SRC_RED_COUNT]=
+{
+	"", "lum", "sum", "avg", "min", "max", "mag", ""
+};
+
+uint8_t std3D_parseReduction(const char* name)
+{
+	for (uint8_t i = 0; i < SRC_RED_COUNT; ++i)
+	{
+		if (strnicmp(name, std3D_reductionKeywords[i], 3) == 0)
+			return i;
+	}
+	return SRC_RED_NONE;
+}
 
 // only one at a time
-enum
+typedef enum
 {
-	DST_MOD_NONE = 0,
-	DST_MOD_X2   = 1,
-	DST_MOD_X4   = 2,
-	DST_MOD_D2   = 3,
+	DST_MOD_NONE,
+	DST_MOD_X2,
+	DST_MOD_X4,
+	DST_MOD_X8,
+	DST_MOD_D2,
+	DST_MOD_D4,
+	DST_MOD_D8,
+	DST_MOD_POW2,
+	DST_MOD_POW4,
+	DST_MOD_SQRT,
+	DST_MOD_PACK,
+	DST_MOD_ABS,
+	DST_MOD_NEG,
+	DST_MOD_ROLLOFF,
 
-	DST_MOD_COUNT = 4
-};
-static_assert(DST_MOD_COUNT <= 4, "DST_MOD_COUNT must not exceed 2 bits.");
+	DST_MOD_COUNT
+} std3D_ShaderDstModifiers;
+static_assert(DST_MOD_COUNT <= 16, "DST_MOD_COUNT must not exceed 4 bits.");
 
-typedef enum std3D_ShaderAluOp
+uint8_t std3D_parseOutputModifier(const char* token)
+{
+	if (strnicmp(token, "mul:2", 5) == 0) return DST_MOD_X2;
+	if (strnicmp(token, "mul:4", 5) == 0) return DST_MOD_X4;
+	if (strnicmp(token, "mul:8", 5) == 0) return DST_MOD_X8;
+	if (strnicmp(token, "div:2", 5) == 0) return DST_MOD_D2;
+	if (strnicmp(token, "div:4", 5) == 0) return DST_MOD_D4;
+	if (strnicmp(token, "div:8", 5) == 0) return DST_MOD_D8;
+	if (strnicmp(token, "pow:2", 5) == 0) return DST_MOD_POW2;
+	if (strnicmp(token, "pow:4", 5) == 0) return DST_MOD_POW4;
+	if (strnicmp(token, "sqrt", 5) == 0) return DST_MOD_SQRT;
+	if (strnicmp(token, "pack", 4) == 0) return DST_MOD_PACK;
+	if (strnicmp(token, "abs", 3) == 0) return DST_MOD_ABS;
+	if (strnicmp(token, "negate", 6) == 0) return DST_MOD_NEG;
+	if (strnicmp(token, "rolloff", 7) == 0) return DST_MOD_ROLLOFF;
+	return DST_MOD_NONE;
+}
+
+typedef enum
 {
 	OP_NOP,		// no op
 	OP_ADD,		// addition
 	OP_CMP,     // compare
 	OP_CND,     // condition
 	OP_DIV,     // division
+	OP_DP2,		// dot2
 	OP_DP3,		// dot3
 	OP_DP4,		// dot4
-	OP_LRP,		// interpolate
+	OP_MAC,     // multiply accumulate
 	OP_MAD,		// multiply add
 	OP_MAX,		// maximum
 	OP_MIN,		// minimum
+	OP_MIX,		// mix/interpolate
 	OP_MOV,		// move
 	OP_MUL,		// multiply
 	OP_POW,		// power
+	OP_SUB,		// subtract
+	OP_TEX,     // texture
+	OP_TEXDUDV, // texture with offset
+	OP_OPM,     // offset parallax
 	MAX_ALU_OPS
 } std3D_ShaderAluOp;
-static_assert(MAX_ALU_OPS <= 16, "std3D_ShaderAluOp must not exceed 16 op codes.");
+static_assert(MAX_ALU_OPS <= 32, "std3D_ShaderAluOp must not exceed 32 op codes.");
 
-typedef enum std3D_ShaderTexOp
+static const char* std3D_opCodeKeywords[MAX_ALU_OPS] =
 {
-	// no op
-	OP_TEXCOORD = 1,	// convert UV to color
-	OP_TEX,				// texture sample
-	OP_TEXI,			// texture sample with emissive multiplier (todo: needed?)
-	OP_TEXOPM,			// offset a UV slot with offset parallax mapping
-	MAX_TEX_OPS
-} std3D_ShaderTexOp;
-static_assert(MAX_TEX_OPS <= 16, "std3D_ShaderTexOp must not exceed 16 op codes.");
+	"nop", "add", "cmp", "cnd", "div", "dp2", "dp3", "dp4",
+	"mac", "mad", "max", "min", "min", "mov", "mul", "pow",
+	"sub", "tex", "texdudv", "opm"
+};
 
-typedef enum std3D_ShaderWriteMask
+uint8_t std3D_parseOpCode(const char* name)
 {
-	WRITE_RGBA  = 0,
-	WRITE_RGB   = 1,
-	WRITE_ALPHA = 2,
+	for (uint8_t i = 0; i < MAX_ALU_OPS; ++i)
+	{
+		if (stricmp(name, std3D_opCodeKeywords[i]) == 0)
+			return i;
+	}
+	return OP_NOP;
+}
+
+typedef enum
+{
+	WRITE_RGBA  = 0b1111,
+	WRITE_RGB   = 0b0111,
+	WRITE_RED   = 0b0001,
+	WRITE_GREEN = 0b0010,
+	WRITE_BLUE  = 0b0100,
+	WRITE_ALPHA = 0b1000
 } std3D_ShaderWriteMask;
 
 // shader is just a handle around a buffer of code info
@@ -943,151 +1078,511 @@ void std3D_DeleteShader(int id)
 	glDeleteBuffers(1, &id);
 }
 
-static uint32_t std3D_writeImmediate(float value)
+typedef enum
 {
-	return roundf(3.0f * value + 3.0f);
+	// only enum common swizzles since every combo is a lot
+	SWIZZLE_XYZW = 0xe4
+} std3D_ShaderSwizzles;
+
+uint8_t std3D_swizzleMask(uint8_t x, uint8_t y, uint8_t z, uint8_t w)
+{
+	return ((x) & 0x03) | (((y) & 0x03) << 2) | (((z) & 0x03) << 4) | (((w) & 0x03) << 6);
 }
 
-// layout
-// [src | mod, src | mod, src | mod, dest | mod, op]
-// each src | mod is 7 bits
-// the dest | mod is 5 bits
-// op code is 4 bits
-// write mask is 2 bit
-static uint32_t std3D_buildInstruction(
-	uint32_t op,
-	uint32_t mask,
-	uint32_t dest,
-	uint32_t modd,
-	uint32_t src0,
-	uint32_t mod0,
-	uint32_t src1,
-	uint32_t mod1,
-	uint32_t src2,
-	uint32_t mod2
+typedef enum
+{
+	REG_UNORM8,
+	REG_SNORM8,
+	REG_RG16F,
+	REG_R32F
+} std3D_ShaderRegEncoding;
+
+uint8_t std3D_parseEncoding(const char* token)
+{
+	if (strnicmp(token, "unorm8", 6) == 0) return REG_UNORM8;
+	if (strnicmp(token, "snorm8", 5) == 0) return REG_SNORM8;
+	if (strnicmp(token, "rg16f", 5) == 0) return REG_RG16F;
+	if (strnicmp(token, "r32f", 4) == 0) return REG_R32F;
+	return REG_UNORM8;
+}
+
+// source operand layout
+//  |31         30|29          27|26             25|24       16|15               8|7     4|   3  |2    0|
+//  |  reduction  |  scale/bias  |  negate/invert  |  swizzle  |  index/immediate | spare |  abs | type |
+uint32_t std3D_assembleSrc(
+	uint8_t type,
+	uint8_t fmt,
+	uint8_t index_or_immediate,
+	uint8_t abs,
+	uint8_t swizzle,
+	uint8_t negate_or_invert,
+	uint8_t scale_bias,
+	uint8_t reduction
 )
 {
-	dest = (dest & 0x7) | ((modd & 0x3) << 3);
-	src0 = (src0 & 0x7) | ((mod0 & 0xF) << 3);
-	src1 = (src1 & 0x7) | ((mod1 & 0xF) << 3);
-	src2 = (src2 & 0x7) | ((mod2 & 0xF) << 3);
+	uint32_t result;
+	result  = type & 0x7;
+	result |= (abs & 0x1) << 3;
+	result |= (fmt & 0x3) << 4;
+	// spare result |= (spare & 0x3) << 6;
+	result |= (index_or_immediate & 0xFF) << 8;
+	result |= (swizzle & 0xFF) << 16;
+	result |= (negate_or_invert & 0x3) << 24;
+	result |= (scale_bias & 0x7) << 26;
+	result |= (reduction & 0x7) << 29;
 
-	uint32_t instr;
-	instr  = (mask &  0x2);			// bits 0-2
-	instr |= (op   &  0xF) << 2;	// bits 2-6
-	instr |= (dest & 0x1F) << 6;	// bits 6-11
-	instr |= (src0 & 0x7F) << 11;	// bits 11-18
-	instr |= (src1 & 0x7F) << 18;	// bits 18-25
-	instr |= (src2 & 0x7F) << 25;	// bits 25-32
-	return instr;
+	return result;
 }
 
-//static void std3D_parseOperand(uint32_t op, const char* operand, uint32_t operandIndex, std3D_Shader* shader, uint32_t* src, uint32_t* mod)
-//{
-//	uint32_t reg = _atoi(operand + 1); // skip the token to get the index
-//
-//	// load ops work directly with load registers
-//	// todo: error handling
-//	if(op == OP_LDC)
-//		return reg;
-//	
-//	if (operand[0] == 'c') // check the token
-//	{
-//		// insert a constant load instruction
-//		//shader->instr[shader->count++] = std3D_buildInstruction(OP_LDC, REG_TMP0 + operandIndex, reg, 0, 0);
-//		reg = REG_TMP0 + operandIndex; // source register is now the temporary
-//	}
-//	return reg;
-//}
-
-// todo: cache stuff?
-int std3D_CompileShaderFromFile(int id, const char* path)
+// operation + destination layout
+// |31         29|28         25|24       17|16     9|   8  |7     6|5       0|
+// | write mask  |  modifiers  |  swizzle  |  index | type | spare | op code |
+uint32_t std3D_assembleOpAndDst(
+	uint8_t opcode,
+	uint8_t fmt,
+	uint8_t index,
+	uint8_t swizzle,
+	uint8_t modifiers,
+	uint8_t write_mask
+)
 {
-	if (!stdConffile_OpenRead(path))
+	uint32_t result;
+	result = (opcode & 0x1F);
+	result |= (fmt & 0x3) << 5;
+	// spare result |= (spare & 0x1) << 7;
+	result |= (index & 0xFF) << 8;
+	result |= (swizzle & 0xFF) << 16;
+	result |= (modifiers & 0xF) << 24;
+	result |= (write_mask & 0xF) << 28;
+	return result;
+}
+
+typedef struct
+{
+	uint8_t type;
+	uint8_t fmt;
+	uint8_t index_or_immediate;
+	uint8_t swizzle;
+	uint8_t mask;
+} std3D_AsmRegister;
+
+typedef struct
+{
+	std3D_AsmRegister reg;
+	uint8_t           abs;
+	uint8_t           negate_or_invert;
+	uint8_t           scale_bias;
+	uint8_t           reduction;
+} std3D_AsmSrcOperand;
+
+typedef struct
+{
+	std3D_AsmRegister reg;
+	uint8_t  modifier;
+} std3D_AsmDestOperand;
+
+typedef struct
+{
+	uint8_t              opcode;   // Opcode (e.g., "add")
+	std3D_AsmDestOperand dest;	   // Destination operand
+	std3D_AsmSrcOperand  src[3];   // Source operands
+	uint8_t              srcCount; // Number of source operands
+} std3D_AsmInstruction;
+
+int std3D_assembleInstruction(std3D_Instr* result, std3D_AsmInstruction* inst)
+{
+	result->op_dst = std3D_assembleOpAndDst(inst->opcode,
+											inst->dest.reg.fmt,
+											inst->dest.reg.index_or_immediate,
+											inst->dest.reg.swizzle,
+											inst->dest.modifier,
+											inst->dest.reg.mask);
+
+	result->src0 = std3D_assembleSrc(inst->src[0].reg.type,
+									 inst->src[0].reg.fmt,
+									 inst->src[0].reg.index_or_immediate,
+									 inst->src[0].abs,
+									 inst->src[0].reg.swizzle,
+									 inst->src[0].negate_or_invert,
+									 inst->src[0].scale_bias,
+									 inst->src[0].reduction);
+
+	result->src1 = std3D_assembleSrc(inst->src[1].reg.type,
+									 inst->src[1].reg.fmt,
+									 inst->src[1].reg.index_or_immediate,
+									 inst->src[1].abs,
+									 inst->src[1].reg.swizzle,
+									 inst->src[1].negate_or_invert,
+									 inst->src[1].scale_bias,
+									 inst->src[1].reduction);
+
+	result->src2 = std3D_assembleSrc(inst->src[2].reg.type,
+									 inst->src[2].reg.fmt,
+									 inst->src[2].reg.index_or_immediate,
+									 inst->src[2].abs,
+									 inst->src[2].reg.swizzle,
+									 inst->src[2].negate_or_invert,
+									 inst->src[2].scale_bias,
+									 inst->src[2].reduction);
+
+	return 1;
+}
+
+uint8_t std3D_parseSwizzle(const char* swizzle)
+{
+	const int length = strlen(swizzle);
+	if (length == 0 || length > 4) return 0xE4; // Default "xyzw"
+
+	uint8_t mask = 0;
+	char last = 'x'; // Default to 'x' if missing
+
+	for (int i = 0; i < 4; i++)
 	{
-		stdPlatform_Printf("std3D: ERROR, Failed to open shader '%s'.\n", path);
+		char c = (i < length) ? swizzle[i] : last; // Extend last valid character
+		switch (c)
+		{
+		case 'x': case 'r': last = 'x'; mask |= (0 << (i * 2)); break;
+		case 'y': case 'g': last = 'y'; mask |= (1 << (i * 2)); break;
+		case 'z': case 'b': last = 'z'; mask |= (2 << (i * 2)); break;
+		case 'w': case 'a': last = 'w'; mask |= (3 << (i * 2)); break;
+		default: return 0xE4; // Invalid input, return default
+		}
+	}
+	return mask;
+}
+
+int std3D_extractSwizzle(const char* expression, char* swizzle_out)
+{
+	if (expression[0] != '.')
+	{
+		swizzle_out[0] = '\0'; // No valid swizzle
 		return 0;
 	}
+
+	int mask = 0;
+
+	// Lookup table for swizzle characters to write masks
+	const int swizzle_map[] = { WRITE_RED, WRITE_GREEN, WRITE_BLUE, WRITE_ALPHA };
+	const char swizzle_chars[] = { 'x', 'y', 'z', 'w', 'r', 'g', 'b', 'a', '\0'};
+
+	int i;
+	for (i = 1; i < 5; i++)
+	{
+		// max 4 swizzle chars (xyzw or rgba)
+		char c = expression[i];
+		if (c != 'x' && c != 'y' && c != 'z' && c != 'w'
+			&& c != 'r' && c != 'g' && c != 'b' && c != 'a')
+		{
+			break; // stop at first non-swizzle character
+		}
+		swizzle_out[i - 1] = c;
+
+		int idx = strchr(swizzle_chars, c) - swizzle_chars;
+		mask |= swizzle_map[idx & 3]; // set the appropriate mask
+	}
+
+	swizzle_out[i - 1] = '\0'; // null-terminate
+
+	return mask;
+}
+
+char* std3D_parseRegister(char* token, std3D_AsmRegister* reg)
+{
+	// extract register index or immediate value
+	reg->index_or_immediate = 0;
+
+	if (reg->type == REG_TYPE_IMM)
+	{
+		float value = atof(token);
+		reg->index_or_immediate = stdMath_ClampInt((int)(value * 255.0f + 0.5f), 0, 255);
+		reg->swizzle = SWIZZLE_XYZW;
+		reg->mask = WRITE_RGBA;
+	}
+	else
+	{
+		reg->index_or_immediate = atoi(token);
+
+		// look for a swizzle mask
+		char* swizzle = strchr(token, '.');
+		if (swizzle)
+		{
+			char mask[5] = { 'x', 'y', 'z', 'w', '\0' };
+			reg->mask = std3D_extractSwizzle(swizzle, mask);
+			reg->swizzle = std3D_parseSwizzle(mask);
+		}
+		else
+		{
+			reg->swizzle = SWIZZLE_XYZW;
+			reg->mask = WRITE_RGBA;
+		}
+	}
+
+	return token;
+}
+
+void std3D_parseDestinationOperand(char* token, std3D_AsmDestOperand* op)
+{
+	char typeChar = token[0];
+	if ((typeChar != 'r') && (typeChar != 'R'))
+		return; // todo: error
+	++token;
+	std3D_parseRegister(token, &op->reg);
+}
+
+char* std3D_parseSourceRegister(char* token, std3D_AsmRegister* reg)
+{
+	if (isdigit(token[0])) // immediate value
+	{
+		reg->type = REG_TYPE_IMM;
+	}
+	else
+	{
+		// Extract the type (first character)
+		char typeChar = token[0];
+		switch (typeChar)
+		{
+		case 'r': reg->type = REG_TYPE_GPR; break;
+		case 't': reg->type = REG_TYPE_TEX; break;
+		case 'v': reg->type = REG_TYPE_CLR; break;
+		case 'c': reg->type = REG_TYPE_CON; break;
+		default:
+			reg->type = 0; // todo: error
+			break;
+		}
+		++token;
+	}
+
+	token = std3D_parseRegister(token, reg);
+
+	return token;
+}
+
+
+void std3D_parseSourceOperandExpression(char* token, std3D_AsmSrcOperand* op)
+{
+	token = std3D_parseSourceRegister(token, &op->reg);
+	while (isspace(*token)) // skip whitespace
+		token++;
+
+	if (token[0] == '[')
+	{
+		char tmp[128];
+		char* arg = stdString_GetEnclosedStringContents(token, tmp, 64, '[', ']');
+		if (!arg)
+			return;
+
+		char* modifier = tmp;
+		while (*modifier)
+		{
+			char* next_comma = strchr(modifier, ',');
+			if (next_comma)
+				*next_comma = '\0';
+
+			// trim whitespace from the current modifier
+			while (isspace(*modifier))
+				modifier++;
+
+			// try to parse multipliers first
+			uint8_t scale_bias = std3D_parseScaleBias(modifier);
+			if (scale_bias)
+				op->scale_bias = scale_bias;
+			else
+				op->reg.fmt = std3D_parseEncoding(modifier);
+
+			if (next_comma)
+				modifier = next_comma + 1;
+			else
+				break;
+		}
+	}
+}
+
+void std3D_parseSourceOperandWithModifiers(char* token, std3D_AsmSrcOperand* op)
+{
+	if (token[0] == '-') // check for negate
+	{
+		op->negate_or_invert = 1;
+		token++;
+	}
+	else if (strncmp(token, "1 - ", 4) == 0) // check for invert
+	{
+		op->negate_or_invert = 2;
+		token += 4;
+	}
+
+	if (strncmp(token, "abs", 3) == 0) // check for abs
+	{
+		op->abs = 1;
+		token += 3;
+
+		char temp[64];
+		char* arg = stdString_GetEnclosedStringContents(token, temp, 64, '(', ')');
+		if (arg)
+		{
+			std3D_parseSourceOperandExpression(temp, op);
+		}
+		else
+		{
+			// todo: error   
+		}
+	}
+	if (token[0] == '(') // check for expression
+	{
+		char temp[64];
+		char* arg = stdString_GetEnclosedStringContents(token, temp, 64, '(', ')');
+		if (arg)
+		{
+			std3D_parseSourceOperandExpression(temp, op);
+		}
+		else
+		{
+			// todo: error   
+		}
+	}
+	else
+	{
+		std3D_parseSourceOperandExpression(token, op);
+	}
+}
+
+void std3D_parseSourceOperand(char* token, std3D_AsmSrcOperand* op)
+{
+	// check for a reduction
+	uint8_t reduction = std3D_parseReduction(token);
+	if (reduction != SRC_RED_NONE)
+	{
+		op->reduction = reduction;
+		token += 3;
+
+		// fetch the content within the ()
+		char temp[64];
+		char* arg = stdString_GetEnclosedStringContents(token, temp, 64, '(', ')');
+		if (arg)
+		{
+			std3D_parseSourceOperandWithModifiers(temp, op);
+		}
+		else
+		{
+			// todo: error
+		}
+	}
+	else
+	{
+		std3D_parseSourceOperandWithModifiers(token, op);
+	}
+}
+
+void std3D_parseInstructionModifiers(const char* modifierStart, std3D_AsmInstruction* inst)
+{
+	char buffer[64];
+	strncpy(buffer, modifierStart, 64 - 1);
+	buffer[64 - 1] = '\0';
+
+	// split the modifiers by commas
+	char* token = strtok(buffer, ",");
+	if (!token)
+		return;
+
+	while (isspace(token[0]))
+		token++;
+
+	while (token)
+	{
+		// try to parse multipliers first
+		uint8_t modifier = std3D_parseOutputModifier(token);
+		if (modifier)
+			inst->dest.modifier = modifier;
+		else
+			inst->dest.reg.fmt = std3D_parseEncoding(token);
+
+		token = strtok(NULL, ",");
+	}
+}
+
+int std3D_parseInstruction(char* line, std3D_Instr* result)
+{
+	std3D_AsmInstruction inst;
+	memset(&inst, 0, sizeof(std3D_AsmInstruction));
+
+	// kill any comments
+	char* commentPos = strchr(line, '#');
+	if(commentPos)
+		*commentPos = '\0';
+
+	// split the line into instruction and modifiers
+	char* modifierPos = strchr(line, ':');
+	if (modifierPos)
+		std3D_parseInstructionModifiers(modifierPos + 1, &inst);
+
+	// copy the line to a buffer for manipulation
+	char buffer[256];
+	strncpy(buffer, line, sizeof(buffer));
+	buffer[sizeof(buffer) - 1] = '\0';
+
+	// split the line into tokens
+	char* token = strtok(buffer, " ");
+	if (!token)
+		return 0;
+
+	// parse the opcode
+	inst.opcode = std3D_parseOpCode(token);
+
+	// parse the destination operand
+	token = strtok(NULL, ",");
+	if (!token)
+		return 0;
+
+	std3D_parseDestinationOperand(token, &inst.dest);
+
+	// parse the source operands
+	inst.srcCount = 0;
+	while ((token = strtok(NULL, ",")))
+	{
+		if (inst.srcCount >= 3)
+			break;
+
+		while (isspace(token[0]))
+			token++;
+
+		std3D_parseSourceOperand(token, &inst.src[inst.srcCount++]);
+	}
+
+	return std3D_assembleInstruction(result, &inst);
+}
+
+void std3D_assembleShader(std3D_Shader* shader, const char* code)
+{
+	char tmp[256];
+
+	const char* firstLine = strchr(code, '\n');
+	if (!firstLine)
+		return;
+
+	stdString_SafeStrCopy(tmp, code, (firstLine - code) + 1);
+	if(!sscanf_s(tmp, "ps.%f", &shader->version))
+		return;
 	
-	int success = 1;
-	/*
-	std3D_Shader shader;
-	memset(&shader, 0, sizeof(shader));
-
-	// read the version number
-	stdConffile_ReadLine();
-	if (_sscanf(stdConffile_aLine, "version %d", &shader.version) != 1)
+	const char* curLine = firstLine + 1;
+	while (curLine)
 	{
-		stdPlatform_Printf("std3D: ERROR, Failed to parse shader 's', couldn't read version number.\n");
-		stdConffile_Close();
-		return 0;
-	}
-
-	// parse the code
-	while (stdConffile_ReadArgs())
-	{
-		if (!stdConffile_entry.numArgs)
-			continue;
-
-		uint32_t op, dest, src0, src1, src2;
-		op = std3D_GetOpCode(stdConffile_entry.args[0].key);
-		if (op < 0)
+		const char* nextLine = strchr(curLine, '\n');
+		int curLineLen = nextLine ? (nextLine - curLine) : strlen(curLine);
+		if (curLineLen > 0)
 		{
-			stdPlatform_Printf("std3D: ERROR, Failed to compile shader '%s'. Invalid operation '%s'.\n", path, stdConffile_entry.args[0].key);
-			success = 0;
-			break;
+			stdString_SafeStrCopy(tmp, curLine, curLineLen + 1);
+
+			if(tmp && tmp[0] != '#') // early skip pure comment lines
+			{
+				if(std3D_parseInstruction(tmp, &shader->instr[shader->count]))
+					++shader->count;
+			}
 		}
 
-		if (stdConffile_entry.numArgs < std3D_shaderOpOperands[op])
-		{
-			stdPlatform_Printf("std3D: ERROR, Failed to compile shader 's'."
-							   "Invalid operands for operation '%s', got %d, expected %d.\n",
-							   path,
-							   stdConffile_entry.args[0].key,
-							   stdConffile_entry.numArgs,
-							   std3D_shaderOpOperands[op]);
-			success = 0;
+		if (shader->count >= ARRAY_SIZE(shader->instr))
 			break;
-		}
 
-		dest = _atoi(stdConffile_entry.args[1].value + 1); // skip the helper token
-
-		// todo: handle errors better
-		if (stdConffile_entry.numArgs > 2)
-			src0 = std3D_parseOperand(op, stdConffile_entry.args[2].value, 0, &shader);
-		else
-			src0 = 0;
-
-		if (stdConffile_entry.numArgs > 3)
-			src1 = std3D_parseOperand(op, stdConffile_entry.args[3].value, 1, &shader);
-		else
-			src1 = 0;
-
-		if (stdConffile_entry.numArgs > 4)
-			src2 = std3D_parseOperand(op, stdConffile_entry.args[4].value, 2, &shader);
-		else
-			src2 = 0;
-
-		int idx = shader.count++;
-		if (idx >= 16)
-		{
-			stdPlatform_Printf("std3D: ERROR, Failed to compile shader '%s', instruction count exceeded.\n", path);
-			break;
-		}
-
-		shader.instr[shader.count++] = std3D_buildInstruction(op, dest, src0, src1, src2);
+		curLine = nextLine ? (nextLine + 1) : NULL;
 	}
-
-	if (success)
-	{
-		glBindBuffer(GL_UNIFORM_BUFFER, id);
-		glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_Shader), &shader, GL_STATIC_DRAW);
-		glBindBuffer(GL_UNIFORM_BUFFER, 0);
-	}
-
-	stdConffile_Close();
-	*/
-	return success;
 }
 
 void std3D_initDefaultShader()
@@ -1096,35 +1591,17 @@ void std3D_initDefaultShader()
 
 	std3D_Shader shader;
 	memset(&shader, 0, sizeof(shader));
-	shader.version = 1;
 
-	// sample tex0 from texcoord at t0 to diffuse
-	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEX, 0, REG_R0, DST_MOD_NONE, REG_T0, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
-
-	// light sample tex1 from texcoord at t0
-	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEXI, 0, REG_R1, DST_MOD_NONE, REG_T1, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
-	
-	// sample specular tex3 from texcoord at t0
-	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEX, 0, REG_R2, DST_MOD_NONE, REG_T3, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
-
-	// per pixel lighting to r2
-	//shader.instr[shader.count++] = std3D_buildInstruction(OP_LIT, REG_R2, DST_MOD_NONE, REG_V0, SRC_MOD_NONE, 0, 0, 0, 0);
-
-	// multiply color0 with diffuse tex
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_MUL, 0, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_V0, SRC_MOD_NONE, 0, 0);
-
-	// multiply color1 with specular tex
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_MAD, 0, REG_R0, DST_MOD_NONE, REG_R2, SRC_MOD_NONE, REG_V1, SRC_MOD_NONE, REG_R0, SRC_MOD_NONE);
-	//shader.instr[shader.count++].x = std3D_buildInstruction(OP_ADD, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_V1, SRC_MOD_NONE, 0, 0);
-
-	// add specular
-	//shader.instr[shader.count++].x = std3D_buildInstruction(OP_ADD, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_V1, SRC_MOD_NONE, 0, 0);
-
-	// multiply color0 with diffuse tex and add specular
-	//shader.instr[shader.count++].x = std3D_buildInstruction(OP_MAD, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_V0, SRC_MOD_NONE, REG_V1, SRC_MOD_NONE);
-
-	// take max of diffuse and emissive
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_MAX, 0, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_R1, SRC_MOD_NONE, 0, 0);
+	const char* code =
+		"ps.1.0\n"
+		"tex r0, t0, t0 # sample diffuse\n"
+		"tex r1, t3, t0 # sample specular\n"
+		"mul r0, r0, v0 # multiply diffuse color with diffuse light\n"
+		"mac r0.rgb, r1.rgb, v1.rgb # multiply color1 with specular tex and add to diffuse\n"
+		"tex r1, t1, t0 # sample emissive\n"
+		"max r0.rgb, r0.rgb, r1.rgb # max of diffuse and emissive\n"
+	;
+	std3D_assembleShader(&shader, code);
 
 	glBindBuffer(GL_UNIFORM_BUFFER, defaultShaderUBO);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_Shader), &shader, GL_STATIC_DRAW);
@@ -1138,22 +1615,15 @@ void std3D_initJkgmShader()
 
 	std3D_Shader shader;
 	memset(&shader, 0, sizeof(shader));
-	shader.version = 1;
 
-	// displace the UVs with the displacement map
-	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEXOPM, 0, REG_T0, DST_MOD_NONE, REG_T2, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
-
-	// sample tex0 from texcoord at temp1 to diffuse
-	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEX, 0, REG_R0, DST_MOD_NONE, REG_T0, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
-
-	// light sample tex1 from texcoord at temp1
-	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEXI, 0, REG_R1, DST_MOD_NONE, REG_T1, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
-
-	// multiply color0 with diffuse tex
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_MUL, 0, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_V0, SRC_MOD_NONE, 0, 0);
-
-	// take max of diffuse and emissive
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_MAX, 0, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_R1, SRC_MOD_NONE, 0, 0);
+	const char* code =
+		"ps.1.0\n"
+		"opm r2, t2, t0 : rg16f # parallax\n"
+		"texdudv r0, t0, t0, r2[rg16f] # sample diffuse\n"
+		"mul r0, r0, v0 # multiply diffuse color with diffuse light\n"
+		"tex r1, t1, t0 # sample emissive\n"
+		"max r0, r0, r1 # max of diffuse and emissive\n";
+	std3D_assembleShader(&shader, code);
 
 	glBindBuffer(GL_UNIFORM_BUFFER, jkgmShaderUBO);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_Shader), &shader, GL_STATIC_DRAW);
@@ -1164,65 +1634,35 @@ void std3D_initWaterShader()
 {
 	waterShaderUBO = std3D_GenShader();
 
-	rdVector_Set4(&waterShaderConsts.c[0], 0, 0, 0, 51.0f/255.0f); // lo threshold
-	rdVector_Set4(&waterShaderConsts.c[1], 0, 0, 0, 191.0f / 255.0f); // hi threshold
-	rdVector_Set4(&waterShaderConsts.c[2], 1.f, 1.f, 1.f, 0.5f); // low alpha
-	rdVector_Set4(&waterShaderConsts.c[3], 0.f, 0.f, 0.f, 0.8f); // high alpha
-	rdVector_Set4(&waterShaderConsts.c[4], 0.f, 0.f, 0.f, 0.0f); // no alpha
-	rdVector_Set4(&waterShaderConsts.c[5], 0.2125f, 0.7154f, 0.0721f, 0.0f); // luminance coefficients
-
 	std3D_Shader shader;
 	memset(&shader, 0, sizeof(shader));
-	shader.version = 1;
 
-	// sample the color texture at various offsets defined by texcoord0-texcoord3
-	// tex r0, t0, t0
-	// tex r1, t0, t1
-	// tex r2, t0, t2
-	// tex r3, t0, t3
-	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEX, WRITE_RGBA, REG_R0, DST_MOD_NONE, REG_T0, SRC_MOD_NONE, REG_T0, SRC_MOD_NONE, 0, 0);
-	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEX, WRITE_RGBA, REG_R1, DST_MOD_NONE, REG_T0, SRC_MOD_NONE, REG_T1, SRC_MOD_NONE, 0, 0);
-	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEX, WRITE_RGBA, REG_R2, DST_MOD_NONE, REG_T0, SRC_MOD_NONE, REG_T2, SRC_MOD_NONE, 0, 0);
-	shader.texInstr[shader.texCount++] = std3D_buildInstruction(OP_TEX, WRITE_RGBA, REG_R3, DST_MOD_NONE, REG_T0, SRC_MOD_NONE, REG_T3, SRC_MOD_NONE, 0, 0);
-
-	// luminance as offset for refraction
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_DP3, WRITE_RGBA, REG_R5, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_C5, SRC_MOD_NONE, SRC_OPT_SRC1_CONST, 0);
-
-	// add_d2 r1, r0, r1 ; (r0 + r1) / 2
-	// dot r1, r1, c5 ; luminance
-	// mov r0, r1 ; output color
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_ADD, WRITE_RGBA, REG_R1,   DST_MOD_D2, REG_R0, SRC_MOD_NONE, REG_R1, SRC_MOD_NONE, 0, 0);
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_DP3, WRITE_RGBA, REG_R1, DST_MOD_NONE, REG_R1, SRC_MOD_NONE, REG_C5, SRC_MOD_NONE, SRC_OPT_SRC1_CONST, 0);
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_MOV, WRITE_RGBA, REG_R0, DST_MOD_NONE, REG_R1, SRC_MOD_NONE,      0,            0, 0, 0);
-
-	// add_d2 r3, r2, r3 ; (r2 + r3) / 2
-	// dot r2, r3, c5 ; luminance
-	// add r2.a, r2, r1 ; add r1 to r2
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_ADD, WRITE_RGBA,  REG_R3,   DST_MOD_D2, REG_R2, SRC_MOD_NONE, REG_R3, SRC_MOD_NONE, 0, 0);
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_DP3, WRITE_RGBA,  REG_R2, DST_MOD_NONE, REG_R3, SRC_MOD_NONE, REG_C5, SRC_MOD_NONE, SRC_OPT_SRC1_CONST, 0);
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_ADD, WRITE_ALPHA, REG_R2, DST_MOD_NONE, REG_R2, SRC_MOD_NONE, REG_R1, SRC_MOD_NONE, 0, 0);
-
-	// mov r4, c4 ; move low alpha
-	// mov r0.a, c2 ; move default alpha
-	// add r1.a, r1, -c0 ; subtract low threshold
-	// cmp r0.a, r1, r4, r0 ; r1 > 0 ? r4 (0) : r0 (0.5)
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_MOV,  WRITE_RGBA, REG_R4, DST_MOD_NONE, REG_C4, SRC_MOD_NONE, SRC_OPT_SRC0_CONST,              0,               0,            0);
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_MOV, WRITE_ALPHA, REG_R0, DST_MOD_NONE, REG_C2, SRC_MOD_NONE, SRC_OPT_SRC0_CONST,              0,               0,            0);
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_ADD, WRITE_ALPHA, REG_R1, DST_MOD_NONE, REG_R1, SRC_MOD_NONE,             REG_C0, SRC_MOD_NEGATE, SRC_OPT_SRC1_CONST,            0);
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_CMP, WRITE_ALPHA, REG_R0, DST_MOD_NONE, REG_R1, SRC_MOD_NONE,             REG_R4,   SRC_MOD_NONE,          REG_R0, SRC_MOD_NONE);
-
-	// mov r4.a, c3 ; move high alpha
-	// add r3.a, r2, -c1 ; subtract high threshold
-	// cmp r0.a, r3, r4, r0 ; r3 > 0 ? r4 (0.8) : r0 (0.5 or 0.0)
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_MOV, WRITE_ALPHA, REG_R4, DST_MOD_NONE, REG_C3, SRC_MOD_NONE, SRC_OPT_SRC0_CONST,              0,               0,            0);
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_ADD, WRITE_ALPHA, REG_R3, DST_MOD_NONE, REG_R2, SRC_MOD_NONE,             REG_C1, SRC_MOD_NEGATE, SRC_OPT_SRC1_CONST,            0);
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_CMP, WRITE_ALPHA, REG_R0, DST_MOD_NONE, REG_R3, SRC_MOD_NONE,             REG_R4,   SRC_MOD_NONE,          REG_R0, SRC_MOD_NONE);
-
-	// apply vertex light
-	//shader.instr[shader.count++] = std3D_buildInstruction(OP_MUL, WRITE_RGB, REG_R0, DST_MOD_NONE, REG_R0, SRC_MOD_NONE, REG_V0, SRC_MOD_NONE, 0, 0);
-
-	// clear emissive
-	shader.instr[shader.count++] = std3D_buildInstruction(OP_MOV, WRITE_RGBA, REG_R1, DST_MOD_NONE, REG_C4, SRC_MOD_NONE, SRC_OPT_SRC0_CONST, 0, 0, 0);
+	const char* code =
+		"ps.1.0\n"
+		"# layer 1\n"
+		"tex r0, t0, t0 # sample offset 0\n"
+		"tex r1, t0, t1 # samoke offset 1\n"
+		"mov r5, lum(r0) # distortion\n"
+		"# combine the samples\n"
+		"add r1.a, lum(r0), lum(r1) : div:2 # (r0 + r1) / 2\n"
+		"# output grayscale color\n"
+		"mul r0, lum(r1), v0\n"
+		"# layer 2\n"
+		"tex r2, t0, t2\n"
+		"tex r3, t0, t3\n"
+		"add r3, r2, r3 : div:2 # (r2 + r3) / 2\n"
+		"add r2.a, lum(r2), r1.a # add r1 to r2 \n"
+		"# base\n"
+		"mov r0.a, 0.5 # set alpha to default\n"
+		"sub r1.a, r1, 0.2 # subtract low threshold\n"
+		"cmp r0.a, r1, 0.0, r0 # r1 > 0 ? 0 : r0 (0.5)\n"
+		"# highlights\n"
+		"sub r3.a, r2, 0.75 # subtract high threshold\n"
+		"cmp r0.a, r3, 0.8, r0 # r3 > 0 ? 0.8 : r0 (0.5 or 0.0)\n"
+		"# make sure emissive is clear\n"
+		"mov r1, 0"
+		;
+	std3D_assembleShader(&shader, code);
 
 	glBindBuffer(GL_UNIFORM_BUFFER, waterShaderUBO);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(std3D_Shader), &shader, GL_STATIC_DRAW);
@@ -2019,6 +2459,7 @@ void std3D_setupLightingUBO(std3D_worldStage* pStage)
 void std3D_setupDrawCallVAO(std3D_worldStage* pStage)
 {
 	glGenVertexArrays(STD3D_STAGING_COUNT, pStage->vao);
+
 	for (int i = 0; i < STD3D_STAGING_COUNT; ++i)
 	{
 		glBindVertexArray(pStage->vao[i]);
@@ -2026,50 +2467,65 @@ void std3D_setupDrawCallVAO(std3D_worldStage* pStage)
 		glBindBuffer(GL_ARRAY_BUFFER, world_vbo_all[i]);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_ibo_triangle[i]);
 
-		glVertexAttribPointer(
-			pStage->attribute_coord3d, // attribute
-			3,                 // number of elements per vertex, here (x,y,z)
-			GL_FLOAT,          // the type of each element
-			GL_FALSE,          // normalize fixed-point data?
-			sizeof(rdVertex),                 // data stride
-			(GLvoid*)offsetof(rdVertex, x)                  // offset of first element
-		);
-		glEnableVertexAttribArray(pStage->attribute_coord3d);
-
-		glVertexAttribPointer(
-			pStage->attribute_v_norm, // attribute
-			GL_BGRA,                 // number of elements per vertex, here (x,y,z)
-			GL_UNSIGNED_INT_2_10_10_10_REV,          // the type of each element
-			GL_TRUE,          // normalize fixed-point data?
-			sizeof(rdVertex), // data stride
-			(GLvoid*)offsetof(rdVertex, norm10a2) // offset of first element
-		);
-		glEnableVertexAttribArray(pStage->attribute_v_norm);
-
-		for (int i = 0; i < RD_NUM_COLORS; ++i)
+		if (pStage->bPosOnly)
 		{
 			glVertexAttribPointer(
-				pStage->attribute_v_color + i, // attribute
-				4,                 // number of elements per vertex, here (R,G,B,A)
-				GL_UNSIGNED_BYTE,  // the type of each element
-				GL_TRUE,          // normalize fixed-point data?
-				sizeof(rdVertex),                 // no extra data between each position
-				(GLvoid*)offsetof(rdVertex, colors[i]) // offset of first element
-			);
-			glEnableVertexAttribArray(pStage->attribute_v_color + i);
-		}
-
-		for (int i = 0; i < RD_NUM_TEXCOORDS; ++i)
-		{
-			glVertexAttribPointer(
-				pStage->attribute_v_uv + i,    // attribute
-				4,                 // number of elements per vertex, here (U,V,R,Q)
+				pStage->attribute_coord3d, // attribute
+				3,                 // number of elements per vertex, here (x,y,z)
 				GL_FLOAT,          // the type of each element
-				GL_FALSE,          // take our values as-is
-				sizeof(rdVertex),                 // no extra data between each position
-				(GLvoid*)offsetof(rdVertex, texcoords[i])                  // offset of first element
+				GL_FALSE,          // normalize fixed-point data?
+				sizeof(rdVector3),                 // data stride
+				0                  // offset of first element
 			);
-			glEnableVertexAttribArray(pStage->attribute_v_uv + i);
+			glEnableVertexAttribArray(pStage->attribute_coord3d);
+		}
+		else
+		{
+			glVertexAttribPointer(
+				pStage->attribute_coord3d, // attribute
+				3,                 // number of elements per vertex, here (x,y,z)
+				GL_FLOAT,          // the type of each element
+				GL_FALSE,          // normalize fixed-point data?
+				sizeof(rdVertex),                 // data stride
+				(GLvoid*)offsetof(rdVertex, x)                  // offset of first element
+			);
+			glEnableVertexAttribArray(pStage->attribute_coord3d);
+
+			glVertexAttribPointer(
+				pStage->attribute_v_norm, // attribute
+				GL_BGRA,                 // number of elements per vertex, here (x,y,z)
+				GL_UNSIGNED_INT_2_10_10_10_REV,          // the type of each element
+				GL_TRUE,          // normalize fixed-point data?
+				sizeof(rdVertex), // data stride
+				(GLvoid*)offsetof(rdVertex, norm10a2) // offset of first element
+			);
+			glEnableVertexAttribArray(pStage->attribute_v_norm);
+
+			for (int i = 0; i < RD_NUM_COLORS; ++i)
+			{
+				glVertexAttribPointer(
+					pStage->attribute_v_color + i, // attribute
+					4,                 // number of elements per vertex, here (R,G,B,A)
+					GL_UNSIGNED_BYTE,  // the type of each element
+					GL_TRUE,          // normalize fixed-point data?
+					sizeof(rdVertex),                 // no extra data between each position
+					(GLvoid*)offsetof(rdVertex, colors[i]) // offset of first element
+				);
+				glEnableVertexAttribArray(pStage->attribute_v_color + i);
+			}
+
+			for (int i = 0; i < RD_NUM_TEXCOORDS; ++i)
+			{
+				glVertexAttribPointer(
+					pStage->attribute_v_uv + i,    // attribute
+					4,                 // number of elements per vertex, here (U,V,R,Q)
+					GL_FLOAT,          // the type of each element
+					GL_FALSE,          // take our values as-is
+					sizeof(rdVertex),                 // no extra data between each position
+					(GLvoid*)offsetof(rdVertex, texcoords[i])                  // offset of first element
+				);
+				glEnableVertexAttribArray(pStage->attribute_v_uv + i);
+			}
 		}
 	}
 	glBindVertexArray(vao);
@@ -2321,7 +2777,7 @@ int init_resources()
 	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAX_LEVEL, 0);
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 
-	uint32_t bbd[256];
+	rdVector3 bbd[256];
 	for (int i = 0; i < 256; ++i)
 	{
 		float t = (float)i / 256.0f;
@@ -2360,14 +2816,12 @@ int init_resources()
 		G = fmax(0.0f, G) * t;
 		B = fmax(0.0f, B) * t;
 
-		uint32_t r = (uint32_t)stdMath_Clamp(R * 255.0f, 0.0f, 1023.0f) & 0x3FF;
-		uint32_t g = (uint32_t)stdMath_Clamp(G * 255.0f, 0.0f, 1023.0f) & 0x3FF;
-		uint32_t b = (uint32_t)stdMath_Clamp(B * 255.0f, 0.0f, 1023.0f) & 0x3FF;
-
-		bbd[i] = (r | (g << 10) | (b << 20) | (0 << 30));
+		bbd[i].x = R;
+		bbd[i].y = G;
+		bbd[i].z = B;
 	}
 
-	glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB10_A2, 256, 0, GL_RGBA, GL_UNSIGNED_INT_2_10_10_10_REV, bbd);
+	glTexImage1D(GL_TEXTURE_1D, 0, GL_R11F_G11F_B10F, 256, 0, GL_RGB, GL_FLOAT, bbd);
 
     glGenVertexArrays( 1, &vao );
     glBindVertexArray( vao ); 
@@ -2401,6 +2855,8 @@ int init_resources()
 	std3D_setupUBOs();
 	for(int i = 0; i < SHADER_COUNT; ++i)
 	{
+		worldStages[i].bPosOnly = (i <= SHADER_DEPTH_ALPHATEST);
+
 		std3D_setupDrawCallVAO(&worldStages[i]);
 		std3D_setupLightingUBO(&worldStages[i]);
 	}
@@ -5427,7 +5883,19 @@ void std3D_AddListVertices(std3D_DrawCall* pDrawCall, rdPrimitiveType_t type, st
 	int firstVertex = pList->drawCallVertexCount;
 
 	// copy the vertices
-	memcpy(&pList->drawCallVertices[firstVertex], paVertices, sizeof(rdVertex) * numVertices);
+	if(pList->bPosOnly)
+	{
+		for (int i = 0; i < numVertices; ++i)
+		{
+			pList->drawCallPosVertices[firstVertex + i].x = paVertices[i].x;
+			pList->drawCallPosVertices[firstVertex + i].y = paVertices[i].y;
+			pList->drawCallPosVertices[firstVertex + i].z = paVertices[i].z;
+		}
+	}
+	else
+	{
+		memcpy(&pList->drawCallVertices[firstVertex], paVertices, sizeof(rdVertex) * numVertices);
+	}
 	pList->drawCallVertexCount += numVertices;
 
 	// generate indices
@@ -5510,6 +5978,8 @@ void std3D_AddZListDrawCall(rdPrimitiveType_t type, std3D_DrawCallList* pList, s
 	std3D_DrawCall* pDrawCall = &pList->drawCalls[pList->drawCallCount++];
 	pDrawCall->state = *pDrawCallState;
 	pDrawCall->shaderID = pDrawCallState->stateBits.alphaTest ? SHADER_DEPTH_ALPHATEST : SHADER_DEPTH;
+
+	pDrawCall->state.header.sortOrder = 0;
 
 	// z lists can ignore blending, fog, lighting and possibly textures
 	pDrawCall->state.stateBits.fogMode = 0;
@@ -5596,7 +6066,7 @@ void std3D_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallSta
 		shaderID  = SHADER_COLOR_UNLIT + lighting + pixelLit;// + specular;
 		listIndex = DRAW_LIST_COLOR_ZPREPASS;
 	}
-	else	
+	else
 	{
 		shaderID = std3D_GetShaderID(pDrawCallState);
 		
@@ -5675,7 +6145,7 @@ int std3D_DrawCallCompareDepth(std3D_DrawCall** a, std3D_DrawCall** b)
 		return 1;
 	if ((*a)->state.header.sortDistance < (*b)->state.header.sortDistance)
 		return -1;
-	return 0;
+	return std3D_DrawCallCompareSortKey(a, b);
 }
 
 // todo: track state bits and only apply necessary changes
@@ -5885,6 +6355,8 @@ void std3D_SetTextureState(std3D_worldStage* pStage, std3D_DrawCallState* pState
 		}
 
 		rdVector_Set2(&tex.texsize, pTexture->width, pTexture->height);
+		tex.texwidth = pTexture->width;
+		tex.texheight = pTexture->height;
 	}
 	else
 	{
@@ -5931,7 +6403,7 @@ void std3D_SetMaterialState(std3D_worldStage* pStage, std3D_DrawCallState* pStat
 	// todo: expose
 	float spec = 0.175;//0.02;//0.2209f; / we're working in srgb
 	rdVector_Set4(&tex.specular_factor, spec, spec, spec, spec);
-	tex.roughnessFactor = stdMath_Sqrt(2.0f / 16.0f);
+	tex.roughnessFactor = stdMath_Sqrt(2.0f / 24.0f);
 
 	glBindBuffer(GL_UNIFORM_BUFFER, material_ubo);
 	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(std3D_MaterialUniforms), &tex);
@@ -6106,7 +6578,12 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 	bufferIdx = (bufferIdx + 1) % STD3D_STAGING_COUNT;
 
 	std3D_BindStage(pStage);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, pList->drawCallVertexCount * sizeof(rdVertex), pList->drawCallVertices);
+
+	if (pList->bPosOnly)
+		glBufferSubData(GL_ARRAY_BUFFER, 0, pList->drawCallVertexCount * sizeof(rdVector3), pList->drawCallPosVertices);
+	else
+		glBufferSubData(GL_ARRAY_BUFFER, 0, pList->drawCallVertexCount * sizeof(rdVertex), pList->drawCallVertices);
+
 	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, pList->drawCallIndexCount * sizeof(uint16_t), indexArray);
 	
 	int last_tex = pState->textureState.pTexture ? pState->textureState.pTexture->texture_id : blank_tex_white;

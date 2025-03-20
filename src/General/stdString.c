@@ -83,33 +83,64 @@ char* stdString_CopyBetweenDelimiter(char *instr, char *outstr, int out_size, ch
     return retval;
 }
 
+char* stdString_GetEnclosedStringContents(char* in, char* out, int out_size, char first, char second)
+{
+	char* result; // eax
+	char* v4; // esi
+	unsigned int v5; // edx
+
+	if (out)
+		*out = 0;
+	result = _strchr(in, first);
+	if (result)
+	{
+		v4 = result + 1;
+		result = _strchr(result + 1, second);
+		if (result)
+		{
+			if (out)
+			{
+				v5 = result - v4;
+				if (result - v4 >= (unsigned int)(out_size - 1))
+					v5 = out_size - 1;
+				_memcpy(out, v4, v5);
+				out[v5] = 0;
+			}
+			++result;
+		}
+	}
+	return result;
+}
+
 char* stdString_GetQuotedStringContents(char *in, char *out, int out_size)
 {
-    char *result; // eax
-    char *v4; // esi
-    unsigned int v5; // edx
+	return stdString_GetEnclosedStringContents(in, out, out_size, '"', '"');
 
-    if ( out )
-        *out = 0;
-    result = _strchr(in, '"');
-    if ( result )
-    {
-        v4 = result + 1;
-        result = _strchr(result + 1, '"');
-        if ( result )
-        {
-            if ( out )
-            {
-                v5 = result - v4;
-                if ( result - v4 >= (unsigned int)(out_size - 1) )
-                    v5 = out_size - 1;
-                _memcpy(out, v4, v5);
-                out[v5] = 0;
-            }
-            ++result;
-        }
-    }
-    return result;
+    //char *result; // eax
+    //char *v4; // esi
+    //unsigned int v5; // edx
+	//
+    //if ( out )
+    //    *out = 0;
+    //result = _strchr(in, '"');
+    //if ( result )
+    //{
+    //    v4 = result + 1;
+    //    result = _strchr(result + 1, '"');
+    //    if ( result )
+    //    {
+    //        if ( out )
+    //        {
+    //            v5 = result - v4;
+    //            if ( result - v4 >= (unsigned int)(out_size - 1) )
+    //                v5 = out_size - 1;
+    //            _memcpy(out, v4, v5);
+    //            out[v5] = 0;
+    //        }
+    //        ++result;
+    //    }
+    //}
+    //return result;
 }
 
 int stdString_CharToWchar(wchar_t *a1, const char *a2, int a3)

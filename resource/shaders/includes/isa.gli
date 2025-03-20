@@ -1,6 +1,6 @@
 // instruction set for simple dx8 style shader VM
 //
-// all instruction reads and operations are dynamically uniform/wave invariant (scalar ops on AMD)
+// all instruction related decoding and branching is uniform/wave invariant (a.k.a scalar ops on AMD)
 // everything reflecting that intent is prefixed with an s_
 
 #include "defines.gli"
@@ -18,58 +18,153 @@
 #define OP_CMP       2  // compare
 #define OP_CND       3  // condition
 #define OP_DIV       4  // division
-#define OP_DP3		 5	// dot3
-#define OP_DP4		 6	// dot4
-#define OP_LRP		 7	// interpolate
-#define OP_MAD		 8	// multiply add
-#define OP_MAX		 9	// maximum
-#define OP_MIN		10	// minimum
-#define OP_MOV		11	// move
-#define OP_MUL		12	// multiply
-#define OP_POW      13  // power
+#define OP_DP2       5  // dot2
+#define OP_DP3		 6	// dot3
+#define OP_DP4		 7	// dot4
+#define OP_MAC       8  // multiply accumulate
+#define OP_MAD		 9	// multiply add
+#define OP_MAX		10	// maximum
+#define OP_MIN		11	// minimum
+#define OP_MIX		12	// mix/interpolate
+#define OP_MOV		13	// move
+#define OP_MUL		14	// multiply
+#define OP_POW      15  // power
+#define OP_SUB      16  // subtract
+#define OP_TEX		17	// texture sample
+#define OP_TEXDUDV  18  // texture sample with offset
+#define OP_OPM      19  // offset parallax
 
-// texture op codes, must match std3D_ShaderTexOp
-#define OP_TEXCOORD  1  // convert UV to color
-#define OP_TEX		 2	// texture sample
-#define OP_TEXI      3  // texture sample with emissive scale
-#define OP_TEXOPM    4  // offset a UV slot with offset parallax mapping
+// source types
+#define REG_TYPE_GPR	0	// register
+#define REG_TYPE_CLR	1	// color
+#define REG_TYPE_CON	2	// constant
+#define REG_TYPE_TEX	3	// texcoord
+#define REG_TYPE_IMM	4	// 8 bit immediate value
+#define REG_TYPE_RSV0	5	// reserved for future use
+#define REG_TYPE_RSV1	6	// reserved for future use
+#define REG_TYPE_SYS	7	// system value
 
-// source modifiers
-#define SRC_MOD_NONE   0x0 // no modifier
-#define SRC_MOD_NEGATE 0x1 // -x
-#define SRC_MOD_BIAS   0x2 // x - 0.5
-#define SRC_MOD_BX2    0x4 // x * 2 - 1
-#define SRC_MOD_INVERT 0x8 // 1 - x
+#define REG_UNORM8 0
+#define REG_SNORM8 1
+#define REG_RG16F  2
+#define REG_R32F   3
 
-// source options
-#define SRC_OPT_NONE        0x0 // nothing
-#define SRC_OPT_SRC0_CONST  0x1 // src0 is a constant
-#define SRC_OPT_SRC1_CONST  0x2 // src1 is a constant
-#define SRC_OPT_SRC0_IMM    0x4 // src0 is an immediate value from -1 to 1
-#define SRC_OPT_SRC1_IMM    0x8 // src1 is an immediate value from -1 to 1
+// source negate or invert
+#define SRC_NEG_INV_NONE 0
+#define SRC_NEG_INV_NEG  1	// negate: -x
+#define SRC_NEG_INV_INV  2	// invert: 1 - x
+
+// source scale and bias
+#define SRC_SCALE_BIAS_NONE	0
+#define SRC_SCALE_BIAS_2X	1	// x * 2
+#define SRC_SCALE_BIAS_4X	2	// x * 4
+#define SRC_SCALE_BIAS_D2	3	// x / 2
+#define SRC_SCALE_BIAS_D4	4	// x / 4
+#define SRC_SCALE_BIAS_BIAS	5	// x - 0.5
+#define SRC_SCALE_BIAS_BX2	6	// x * 2 - 1
+
+// source reduction operations
+#define SRC_RED_NONE 0
+#define SRC_RED_LUM  1	// dot(xyz, lum)
+#define SRC_RED_SUM  2	// x+y+z
+#define SRC_RED_AVG  3	// (x+y+z)/3
+#define SRC_RED_MIN  4	// min(x,y,z)
+#define SRC_RED_MAX  5	// max(x,y,z)
+#define SRC_RED_MAG  6	// length(xyz)
 
 // destination modifiers
-#define DST_MOD_NONE 0 // no modifier
-#define DST_MOD_X2   1 // x * 2
-#define DST_MOD_X4   2 // x * 4
-#define DST_MOD_D2   3 // x / 2
+#define DST_MOD_NONE     0 // no modifier
+#define DST_MOD_X2       1 // x * 2
+#define DST_MOD_X4       2 // x * 4
+#define DST_MOD_X8       3 // x * 8
+#define DST_MOD_D2       4 // x / 2
+#define DST_MOD_D4       5 // x / 4
+#define DST_MOD_D8       6 // x / 8
+#define DST_MOD_POW2     7 // x * x
+#define DST_MOD_POW4     8 // x * x
+#define DST_MOD_SQRT     9 // sqrt(x)
+#define DST_MOD_PACK    10 // x * 0.5 + 0.5
+#define DST_MOD_ABS     11 // abs(x)
+#define DST_MOD_NEG     12 // -x
+#define DST_MOD_ROLLOFF 13 // x/(1+x)
 
-// must mirror std3D_buildInstruction
-// note: there isn't really a difference loading uint vs vec4
-//       so we could easily go for a thicker instruction,
-//       could add more complex swizzling, more ops, more modifiers...
-void s_read_instr(uint s_instr, out uint s_op, out uint s_mask, out uint s_dest, out uint s_src0, out uint s_src1, out uint s_src2)
+struct vm_dst
 {
-	s_mask = (s_instr & 0x2);					// bits 0-2	
-	s_op   = (s_instr >>  2) &  0xF;			// bits 2-6
-	s_dest = (s_instr >>  6) & 0x1F;			// bits 6-10
-	s_src0 = (s_instr >> 11) & 0x7F;			// bits 11-18
-	s_src1 = (s_instr >> 18) & 0x7F;			// bits 18-25
-	s_src2 = (s_instr >> 25) & 0x7F;			// bits 25-32
+	uint idx;
+	uint fmt;
+	uint mask;
+	uint dest;
+	uint swizzle;
+	uint modifier;
+};
 
-	// compute the write mask
-	// 0xFFFFFFFF, 0x00FFFFFF, or 0xFF000000
-	s_mask = (s_mask == 0) ? 0xFFFFFFFF : (s_mask == 1) ? 0x00FFFFFF : 0xFF000000;
+struct vm_src
+{
+	uint idx_imm;
+	uint type;
+	uint fmt;
+	uint absolute;
+	uint swizzle;
+	uint scale_bias;
+	uint neg_inv;
+	uint reduction;
+};
+
+struct vm_instr
+{
+	uint   opcode;
+	vm_dst dst;
+	vm_src src0;
+	vm_src src1;
+	vm_src src2;
+};
+
+uint s_expand_mask(uint s_mask)
+{
+	uint s_result;
+	s_result  = ((s_mask & 0x8) != 0) ? 0xFF000000u : 0x00000000u;
+    s_result |= ((s_mask & 0x4) != 0) ? 0x00FF0000u : 0x00000000u;
+    s_result |= ((s_mask & 0x2) != 0) ? 0x0000FF00u : 0x00000000u;
+    s_result |= ((s_mask & 0x1) != 0) ? 0x000000FFu : 0x00000000u;
+	return s_result;
+}
+
+void s_decode_opcode(out uint s_opcode, uint s_instr)
+{
+	s_opcode = (s_instr & 0x1F);
+}
+
+void s_decode_dst_operand(out vm_dst s_dst, uint s_instr)
+{
+	s_dst.fmt       = (s_instr >>  5) & 0x3;
+	//spare         = (s_instr >>  7) & 0x1;
+	s_dst.idx       = (s_instr >>  8) & 0xFF;
+	s_dst.swizzle   = (s_instr >> 16) & 0xFF;
+	s_dst.modifier  = (s_instr >> 24) &  0xF;
+	s_dst.mask      = (s_instr >> 28) &  0xF;
+	s_dst.mask      = s_expand_mask(s_dst.mask);
+}
+
+void s_decode_src_operand(out vm_src s_src, uint s_instr)
+{
+	s_src.type       = (s_instr      ) &  0x7;
+	s_src.absolute   = (s_instr >>  3) &  0x1;
+	s_src.fmt        = (s_instr >>  4) &  0x3;
+	//spare          = (s_instr >>  6) &  0x3;
+	s_src.idx_imm    = (s_instr >>  8) & 0xFF;
+	s_src.swizzle    = (s_instr >> 16) & 0xFF;
+	s_src.neg_inv    = (s_instr >> 24) &  0x3;
+	s_src.scale_bias = (s_instr >> 26) &  0x7;
+	s_src.reduction  = (s_instr >> 29) &  0x7;
+}
+
+void s_decode_instr(out vm_instr s_instr_out, uvec4 s_instr)
+{
+	s_decode_opcode     (s_instr_out.opcode, s_instr.x);
+	s_decode_dst_operand(s_instr_out.dst,    s_instr.x);
+	s_decode_src_operand(s_instr_out.src0,   s_instr.y);
+	s_decode_src_operand(s_instr_out.src1,   s_instr.z);
+	s_decode_src_operand(s_instr_out.src2,   s_instr.w);
 }
 
 #endif

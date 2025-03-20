@@ -61,6 +61,21 @@ float fastPow(float b, float p)
     return uintBitsToFloat(uint(p * float(floatBitsToUint(b)) - (p - 1.0) * uintBitsToFloat(IEEEScaleOffset)));
 }
 
+vec3 fastExp2x3(vec3 v)
+{
+	return vec3(fastExp2(v.x), fastExp2(v.y), fastExp2(v.z));
+}
+
+vec3 fastLog2x3(vec3 v)
+{
+    return vec3(fastLog2(v.x), fastLog2(v.y), fastLog2(v.z));
+}
+
+vec3 fastPowx3(vec3 v, float p)
+{
+    return vec3(fastPow(v.x, p), fastPow(v.y, p), fastPow(v.z, p));
+}
+
 const int IEEE_INT_RCP_CONST_NR0 = 0x7EF311C2;
 const int IEEE_INT_RCP_CONST_NR1 = 0x7EF311C3;
 const int IEEE_INT_RCP_CONST_NR2 = 0x7EF312AC;

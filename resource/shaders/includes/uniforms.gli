@@ -59,7 +59,7 @@ layout(std140) uniform textureBlock
 	int   numMips;
 
 	vec2 texsize;
-	vec2 padding0;
+	ivec2 itexsize;
 
 	vec4 uv_offset[4];
 
@@ -154,12 +154,10 @@ layout(std140) uniform decalBlock
 // Shader buffer
 layout(std140) uniform shaderBlock
 {	
-	uint  shaderVersion;
-	uint  shaderPadding0;
-	uint  shaderTexInstructionCount;
+	float shaderVersion;
+	uint  shaderPadding0, shaderPadding1;
 	uint  shaderInstructionCount;
-	uvec4 shaderTexInstructions[2];
-	uvec4 shaderInstructions[8];
+	uvec4 shaderInstructions[32];
 };
 
 // Shader constants buffer

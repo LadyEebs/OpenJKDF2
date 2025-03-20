@@ -6,6 +6,15 @@
 
 #include "Modules/rdroid/types.h"
 
+// vector components
+enum
+{
+	X = 0,
+	Y = 1,
+	Z = 2,
+	W = 3
+};
+
 // Constants
 typedef int32_t rdGeoMode_t;
 enum RD_GEOMODE

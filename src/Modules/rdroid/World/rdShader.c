@@ -49,7 +49,7 @@ int rdShader_LoadEntry(char* fpath, rdShader* shader)
 
 	// todo: move parsing/file loading here and parse raw strings in std3D
 
-	return std3D_CompileShaderFromFile(shader->shaderid, fpath);
+	return 0;
 }
 
 #endif

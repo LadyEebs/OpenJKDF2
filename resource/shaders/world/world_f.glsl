@@ -57,7 +57,7 @@ void calc_light()
 
 	vec3 viewPos   = vec3(unpackHalf2x16(vpos.x), unpackHalf2x16(vpos.y).x); // f_coord.xyz;
 	vec3 view      = normalize(-viewPos.xyz);
-	vec3 normal    = normalize(f_normal.xyz);
+	vec3 normal    = normalizeNear1(f_normal.xyz);
 	vec3 reflected = reflect(-view, normal);
 	
 	float fog = 0.0;
@@ -73,29 +73,29 @@ void calc_light()
 
 	float roughness = (roughnessFactor);
 	
-	v[0] = packColorRegister(f_color[0]);
-	v[1] = packColorRegister(vec4(f_color[1].rgb, fog));
+	v[0] = pack_vertex_reg(f_color[0]);
+	v[1] = pack_vertex_reg(vec4(f_color[1].rgb, fog));
 
 #ifdef UNLIT
 	if (lightMode == 0) // fully lit
 	{
-		v[0] = packColorRegister(vec4(vec3(light_mult), f_color[0].w));
-		v[1] = packColorRegister(vec4(vec3(light_mult), fog));
+		v[0] = pack_vertex_reg(vec4(vec3(light_mult), f_color[0].w));
+		v[1] = pack_vertex_reg(vec4(vec3(light_mult), fog));
 	}
 	else if (lightMode == 1) // not lit
 	{
-		v[0] = packColorRegister(vec4(0.0, 0.0, 0.0, f_color[0].w));
-		v[1] = packColorRegister(vec4(0.0, 0.0, 0.0, fog));
+		v[0] = pack_vertex_reg(vec4(0.0, 0.0, 0.0, f_color[0].w));
+		v[1] = pack_vertex_reg(vec4(0.0, 0.0, 0.0, fog));
 	}
 	else // "diffuse"/vertex lit
 	{
-		v[0] = packColorRegister(f_color[0]);
-		v[1] = packColorRegister(vec4(f_color[1].rgb, fog));
+		v[0] = pack_vertex_reg(f_color[0]);
+		v[1] = pack_vertex_reg(vec4(f_color[1].rgb, fog));
 	}
 #else // UNLIT
 
-	v[0] = packColorRegister(vec4(0.0, 0.0, 0.0, f_color[0].w));
-	v[1] = packColorRegister(vec4(0.0, 0.0, 0.0, fog));
+	v[0] = pack_vertex_reg(vec4(0.0, 0.0, 0.0, f_color[0].w));
+	v[1] = pack_vertex_reg(vec4(0.0, 0.0, 0.0, fog));
 
 	light_result result;
 	result.diffuse  = packF2x11_1x10(f_color[0].rgb);
@@ -207,8 +207,8 @@ void calc_light()
 	vec3 diffuse  = unpackF2x11_1x10(result.diffuse);
 	vec3 specular = unpackF2x11_1x10(result.specular);
 
-	uint v0 = packColorRegister(vec4(diffuse.rgb * diffuseScale.rgb, 0));
-	uint v1 = packColorRegister(vec4(specular.rgb * specularScale.rgb, 0));
+	uint v0 = pack_vertex_reg(vec4(diffuse.rgb * diffuseScale.rgb, 0));
+	uint v1 = pack_vertex_reg(vec4(specular.rgb * specularScale.rgb, 0));
 
 	v[0] = (v[0] & 0xFF000000) | (v0 & 0x00FFFFFF);
 	v[1] = (v[1] & 0xFF000000) | (v1 & 0x00FFFFFF);
@@ -243,7 +243,7 @@ void calc_decals()
 				if (decal_index >= s_first_item && decal_index <= s_last_item)
 				{
 					vec3 viewPos = unpackHalf4x16(vpos).xyz;
-					calc_decal(r[0], r[1], decal_index - s_first_item, viewPos);
+					calc_decal(decal_index - s_first_item, viewPos);
 				}
 				//else if (decal_index > last_item)
 				//{
@@ -281,18 +281,14 @@ void main(void)
 	calc_lod_bias();
 	calc_light();
 
-	// run the texture stage
-	// todo: how to handle decals?
-	run_tex_stage();
-
 	// run the combiner stage
-	run_combiner_stage();
+	run_vm();
 
 	// blend in the decals
 	calc_decals();
 
 	// unpack color and do fog and whatever else
-	vec4 outColor = unpackRegister(r[0]); // unpack r0
+	vec4 outColor = unpackUnorm4x8(r[0]); // unpack r0
 
 	//uvec2 crd = uvec2(floor(gl_FragCoord.xy));
 	//float dither = dither_value_float(crd);// texelFetch(dithertex, ivec2(gl_FragCoord.xy) & ivec2(3), 0).r;
@@ -304,7 +300,7 @@ void main(void)
 	//if(fogEnabled > 0)
 	{
 		//vec4 fog_color = unpackUnorm4x8(fog);
-		float fog = unpackRegister(v[1]).w * fogColor.a;
+		float fog = unpackUnorm4x8(v[1]).w * fogColor.a;
 		outColor.rgb = mix(outColor.rgb, fogColor.rgb, fog);
 		fragGlow.rgb = fragGlow.rgb * (1.0 - fog);
 	}
@@ -320,7 +316,7 @@ void main(void)
 	//float sceneDepth = textureLod(ztex, screenUV, 0).r;
 	float softIntersect = 1.0;//clamp((sceneDepth - f_coord.w) / -localViewDir.y * 500.0, 0.0, 1.0);	
 	
-	vec2 disp = unpackRegister(r[5]).xy - 0.5;
+	vec2 disp = unpackUnorm4x8(r[5]).xy - 0.5;
 	disp *= min(0.05, 0.0001 / unpackHalf2x16(vpos.y).y);// * softIntersect;
 
 	vec2 refrUV = screenUV + disp;
@@ -366,7 +362,7 @@ void main(void)
 
 	// alpha testing
 #ifdef ALPHA_DISCARD
-    if (fragColor.a < 0.01) // todo: alpha test value
+    if (fragColor.a < 0.5) // todo: alpha test value
 		discard;
 #endif
 
@@ -383,7 +379,7 @@ void main(void)
 //#endif
 
 	// unpack glow and output
-	fragGlow = vec4(unpackRegister(r[1])); // unpack r1
+	fragGlow = vec4(unpackUnorm4x8(r[1])); // unpack r1
 
 	// apply glow multiplier
 	fragGlow.rgb *= emissiveFactor.w;

@@ -74,9 +74,6 @@ void main(void)
 	f_normal.xyz = vec3(normal);
 	f_lodbias = min(compute_mip_bias(viewPos.y), (numMips - 1));
 
-	//if(lightMode < 3)
-		//f_normal = face_normal;
-
     gl_Position = pos;
     f_color[0] = vec4(clamp(v_color[0].bgra, vec4(0.0), vec4(1.0)));
 	f_color[1] = vec4(clamp(v_color[1].bgra, vec4(0.0), vec4(1.0)));
@@ -94,15 +91,6 @@ void main(void)
 	f_uv[3].xy += uv_offset[3].xy;
 
 #endif
-
-//#ifdef UNLIT
-//	if (lightMode == 0)
-//		f_light = light_mult;
-//	else
-//		f_light = 0.0;
-//#else
-//    f_light = 0.0;
-//#endif
 
  	f_coord.xyz = viewPos.xyz;
 	f_coord.w = pos.w / 128.0;

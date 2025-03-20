@@ -1187,7 +1187,7 @@ void rdDeleteShader(int id)
 
 int rdCompileShader(int id, const char* path)
 {
-	return std3D_CompileShaderFromFile(id, path);
+	return 0;
 }
 
 #endif

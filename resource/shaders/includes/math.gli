@@ -87,7 +87,72 @@ vec3 decode_octahedron_uint(uint p)
     return normalize(n);
 }
 
+float fastSqrtInvAroundOne(float x)
+{
+	const float a0 =  15.0f / 8.0f;
+	const float a1 = -5.0f / 4.0f;
+	const float a2 =  3.0f / 8.0f;
+   
+	return a2 * (x * x) + (a1 * x + a0);
+}
+ 
+float fastLength(vec3 v)
+{
+	float len_sq = v.x * v.x + (v.y * v.y + (v.z * v.z));
+	return fastSqrtNR0(len_sq);
+}
+
+vec3 normalizeNear1(vec3 v)
+{
+	float len_sq = v.x * v.x + (v.y * v.y + (v.z * v.z));
+	float len_inv = fastSqrtInvAroundOne(len_sq);
+	return v.xyz * len_inv;
+}
+
+vec3 normalizeVeryApprox(vec3 v)
+{
+	float len_sq = v.x * v.x + (v.y * v.y + (v.z * v.z));
+	return (v * 0.5) * (1.0 - len_sq) + v;
+}
+
+vec4 rgb_clamp2( vec4 rgb )
+{
+    rgb.rgb = rgb.rgb * fastRcpNR0(max(1.0, max( rgb.x, max( rgb.y, rgb.z ) )));
+	return rgb;
+}
+
+float luminance(vec3 c_rgb)
+{
+    return dot(c_rgb, vec3(0.2125, 0.7154, 0.0721));
+}
+
+vec4 pow2(vec4 x)
+{
+	return x * x;
+}
+
+vec4 pow4(vec4 x)
+{
+	x = pow2(x);
+	return pow2(x);
+}
+
+vec4 rolloff(vec4 rgb)
+{
+	float l = luminance(rgb.xyz);
+	float tl = l / (1.0 + l);
+	rgb.xyz *= tl / l;
+	return rgb;
+}
+
+vec4 rolloff2(vec4 x)
+{
+    x.xyz = 1.0 / (1.0 + exp(-(x.xyz * 10.0 - 5.0)));
+	return x;
+}
+
 // conversions
+
 
 //Source: https://github.com/tobspr/GLSL-Color-Spaces/blob/master/ColorSpaces.inc.glsl
 const float SRGB_ALPHA = 0.055;

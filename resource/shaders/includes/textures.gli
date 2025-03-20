@@ -37,11 +37,6 @@ float dither_value_float(uvec2 xy)
     return float(dither_value(xy)) / 15.0;
 }
 
-float luminance(vec3 c_rgb)
-{
-    return dot(c_rgb, vec3(0.2125, 0.7154, 0.0721));
-}
-
 #ifdef FRAGMENT_SHADER
 
 #if 0
@@ -131,12 +126,8 @@ vec4 load_tex_light(in sampler2D s, in vec2 tc, in float light, float lodbias)
 
 vec2 parallax(in sampler2D s, in vec2 uv, vec3 view_dir)
 {
-	if(abs(displacement_factor) <= float(1e-4))
-		return uv.xy;
-
 	float height = textureLod(s, uv.xy, 0).r * displacement_factor;
-
-	return view_dir.xy * height + uv.xy;
+	return view_dir.xy * height;// + uv.xy;
 }
 
 mat3 construct_tbn(vec2 uv, vec3 pos)

@@ -17,201 +17,111 @@
 
 #ifdef FRAGMENT_SHADER
 
-void run_tex_stage()
+void run_vm()
 {
-	// note: instruction decoding needs to be dynamically uniform/constant for the texture access to work
-	// it works on this machine, but some machines with actual gl3 limits might not
-	for (int s_pc = 0; s_pc < shaderTexInstructionCount; ++s_pc) // program counter
+	for (uint s_pc = 0; s_pc < shaderInstructionCount; ++s_pc)
 	{
-		uint s_op, s_mask, s_dest, s_src0, s_src1, s_src2;
-		s_read_instr(shaderTexInstructions[s_pc >> 2][s_pc & 3], s_op, s_mask, s_dest, s_src0, s_src1, s_src2);
+		vm_instr s_instr;
+		s_decode_instr(s_instr, shaderInstructions[s_pc]);
 
-		switch(s_op)
-		{
-		case OP_TEXOPM:
-			tr[(s_dest & 0x7)] = packTexcoordRegister(
-				parallax(textures[s_src0], read_texcoord_reg(s_src1), decodeHemiUnitVector(vdir))
-			);
-			break;
-
-		case OP_TEX:
-			write_reg(
-				s_dest,
-				process_reg(
-					load_tex(textures[s_src0], read_texcoord_reg(s_src1), unpackHalf2x16(c_l).y),
-					s_src2),
-				s_mask
-			);
-			break;
-
-		case OP_TEXI:
-			write_reg(
-				s_dest,
-				process_reg(
-					load_tex_light(textures[s_src0], read_texcoord_reg(s_src1), float(0.0), unpackHalf2x16(c_l).y),
-					s_src2),
-				s_mask
-			);
-			break;
-
-		case OP_TEXCOORD:
-			write_reg(
-				s_dest,
-				process_reg(vec4(read_texcoord_reg(s_src0), 0, 0), s_src1),
-				s_mask
-			);
-			break;
-
-		default:
-		case OP_NOP:
-			break;
-		}
-	}
-}
-
-void run_combiner_stage()
-{
-	for (int s_pc = 0; s_pc < shaderInstructionCount; ++s_pc) // program counter
-	{
-		uint s_op, s_mask, s_dest, s_src0, s_src1, s_src2;
-		s_read_instr(shaderInstructions[s_pc >> 2][s_pc & 3], s_op, s_mask, s_dest, s_src0, s_src1, s_src2);
-
-		// most common ops first
-		switch(s_op)
+		vec4 result;
+		switch(s_instr.opcode)
 		{					
+		case OP_TEX:
+			result = load_tex(
+				textures[s_instr.src0.idx_imm],
+				read_texcoord_reg(s_instr.src1.idx_imm),
+				unpackHalf2x16(c_l).y
+			).xyzw;
+			break;
+
+		case OP_TEXDUDV:
+			result = load_tex(
+				textures[s_instr.src0.idx_imm],
+				read_texcoord_reg(s_instr.src1.idx_imm) + read_src(s_instr.src2).xy,
+				unpackHalf2x16(c_l).y
+			).xyzw;
+			break;
+		
+		case OP_OPM:
+			result.xy = parallax(
+						textures[s_instr.src0.idx_imm],
+						read_texcoord_reg(s_instr.src1.idx_imm),
+						decodeHemiUnitVector(vdir)).xy;
+			result.zw = vec2(0.0);
+			break;
+
 		case OP_MOV:
-			write_reg(
-				s_dest,
-				sat4(
-					read_src0(s_src0, s_src1)
-				),
-				s_mask
-			);
+			result = sat4( read_src(s_instr.src0) );
 			break;
 
 		case OP_ADD:
-			write_reg(
-				s_dest,
-				sat4(
-					read_src0(s_src0, s_src2) + read_src1(s_src1, s_src2)),
-				s_mask
-			);
+			result = sat4( read_src(s_instr.src0) + read_src(s_instr.src1) );
+			break;
+
+		case OP_SUB:
+			result = sat4( read_src(s_instr.src0) - read_src(s_instr.src1) );
+			break;
+
+		case OP_MAC:
+			result = sat4( read_src(s_instr.src0) * read_src(s_instr.src1) + read_dest(s_instr.dst) );
 			break;
 
 		case OP_MAD:
-			write_reg(
-				s_dest,
-				sat4(
-					read_reg(s_src0) * read_reg(s_src1) + read_reg(s_src2)
-				),
-				s_mask
-			);
+			result = sat4( read_src(s_instr.src0) * read_src(s_instr.src1) + read_src(s_instr.src2) );
 			break;
 
 		case OP_MUL:
-			write_reg(
-				s_dest,
-				sat4(
-					read_src0(s_src0, s_src2) * read_src1(s_src1, s_src2)
-				),
-				s_mask
-			);
+			result = sat4( read_src(s_instr.src0) * read_src(s_instr.src1) );
+			break;
+			
+		case OP_MAX:
+			result = max( read_src(s_instr.src0), read_src(s_instr.src1) );
+			break;
+		
+		case OP_MIN:
+			result = min( read_src(s_instr.src0), read_src(s_instr.src1) );
+			break;
+
+		case OP_MIX:
+			result = sat4(mix( read_src(s_instr.src0), read_src(s_instr.src1), read_src(s_instr.src2) ));
 			break;
 
 		case OP_CMP:
-			write_reg(
-				s_dest,
-				mix(
-					read_reg(s_src2),
-					read_reg(s_src1),
-					greaterThan(read_reg(s_src0), vec4(0.0))
-				),
-				s_mask
-			);
+			result = mix( read_src(s_instr.src2), read_src(s_instr.src1), greaterThan( read_src(s_instr.src0), vec4(0.0) ));
 			break;
 
 		case OP_CND:
-			write_reg(
-				s_dest,
-				mix(
-					read_reg(s_src1),
-					read_reg(s_src2),
-					lessThanEqual(read_reg(s_src0), vec4(0.5))
-				),
-				s_mask
-			);
+			result = mix( read_src(s_instr.src2), read_src(s_instr.src1), greaterThan( read_src(s_instr.src0), vec4(0.5) ));
 			break;
 
 		case OP_DIV:
-			write_reg(
-				s_dest,
-				sat4(
-					read_src0(s_src0, s_src2) / read_src1(s_src1, s_src2)
-				),
-				s_mask
-			);
+			result = sat4( read_src(s_instr.src0) / read_src(s_instr.src1) );
 			break;
 
-		case OP_DP3: // todo: fix the sign
-			write_reg(
-				s_dest,
-				vec4(
-					sat1(dot(read_src0(s_src0, s_src2).xyz, read_src1(s_src1, s_src2).xyz))
-				),
-				s_mask
-			);
+		case OP_DP2:
+			result = vec4(dot( read_src(s_instr.src0).xy, read_src(s_instr.src1).xy ));
 			break;
 
-		case OP_DP4: // todo: fix the sign
-			write_reg(
-				s_dest,
-				vec4(
-					sat1(
-						dot(read_src0(s_src0, s_src2), read_src1(s_src1, s_src2))
-					)
-				),
-				s_mask
-			);
+		case OP_DP3:
+			result = vec4(dot( read_src(s_instr.src0).xyz, read_src(s_instr.src1).xyz ));
 			break;
 
-		case OP_LRP:
-			write_reg(
-				s_dest,
-				sat4(
-					mix(read_reg(s_src0), read_reg(s_src1), read_reg(s_src2))
-				),
-				s_mask
-			);
-			break;
-
-		case OP_MAX:
-			write_reg(
-				s_dest,
-				max(read_src0(s_src0, s_src2), read_src1(s_src1, s_src2)),
-				s_mask
-			);
-			break;
-			
-		case OP_MIN:
-			write_reg(
-				s_dest,
-				min(read_src0(s_src0, s_src2), read_src1(s_src1, s_src2)),
-				s_mask
-			);
+		case OP_DP4:
+			result = vec4(dot( read_src(s_instr.src0), read_src(s_instr.src1) ));
 			break;
 
 		case OP_POW:
-				write_reg(
-				s_dest,
-				pow(read_src0(s_src0, s_src2), read_src1(s_src1, s_src2)),
-				s_mask
-			);
+			result = pow( read_src(s_instr.src0), read_src(s_instr.src1) );
 			break;
 
 		default:
 		case OP_NOP:
 			return;
 		}
+
+		if(s_instr.opcode != OP_OPM)
+			write_reg(s_instr.dst, result);
 	}
 }
 

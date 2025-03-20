@@ -784,7 +784,7 @@ void sithRender_Draw()
 	sithRender_numStaticLights = 0;
 
 	rdSetGlowIntensity(0.4f);
-	rdSetOverbright(1.5f);
+	//rdSetOverbright(1.5f);
 
 	_memset(sithWorld_pCurrentWorld->lightBuckets, 0, sizeof(uint64_t)*sithWorld_pCurrentWorld->numLightBuckets);
 
@@ -1513,10 +1513,10 @@ void sithRender_DrawSurface(sithSurface* surface)
 
 				if(isWater)
 				{
-					rdTexCoord2i(RD_TEXCOORD0, uv->x, uv->y);
-					rdTexCoord2i(RD_TEXCOORD1, uv->x * 0.5, uv->y * 0.5);
-					rdTexCoord2i(RD_TEXCOORD2, uv->x * 0.35, uv->y * 0.35);
-					rdTexCoord2i(RD_TEXCOORD3, uv->x * 0.25, uv->y * 0.25);
+					rdTexCoord2i(RD_TEXCOORD0, uv->x * 0.6, uv->y * 0.6);
+					rdTexCoord2i(RD_TEXCOORD1, uv->x * 0.4, uv->y * 0.4);
+					rdTexCoord2i(RD_TEXCOORD2, uv->x * 1.1, uv->y * 1.1);
+					rdTexCoord2i(RD_TEXCOORD3, uv->x * 0.9, uv->y * 0.9);
 
 					rdTexOffset(RD_TEXCOORD0,stdMath_Frac( 0.2 * sithTime_curSeconds),stdMath_Frac( 0.2 * sithTime_curSeconds));
 					rdTexOffset(RD_TEXCOORD1,stdMath_Frac(-0.1 * sithTime_curSeconds*0.5)*2.0,stdMath_Frac(-0.1 * sithTime_curSeconds * 0.5) * 2.0);

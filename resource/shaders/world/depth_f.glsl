@@ -3,9 +3,6 @@
 #include "textures.gli"
 #include "math.gli"
 
-in vec4 f_color;
-in vec4 f_uv;
-in vec3 f_normal;
 in float f_depth;
 
 //layout(location = 0) out vec4 fragNormalRoughness;

@@ -33,113 +33,188 @@ uvec2 vpos;				// 16:16:16:16 - view space position + depth
 // something like GL_AMD_shader_explicit_vertex_parameter could
 // allow us to prevent keeping vertex attributes around in VGPRs
 // unfortunately I don't have that extension and can't test the results
-uint tr[REG_FP_COUNT]; //   16:16 - texture coordinate registers
+vec2 tr[REG_FP_COUNT]; // 32:32 - texture coordinate registers
 
-vec4 unpackRegister(uint packedInput)
+vec2 packTexcoordRegister(vec2 unpackedInput)
 {
-	return unpackUnorm4x8(packedInput);
-}
-
-uint packRegister(vec4 unpackedInput)
-{
-	return packUnorm4x8(unpackedInput);
-}
-
-uint packTexcoordRegister(vec2 unpackedInput)
-{
-	return packHalf2x16(unpackedInput.xy - 0.5);
+	return unpackedInput.xy;//packHalf2x16(unpackedInput.xy - 0.5);
 }
 
 vec2 read_texcoord_reg(uint i)
 {
-	return unpackHalf2x16(tr[i]).xy + 0.5;
+	return tr[i];//unpackHalf2x16(tr[i]).xy + 0.5;
 }
 
-vec4 unpackColorRegister(uint packedInput)
+uint pack_vertex_reg(vec4 unpackedInput)
 {
-	return unpackUnorm4x8(packedInput);
-}
-
-uint packColorRegister(vec4 unpackedInput)
-{
+	unpackedInput.rgb = fastExp2x3(-unpackedInput.rgb);
 	return packUnorm4x8(unpackedInput);
 }
 
-vec4 read_color_reg(uint i)
+vec4 unpack_vertex_reg(uint packedInput)
 {
-	return unpackColorRegister(v[i]);
+	vec4 v = unpackUnorm4x8(packedInput);
+	v.rgb = -fastLog2x3(v.rgb);
+	return v;
 }
 
-vec4 process_reg(vec4 v, uint s_mods)
+uint swizzle_comp(uint s_swizzle, uint idx)
 {
-	if ((s_mods & SRC_MOD_INVERT) != 0)
-		return 1.0 - v;
-	else if ((s_mods & SRC_MOD_BX2) != 0)
-		v = v * 2.0 + 1.0;
-	else if ((s_mods & SRC_MOD_BIAS) != 0)
-		v -= 0.5;
-	return (s_mods & SRC_MOD_NEGATE) != 0 ? -v : v;
+	return (s_swizzle >> (idx << 1)) & 0x03;
 }
 
-vec4 read_reg(uint s_src)
+vec4 swizzle_reg(vec4 reg, uint s_swizzle)
 {
-	uint s_idx  = (s_src     ) & 0x7;
-	uint s_mods = (s_src >> 3) & 0xF;
+	if (s_swizzle == 0xe4) // no swizzle
+		return reg;
+	
+	vec4 result;
+	result.x = reg[swizzle_comp(s_swizzle, 0)];
+	result.y = reg[swizzle_comp(s_swizzle, 1)];
+	result.z = reg[swizzle_comp(s_swizzle, 2)];
+	result.w = reg[swizzle_comp(s_swizzle, 3)];
+	return result;
+}
 
-	if (s_idx > 5)
-		return process_reg(read_color_reg(s_idx - 6), s_mods);
+vec4 decode_reg(uint reg, uint s_fmt)
+{
+	switch(s_fmt)
+	{
+	default:
+	case REG_UNORM8:	return unpackUnorm4x8(reg);
+	case REG_SNORM8:	return unpackSnorm4x8(reg);
+	case REG_RG16F:		return vec4( unpackHalf2x16(reg), 0, 0);
+	case REG_R32F:		return vec4( uintBitsToFloat(reg) );
+	}
+}
+
+uint encode_reg(vec4 reg, uint s_fmt)
+{
+	switch(s_fmt)
+	{
+	default:
+	case REG_UNORM8:	return packUnorm4x8(reg);
+	case REG_R32F:		return floatBitsToUint(reg.x);
+	case REG_RG16F:		return packHalf2x16(reg.xy);
+	case REG_SNORM8:	return packSnorm4x8(reg);
+	}
+}
+
+vec4 fetch_reg(uint s_idx, uint s_type, uint s_imm, uint s_fmt)
+{
+	switch(s_type)
+	{
+	case REG_TYPE_GPR:	return decode_reg(r[s_idx], s_fmt);
+	case REG_TYPE_CLR:	return unpack_vertex_reg(v[s_idx]);
+	case REG_TYPE_CON:	return shaderConstants[s_idx];
+	case REG_TYPE_TEX:	return vec4(tr[s_idx].xy, 0, 0);
+	case REG_TYPE_IMM:	return vec4(unpackUnorm4x8(s_imm).x);
+	default:			return vec4(0.0);
+	}
+}
+
+vec4 apply_scale_bias(vec4 reg, uint s_scalebias)
+{
+	switch(s_scalebias)
+	{
+	case SRC_SCALE_BIAS_2X:		return reg * 2.0;
+	case SRC_SCALE_BIAS_4X:		return reg * 4.0;
+	case SRC_SCALE_BIAS_D2:		return reg * 0.5;
+	case SRC_SCALE_BIAS_D4:		return reg * 0.25;
+	case SRC_SCALE_BIAS_BIAS:	return reg + -0.5;
+	case SRC_SCALE_BIAS_BX2:	return reg * 2.0 + (-1.0);
+	default:					return reg;
+	}
+}
+
+vec4 apply_neg_inv(vec4 reg, uint s_neg_inv)
+{
+	switch(s_neg_inv)
+	{
+	case SRC_NEG_INV_NEG:	return -reg; 
+	case SRC_NEG_INV_INV:	return 1.0 - reg;
+	default:				return reg;
+	}
+}
+
+vec4 apply_neg_inv_abs(vec4 reg, uint s_neg_inv)
+{
+	switch(s_neg_inv)
+	{
+	case SRC_NEG_INV_NEG:	return -abs(reg); 
+	case SRC_NEG_INV_INV:	return 1.0 - abs(reg);
+	default:				return abs(reg);
+	}
+}
+
+vec4 apply_reduction(vec4 reg, uint s_reduction)
+{
+	switch(s_reduction)
+	{
+	case SRC_RED_LUM:	return vec4( dot(reg.rgb, vec3(0.2125, 0.7154, 0.0721)) );
+	case SRC_RED_SUM:	return vec4( reg.r + reg.g + reg.b );
+	case SRC_RED_AVG:	return vec4( (reg.r + reg.g + reg.b) / 3.0 );
+	case SRC_RED_MIN:	return vec4( min3(reg.r, reg.g, reg.b) );
+	case SRC_RED_MAX:	return vec4( max3(reg.r, reg.g, reg.b) );
+	case SRC_RED_MAG:	return vec4( fastLength(reg.rgb) );
+	default:			return reg;
+	}
+}
+
+vec4 read_src(vm_src s_operand)
+{
+	// fetch the relevant register or immediate value
+	vec4 reg = fetch_reg(s_operand.idx_imm, s_operand.type, s_operand.idx_imm, s_operand.fmt);
+
+	// apply swizzle
+	reg = swizzle_reg(reg, s_operand.swizzle);
+	
+	// do any needed scaling and biasing
+	reg = apply_scale_bias(reg, s_operand.scale_bias);
+	
+	// take absolute if necessary
+	if( s_operand.absolute)
+		reg = apply_neg_inv_abs(reg, s_operand.neg_inv);
 	else
-		return process_reg(unpackRegister(r[s_idx]), s_mods);
+		reg = apply_neg_inv(reg, s_operand.neg_inv);
+
+	return apply_reduction(reg, s_operand.reduction);
 }
 
-vec4 read_const(uint s_src)
+void write_reg(vm_dst s_dest, vec4 reg)
 {
-	uint s_idx  = (s_src     ) & 0x7;
-	uint s_mods = (s_src >> 3) & 0xF;
-	return process_reg(shaderConstants[s_idx], s_mods);
+	// clear the masked bits
+	r[s_dest.idx] &= ~s_dest.mask;
+
+	// swizzle for the destination
+	reg = swizzle_reg(reg, s_dest.swizzle);
+
+	switch (s_dest.modifier)
+	{
+		case DST_MOD_X2:		reg = sat4(        reg * 2.0);	break;
+		case DST_MOD_X4:		reg = sat4(        reg * 4.0);	break;
+		case DST_MOD_X8:		reg = sat4(        reg * 8.0);	break;
+		case DST_MOD_D2:		reg = sat4(        reg * 0.5);	break;
+		case DST_MOD_D4:		reg = sat4(       reg * 0.25);	break;
+		case DST_MOD_D8:		reg = sat4(      reg * 0.125);	break;
+		case DST_MOD_POW2:		reg = sat4(        pow2(reg));	break;
+		case DST_MOD_POW4:		reg = sat4(        pow4(reg));	break;
+		case DST_MOD_SQRT:		reg = sat4(        sqrt(reg));	break;
+		case DST_MOD_PACK:		reg = sat4(  reg * 0.5 + 0.5);	break;
+		case DST_MOD_ABS:		reg = sat4(         abs(reg));	break;
+		case DST_MOD_NEG:		reg = sat4(             -reg);	break;
+		case DST_MOD_ROLLOFF:   reg = sat4(reg / (1.0 + reg));	break;
+		default:				reg = sat4(              reg);	break;
+	}
+
+	// write it
+	uint p = encode_reg(reg, s_dest.fmt);
+	r[s_dest.idx] |= (p & s_dest.mask);
 }
 
-void write_reg(uint s_dest, vec4 v, uint s_mask)
+vec4 read_dest(vm_dst s_dst)
 {
-	uint s_idx  = (s_dest     ) & 0x7;
-	uint s_mods = (s_dest >> 3) & 0x3;
-
-	if (s_mods == DST_MOD_X2)
-		v *= 2.0;
-	else if (s_mods == DST_MOD_X4)
-		v *= 4.0;
-	else if (s_mods == DST_MOD_D2)
-		v *= 0.5;
-
-	r[s_idx] = (r[s_idx] & ~s_mask) | (packRegister(v) & s_mask);
-}
-
-vec4 read_immediate(uint idx)
-{
-	float immmmm[8] = float[](
-		-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0, 4.0
-	);
-	return vec4(immmmm[idx]);
-}
-
-vec4 read_src0(uint idx, uint flags)
-{
-	if ((flags & SRC_OPT_SRC0_IMM) != 0)
-		return read_immediate(idx);
-	else if ((flags & SRC_OPT_SRC0_CONST) != 0)
-		return read_const(idx);
-	else
-		return read_reg(idx);
-}
-
-vec4 read_src1(uint idx, uint flags)
-{
-	if ((flags & SRC_OPT_SRC1_IMM) != 0)
-		return read_immediate(idx);
-	else if ((flags & SRC_OPT_SRC1_CONST) != 0)
-		return read_const(idx);
-	else
-		return read_reg(idx);
+	return decode_reg(r[s_dst.idx], s_dst.fmt);
 }
 
 #endif
