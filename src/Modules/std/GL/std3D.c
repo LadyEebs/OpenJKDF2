@@ -513,7 +513,7 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 typedef enum STD3D_SHADER_ID
 {
 	SHADER_DEPTH,
-	SHADER_DEPTH_ALPHATEST,
+	//SHADER_DEPTH_ALPHATEST,
 
 	SHADER_COLOR_UNLIT,
 	SHADER_COLOR_VERTEX_LIT,
@@ -2589,7 +2589,7 @@ int init_resources()
     if ((programMenu = std3D_loadProgram("shaders/menu", "")) == 0) return false;
 
 	if (!std3D_loadWorldStage(&worldStages[SHADER_DEPTH], 1, "Z_PREPASS")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_DEPTH_ALPHATEST], 1, "Z_PREPASS;ALPHA_DISCARD")) return false;
+	//if (!std3D_loadWorldStage(&worldStages[SHADER_DEPTH_ALPHATEST], 1, "Z_PREPASS;ALPHA_DISCARD")) return false;
 	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR], 0, "")) return false;
 	//if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_SPEC], 0, "SPECULAR")) return false;
 	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_UNLIT], 0, "UNLIT")) return false;
@@ -2894,7 +2894,7 @@ int init_resources()
 	std3D_setupUBOs();
 	for(int i = 0; i < SHADER_COUNT; ++i)
 	{
-		worldStages[i].bPosOnly = (i <= SHADER_DEPTH_ALPHATEST);
+		worldStages[i].bPosOnly = i == SHADER_DEPTH;//(i <= SHADER_DEPTH_ALPHATEST);
 
 		std3D_setupDrawCallVAO(&worldStages[i]);
 		std3D_setupLightingUBO(&worldStages[i]);
@@ -6016,7 +6016,7 @@ void std3D_AddZListDrawCall(rdPrimitiveType_t type, std3D_DrawCallList* pList, s
 
 	std3D_DrawCall* pDrawCall = &pList->drawCalls[pList->drawCallCount++];
 	pDrawCall->state = *pDrawCallState;
-	pDrawCall->shaderID = pDrawCallState->stateBits.alphaTest ? SHADER_DEPTH_ALPHATEST : SHADER_DEPTH;
+	pDrawCall->shaderID = SHADER_DEPTH;//pDrawCallState->stateBits.alphaTest ? SHADER_DEPTH_ALPHATEST : SHADER_DEPTH;
 
 	pDrawCall->state.header.sortOrder = 0;
 
