@@ -5910,7 +5910,7 @@ int std3D_GetShaderID(std3D_DrawCallState* pState)
 	//if (blending)
 		//return SHADER_COLOR_ALPHABLEND_UNLIT + lighting + specular;
 
-	if (alphaTest)
+	if (alphaTest || blending)
 		return SHADER_COLOR_ALPHATEST_UNLIT + lighting + pixelLit;// + specular;
 
 	return SHADER_COLOR_UNLIT + lighting + pixelLit;// + specular;
@@ -6822,7 +6822,6 @@ void std3D_DoDeferredLighting()
 
 void std3D_setupWorldTextures()
 {
-	GLint aotex = jkPlayer_enableSSAO ? ssao.tex : blank_tex_white;
 	std3D_bindTexture(    GL_TEXTURE_2D,         blank_tex_white,         TEX_SLOT_TEX0);
 	std3D_bindTexture(    GL_TEXTURE_2D,         blank_tex_white,         TEX_SLOT_TEX1);
 	std3D_bindTexture(    GL_TEXTURE_2D,         blank_tex_white,         TEX_SLOT_TEX2);
@@ -6836,7 +6835,7 @@ void std3D_setupWorldTextures()
 	std3D_bindTexture(GL_TEXTURE_BUFFER,             cluster_tbo,  TEX_SLOT_CLUSTER_BUFFER);
 	std3D_bindTexture(    GL_TEXTURE_2D,       decalAtlasFBO.tex,     TEX_SLOT_DECAL_ATLAS);
 	std3D_bindTexture(    GL_TEXTURE_2D,  /*std3D_framebuffer.ztex*/deferred.tex, TEX_SLOT_DEPTH);
-	std3D_bindTexture(    GL_TEXTURE_2D,                   aotex,              TEX_SLOT_AO);
+	std3D_bindTexture(    GL_TEXTURE_2D,         blank_tex_white,              TEX_SLOT_AO);
 	std3D_bindTexture(    GL_TEXTURE_2D,                refr.tex,      TEX_SLOT_REFRACTION);
 	std3D_bindTexture(    GL_TEXTURE_2D,               blank_tex,            TEX_SLOT_CLIP);
 	std3D_bindTexture(    GL_TEXTURE_2D,          dither_texture,          TEX_SLOT_DITHER);
@@ -6925,8 +6924,13 @@ void std3D_FlushColorDrawCalls(std3D_RenderPass* pRenderPass)
 	GLenum bufs[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
 	glDrawBuffers(ARRAYSIZE(bufs), bufs);
 
+	std3D_bindTexture(GL_TEXTURE_2D, pRenderPass->flags & RD_RENDERPASS_AMBIENT_OCCLUSION ? ssao.tex : blank_tex_white, TEX_SLOT_AO);
+
 	std3D_FlushDrawCallList(pRenderPass,   &pRenderPass->drawCallLists[DRAW_LIST_COLOR_ZPREPASS], std3D_DrawCallCompareSortKey,    "Color ZPrepass");
 	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_NOZPREPASS], std3D_DrawCallCompareSortKey, "Color No ZPrepass");
+
+	std3D_bindTexture(GL_TEXTURE_2D, blank_tex_white, TEX_SLOT_AO);
+
 	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_ALPHABLEND],   std3D_DrawCallCompareDepth,  "Color Alphablend");
 
 	std3D_popDebugGroup();
@@ -6953,14 +6957,15 @@ void std3D_FlushDeferred(std3D_RenderPass* pRenderPass)
 	std3D_pushDebugGroup("std3D_FlushDeferred");
 	
 	// linearize the depth buffer for readback
+	int hasSSAO = pRenderPass->flags & RD_RENDERPASS_AMBIENT_OCCLUSION;
 	int hasRefraction = 0;
 	if (pRenderPass->flags & RD_RENDERPASS_REFRACTION)
 		hasRefraction = pRenderPass->drawCallLists[DRAW_LIST_Z_REFRACTION].drawCallCount > 0;
 
-	if(hasRefraction)
+	if(hasRefraction || hasSSAO)
 		std3D_DoDeferredLighting();
 
-	if (pRenderPass->flags & RD_RENDERPASS_AMBIENT_OCCLUSION)
+	if (hasSSAO)
 		std3D_DoSSAO();
 
 	// deferred is a lot more expensive at 4k than cramming it all into 1 shader

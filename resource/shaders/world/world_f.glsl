@@ -181,8 +181,20 @@ void calc_light()
 				//	break;
 				//}
 			}
-		}	
-			
+		}
+		
+	#ifndef ALPHA_DISCARD
+		if ((aoFlags & 0x2) == 0x2)
+		{
+			#ifdef FRAG_ATTR_FETCH
+				float linearDepth = fetch_vtx_depth();
+			#else
+				float linearDepth = unpackHalf4x16(vpos).w;
+			#endif
+			shadow *= upsample_ssao(gl_FragCoord.xy, linearDepth);
+		}
+	#endif
+		
 		result.diffuse = packF2x11_1x10(unpackF2x11_1x10(result.diffuse) * shadow);
 		result.specular = packF2x11_1x10(unpackF2x11_1x10(result.specular) * shadow);
 	}
@@ -353,7 +365,7 @@ void main(void)
 
 	// alpha testing
 #ifdef ALPHA_DISCARD
-    if (fragColor.a < 0.5) // todo: alpha test value
+    if (fragColor.a < 0.01) // todo: alpha test value
 		discard;
 #endif
 
