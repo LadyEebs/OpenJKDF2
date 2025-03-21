@@ -33,4 +33,15 @@
 #endif
 #define COLOR_SETS 2
 
+#if defined(GL_EXT_fragment_shader_barycentric) || defined(GL_AMD_shader_explicit_vertex_parameter) || defined(GL_NV_fragment_shader_barycentric)
+	// typically, parameters are interpolated at the start of the shader and kept in registers (increasing register pressure)
+	// to mitigate this, that data gets compressed into a set of variables (usually uint) and decoded as needed (see reg.gli)
+	//
+	// however, there are extensions for directly pulling vertex data for manual interpolation
+	// we can leverage this and interpolate on the fly when we need it, avoiding the register pressure
+	// this allows us to interpolate only when needed, reduce register pressure, and preserve precision
+	// compared to packing everything into tiny register spaces like a uint
+	#define FRAG_ATTR_FETCH 1
+#endif
+
 #endif

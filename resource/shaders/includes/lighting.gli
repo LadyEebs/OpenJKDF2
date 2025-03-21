@@ -1,10 +1,12 @@
 // lighting functionality
 
+#include "defines.gli"
 #include "uniforms.gli"
 #include "math.gli"
 #include "clustering.gli"
 #include "sg.gli"
 #include "textures.gli"
+#include "attr.gli"
 
 #ifndef LIGHTING_H
 #define LIGHTING_H
@@ -21,10 +23,12 @@ struct light_result
 
 struct light_input
 {
+#ifndef FRAG_ATTR_FETCH
 	uvec2 pos;		 // 16:16:16 view space pos
 	uint  normal;	 // 16:16 octahedral normal
 	uint  view;		 // 16:16 octahedral view vector (ggx)
 	uint  reflected; // 16:16 octahedral reflection vector (phong)
+#endif
 	uint  spec_c;    // 16:16 specular coeffs
 	uint  tint;      // tint rgba
 };
@@ -81,8 +85,11 @@ vec3 fresnel_approx(vec3 f0, float costh)
 
 void calc_point_light(inout light_result result, uint light_index, light_input params)
 {
-	vec3 viewPos = unpackHalf4x16(params.pos).xyz; // f_coord.xyz;
-
+#ifdef FRAG_ATTR_FETCH
+	vec3 viewPos = fetch_vtx_pos();
+#else
+	vec3 viewPos = unpackHalf4x16(params.pos).xyz;
+#endif
 	vec3 lvec = lights[light_index].position.xyz - viewPos.xyz;
 	
 	float dotVector = dot(lvec, lvec);
@@ -122,7 +129,11 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	if (intensity <= float(0.0))
 		return;
 
+#ifdef FRAG_ATTR_FETCH
+	vec3 normal = fetch_vtx_normal();
+#else
 	vec3 normal = decode_octahedron_uint(params.normal);
+#endif
 	float lightMagnitude = sat1( dot(normal.xyz, lvec) * intensity );
 	//float signedMagnitude = lightMagnitude;
 	//lightMagnitude = max(lightMagnitude, float(0.0)) * intensity;
@@ -144,7 +155,7 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	vec3 lightColor = lights[light_index].color.xyz;
 	if (lights[light_index].type > 0)
 	{
-	 	result.diffuse = packF2x11_1x10(cd.rgb * lightColor.rgb + unpackF2x11_1x10(result.diffuse));
+	 	result.diffuse = packF2x11_1x10(cd.rgb * lightColor.rgb + (unpackF2x11_1x10(result.diffuse)));
 		//result.diffuse = cd.rgb * lightColor.rgb + result.diffuse;
 	}
 	else
@@ -165,18 +176,30 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	//float d       = (ndoth * ndoth) * (coeffs.x - float(1.0)) + float(1.00001);
 	//      d       = coeffs.x / ((d * d) * max(float(0.1), ldoth * ldoth) * coeffs.y);
 
-	float rdotv = dot(decode_octahedron_uint(params.reflected), lvec);
+	#ifdef FRAG_ATTR_FETCH
+		vec3 reflected = reflect(-fetch_vtx_dir(), fetch_vtx_normal());
+	#else
+		vec3 reflected = decode_octahedron_uint(params.reflected);
+	#endif
+
+	float rdotv = dot(reflected, lvec);
 	float     d = (rdotv * rdotv) * coeffs.y + 1.00001;
 	          d = coeffs.x * fastRcpNR1(d * d);
 #else
 	// "Physically Based Shading on Mobile"
 	// https://www.unrealengine.com/en-US/blog/physically-based-shading-on-mobile
 	// approximated energy conserving phong lobe, fresnel and spec color must be applied at the end with env_brdf
-	float rdotv  = dot(decode_octahedron_uint(params.reflected), lvec);
+	#ifdef FRAG_ATTR_FETCH
+		vec3 reflected = reflect(-fetch_vtx_dir(), fetch_vtx_normal());
+	#else
+		vec3 reflected = decode_octahedron_uint(params.reflected);
+	#endif
+
+	float rdotv  = dot(reflected, lvec);
 	float d      = coeffs.x * fastExp2( coeffs.y * rdotv + (-coeffs.y) );
 #endif
 
-	result.specular = packF2x11_1x10((lightMagnitude * d) * lightColor.rgb + unpackF2x11_1x10(result.specular));
+	result.specular = packF2x11_1x10((lightMagnitude * d) * lightColor.rgb + (unpackF2x11_1x10(result.specular)));
 	//result.specular = lightColor.rgb * vec3(lightMagnitude * d) + result.specular;
 }
 

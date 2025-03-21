@@ -4,6 +4,7 @@
 #include "uniforms.gli"
 #include "textures.gli"
 #include "reg.gli"
+#include "attr.gli"
 
 #ifndef DECALS_H
 #define DECALS_H
@@ -35,11 +36,17 @@ vec3 blackbody(float t)
     return rgb2srgb(max(vec3(0.0), (vec3(X,Y,Z) * XYZtoRGB) * pow(t * 0.0004, 4.0)));
 }
 
-void calc_decal(uint decal_index, vec3 viewPos)
+void calc_decal(uint decal_index)
 {
 	decal dec = decals[decal_index];
 
 	//r0 = packUnorm4x8(vec4(1.0));
+
+#ifdef FRAG_ATTR_FETCH
+	vec3 viewPos = fetch_vtx_pos();
+#else
+	vec3 viewPos = unpackHalf4x16(vpos).xyz;
+#endif
 
 	vec3 objectPosition = vec3(transform44(dec.invDecalMatrix, viewPos.xyz));				
 	vec3 falloff        = (0.5) - abs(objectPosition.xyz);

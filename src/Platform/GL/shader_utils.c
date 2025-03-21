@@ -207,11 +207,15 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 					"#extension GL_ARB_gpu_shader5 : enable\n"
 					"#extension GL_ARB_texture_query_lod : enable\n"
 					"#extension GL_ARB_shading_language_packing : enable\n"
-					// eebs: supporting fp16 turned out be a real mess and didn't help much
+					// vertex fetching
+					"#extension GL_EXT_fragment_shader_barycentric : enable\n"
+					"#extension GL_AMD_shader_explicit_vertex_parameter : enable\n"
+					"#extension GL_NV_fragment_shader_barycentric : enable\n"
+					// eebs: fp16 is unstable as hell
 					//"#extension GL_AMD_gpu_shader_half_float : enable\n"
 					//"#extension GL_AMD_gpu_shader_half_float_fetch : enable\n"
-					"#extension GL_ARB_shader_ballot : enable\n"
-					"#extension GL_KHR_shader_subgroup : enable\n"
+					//"#extension GL_ARB_shader_ballot : enable\n"
+					//"#extension GL_KHR_shader_subgroup : enable\n"
 					"#extension GL_AMD_shader_trinary_minmax : enable\n"
 					;
     defines = "#define CAN_BILINEAR_FILTER\n#define HAS_MIPS\n";

@@ -103,10 +103,12 @@ void main(void)
 
 #ifdef UNLIT
 	f_color[1].rgb = vec3(0.0);
+
 	if(lightMode == 0) // full lit
 		f_color[0].xyz = vec3(light_mult);
 	else if(lightMode == 1) // not lit
 		f_color[0].xyz = vec3(0.0);
+
 #else
 	// do ambient diffuse in vertex shader
 	if (lightMode >= 2)

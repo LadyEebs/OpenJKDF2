@@ -19,7 +19,7 @@ uniform float param1;
 uniform float param2;
 uniform float param3;
 
-in vec2 f_uv;
+//in vec2 f_uv;
 
 out vec4 fragOut;
 
@@ -33,7 +33,7 @@ vec2 encode_result(vec3 color)
 
 void main(void)
 {
-	float depth = textureLod(tex, f_uv.xy, 0).x;
+	float depth = texelFetch(tex, ivec2(gl_FragCoord.xy), 0).x;
 	fragOut = vec4(linearize_depth(depth)) / 128.0;
 #if 0
 	float z = depth * 2.0 - 1.0;
@@ -58,7 +58,7 @@ void main(void)
 	uint cluster = compute_cluster_index(gl_FragCoord.xy, viewPos.y);
 
 	light_input params;
-	params.pos       = viewPos.xyz;
+	params.pos       = packHalf4x16(vec4(viewPos.xyz, 0.0));
 	params.normal    = encode_octahedron_uint(normal.xyz);
 	params.view      = encode_octahedron_uint(view);
 	params.reflected = encode_octahedron_uint(reflected.xyz);
@@ -113,7 +113,7 @@ void main(void)
 			
 				if (occluder_index >= first_item && occluder_index <= last_item)
 				{
-					calc_shadow(shadow, occluder_index - first_item, viewPos.xyz, params.normal);
+					calc_shadow(shadow, occluder_index - first_item, params.pos, params.normal);
 				}
 				else if (occluder_index > last_item)
 				{

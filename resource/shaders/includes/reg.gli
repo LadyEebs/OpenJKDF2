@@ -19,21 +19,22 @@
 #define REG_COUNT    6
 #define REG_FP_COUNT 4
 #else
-#define REG_COUNT    3
+#define REG_COUNT    2
 #define REG_FP_COUNT 1
 #endif
 
 // registers
-uint  c_l;				//       16:16 - cluster index | lod bias (float)
-uint  vdir;				//       16:16 - tangent space view dir
-uint  r[REG_COUNT];     //     8:8:8:8 - temp registers (for color math)
-uint  v[2];				//     8:8:8:8 - color registers
-uvec2 vpos;				// 16:16:16:16 - view space position + depth
+uint  vdir;         //    16:16 - tangent space view dir
+uint  r[REG_COUNT]; // flexible - temp registers (rgba8, rg16f, r32f)
 
-// something like GL_AMD_shader_explicit_vertex_parameter could
-// allow us to prevent keeping vertex attributes around in VGPRs
-// unfortunately I don't have that extension and can't test the results
+#if !defined(UNLIT) || !defined(FRAG_ATTR_FETCH)
+uint  v[2]; // 8:8:8:8 - color registers (tone mapped)
+#endif
+
+#ifndef FRAG_ATTR_FETCH
+uvec2 vpos;			   // 16:16:16:16 - view space position + depth
 vec2 tr[REG_FP_COUNT]; // 32:32 - texture coordinate registers
+#endif
 
 vec2 packTexcoordRegister(vec2 unpackedInput)
 {
@@ -42,7 +43,12 @@ vec2 packTexcoordRegister(vec2 unpackedInput)
 
 vec2 read_texcoord_reg(uint i)
 {
+#ifndef GL_AMD_shader_explicit_vertex_parameter
 	return tr[i];//unpackHalf2x16(tr[i]).xy + 0.5;
+#else
+	vec3 uv = fetch_vtx_uv(i);
+	return uv.xy / uv.z;
+#endif
 }
 
 uint pack_vertex_reg(vec4 unpackedInput)
@@ -58,6 +64,15 @@ vec4 unpack_vertex_reg(uint packedInput)
 	return v;
 }
 
+vec4 read_color_reg(uint i)
+{
+#if defined(UNLIT) && defined(FRAG_ATTR_FETCH)
+	return fetch_vtx_color(i);
+#else
+	return unpack_vertex_reg(v[i]);
+#endif
+}
+
 uint swizzle_comp(uint s_swizzle, uint idx)
 {
 	return (s_swizzle >> (idx << 1)) & 0x03;
@@ -65,9 +80,6 @@ uint swizzle_comp(uint s_swizzle, uint idx)
 
 vec4 swizzle_reg(vec4 reg, uint s_swizzle)
 {
-	if (s_swizzle == 0xe4) // no swizzle
-		return reg;
-	
 	vec4 result;
 	result.x = reg[swizzle_comp(s_swizzle, 0)];
 	result.y = reg[swizzle_comp(s_swizzle, 1)];
@@ -100,16 +112,17 @@ uint encode_reg(vec4 reg, uint s_fmt)
 	}
 }
 
-vec4 fetch_reg(uint s_idx, uint s_type, uint s_imm, uint s_fmt)
+vec4 fetch_reg(vm_src s_operand, uint s_imm)
 {
-	switch(s_type)
+	switch(s_operand.type)
 	{
-	case REG_TYPE_GPR:	return decode_reg(r[s_idx], s_fmt);
-	case REG_TYPE_CLR:	return unpack_vertex_reg(v[s_idx]);
-	case REG_TYPE_CON:	return shaderConstants[s_idx];
-	case REG_TYPE_TEX:	return vec4(tr[s_idx].xy, 0, 0);
-	case REG_TYPE_IMM:	return vec4(unpackUnorm4x8(s_imm).x);
-	default:			return vec4(0.0);
+	case REG_TYPE_GPR:	 return decode_reg(r[s_operand.addr], s_operand.fmt);
+	case REG_TYPE_CLR:	 return read_color_reg(s_operand.addr);
+	case REG_TYPE_CON:	 return shaderConstants[s_operand.addr];
+	case REG_TYPE_TEX:	 return tr[s_operand.addr].xyxy;
+	case REG_TYPE_IMM8:	 return vec4(unpackSnorm4x8(s_operand.addr).x);
+	case REG_TYPE_IMM16: return vec4(unpackHalf2x16(s_imm >> (s_operand.idx << 4)).x);
+	default:			 return vec4(0.0);
 	}
 }
 
@@ -161,10 +174,10 @@ vec4 apply_reduction(vec4 reg, uint s_reduction)
 	}
 }
 
-vec4 read_src(vm_src s_operand)
+vec4 read_src(vm_src s_operand, vm_instr s_instr)
 {
 	// fetch the relevant register or immediate value
-	vec4 reg = fetch_reg(s_operand.idx_imm, s_operand.type, s_operand.idx_imm, s_operand.fmt);
+	vec4 reg = fetch_reg(s_operand, s_instr.imm);
 
 	// apply swizzle
 	reg = swizzle_reg(reg, s_operand.swizzle);
@@ -181,22 +194,35 @@ vec4 read_src(vm_src s_operand)
 	return apply_reduction(reg, s_operand.reduction);
 }
 
-void write_reg(vm_dst s_dest, vec4 reg)
+vec4 read_src0(vm_instr s_instr)
+{
+	return read_src(s_instr.src0, s_instr);
+}
+
+vec4 read_src1(vm_instr s_instr)
+{
+	return read_src(s_instr.src1, s_instr);
+}
+
+vec4 read_src2(vm_instr s_instr)
+{
+	return read_src(s_instr.src2, s_instr);
+}
+
+void write_reg(vm_instr s_instr, vec4 reg)
 {
 	// clear the masked bits
-	r[s_dest.idx] &= ~s_dest.mask;
+	r[s_instr.dst.addr] &= ~s_instr.dst.mask;
 
 	// swizzle for the destination
-	reg = swizzle_reg(reg, s_dest.swizzle);
+	reg = swizzle_reg(reg, s_instr.dst.swizzle);
 
-	switch (s_dest.modifier)
+	switch (s_instr.dst.modifier)
 	{
 		case DST_MOD_X2:		reg = sat4(        reg * 2.0);	break;
 		case DST_MOD_X4:		reg = sat4(        reg * 4.0);	break;
-		case DST_MOD_X8:		reg = sat4(        reg * 8.0);	break;
 		case DST_MOD_D2:		reg = sat4(        reg * 0.5);	break;
 		case DST_MOD_D4:		reg = sat4(       reg * 0.25);	break;
-		case DST_MOD_D8:		reg = sat4(      reg * 0.125);	break;
 		case DST_MOD_POW2:		reg = sat4(        pow2(reg));	break;
 		case DST_MOD_POW4:		reg = sat4(        pow4(reg));	break;
 		case DST_MOD_SQRT:		reg = sat4(        sqrt(reg));	break;
@@ -208,13 +234,13 @@ void write_reg(vm_dst s_dest, vec4 reg)
 	}
 
 	// write it
-	uint p = encode_reg(reg, s_dest.fmt);
-	r[s_dest.idx] |= (p & s_dest.mask);
+	uint p = encode_reg(reg, s_instr.dst.fmt);
+	r[s_instr.dst.addr] |= (p & s_instr.dst.mask);
 }
 
-vec4 read_dest(vm_dst s_dst)
+vec4 read_dest(vm_instr s_instr)
 {
-	return decode_reg(r[s_dst.idx], s_dst.fmt);
+	return decode_reg(r[s_instr.dst.addr], s_instr.dst.fmt);
 }
 
 #endif

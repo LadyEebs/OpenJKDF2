@@ -137,18 +137,30 @@ vec4 pow4(vec4 x)
 	return pow2(x);
 }
 
-vec4 rolloff(vec4 rgb)
+float rolloff(float x, float cutoff, float soft)
 {
-	float l = luminance(rgb.xyz);
-	float tl = l / (1.0 + l);
-	rgb.xyz *= tl / l;
-	return rgb;
+    float low   = cutoff - soft;
+	float high  = cutoff + soft;
+	float scale = -1.0f / (4.0f * soft);
+	
+	if(x <= low)
+		return x;
+        
+	if(x >= high)
+		return cutoff;
+	
+	return -1.0f / (4.0f * soft) * (x * x - 2.0f * high * x + low * low);
 }
 
-vec4 rolloff2(vec4 x)
+float rolloff_fixed(float x)
 {
-    x.xyz = 1.0 / (1.0 + exp(-(x.xyz * 10.0 - 5.0)));
-	return x;
+    // quadratic falloff around 1.0 with a softness of 0.1
+    float quadratic = -2.5 * (x * x) + (5.5 * x - 2.025);
+   
+    float result = x < 0.9 ?   x : quadratic; // linear segment vs quadratic
+    result       = x > 1.1 ? 1.0 : result;    // clamp upper bound
+    
+    return result;
 }
 
 // conversions

@@ -7,17 +7,17 @@
 uniform sampler2D textures[4];
 
 uniform sampler2D tex;
-uniform sampler2D texEmiss;
-uniform sampler2D worldPalette;
-uniform sampler2D worldPaletteLights;
-uniform sampler2D displacement_map;
+//uniform sampler2D texEmiss;
+//uniform sampler2D worldPalette;
+//uniform sampler2D worldPaletteLights;
+//uniform sampler2D displacement_map;
 
 uniform sampler2D ztex;
 uniform sampler2D ssaotex;
 uniform sampler2D refrtex;
-uniform sampler2D cliptex;
-uniform sampler2D dithertex;
-uniform sampler2D diffuseLightTex;
+//uniform sampler2D cliptex;
+//uniform sampler2D dithertex;
+//uniform sampler2D diffuseLightTex;
 uniform sampler1D blackbodyTex;
 
 uint dither_value(uvec2 xy)
@@ -310,7 +310,7 @@ vec4 tex_clut_light(sampler2D s, vec2 tc, float light, float lodbias)
 }
 #endif
 
-#ifdef CAN_BILINEAR_FILTER
+#if 0//def CAN_BILINEAR_FILTER
 void bilinear_paletted(vec2 uv, out vec4 color, out vec4 emissive)
 {
 	float mip = texQueryLod(tex, uv);

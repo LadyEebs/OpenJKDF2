@@ -891,8 +891,8 @@ typedef enum
 	REG_TYPE_CLR,		// color
 	REG_TYPE_CON,		// constant
 	REG_TYPE_TEX,		// texcoord
-	REG_TYPE_IMM,		// 8 bit immediate value
-	REG_TYPE_RSV0,		// reserved for future use
+	REG_TYPE_IMM8,		// 8 bit immediate value
+	REG_TYPE_IMM16,		// 16 bit immediate value
 	REG_TYPE_RSV1,		// reserved for future use
 	REG_TYPE_SYS,		// system value
 
@@ -978,10 +978,8 @@ typedef enum
 	DST_MOD_NONE,
 	DST_MOD_X2,
 	DST_MOD_X4,
-	DST_MOD_X8,
 	DST_MOD_D2,
 	DST_MOD_D4,
-	DST_MOD_D8,
 	DST_MOD_POW2,
 	DST_MOD_POW4,
 	DST_MOD_SQRT,
@@ -998,10 +996,8 @@ uint8_t std3D_parseOutputModifier(const char* token)
 {
 	if (strnicmp(token, "mul:2", 5) == 0) return DST_MOD_X2;
 	if (strnicmp(token, "mul:4", 5) == 0) return DST_MOD_X4;
-	if (strnicmp(token, "mul:8", 5) == 0) return DST_MOD_X8;
 	if (strnicmp(token, "div:2", 5) == 0) return DST_MOD_D2;
 	if (strnicmp(token, "div:4", 5) == 0) return DST_MOD_D4;
-	if (strnicmp(token, "div:8", 5) == 0) return DST_MOD_D8;
 	if (strnicmp(token, "pow:2", 5) == 0) return DST_MOD_POW2;
 	if (strnicmp(token, "pow:4", 5) == 0) return DST_MOD_POW4;
 	if (strnicmp(token, "sqrt", 5) == 0) return DST_MOD_SQRT;
@@ -1107,12 +1103,13 @@ uint8_t std3D_parseEncoding(const char* token)
 }
 
 // source operand layout
-//  |31         30|29          27|26             25|24       16|15               8|7     4|   3  |2    0|
-//  |  reduction  |  scale/bias  |  negate/invert  |  swizzle  |  index/immediate | spare |  abs | type |
+//  |31         30|29          27|26       25|24       16|15    8|7   6|5   4|  3  |2    0|
+//  |  reduction  |  scale/bias  |  neg/inv  |  swizzle  |  addr | idx | fmt | abs | type |
 uint32_t std3D_assembleSrc(
+	uint8_t idx,
 	uint8_t type,
 	uint8_t fmt,
-	uint8_t index_or_immediate,
+	uint8_t addr,
 	uint8_t abs,
 	uint8_t swizzle,
 	uint8_t negate_or_invert,
@@ -1124,8 +1121,8 @@ uint32_t std3D_assembleSrc(
 	result  = type & 0x7;
 	result |= (abs & 0x1) << 3;
 	result |= (fmt & 0x3) << 4;
-	// spare result |= (spare & 0x3) << 6;
-	result |= (index_or_immediate & 0xFF) << 8;
+	result |= (idx & 0x3) << 6;
+	result |= (addr & 0xFF) << 8;
 	result |= (swizzle & 0xFF) << 16;
 	result |= (negate_or_invert & 0x3) << 24;
 	result |= (scale_bias & 0x7) << 26;
@@ -1159,11 +1156,13 @@ uint32_t std3D_assembleOpAndDst(
 
 typedef struct
 {
+	uint8_t idx;
 	uint8_t type;
 	uint8_t fmt;
-	uint8_t index_or_immediate;
+	uint8_t address;
 	uint8_t swizzle;
 	uint8_t mask;
+	float   immediate;
 } std3D_AsmRegister;
 
 typedef struct
@@ -1189,41 +1188,71 @@ typedef struct
 	uint8_t              srcCount; // Number of source operands
 } std3D_AsmInstruction;
 
+
+uint32_t packHalf2x16(float x, float y)
+{
+	return ((uint32_t)stdMath_FloatToHalf(y) << 16) | stdMath_FloatToHalf(x);
+}
+
 int std3D_assembleInstruction(std3D_Instr* result, std3D_AsmInstruction* inst)
 {
 	result->op_dst = std3D_assembleOpAndDst(inst->opcode,
 											inst->dest.reg.fmt,
-											inst->dest.reg.index_or_immediate,
+											inst->dest.reg.address,
 											inst->dest.reg.swizzle,
 											inst->dest.modifier,
 											inst->dest.reg.mask);
 
-	result->src0 = std3D_assembleSrc(inst->src[0].reg.type,
+
+	// if we have 3 operands, then immediate values must be 8 bit
+	if (inst->srcCount >= 3)
+	{
+		if (inst->src[0].reg.type == REG_TYPE_IMM16)
+			inst->src[0].reg.type = REG_TYPE_IMM8;
+
+		if (inst->src[1].reg.type == REG_TYPE_IMM16)
+			inst->src[1].reg.type = REG_TYPE_IMM8;
+	}
+
+	result->src0 = std3D_assembleSrc(0,
+	                                 inst->src[0].reg.type,
 									 inst->src[0].reg.fmt,
-									 inst->src[0].reg.index_or_immediate,
+									 inst->src[0].reg.address,
 									 inst->src[0].abs,
 									 inst->src[0].reg.swizzle,
 									 inst->src[0].negate_or_invert,
 									 inst->src[0].scale_bias,
 									 inst->src[0].reduction);
 
-	result->src1 = std3D_assembleSrc(inst->src[1].reg.type,
+	result->src1 = std3D_assembleSrc(1,
+									 inst->src[1].reg.type,
 									 inst->src[1].reg.fmt,
-									 inst->src[1].reg.index_or_immediate,
+									 inst->src[1].reg.address,
 									 inst->src[1].abs,
 									 inst->src[1].reg.swizzle,
 									 inst->src[1].negate_or_invert,
 									 inst->src[1].scale_bias,
 									 inst->src[1].reduction);
 
-	result->src2 = std3D_assembleSrc(inst->src[2].reg.type,
-									 inst->src[2].reg.fmt,
-									 inst->src[2].reg.index_or_immediate,
-									 inst->src[2].abs,
-									 inst->src[2].reg.swizzle,
-									 inst->src[2].negate_or_invert,
-									 inst->src[2].scale_bias,
-									 inst->src[2].reduction);
+	// for 2 operands or less we can encode floating point immediate values
+	if (inst->srcCount < 3)
+	{
+		float imm0 = inst->src[0].reg.immediate;
+		float imm1 = inst->src[1].reg.immediate;
+		result->src2 = packHalf2x16(imm0, imm1);
+	}
+	else
+	{
+		result->src2 = std3D_assembleSrc(2,
+										 inst->src[2].reg.type,
+										 inst->src[2].reg.fmt,
+										 inst->src[2].reg.address,
+										 inst->src[2].abs,
+										 inst->src[2].reg.swizzle,
+										 inst->src[2].negate_or_invert,
+										 inst->src[2].scale_bias,
+										 inst->src[2].reduction);
+	}
 
 	return 1;
 }
@@ -1289,18 +1318,23 @@ int std3D_extractSwizzle(const char* expression, char* swizzle_out)
 char* std3D_parseRegister(char* token, std3D_AsmRegister* reg)
 {
 	// extract register index or immediate value
-	reg->index_or_immediate = 0;
-
-	if (reg->type == REG_TYPE_IMM)
+	if (reg->type == REG_TYPE_IMM16 || reg->type == REG_TYPE_IMM8)
 	{
-		float value = atof(token);
-		reg->index_or_immediate = stdMath_ClampInt((int)(value * 255.0f + 0.5f), 0, 255);
+		reg->immediate = atof(token);
 		reg->swizzle = SWIZZLE_XYZW;
 		reg->mask = WRITE_RGBA;
+
+		union
+		{
+			int8_t s;
+			uint8_t u;
+		} pack;
+		pack.s = (int8_t)roundf(stdMath_Clamp(reg->immediate, -1.0f, 1.0f) * 127.0f);
+		reg->address = pack.u;
 	}
 	else
 	{
-		reg->index_or_immediate = atoi(token);
+		reg->address = atoi(token);
 
 		// look for a swizzle mask
 		char* swizzle = strchr(token, '.');
@@ -1333,7 +1367,10 @@ char* std3D_parseSourceRegister(char* token, std3D_AsmRegister* reg)
 {
 	if (isdigit(token[0])) // immediate value
 	{
-		reg->type = REG_TYPE_IMM;
+		if (reg->idx >= 3)
+			reg->type = REG_TYPE_IMM8;
+		else
+			reg->type = REG_TYPE_IMM16;
 	}
 	else
 	{
@@ -1544,7 +1581,9 @@ int std3D_parseInstruction(char* line, std3D_Instr* result)
 		while (isspace(token[0]))
 			token++;
 
-		std3D_parseSourceOperand(token, &inst.src[inst.srcCount++]);
+		uint32_t idx = inst.srcCount++;
+		inst.src[idx].reg.idx = idx;
+		std3D_parseSourceOperand(token, &inst.src[idx]);
 	}
 
 	return std3D_assembleInstruction(result, &inst);
@@ -1644,21 +1683,21 @@ void std3D_initWaterShader()
 		"tex r1, t0, t1 # samoke offset 1\n"
 		"mov r5, lum(r0) # distortion\n"
 		"# combine the samples\n"
-		"add r1.a, lum(r0), lum(r1) : div:2 # (r0 + r1) / 2\n"
+		"add r1, r0, r1 : div:2 # (r0 + r1) / 2\n"
 		"# output grayscale color\n"
 		"mul r0, lum(r1), v0\n"
 		"# layer 2\n"
 		"tex r2, t0, t2\n"
 		"tex r3, t0, t3\n"
 		"add r3, r2, r3 : div:2 # (r2 + r3) / 2\n"
-		"add r2.a, lum(r2), r1.a # add r1 to r2 \n"
+		"add r2, r2, r1 # add r1 to r2 \n"
 		"# base\n"
 		"mov r0.a, 0.5 # set alpha to default\n"
-		"sub r1.a, r1, 0.2 # subtract low threshold\n"
-		"cmp r0.a, r1, 0.0, r0 # r1 > 0 ? 0 : r0 (0.5)\n"
+		"sub r1.a, lum(r1), 0.2 # subtract low threshold\n"
+		"cmp r0.a, r1.a, 0.0, r0.a # r1 > 0 ? 0 : r0 (0.5)\n"
 		"# highlights\n"
-		"sub r3.a, r2, 0.75 # subtract high threshold\n"
-		"cmp r0.a, r3, 0.8, r0 # r3 > 0 ? 0.8 : r0 (0.5 or 0.0)\n"
+		"sub r3.a, lum(r2), 0.75 # subtract high threshold\n"
+		"cmp r0.a, r3.a, 0.8, r0.a # r3 > 0 ? 0.8 : r0 (0.5 or 0.0)\n"
 		"# make sure emissive is clear\n"
 		"mov r1, 0"
 		;
@@ -7099,11 +7138,6 @@ void std3D_ClearLights()
 	lightsDirty = 1;
 	std3D_renderPasses[0].clustersDirty = std3D_renderPasses[1].clustersDirty = std3D_renderPasses[2].clustersDirty = 1;
 	lightUniforms.numLights = 0;
-}
-
-uint32_t packHalf2x16(float x, float y)
-{
-	return (stdMath_FloatToHalf(y) << 16) | stdMath_FloatToHalf(x);
 }
 
 int std3D_AddLight(rdLight* light, rdVector3* position, float intensity)

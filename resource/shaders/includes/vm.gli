@@ -11,6 +11,7 @@
 #include "occluders.gli"
 #include "isa.gli"
 #include "reg.gli"
+#include "attr.gli"
 
 #ifndef VM_H
 #define VM_H
@@ -29,90 +30,90 @@ void run_vm()
 		{					
 		case OP_TEX:
 			result = load_tex(
-				textures[s_instr.src0.idx_imm],
-				read_texcoord_reg(s_instr.src1.idx_imm),
-				unpackHalf2x16(c_l).y
-			).xyzw;
+				textures[s_instr.src0.addr],
+				read_texcoord_reg(s_instr.src1.addr),
+				fetch_vtx_lodbias()
+			);
 			break;
 
 		case OP_TEXDUDV:
 			result = load_tex(
-				textures[s_instr.src0.idx_imm],
-				read_texcoord_reg(s_instr.src1.idx_imm) + read_src(s_instr.src2).xy,
-				unpackHalf2x16(c_l).y
-			).xyzw;
+				textures[s_instr.src0.addr],
+				read_texcoord_reg(s_instr.src1.addr) + read_src2(s_instr).xy,
+				fetch_vtx_lodbias()
+			);
 			break;
 		
 		case OP_OPM:
 			result.xy = parallax(
-						textures[s_instr.src0.idx_imm],
-						read_texcoord_reg(s_instr.src1.idx_imm),
+						textures[s_instr.src0.addr],
+						read_texcoord_reg(s_instr.src1.addr),
 						decodeHemiUnitVector(vdir)).xy;
 			result.zw = vec2(0.0);
 			break;
 
 		case OP_MOV:
-			result = sat4( read_src(s_instr.src0) );
+			result = sat4( read_src0(s_instr) );
 			break;
 
 		case OP_ADD:
-			result = sat4( read_src(s_instr.src0) + read_src(s_instr.src1) );
+			result = sat4( read_src0(s_instr) + read_src1(s_instr) );
 			break;
 
 		case OP_SUB:
-			result = sat4( read_src(s_instr.src0) - read_src(s_instr.src1) );
+			result = sat4( read_src0(s_instr) - read_src1(s_instr) );
 			break;
 
 		case OP_MAC:
-			result = sat4( read_src(s_instr.src0) * read_src(s_instr.src1) + read_dest(s_instr.dst) );
+			result = sat4( read_src0(s_instr) * read_src1(s_instr) + read_dest(s_instr) );
 			break;
 
 		case OP_MAD:
-			result = sat4( read_src(s_instr.src0) * read_src(s_instr.src1) + read_src(s_instr.src2) );
+			result = sat4( read_src0(s_instr) * read_src1(s_instr) + read_src2(s_instr) );
 			break;
 
 		case OP_MUL:
-			result = sat4( read_src(s_instr.src0) * read_src(s_instr.src1) );
+			result = sat4( read_src0(s_instr) * read_src1(s_instr) );
 			break;
 			
 		case OP_MAX:
-			result = max( read_src(s_instr.src0), read_src(s_instr.src1) );
+			result = max( read_src0(s_instr), read_src1(s_instr) );
 			break;
 		
 		case OP_MIN:
-			result = min( read_src(s_instr.src0), read_src(s_instr.src1) );
+			result = min( read_src0(s_instr), read_src1(s_instr) );
 			break;
 
 		case OP_MIX:
-			result = sat4(mix( read_src(s_instr.src0), read_src(s_instr.src1), read_src(s_instr.src2) ));
+			result = sat4(mix( read_src0(s_instr), read_src1(s_instr), read_src2(s_instr) ));
 			break;
 
 		case OP_CMP:
-			result = mix( read_src(s_instr.src2), read_src(s_instr.src1), greaterThan( read_src(s_instr.src0), vec4(0.0) ));
+			result = mix( read_src2(s_instr), read_src1(s_instr), greaterThan( read_src0(s_instr), vec4(0.0) ));
 			break;
 
 		case OP_CND:
-			result = mix( read_src(s_instr.src2), read_src(s_instr.src1), greaterThan( read_src(s_instr.src0), vec4(0.5) ));
+			result = mix( read_src2(s_instr), read_src1(s_instr), greaterThan( read_src0(s_instr), vec4(0.5) ));
 			break;
 
 		case OP_DIV:
-			result = sat4( read_src(s_instr.src0) / read_src(s_instr.src1) );
+			result = sat4( read_src0(s_instr) / read_src1(s_instr) );
 			break;
 
 		case OP_DP2:
-			result = vec4(dot( read_src(s_instr.src0).xy, read_src(s_instr.src1).xy ));
+			result = vec4(dot( read_src0(s_instr).xy, read_src1(s_instr).xy ));
 			break;
 
 		case OP_DP3:
-			result = vec4(dot( read_src(s_instr.src0).xyz, read_src(s_instr.src1).xyz ));
+			result = vec4(dot( read_src0(s_instr).xyz, read_src1(s_instr).xyz ));
 			break;
 
 		case OP_DP4:
-			result = vec4(dot( read_src(s_instr.src0), read_src(s_instr.src1) ));
+			result = vec4(dot( read_src0(s_instr), read_src1(s_instr) ));
 			break;
 
 		case OP_POW:
-			result = pow( read_src(s_instr.src0), read_src(s_instr.src1) );
+			result = pow( read_src0(s_instr), read_src1(s_instr) );
 			break;
 
 		default:
@@ -121,7 +122,7 @@ void run_vm()
 		}
 
 		if(s_instr.opcode != OP_OPM)
-			write_reg(s_instr.dst, result);
+			write_reg(s_instr, result);
 	}
 }
 

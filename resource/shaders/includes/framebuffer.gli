@@ -42,6 +42,7 @@ vec3 sampleFramebuffer(sampler2D s, vec2 uv)
 
 	sampled_color.rgb = (pattern) ? sampled_color.rgb : sampled_color.rbg;
 	sampled_color.rgb = ycocg2rgb(sampled_color.rgb);
+	//sampled_color.rgb = yiq2rgb(sampled_color.rgb);
 
 	//sampled_color.rgb = (pattern) ? sampled_color.grb : sampled_color.brg;
 
@@ -53,6 +54,7 @@ vec3 subsample(vec4 color)
 	uvec2 crd  = uvec2(gl_FragCoord.xy);
 	
 	vec3 YCoCg = rgb2ycocg(color.rgb);
+	//vec3 YCoCg = rgb2yiq(color.rgb);
 	color.rg   = ((crd.x & 1u) == (crd.y & 1u)) ? YCoCg.rg : YCoCg.rb;
 	
 	//color.rg = ((crd.x & 1u) == (crd.y & 1u)) ? color.gr : color.gb;

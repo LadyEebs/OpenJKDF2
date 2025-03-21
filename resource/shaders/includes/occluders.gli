@@ -1,5 +1,6 @@
 // occluder/shadow functionality
 
+#include "defines.gli"
 #include "uniforms.gli"
 #include "math.gli"
 #include "clustering.gli"
@@ -8,11 +9,16 @@
 #ifndef OCCLUDERS_H
 #define OCCLUDERS_H
 
-void calc_shadow(inout float shadow, uint occluder_index, vec3 pos, uint normal)
+void calc_shadow(inout float shadow, uint occluder_index, light_input params)
 {
 	occluder occ = occluders[occluder_index];
 
-	vec3 direction = vec3(occ.position.xyz - pos.xyz);
+#ifdef FRAG_ATTR_FETCH
+	vec3 viewPos = fetch_vtx_pos();
+#else
+	vec3 viewPos = unpackHalf4x16(params.pos).xyz;
+#endif
+	vec3 direction = vec3(occ.position.xyz - viewPos.xyz);
 
 	float dotVector = dot(direction, direction);
 	//if (dotVector >= occ.position.w * occ.position.w)
@@ -21,8 +27,13 @@ void calc_shadow(inout float shadow, uint occluder_index, vec3 pos, uint normal)
 	float rcpLen = inversesqrt(dotVector);
 	float len = rcpLen * dotVector;
 	direction = direction * rcpLen;
-				
-	float ndotl = clamp(dot(decode_octahedron_uint(normal), direction), 0.0, 1.0);
+		
+#ifdef FRAG_ATTR_FETCH
+	vec3 normal = fetch_vtx_normal();
+#else
+	vec3 normal = decode_octahedron_uint(params.normal);
+#endif
+	float ndotl = clamp(dot(normal, direction), 0.0, 1.0);
 	//if(ndotl <= 0.0)
 	//	return;
 				

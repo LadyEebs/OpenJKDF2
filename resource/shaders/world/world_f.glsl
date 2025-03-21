@@ -2,13 +2,13 @@
 #include "uniforms.gli"
 #include "clustering.gli"
 #include "math.gli"
+#include "attr.gli"
 #include "lighting.gli"
 #include "decals.gli"
 #include "occluders.gli"
 #include "textures.gli"
 #include "texgen.gli"
 #include "framebuffer.gli"
-#include "attr.gli"
 #include "vm.gli"
 
 float upsample_ssao(in vec2 texcoord, in float linearDepth)
@@ -43,10 +43,14 @@ float upsample_ssao(in vec2 texcoord, in float linearDepth)
 	return dot(weights / totalWeight, values);
 }
 
-void calc_lod_bias()
+uint get_cluster()
 {
-	uint cluster = compute_cluster_index(gl_FragCoord.xy, f_coord.y) * CLUSTER_BUCKETS_PER_CLUSTER;
-	c_l = (cluster & 0xFFFF) | packHalf2x16(vec2(0.0, f_lodbias));
+#ifdef FRAG_ATTR_FETCH
+	float viewDist = fetch_vtx_pos().y;
+#else
+	float viewDist = unpackHalf4x16(vpos).y;
+#endif
+	return compute_cluster_index(gl_FragCoord.xy, viewDist) * CLUSTER_BUCKETS_PER_CLUSTER;
 }
 
 // packs light results into color0 and color1
@@ -55,65 +59,58 @@ void calc_light()
 	v[0] = 0;
 	v[1] = 0;
 
-	vec3 viewPos   = vec3(unpackHalf2x16(vpos.x), unpackHalf2x16(vpos.y).x); // f_coord.xyz;
+#ifdef FRAG_ATTR_FETCH
+	vec3 viewPos   = fetch_vtx_pos();
 	vec3 view      = normalize(-viewPos.xyz);
+#else
 	vec3 normal    = normalizeNear1(f_normal.xyz);
+	vec3 viewPos   = unpackHalf4x16(vpos).xyz;
+	vec3 view      = normalize(-viewPos.xyz);
 	vec3 reflected = reflect(-view, normal);
+#endif
 	
-	float fog = 0.0;
+	float fog = 0;//fetch_vtx_color(1).w;
 #ifdef FOG
 	if(fogEnabled > 0)
 	{
 		float clipDepth = 0;//texelFetch(cliptex, ivec2(gl_FragCoord.xy), 0).r;
-
-		float distToCam = max(0.0, unpackHalf2x16(vpos.y).y * 128.0 - clipDepth) * fastRcpNR1(-view.y);
+	
+		float distToCam = max(0.0, viewPos.y - clipDepth) * fastRcpNR1(-view.y);
 		fog = sat1((distToCam - fogStart) * fastRcpNR1(fogEnd - fogStart));
 	}
 #endif
 
 	float roughness = (roughnessFactor);
 	
-	v[0] = pack_vertex_reg(f_color[0]);
-	v[1] = pack_vertex_reg(vec4(f_color[1].rgb, fog));
+#if defined(UNLIT) && !defined(FRAG_ATTR_FETCH)
 
-#ifdef UNLIT
-	if (lightMode == 0) // fully lit
-	{
-		v[0] = pack_vertex_reg(vec4(vec3(light_mult), f_color[0].w));
-		v[1] = pack_vertex_reg(vec4(vec3(light_mult), fog));
-	}
-	else if (lightMode == 1) // not lit
-	{
-		v[0] = pack_vertex_reg(vec4(0.0, 0.0, 0.0, f_color[0].w));
-		v[1] = pack_vertex_reg(vec4(0.0, 0.0, 0.0, fog));
-	}
-	else // "diffuse"/vertex lit
-	{
-		v[0] = pack_vertex_reg(f_color[0]);
-		v[1] = pack_vertex_reg(vec4(f_color[1].rgb, fog));
-	}
+	v[0] = pack_vertex_reg(fetch_vtx_color(0));
+	v[1] = pack_vertex_reg(vec4(fetch_vtx_color(1).rgb, fog));
+
 #else // UNLIT
 
-	v[0] = pack_vertex_reg(vec4(0.0, 0.0, 0.0, f_color[0].w));
+	v[0] = pack_vertex_reg(vec4(0.0, 0.0, 0.0, fetch_vtx_color(0).w));
 	v[1] = pack_vertex_reg(vec4(0.0, 0.0, 0.0, fog));
 
 	light_result result;
-	result.diffuse  = packF2x11_1x10(f_color[0].rgb);
-	result.specular = packF2x11_1x10(f_color[1].rgb);
+	result.diffuse  = packF2x11_1x10(fetch_vtx_color(0).rgb);
+	result.specular = packF2x11_1x10(fetch_vtx_color(1).rgb);
 
 	light_input params;
+#ifndef FRAG_ATTR_FETCH
 	params.pos       = vpos;
 	params.normal    = encode_octahedron_uint(normal.xyz);
 	params.view      = encode_octahedron_uint(view);
 	params.reflected = encode_octahedron_uint(reflected.xyz);
+#endif
 	params.spec_c    = calc_spec_c(roughness);
-	params.tint      = packUnorm4x8(f_color[0]);
+	params.tint      = packUnorm4x8(fetch_vtx_color(0));
 
 #ifndef VERTEX_LIT
+	uint cluster = get_cluster();
+
 	// light mode "gouraud" (a.k.a new per pixel)
 	{
-		//result.specular = packF2x11_1x10(calc_ambient_specular(roughness, normal, view, reflected));
-
 		// loop lights
 		//if (numLights > 0u)
 		{
@@ -123,7 +120,7 @@ void calc_light()
 			uint s_last_bucket  = min(s_last_item >> 5u, max(0u, CLUSTER_BUCKETS_PER_CLUSTER - 1u));
 			for (uint s_bucket  = s_first_bucket; s_bucket <= s_last_bucket; ++s_bucket)
 			{
-				uint bucket_bits = uint(texelFetch(clusterBuffer, int((c_l & 0xFFFF) + s_bucket)).x);
+				uint bucket_bits = uint(texelFetch(clusterBuffer, int(cluster + s_bucket)).x);
 				while (bucket_bits != 0u)
 				{
 					uint bucket_bit_index = findLSB_unsafe(bucket_bits);
@@ -133,7 +130,7 @@ void calc_light()
 					// eebs: unfortunately I don't have this extension but
 					// in theory scalarizing this should speed things up
 				#if defined(GL_ARB_shader_ballot) && defined(GL_KHR_shader_subgroup)
-					bucket_bits = readFirstInvocationARB(subgroupOr(bucket_bits));
+					//bucket_bits = readFirstInvocationARB(subgroupOr(bucket_bits));
 				#endif
 
 					if (light_index >= s_first_item && light_index <= s_last_item)
@@ -154,14 +151,14 @@ void calc_light()
 	if ((aoFlags & 0x1) == 0x1 && numOccluders > 0u)
 	{		
 		float shadow = (1.0);
-		
+
 		uint s_first_item   = firstOccluder;
 		uint s_last_item    = s_first_item + numOccluders - 1u;
 		uint s_first_bucket = s_first_item >> 5u;
 		uint s_last_bucket  = min(s_last_item >> 5u, max(0u, CLUSTER_BUCKETS_PER_CLUSTER - 1u));
 		for (uint s_bucket  = s_first_bucket; s_bucket <= s_last_bucket; ++s_bucket)
 		{
-			uint bucket_bits = uint(texelFetch(clusterBuffer, int((c_l & 0xFFFF) + s_bucket)).x);
+			uint bucket_bits = uint(texelFetch(clusterBuffer, int(cluster + s_bucket)).x);
 			while (bucket_bits != 0u)
 			{
 				uint bucket_bit_index = findLSB_unsafe(bucket_bits);
@@ -171,13 +168,12 @@ void calc_light()
 				// eebs: unfortunately I don't have this extension but
 				// in theory scalarizing this should speed things up
 			#if defined(GL_ARB_shader_ballot) && defined(GL_KHR_shader_subgroup)
-				bucket_bits = readFirstInvocationARB(subgroupOr(bucket_bits));
+				//bucket_bits = readFirstInvocationARB(subgroupOr(bucket_bits));
 			#endif
 
 				if (occluder_index >= s_first_item && occluder_index <= s_last_item)
 				{
-					vec3 viewPos = unpackHalf4x16(vpos).xyz; // f_coord.xyz;
-					calc_shadow(shadow, occluder_index - s_first_item, viewPos.xyz, params.normal);
+					calc_shadow(shadow, occluder_index - s_first_item, params);
 				}
 				//else if (occluder_index > last_item)
 				//{
@@ -187,11 +183,7 @@ void calc_light()
 			}
 		}	
 			
-		//float ao   = shadow * (0.8) + (0.2); // remap so we don't overdarken
 		result.diffuse = packF2x11_1x10(unpackF2x11_1x10(result.diffuse) * shadow);
-
-		//float ndotv = dot(normal.xyz, view.xyz);
-		//float specAO = mix(ao * ao, 1.0, sat1(-0.3 * ndotv * ndotv));
 		result.specular = packF2x11_1x10(unpackF2x11_1x10(result.specular) * shadow);
 	}
 #endif
@@ -221,13 +213,15 @@ void calc_decals()
 {
 	if(numDecals > 0u)
 	{
+		uint cluster = get_cluster();
+
 		uint s_first_item   = firstDecal;
 		uint s_last_item    = s_first_item + numDecals - 1u;
 		uint s_first_bucket = s_first_item >> 5u;
 		uint s_last_bucket  = min(s_last_item >> 5u, max(0u, CLUSTER_BUCKETS_PER_CLUSTER - 1u));
 		for (uint s_bucket  = s_first_bucket; s_bucket <= s_last_bucket; ++s_bucket)
 		{
-			uint bucket_bits = uint(texelFetch(clusterBuffer, int((c_l & 0xFFFF) + s_bucket)).x);
+			uint bucket_bits = uint(texelFetch(clusterBuffer, int(cluster + s_bucket)).x);
 			while(bucket_bits != 0u)
 			{
 				uint bucket_bit_index = findLSB_unsafe(bucket_bits);
@@ -237,13 +231,12 @@ void calc_decals()
 				// eebs: unfortunately I don't have this extension but
 				// in theory scalarizing this should speed things up
 			#if defined(GL_ARB_shader_ballot) && defined(GL_KHR_shader_subgroup)
-				bucket_bits = readFirstInvocationARB(subgroupOr(bucket_bits));
+				//bucket_bits = readFirstInvocationARB(subgroupOr(bucket_bits));
 			#endif
 
 				if (decal_index >= s_first_item && decal_index <= s_last_item)
 				{
-					vec3 viewPos = unpackHalf4x16(vpos).xyz;
-					calc_decal(decal_index - s_first_item, viewPos);
+					calc_decal(decal_index - s_first_item);
 				}
 				//else if (decal_index > last_item)
 				//{
@@ -260,25 +253,23 @@ layout(location = 1) out vec4 fragGlow;
 
 void main(void)
 {
-	mat3 tbn    = construct_tbn(f_uv[0].xy / f_uv[0].z, f_coord.xyz);
-	vec3 viewTS = normalize(-f_coord.xyz) * tbn;
-	vdir        = encodeHemiUnitVector(viewTS);
-	vpos        = packHalf4x16(f_coord);
+	vec2 uv     = fetch_vtx_uv(0);
+	mat3 tbn    = construct_tbn(uv, fetch_vtx_pos());
+	vdir        = encodeHemiUnitVector(fetch_vtx_dir() * tbn);
 
-	// setup texcoord registers, from here out don't directly access f_uv
-	//tr[0] = packTexcoordRegister(do_texgen(f_uv[0].xyz / f_uv[0].z, f_coord.xyz, gl_FragCoord.xy, gl_FragCoord.w).xy);
+	// pack interpolated vertex data to reduce register pressure
+#ifndef FRAG_ATTR_FETCH
+	vpos  = packHalf4x16(f_coord);
 
-	tr[0] = packTexcoordRegister(f_uv[0].xy / f_uv[0].z);
+	tr[0] = packTexcoordRegister(fetch_vtx_uv(0));
 #ifdef REFRACTION
-	tr[1] = packTexcoordRegister(f_uv[1].xy / f_uv[1].z);
-	tr[2] = packTexcoordRegister(f_uv[2].xy / f_uv[2].z);
-	tr[3] = packTexcoordRegister(f_uv[3].xy / f_uv[3].z);
+	tr[1] = packTexcoordRegister(fetch_vtx_uv(1));
+	tr[2] = packTexcoordRegister(fetch_vtx_uv(2));
+	tr[3] = packTexcoordRegister(fetch_vtx_uv(3));
+#endif
 #endif
 
-	// calculate anything that relies on interpolated data
-	// up front so we can free vgprs for the vm stages
-	// the results are compacted and stored for later
-	calc_lod_bias();
+	// calculate lighting
 	calc_light();
 
 	// run the combiner stage
@@ -331,7 +322,7 @@ void main(void)
 	float waterStart = unpackHalf2x16(vpos.y).y * 128.0;
 	float waterEnd = refrDepth * 128.0;
 	float waterDepth = (waterEnd - waterStart);// / -localViewDir.y;			
-	vec3 refr = sampleFramebuffer(refrtex, refrUV).rgb;
+	vec3 refr = sampleFramebuffer(refrtex, sat2(refrUV)).rgb;
 	
 	//if ((aoFlags & 0x4) != 0x4)
 	{
