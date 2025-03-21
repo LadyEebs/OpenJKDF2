@@ -1061,6 +1061,37 @@ typedef enum
 	WRITE_ALPHA = 0b1000
 } std3D_ShaderWriteMask;
 
+typedef enum
+{
+	SHADER_SYS_TIME = 0,
+	SHADER_SYS_Z,
+	SHADER_SYS_VPOS,
+	// material registers
+	SHADER_SYS_MAT_FILL,
+	SHADER_SYS_MAT_ALBEDO,
+	SHADER_SYS_MAT_EMISSIVE,
+	SHADER_SYS_MAT_SPECULAR,
+	SHADER_SYS_MAT_ROUGHNESS,
+	SHADER_SYS_MAT_DISPLACEMENT,
+
+	SHADER_SYS_MAX
+} std3D_ShaderSystemValues;
+
+static const char* std3D_sysRegKeywords[] =
+{
+	"sec", "z", "vpos", "kf", "kd", "ke", "ks", "kr", "kh"
+};
+
+int8_t std3D_parseSysRegister(const char* name)
+{
+	for (uint8_t i = 0; i < SHADER_SYS_MAX; ++i)
+	{
+		if (stricmp(name, std3D_sysRegKeywords[i]) == 0)
+			return i;
+	}
+	return -1;
+}
+
 // shader is just a handle around a buffer of code info
 int std3D_GenShader()
 {
@@ -1334,7 +1365,8 @@ char* std3D_parseRegister(char* token, std3D_AsmRegister* reg)
 	}
 	else
 	{
-		reg->address = atoi(token);
+		if (reg->type != REG_TYPE_SYS)
+			reg->address = atoi(token);
 
 		// look for a swizzle mask
 		char* swizzle = strchr(token, '.');
@@ -1374,19 +1406,29 @@ char* std3D_parseSourceRegister(char* token, std3D_AsmRegister* reg)
 	}
 	else
 	{
-		// Extract the type (first character)
-		char typeChar = token[0];
-		switch (typeChar)
+		// check for a system name
+		int8_t name = std3D_parseSysRegister(token);
+		if (name >= 0)
 		{
-		case 'r': reg->type = REG_TYPE_GPR; break;
-		case 't': reg->type = REG_TYPE_TEX; break;
-		case 'v': reg->type = REG_TYPE_CLR; break;
-		case 'c': reg->type = REG_TYPE_CON; break;
-		default:
-			reg->type = 0; // todo: error
-			break;
+			reg->type = REG_TYPE_SYS;
+			reg->address = name;
 		}
-		++token;
+		else
+		{
+			// Extract the type (first character)
+			char typeChar = token[0];
+			switch (typeChar)
+			{
+			case 'r': reg->type = REG_TYPE_GPR; break;
+			case 't': reg->type = REG_TYPE_TEX; break;
+			case 'v': reg->type = REG_TYPE_CLR; break;
+			case 'c': reg->type = REG_TYPE_CON; break;
+			default:
+				reg->type = 0; // todo: error
+				break;
+			}
+			++token;
+		}
 	}
 
 	token = std3D_parseRegister(token, reg);
@@ -1639,6 +1681,7 @@ void std3D_initDefaultShader()
 		"mac r0.rgb, r1.rgb, v1.rgb # multiply color1 with specular tex and add to diffuse\n"
 		"tex r1, t1, t0 # sample emissive\n"
 		"max r0.rgb, r0.rgb, r1.rgb # max of diffuse and emissive\n"
+		"mul r1, r1, glow # apply glow multiplier\n"
 	;
 	std3D_assembleShader(&shader, code);
 

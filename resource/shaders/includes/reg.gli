@@ -73,6 +73,24 @@ vec4 read_color_reg(uint i)
 #endif
 }
 
+vec3 read_vpos()
+{
+#ifdef FRAG_ATTR_FETCH
+	return fetch_vtx_pos();
+#else
+	return unpackHalf4x16(vpos).xyz;
+#endif
+}
+
+float read_z()
+{
+#ifdef FRAG_ATTR_FETCH
+	return fetch_vtx_depth();
+#else
+	return unpackHalf4x16(vpos).w;
+#endif
+}
+
 uint swizzle_comp(uint s_swizzle, uint idx)
 {
 	return (s_swizzle >> (idx << 1)) & 0x03;
@@ -112,6 +130,25 @@ uint encode_reg(vec4 reg, uint s_fmt)
 	}
 }
 
+vec4 read_system_value(uint s_addr)
+{
+	switch(s_addr)
+	{
+	case SHADER_SYS_TIME:				return vec4(timeSeconds);
+	CASE SHADER_SYS_Z:					return vec4(read_z());
+	case SHADER_SYS_VPOS:				return vec4(read_vpos(), 0.0);
+		// material registers
+	case SHADER_SYS_MAT_FILL:			return fillColor;
+	case SHADER_SYS_MAT_ALBEDO:			return albedoFactor;
+	case SHADER_SYS_MAT_EMISSIVE:		return emissiveFactor;
+	case SHADER_SYS_MAT_SPECULAR:		return specularFactor;
+	case SHADER_SYS_MAT_ROUGHNESS:		return vec4(roughnessFactor);
+	case SHADER_SYS_MAT_DISPLACEMENT:	return vec4(displacement_factor);
+	default:
+		return vec4(0.0);
+	}
+}
+
 vec4 fetch_reg(vm_src s_operand, uint s_imm)
 {
 	switch(s_operand.type)
@@ -122,6 +159,7 @@ vec4 fetch_reg(vm_src s_operand, uint s_imm)
 	case REG_TYPE_TEX:	 return tr[s_operand.addr].xyxy;
 	case REG_TYPE_IMM8:	 return vec4(unpackSnorm4x8(s_operand.addr).x);
 	case REG_TYPE_IMM16: return vec4(unpackHalf2x16(s_imm >> (s_operand.idx << 4)).x);
+	case REG_TYPE_SYS:   return read_system_value(s_operand.addr);
 	default:			 return vec4(0.0);
 	}
 }

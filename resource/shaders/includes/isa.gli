@@ -86,6 +86,18 @@
 #define DST_MOD_NEG     10 // -x
 #define DST_MOD_ROLLOFF 11 // x/(1+x)
 
+// system register ids
+#define SHADER_SYS_TIME 0
+#define SHADER_SYS_VPOS 1
+#define SHADER_SYS_Z 2
+// material registers
+#define SHADER_SYS_MAT_FILL         3
+#define SHADER_SYS_MAT_ALBEDO       4
+#define SHADER_SYS_MAT_EMISSIVE     5
+#define SHADER_SYS_MAT_SPECULAR     6
+#define SHADER_SYS_MAT_ROUGHNESS    7
+#define SHADER_SYS_MAT_DISPLACEMENT 8
+
 struct vm_dst
 {
 	uint addr;
