@@ -1030,7 +1030,7 @@ void sithRender_Clip(sithSector *sector, rdClipFrustum *frustumArg, float a3)
 				//rdVector3 center;
 				//sithSurface_GetCenterRadius(&sector->surfaces[i], &center, &radius);
 
-				float radius = fmax(sector->surfaces[i].radius * 2.0, 0.05f);
+				float radius = fmax(sector->surfaces[i].radius * sqrtf(3.0), 0.025f);
 
 				rdVector3 offset;
 				rdVector_Scale3(&offset, &sector->surfaces[i].surfaceInfo.face.normal, radius * 0.015);
@@ -2522,7 +2522,7 @@ void sithRender_UpdateLights(sithSector *sector, float prev, float dist, int dep
 				//rdVector3 center;
 				//sithSurface_GetCenterRadius(&sector->surfaces[i], &center, &radius);
 
-				float radius = fmax(sector->surfaces[i].radius * 2.0, 0.05f);
+				float radius = fmax(sector->surfaces[i].radius * sqrtf(3.0), 0.05f);
 
 				rdVector3 offset;
 				rdVector_Scale3(&offset, &sector->surfaces[i].surfaceInfo.face.normal, radius * 0.015);
