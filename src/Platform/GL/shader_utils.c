@@ -536,8 +536,21 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 		//"}\n"
 		;
 
-	char limits[256];
-	sprintf_s(limits, 256, "#define RD_AMBIENT_LOBES %d\n", RD_AMBIENT_LOBES);
+	char limits[512]; // make sure this is big enough when adding new defines
+	char* buff = limits;
+	buff += sprintf(buff, "#define AMBIENT_LOBES %d\n", RD_AMBIENT_LOBES);
+	buff += sprintf(buff, "#define CLUSTER_MAX_LIGHTS %d\n", STD3D_CLUSTER_MAX_LIGHTS);
+	buff += sprintf(buff, "#define CLUSTER_MAX_OCCLUDERS %d\n", STD3D_CLUSTER_MAX_OCCLUDERS);
+	buff += sprintf(buff, "#define CLUSTER_MAX_DECALS %d\n", STD3D_CLUSTER_MAX_DECALS);
+	buff += sprintf(buff, "#define CLUSTER_MAX_ITEMS %d\n", STD3D_CLUSTER_MAX_ITEMS);
+	buff += sprintf(buff, "#define CLUSTER_BUCKETS_PER_CLUSTER %d\n", STD3D_CLUSTER_BUCKETS_PER_CLUSTER);
+	buff += sprintf(buff, "#define CLUSTER_GRID_SIZE_X %d\n", STD3D_CLUSTER_GRID_SIZE_X);
+	buff += sprintf(buff, "#define CLUSTER_GRID_SIZE_Y %d\n", STD3D_CLUSTER_GRID_SIZE_Y);
+	buff += sprintf(buff, "#define CLUSTER_GRID_SIZE_Z %d\n", STD3D_CLUSTER_GRID_SIZE_Z);
+	buff += sprintf(buff, "#define CLUSTER_GRID_SIZE_Z %d\n", STD3D_CLUSTER_GRID_SIZE_Z);
+	buff += sprintf(buff, "#define CLUSTER_GRID_SIZE_XYZ %d\n", STD3D_CLUSTER_GRID_SIZE_XYZ);
+	buff += sprintf(buff, "#define CLUSTER_GRID_TOTAL_SIZE %d\n", STD3D_CLUSTER_GRID_TOTAL_SIZE);
+	buff = "\0"; // just in case
 
 	const GLchar* sources[] = {
 		version,

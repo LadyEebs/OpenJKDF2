@@ -78,18 +78,6 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 
 #define STD3D_MAX_RENDER_PASSES     3
 
-#define CLUSTER_MAX_LIGHTS          256 // match RDCAMERA_MAX_LIGHTS/SITHREND_NUM_LIGHTS
-#define CLUSTER_MAX_OCCLUDERS       128
-#define CLUSTER_MAX_DECALS          256
-#define CLUSTER_MAX_ITEMS           (CLUSTER_MAX_LIGHTS + CLUSTER_MAX_OCCLUDERS + CLUSTER_MAX_DECALS)
-#define CLUSTER_BUCKETS_PER_CLUSTER (CLUSTER_MAX_ITEMS >> 5)
-#define CLUSTER_GRID_SIZE_X         16
-#define CLUSTER_GRID_SIZE_Y         8
-#define CLUSTER_GRID_SIZE_Z         24
-
-#define CLUSTER_GRID_SIZE_XYZ (CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y * CLUSTER_GRID_SIZE_Z)
-#define CLUSTER_GRID_TOTAL_SIZE (CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y * CLUSTER_GRID_SIZE_Z * CLUSTER_BUCKETS_PER_CLUSTER)
-
 typedef struct std3DSimpleTexStage
 {
     GLuint program;
@@ -305,7 +293,7 @@ typedef struct std3D_LightUniforms
 	uint32_t firstLight;
 	uint32_t numLights;
 	uint32_t lightPad0, lightPad1;
-	std3D_light tmpLights[CLUSTER_MAX_LIGHTS];
+	std3D_light tmpLights[STD3D_CLUSTER_MAX_LIGHTS];
 } std3D_LightUniforms;
 std3D_LightUniforms lightUniforms;
 
@@ -326,7 +314,7 @@ typedef struct std3D_OccluderUniforms
 	uint32_t firstOccluder;
 	uint32_t numOccluders;
 	uint32_t occluderPad0, occluderPad1;
-	std3D_occluder tmpOccluders[CLUSTER_MAX_OCCLUDERS];
+	std3D_occluder tmpOccluders[STD3D_CLUSTER_MAX_OCCLUDERS];
 } std3D_OccluderUniforms;
 std3D_OccluderUniforms occluderUniforms;
 
@@ -352,7 +340,7 @@ typedef struct std3D_DecalUniforms
 	uint32_t firstDecal;
 	uint32_t numDecals;
 	uint32_t decalPad0, decalPad1;
-	std3D_decal tmpDecals[CLUSTER_MAX_DECALS];
+	std3D_decal tmpDecals[STD3D_CLUSTER_MAX_DECALS];
 } std3D_DecalUniforms;
 std3D_DecalUniforms decalUniforms;
 
@@ -392,7 +380,7 @@ typedef struct std3D_Cluster
 	rdVector3 maxb;
 } std3D_Cluster;
 
-static uint32_t std3D_clusterBits[CLUSTER_GRID_TOTAL_SIZE];
+static uint32_t std3D_clusterBits[STD3D_CLUSTER_GRID_TOTAL_SIZE];
 
 #define STD3D_MAX_DRAW_CALLS 16384
 #define STD3D_MAX_DRAW_CALL_VERTS (STD3D_MAX_DRAW_CALLS * 24)
@@ -440,7 +428,7 @@ typedef struct std3D_RenderPass
 	int                 clustersDirty;       // clusters need rebuilding/refilling
 	int                 clusterFrustumFrame; // current frame for clusters, any cluster not matching will have its bounds updated
 	int                 lastClusterFrustumFrame; // last frame for clusters, will be updated to clusterFrustumFrame after building
-	std3D_Cluster       clusters[CLUSTER_GRID_TOTAL_SIZE]; // each render pass gets its own cluster state to avoid recomputing the cluster bounds every time the projection changes
+	std3D_Cluster       clusters[STD3D_CLUSTER_GRID_TOTAL_SIZE]; // each render pass gets its own cluster state to avoid recomputing the cluster bounds every time the projection changes
 } std3D_RenderPass;
 
 // todo: likely better to just swap to a BeginRenderPass/EndRenderPass in rdroid and call flush in EndRenderPass so we can have as many as we want
@@ -5956,7 +5944,7 @@ void std3D_DrawDecal(stdVBuffer* vbuf, rdDDrawSurface* texture, rdVector3* verts
 {
 	if (Main_bHeadless) return;
 
-	if (decalUniforms.numDecals >= CLUSTER_MAX_DECALS)
+	if (decalUniforms.numDecals >= STD3D_CLUSTER_MAX_DECALS)
 		return;
 
 	decalsDirty = 1;
@@ -5993,7 +5981,7 @@ void std3D_DrawOccluder(rdVector3* position, float radius, rdVector3* verts)
 {
 	if (Main_bHeadless) return;
 
-	if (occluderUniforms.numOccluders >= CLUSTER_MAX_OCCLUDERS)
+	if (occluderUniforms.numOccluders >= STD3D_CLUSTER_MAX_OCCLUDERS)
 		return;
 
 	occludersDirty = 1;
@@ -7377,7 +7365,7 @@ void std3D_ClearLights()
 
 int std3D_AddLight(rdLight* light, rdVector3* position, float intensity)
 {
-	if(lightUniforms.numLights >= CLUSTER_MAX_LIGHTS || !light->active)
+	if(lightUniforms.numLights >= STD3D_CLUSTER_MAX_LIGHTS || !light->active)
 		return 0;
 
 	lightsDirty = 1;
@@ -7671,16 +7659,16 @@ int std3D_ComputeBoundingBox(const rdVector3* Center, float Radius, rdMatrix44* 
 // unfortunately this is way slower than the frustum approach...
 void std3D_BuildCluster(std3D_Cluster* pCluster, int x, int y, int z, float znear, float zfar)
 {
-	float z0 = (float)(z + 0) / CLUSTER_GRID_SIZE_Z;
-	float z1 = (float)(z + 1) / CLUSTER_GRID_SIZE_Z;
+	float z0 = (float)(z + 0) / STD3D_CLUSTER_GRID_SIZE_Z;
+	float z1 = (float)(z + 1) / STD3D_CLUSTER_GRID_SIZE_Z;
 	z0 = znear * powf(zfar / znear, z0) / zfar; // linear 0-1
 	z1 = znear * powf(zfar / znear, z1) / zfar; // linear 0-1
 
-	float v0 = (float)(y + 0) / CLUSTER_GRID_SIZE_Y;
-	float v1 = (float)(y + 1) / CLUSTER_GRID_SIZE_Y;
+	float v0 = (float)(y + 0) / STD3D_CLUSTER_GRID_SIZE_Y;
+	float v1 = (float)(y + 1) / STD3D_CLUSTER_GRID_SIZE_Y;
 
-	float u0 = (float)(x + 0) / CLUSTER_GRID_SIZE_X;
-	float u1 = (float)(x + 1) / CLUSTER_GRID_SIZE_X;
+	float u0 = (float)(x + 0) / STD3D_CLUSTER_GRID_SIZE_X;
+	float u1 = (float)(x + 1) / STD3D_CLUSTER_GRID_SIZE_X;
 
 	// calculate the corners of the cluster
 	rdVector3 corners[8];
@@ -7728,29 +7716,29 @@ void std3D_AssignItemToClusters(std3D_RenderPass* pRenderPass, int itemIndex, rd
 		int zStartIndex = (int)floorf(fmax(0.0f, logf(zMin) * sliceScalingFactor + sliceBiasFactor));
 		int zEndIndex = (int)ceilf(fmax(0.0f, logf(zMax) * sliceScalingFactor + sliceBiasFactor));
 
-		int yStartIndex = (int)floorf(rect.y * (float)CLUSTER_GRID_SIZE_Y);
-		int yEndIndex = (int)ceilf(rect.w * (float)CLUSTER_GRID_SIZE_Y);
+		int yStartIndex = (int)floorf(rect.y * (float)STD3D_CLUSTER_GRID_SIZE_Y);
+		int yEndIndex = (int)ceilf(rect.w * (float)STD3D_CLUSTER_GRID_SIZE_Y);
 
-		int xStartIndex = (int)floorf(rect.x * (float)CLUSTER_GRID_SIZE_X);
-		int xEndIndex = (int)ceilf(rect.z * (float)CLUSTER_GRID_SIZE_X);
+		int xStartIndex = (int)floorf(rect.x * (float)STD3D_CLUSTER_GRID_SIZE_X);
+		int xEndIndex = (int)ceilf(rect.z * (float)STD3D_CLUSTER_GRID_SIZE_X);
 
-		if ((zStartIndex < 0 && zEndIndex < 0) || (zStartIndex >= (int)CLUSTER_GRID_SIZE_Z && zEndIndex >= (int)CLUSTER_GRID_SIZE_Z))
+		if ((zStartIndex < 0 && zEndIndex < 0) || (zStartIndex >= (int)STD3D_CLUSTER_GRID_SIZE_Z && zEndIndex >= (int)STD3D_CLUSTER_GRID_SIZE_Z))
 			return;
 
-		if ((yStartIndex < 0 && yEndIndex < 0) || (yStartIndex >= (int)CLUSTER_GRID_SIZE_Y && yEndIndex >= (int)CLUSTER_GRID_SIZE_Y))
+		if ((yStartIndex < 0 && yEndIndex < 0) || (yStartIndex >= (int)STD3D_CLUSTER_GRID_SIZE_Y && yEndIndex >= (int)STD3D_CLUSTER_GRID_SIZE_Y))
 			return;
 
-		if ((xStartIndex < 0 && xEndIndex < 0) || (xStartIndex >= (int)CLUSTER_GRID_SIZE_X && xEndIndex >= (int)CLUSTER_GRID_SIZE_X))
+		if ((xStartIndex < 0 && xEndIndex < 0) || (xStartIndex >= (int)STD3D_CLUSTER_GRID_SIZE_X && xEndIndex >= (int)STD3D_CLUSTER_GRID_SIZE_X))
 			return;
 
-		zStartIndex = stdMath_ClampInt(zStartIndex, 0, CLUSTER_GRID_SIZE_Z - 1);
-		zEndIndex = stdMath_ClampInt(zEndIndex, 0, CLUSTER_GRID_SIZE_Z - 1);
+		zStartIndex = stdMath_ClampInt(zStartIndex, 0, STD3D_CLUSTER_GRID_SIZE_Z - 1);
+		zEndIndex = stdMath_ClampInt(zEndIndex, 0, STD3D_CLUSTER_GRID_SIZE_Z - 1);
 
-		yStartIndex = stdMath_ClampInt(yStartIndex, 0, CLUSTER_GRID_SIZE_Y - 1);
-		yEndIndex = stdMath_ClampInt(yEndIndex, 0, CLUSTER_GRID_SIZE_Y - 1);
+		yStartIndex = stdMath_ClampInt(yStartIndex, 0, STD3D_CLUSTER_GRID_SIZE_Y - 1);
+		yEndIndex = stdMath_ClampInt(yEndIndex, 0, STD3D_CLUSTER_GRID_SIZE_Y - 1);
 
-		xStartIndex = stdMath_ClampInt(xStartIndex, 0, CLUSTER_GRID_SIZE_X - 1);
-		xEndIndex = stdMath_ClampInt(xEndIndex, 0, CLUSTER_GRID_SIZE_X - 1);
+		xStartIndex = stdMath_ClampInt(xStartIndex, 0, STD3D_CLUSTER_GRID_SIZE_X - 1);
+		xEndIndex = stdMath_ClampInt(xEndIndex, 0, STD3D_CLUSTER_GRID_SIZE_X - 1);
 
 		for (uint32_t z = zStartIndex; z <= zEndIndex; ++z)
 		{
@@ -7758,8 +7746,8 @@ void std3D_AssignItemToClusters(std3D_RenderPass* pRenderPass, int itemIndex, rd
 			{
 				for (uint32_t x = xStartIndex; x <= xEndIndex; ++x)
 				{
-					uint32_t clusterID = x + y * CLUSTER_GRID_SIZE_X + z * CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y;
-					uint32_t tile_bucket_index = clusterID * CLUSTER_BUCKETS_PER_CLUSTER;
+					uint32_t clusterID = x + y * STD3D_CLUSTER_GRID_SIZE_X + z * STD3D_CLUSTER_GRID_SIZE_X * STD3D_CLUSTER_GRID_SIZE_Y;
+					uint32_t tile_bucket_index = clusterID * STD3D_CLUSTER_BUCKETS_PER_CLUSTER;
 
 					// note: updating the cluster bounds is by far the most expensive part of this entire thing, avoid doing it!
 				#ifndef USE_JOBS
@@ -7805,9 +7793,9 @@ rdMatrix44* std3D_jobProjectionMat;
 
 void stdJob_BuildClustersJob(uint32_t jobIndex, uint32_t groupIndex)
 {
-	int z = jobIndex / (CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y);
-	int y = (jobIndex % (CLUSTER_GRID_SIZE_X * CLUSTER_GRID_SIZE_Y)) / CLUSTER_GRID_SIZE_X;
-	int x = jobIndex % CLUSTER_GRID_SIZE_X;
+	int z = jobIndex / (STD3D_CLUSTER_GRID_SIZE_X * STD3D_CLUSTER_GRID_SIZE_Y);
+	int y = (jobIndex % (STD3D_CLUSTER_GRID_SIZE_X * STD3D_CLUSTER_GRID_SIZE_Y)) / STD3D_CLUSTER_GRID_SIZE_X;
+	int x = jobIndex % STD3D_CLUSTER_GRID_SIZE_X;
 
 	float znear = -std3D_jobProjectionMat->vD.z / (std3D_jobProjectionMat->vB.z + 1.0f);
 	float zfar = -std3D_jobProjectionMat->vD.z / (std3D_jobProjectionMat->vB.z - 1.0f);
@@ -7896,12 +7884,12 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 	float zfar  = -pProjection->vD.z / (pProjection->vB.z - 1.0f);
 
 	// scale and bias factor for non-linear cluster distribution
-	sliceScalingFactor = (float)CLUSTER_GRID_SIZE_Z / logf(zfar / znear);
-	sliceBiasFactor    = -((float)CLUSTER_GRID_SIZE_Z * logf(znear) / logf(zfar / znear));
+	sliceScalingFactor = (float)STD3D_CLUSTER_GRID_SIZE_Z / logf(zfar / znear);
+	sliceBiasFactor    = -((float)STD3D_CLUSTER_GRID_SIZE_Z * logf(znear) / logf(zfar / znear));
 
 	// ratio of tile to pixel
-	tileSizeX = (uint32_t)ceilf((float)std3D_framebuffer.w / (float)CLUSTER_GRID_SIZE_X);
-	tileSizeY = (uint32_t)ceilf((float)std3D_framebuffer.h / (float)CLUSTER_GRID_SIZE_Y);
+	tileSizeX = (uint32_t)ceilf((float)std3D_framebuffer.w / (float)STD3D_CLUSTER_GRID_SIZE_X);
+	tileSizeY = (uint32_t)ceilf((float)std3D_framebuffer.h / (float)STD3D_CLUSTER_GRID_SIZE_Y);
 	
 	//int64_t time = Linux_TimeUs();
 
@@ -7919,7 +7907,7 @@ void std3D_BuildClusters(std3D_RenderPass* pRenderPass, rdMatrix44* pProjection)
 	// build all clusters in parallel
 	if(pRenderPass->lastClusterFrustumFrame != pRenderPass->clusterFrustumFrame)
 	{
-		stdJob_Dispatch(CLUSTER_GRID_SIZE_XYZ, 64, stdJob_BuildClustersJob);
+		stdJob_Dispatch(STD3D_CLUSTER_GRID_SIZE_XYZ, 64, stdJob_BuildClustersJob);
 		//printf("%lld us to build custers for frame %d\n", Linux_TimeUs() - time, rdroid_frameTrue);
 
 		// wait for clusters to finish building

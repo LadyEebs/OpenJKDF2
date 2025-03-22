@@ -7,7 +7,7 @@
 vec3 CalculateAmbientDiffuse(vec3 normal)
 {
 	vec3 ambientDiffuse = vec3(0.0);
-	for(int sg = 0; sg < RD_AMBIENT_LOBES; ++sg)
+	for(int sg = 0; sg < AMBIENT_LOBES; ++sg)
 	{
 		SG lightSG;
 		lightSG.Amplitude = ambientSG[sg].xyz;//unpack_argb2101010(ambientSG[sg]).xyz / 255.0;
@@ -32,7 +32,7 @@ vec3 CalculateAmbientSpecular(float roughness, vec3 normal, vec3 view, vec3 refl
 	float amplitude = 1.0 * fastRcpNR0(3.141592 * m2);
 	float sharpness = (2.0 * fastRcpNR0(m2)) * fastRcpNR0(4.0 * max(dot(normal, view), 0.1));
 	
-	for(int sg = 0; sg < RD_AMBIENT_LOBES; ++sg)
+	for(int sg = 0; sg < AMBIENT_LOBES; ++sg)
 	{
 		vec4 sgCol = ambientSG[sg];//unpack_argb2101010(ambientSG[sg]);
 		vec3 ambientColor = mix(v_color[0].bgr, sgCol.xyz, sgCol.w); // use vertex color if no ambientSG data
