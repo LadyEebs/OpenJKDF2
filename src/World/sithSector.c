@@ -390,7 +390,7 @@ void sithWorld_ComputeSectorRGBAmbient(sithSector* sector)
 			rdAmbient_Acc(&sector->ambientSH, &emissive, &negNormal);// &surface->surfaceInfo.face.normal);
 		}
 
-		//	total += surface->surfaceInfo.face.numVertices;
+		total += surface->surfaceInfo.face.numVertices;
 		for (int k = 0; k < surface->surfaceInfo.face.numVertices; ++k)
 		{
 			rdVector3 col;
