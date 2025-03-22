@@ -135,8 +135,8 @@ vec4 read_system_value(uint s_addr)
 	switch(s_addr)
 	{
 	case SHADER_SYS_TIME:				return vec4(timeSeconds);
-	CASE SHADER_SYS_Z:					return vec4(read_z());
-	case SHADER_SYS_VPOS:				return vec4(read_vpos(), 0.0);
+	case SHADER_SYS_Z:					return vec4(read_z());
+	case SHADER_SYS_POS:				return vec4(read_vpos(), 0.0);
 		// material registers
 	case SHADER_SYS_MAT_FILL:			return fillColor;
 	case SHADER_SYS_MAT_ALBEDO:			return albedoFactor;
@@ -212,10 +212,10 @@ vec4 apply_reduction(vec4 reg, uint s_reduction)
 	}
 }
 
-vec4 read_src(vm_src s_operand, vm_instr s_instr)
+vec4 read_src(vm_src s_operand, vm_instr s_ir)
 {
 	// fetch the relevant register or immediate value
-	vec4 reg = fetch_reg(s_operand, s_instr.imm);
+	vec4 reg = fetch_reg(s_operand, s_ir.imm);
 
 	// apply swizzle
 	reg = swizzle_reg(reg, s_operand.swizzle);
@@ -232,30 +232,30 @@ vec4 read_src(vm_src s_operand, vm_instr s_instr)
 	return apply_reduction(reg, s_operand.reduction);
 }
 
-vec4 read_src0(vm_instr s_instr)
+vec4 read_src0(vm_instr s_ir)
 {
-	return read_src(s_instr.src0, s_instr);
+	return read_src(s_ir.src0, s_ir);
 }
 
-vec4 read_src1(vm_instr s_instr)
+vec4 read_src1(vm_instr s_ir)
 {
-	return read_src(s_instr.src1, s_instr);
+	return read_src(s_ir.src1, s_ir);
 }
 
-vec4 read_src2(vm_instr s_instr)
+vec4 read_src2(vm_instr s_ir)
 {
-	return read_src(s_instr.src2, s_instr);
+	return read_src(s_ir.src2, s_ir);
 }
 
-void write_reg(vm_instr s_instr, vec4 reg)
+void write_reg(vm_instr s_ir, vec4 reg)
 {
 	// clear the masked bits
-	r[s_instr.dst.addr] &= ~s_instr.dst.mask;
+	r[s_ir.dst.addr] &= ~s_ir.dst.mask;
 
 	// swizzle for the destination
-	reg = swizzle_reg(reg, s_instr.dst.swizzle);
+	reg = swizzle_reg(reg, s_ir.dst.swizzle);
 
-	switch (s_instr.dst.modifier)
+	switch (s_ir.dst.modifier)
 	{
 		case DST_MOD_X2:		reg = sat4(        reg * 2.0);	break;
 		case DST_MOD_X4:		reg = sat4(        reg * 4.0);	break;
@@ -272,13 +272,13 @@ void write_reg(vm_instr s_instr, vec4 reg)
 	}
 
 	// write it
-	uint p = encode_reg(reg, s_instr.dst.fmt);
-	r[s_instr.dst.addr] |= (p & s_instr.dst.mask);
+	uint p = encode_reg(reg, s_ir.dst.fmt);
+	r[s_ir.dst.addr] |= (p & s_ir.dst.mask);
 }
 
-vec4 read_dest(vm_instr s_instr)
+vec4 read_dest(vm_instr s_ir)
 {
-	return decode_reg(r[s_instr.dst.addr], s_instr.dst.fmt);
+	return decode_reg(r[s_ir.dst.addr], s_ir.dst.fmt);
 }
 
 #endif

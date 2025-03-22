@@ -1065,7 +1065,7 @@ typedef enum
 {
 	SHADER_SYS_TIME = 0,
 	SHADER_SYS_Z,
-	SHADER_SYS_VPOS,
+	SHADER_SYS_POS,
 	// material registers
 	SHADER_SYS_MAT_FILL,
 	SHADER_SYS_MAT_ALBEDO,
@@ -1079,7 +1079,7 @@ typedef enum
 
 static const char* std3D_sysRegKeywords[] =
 {
-	"sec", "z", "vpos", "kf", "kd", "ke", "ks", "kr", "kh"
+	"sv:sec", "sv:z", "sv:pos", "sv:fill", "sv:albedo", "sv:glow", "sv::f0", "sv::roughness", "mat:displacement"
 };
 
 int8_t std3D_parseSysRegister(const char* name)
@@ -1219,6 +1219,20 @@ typedef struct
 	uint8_t              srcCount; // Number of source operands
 } std3D_AsmInstruction;
 
+typedef struct std3D_ShaderVariable
+{
+	char                         name[16];
+	char                         reg[16];
+	struct std3D_ShaderVariable* next;
+} std3D_ShaderVariable;
+
+typedef struct
+{
+	stdHashTable*         varHash;
+	std3D_ShaderVariable* firstVar;
+} std3D_ShaderAssembler;
+
+std3D_ShaderAssembler* std3D_pCurrentAssembler = NULL;
 
 uint32_t packHalf2x16(float x, float y)
 {
@@ -1313,12 +1327,6 @@ uint8_t std3D_parseSwizzle(const char* swizzle)
 
 int std3D_extractSwizzle(const char* expression, char* swizzle_out)
 {
-	if (expression[0] != '.')
-	{
-		swizzle_out[0] = '\0'; // No valid swizzle
-		return 0;
-	}
-
 	int mask = 0;
 
 	// Lookup table for swizzle characters to write masks
@@ -1346,7 +1354,26 @@ int std3D_extractSwizzle(const char* expression, char* swizzle_out)
 	return mask;
 }
 
-char* std3D_parseRegister(char* token, std3D_AsmRegister* reg)
+uint8_t std3D_sourceRegisterType(char c)
+{
+	switch (c)
+	{
+	case 'r': return REG_TYPE_GPR;
+	case 't': return REG_TYPE_TEX;
+	case 'v': return REG_TYPE_CLR;
+	case 'c': return REG_TYPE_CON;
+	default:  return 0;
+	}
+}
+
+uint8_t std3D_destRegisterType(char c)
+{
+	if (c == 'r')
+		return REG_TYPE_GPR;
+	return 0; // todo: error
+}
+
+char* std3D_parseRegister(char* token, char* swizzle, std3D_AsmRegister* reg)
 {
 	// extract register index or immediate value
 	if (reg->type == REG_TYPE_IMM16 || reg->type == REG_TYPE_IMM8)
@@ -1365,11 +1392,10 @@ char* std3D_parseRegister(char* token, std3D_AsmRegister* reg)
 	}
 	else
 	{
-		if (reg->type != REG_TYPE_SYS)
+		if (reg->type != REG_TYPE_SYS && reg->address == 0xFF)
 			reg->address = atoi(token);
 
-		// look for a swizzle mask
-		char* swizzle = strchr(token, '.');
+		// handle the swizzle mask
 		if (swizzle)
 		{
 			char mask[5] = { 'x', 'y', 'z', 'w', '\0' };
@@ -1388,15 +1414,36 @@ char* std3D_parseRegister(char* token, std3D_AsmRegister* reg)
 
 void std3D_parseDestinationOperand(char* token, std3D_AsmDestOperand* op)
 {
-	char typeChar = token[0];
-	if ((typeChar != 'r') && (typeChar != 'R'))
-		return; // todo: error
-	++token;
-	std3D_parseRegister(token, &op->reg);
+	op->reg.address = 0xFF;
+	
+	// find the swizzle
+	char* swizzle = strchr(token, '.');
+	if (swizzle)
+		*swizzle = '\0'; // set to null so we can parse the name
+
+	char* alias = (char*)stdHashTable_GetKeyVal(std3D_pCurrentAssembler->varHash, token);
+	if (alias)
+	{
+		op->reg.type = std3D_destRegisterType(alias[0]);
+		op->reg.address = atoi(alias + 1);
+	}
+	else
+	{
+		char typeChar = token[0];
+		if ((typeChar != 'r') && (typeChar != 'R'))
+			return; // todo: error
+		++token;
+	}
+	std3D_parseRegister(token, swizzle, &op->reg);
 }
 
 char* std3D_parseSourceRegister(char* token, std3D_AsmRegister* reg)
 {
+	// find the swizzle
+	char* swizzle = strchr(token, '.');
+	if (swizzle)
+		*swizzle = '\0'; // set to null so we can parse the name
+
 	if (isdigit(token[0])) // immediate value
 	{
 		if (reg->idx >= 3)
@@ -1406,32 +1453,32 @@ char* std3D_parseSourceRegister(char* token, std3D_AsmRegister* reg)
 	}
 	else
 	{
+		// check for an alias
+		char* alias = (char*)stdHashTable_GetKeyVal(std3D_pCurrentAssembler->varHash, token);
+		
 		// check for a system name
-		int8_t name = std3D_parseSysRegister(token);
-		if (name >= 0)
+		int8_t addr = std3D_parseSysRegister(alias ? alias : token);
+		if (addr >= 0)
 		{
 			reg->type = REG_TYPE_SYS;
-			reg->address = name;
+			reg->address = addr;
 		}
 		else
 		{
-			// Extract the type (first character)
-			char typeChar = token[0];
-			switch (typeChar)
+			if (alias)
 			{
-			case 'r': reg->type = REG_TYPE_GPR; break;
-			case 't': reg->type = REG_TYPE_TEX; break;
-			case 'v': reg->type = REG_TYPE_CLR; break;
-			case 'c': reg->type = REG_TYPE_CON; break;
-			default:
-				reg->type = 0; // todo: error
-				break;
+				reg->type = std3D_sourceRegisterType(alias[0]);
+				reg->address = atoi(alias + 1);
 			}
-			++token;
+			else
+			{
+				reg->type = std3D_sourceRegisterType(token[0]);
+				++token;
+			}
 		}
 	}
 
-	token = std3D_parseRegister(token, reg);
+	token = std3D_parseRegister(token, swizzle, reg);
 
 	return token;
 }
@@ -1526,6 +1573,8 @@ void std3D_parseSourceOperandWithModifiers(char* token, std3D_AsmSrcOperand* op)
 
 void std3D_parseSourceOperand(char* token, std3D_AsmSrcOperand* op)
 {
+	op->reg.address = 0xFF;
+
 	// check for a reduction
 	uint8_t reduction = std3D_parseReduction(token);
 	if (reduction != SRC_RED_NONE)
@@ -1643,6 +1692,12 @@ void std3D_assembleShader(std3D_Shader* shader, const char* code)
 	if(!sscanf_s(tmp, "ps.%f", &shader->version))
 		return;
 	
+	std3D_ShaderAssembler assembler;
+	memset(&assembler, 0, sizeof(std3D_ShaderAssembler));
+	assembler.varHash = stdHashTable_New(16);
+
+	std3D_pCurrentAssembler = &assembler;
+
 	const char* curLine = firstLine + 1;
 	while (curLine)
 	{
@@ -1652,9 +1707,42 @@ void std3D_assembleShader(std3D_Shader* shader, const char* code)
 		{
 			stdString_SafeStrCopy(tmp, curLine, curLineLen + 1);
 
-			if(tmp && tmp[0] != '#') // early skip pure comment lines
+			char* ln = tmp;
+			if(ln && ln[0] != '#') // early skip pure comment lines
 			{
-				if(std3D_parseInstruction(tmp, &shader->instr[shader->count]))
+				if (strnicmp(ln, "var", 3) == 0)
+				{
+					char* name = ln + 3;
+					char* comma = strchr(name, ',');
+					if (comma)
+					{
+						*comma = '\0';
+						while (isspace(*name))
+							name++;
+
+						char* alias = (char*)stdHashTable_GetKeyVal(assembler.varHash, name);
+						if(!alias)
+						{
+							std3D_ShaderVariable* var = (std3D_ShaderVariable*)malloc(sizeof(std3D_ShaderVariable));
+							if(!var)
+							{
+								// todo: error
+								continue;
+							}
+							stdString_SafeStrCopy(var->name, name, 16);
+
+							char* reg = comma + 1;
+							while (isspace(*reg))
+								reg++;
+							stdString_SafeStrCopy(var->reg, reg, 16);
+
+							var->next = assembler.firstVar;
+							assembler.firstVar = var;
+							alias = stdHashTable_SetKeyVal(assembler.varHash, var->name, var->reg);
+						}
+					}
+				}
+				else if(std3D_parseInstruction(tmp, &shader->instr[shader->count]))
 					++shader->count;
 			}
 		}
@@ -1664,6 +1752,17 @@ void std3D_assembleShader(std3D_Shader* shader, const char* code)
 
 		curLine = nextLine ? (nextLine + 1) : NULL;
 	}
+
+	std3D_ShaderVariable* var = assembler.firstVar;
+	while (var)
+	{
+		std3D_ShaderVariable* next = var->next;
+		free(var);
+		var = next;
+	}
+
+	std3D_pCurrentAssembler = NULL;
+	stdHashTable_Free(assembler.varHash);
 }
 
 void std3D_initDefaultShader()
@@ -1675,13 +1774,16 @@ void std3D_initDefaultShader()
 
 	const char* code =
 		"ps.1.0\n"
-		"tex r0, t0, t0 # sample diffuse\n"
-		"tex r1, t3, t0 # sample specular\n"
-		"mul r0, r0, v0 # multiply diffuse color with diffuse light\n"
-		"mac r0.rgb, r1.rgb, v1.rgb # multiply color1 with specular tex and add to diffuse\n"
-		"tex r1, t1, t0 # sample emissive\n"
-		"max r0.rgb, r0.rgb, r1.rgb # max of diffuse and emissive\n"
-		"mul r1, r1, glow # apply glow multiplier\n"
+		"var diff, r0\n"
+		"var glow, r1\n"
+		"var spec, r1\n"
+		"tex diff, t0, t0 # sample diffuse\n"
+		"tex spec, t3, t0 # sample specular\n"
+		"mul diff, diff, v0 # multiply diffuse color with diffuse light\n"
+		"mac diff.rgb, spec.rgb, v1.rgb # multiply color1 with specular tex and add to diffuse\n"
+		"tex glow, t1, t0 # sample emissive\n"
+		"max diff.rgb, diff.rgb, glow.rgb # max of diffuse and emissive\n"
+		"mul glow, glow, sv:glow # apply glow multiplier\n"
 	;
 	std3D_assembleShader(&shader, code);
 

@@ -88,7 +88,7 @@
 
 // system register ids
 #define SHADER_SYS_TIME 0
-#define SHADER_SYS_VPOS 1
+#define SHADER_SYS_POS  1
 #define SHADER_SYS_Z 2
 // material registers
 #define SHADER_SYS_MAT_FILL         3

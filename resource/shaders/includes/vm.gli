@@ -22,98 +22,98 @@ void run_vm()
 {
 	for (uint s_pc = 0; s_pc < shaderInstructionCount; ++s_pc)
 	{
-		vm_instr s_instr;
-		s_decode_instr(s_instr, shaderInstructions[s_pc]);
+		vm_instr s_ir;
+		s_decode_instr(s_ir, shaderInstructions[s_pc]);
 
 		vec4 result;
-		switch(s_instr.opcode)
+		switch(s_ir.opcode)
 		{					
 		case OP_TEX:
 			result = load_tex(
-				textures[s_instr.src0.addr],
-				read_texcoord_reg(s_instr.src1.addr),
+				textures[s_ir.src0.addr],
+				read_texcoord_reg(s_ir.src1.addr),
 				fetch_vtx_lodbias()
 			);
 			break;
 
 		case OP_TEXDUDV:
 			result = load_tex(
-				textures[s_instr.src0.addr],
-				read_texcoord_reg(s_instr.src1.addr) + read_src2(s_instr).xy,
+				textures[s_ir.src0.addr],
+				read_texcoord_reg(s_ir.src1.addr) + read_src2(s_ir).xy,
 				fetch_vtx_lodbias()
 			);
 			break;
 		
 		case OP_OPM:
 			result.xy = parallax(
-						textures[s_instr.src0.addr],
-						read_texcoord_reg(s_instr.src1.addr),
+						textures[s_ir.src0.addr],
+						read_texcoord_reg(s_ir.src1.addr),
 						decodeHemiUnitVector(vdir)).xy;
 			result.zw = vec2(0.0);
 			break;
 
 		case OP_MOV:
-			result = sat4( read_src0(s_instr) );
+			result = sat4( read_src0(s_ir) );
 			break;
 
 		case OP_ADD:
-			result = sat4( read_src0(s_instr) + read_src1(s_instr) );
+			result = sat4( read_src0(s_ir) + read_src1(s_ir) );
 			break;
 
 		case OP_SUB:
-			result = sat4( read_src0(s_instr) - read_src1(s_instr) );
+			result = sat4( read_src0(s_ir) - read_src1(s_ir) );
 			break;
 
 		case OP_MAC:
-			result = sat4( read_src0(s_instr) * read_src1(s_instr) + read_dest(s_instr) );
+			result = sat4( read_src0(s_ir) * read_src1(s_ir) + read_dest(s_ir) );
 			break;
 
 		case OP_MAD:
-			result = sat4( read_src0(s_instr) * read_src1(s_instr) + read_src2(s_instr) );
+			result = sat4( read_src0(s_ir) * read_src1(s_ir) + read_src2(s_ir) );
 			break;
 
 		case OP_MUL:
-			result = sat4( read_src0(s_instr) * read_src1(s_instr) );
+			result = sat4( read_src0(s_ir) * read_src1(s_ir) );
 			break;
 			
 		case OP_MAX:
-			result = max( read_src0(s_instr), read_src1(s_instr) );
+			result = max( read_src0(s_ir), read_src1(s_ir) );
 			break;
 		
 		case OP_MIN:
-			result = min( read_src0(s_instr), read_src1(s_instr) );
+			result = min( read_src0(s_ir), read_src1(s_ir) );
 			break;
 
 		case OP_MIX:
-			result = sat4(mix( read_src0(s_instr), read_src1(s_instr), read_src2(s_instr) ));
+			result = sat4(mix( read_src0(s_ir), read_src1(s_ir), read_src2(s_ir) ));
 			break;
 
 		case OP_CMP:
-			result = mix( read_src2(s_instr), read_src1(s_instr), greaterThan( read_src0(s_instr), vec4(0.0) ));
+			result = mix( read_src2(s_ir), read_src1(s_ir), greaterThan( read_src0(s_ir), vec4(0.0) ));
 			break;
 
 		case OP_CND:
-			result = mix( read_src2(s_instr), read_src1(s_instr), greaterThan( read_src0(s_instr), vec4(0.5) ));
+			result = mix( read_src2(s_ir), read_src1(s_ir), greaterThan( read_src0(s_ir), vec4(0.5) ));
 			break;
 
 		case OP_DIV:
-			result = sat4( read_src0(s_instr) / read_src1(s_instr) );
+			result = sat4( read_src0(s_ir) / read_src1(s_ir) );
 			break;
 
 		case OP_DP2:
-			result = vec4(dot( read_src0(s_instr).xy, read_src1(s_instr).xy ));
+			result = vec4(dot( read_src0(s_ir).xy, read_src1(s_ir).xy ));
 			break;
 
 		case OP_DP3:
-			result = vec4(dot( read_src0(s_instr).xyz, read_src1(s_instr).xyz ));
+			result = vec4(dot( read_src0(s_ir).xyz, read_src1(s_ir).xyz ));
 			break;
 
 		case OP_DP4:
-			result = vec4(dot( read_src0(s_instr), read_src1(s_instr) ));
+			result = vec4(dot( read_src0(s_ir), read_src1(s_ir) ));
 			break;
 
 		case OP_POW:
-			result = pow( read_src0(s_instr), read_src1(s_instr) );
+			result = pow( read_src0(s_ir), read_src1(s_ir) );
 			break;
 
 		default:
@@ -121,8 +121,8 @@ void run_vm()
 			return;
 		}
 
-		if(s_instr.opcode != OP_OPM)
-			write_reg(s_instr, result);
+		if(s_ir.opcode != OP_OPM)
+			write_reg(s_ir, result);
 	}
 }
 
