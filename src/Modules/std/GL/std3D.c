@@ -2063,8 +2063,8 @@ void std3D_generateExtraFramebuffers(int32_t width, int32_t height)
 			std3D_generateIntermediateFbo(bloomLayers[i - 1].w / 2, bloomLayers[i - 1].h / 2, &bloomLayers[i], GL_R11F_G11F_B10F, 1, 0, 0);
 	}
 
-	//std3D_generateIntermediateFbo(width, height, &deferred, /*GL_RGBA8*/GL_R32F, 0, 0, 0);
-	std3D_generateIntermediateFbo(width, height, &deferred, GL_RGBA8, 0, 0, 0);
+	std3D_generateIntermediateFbo(width, height, &deferred, GL_R32F, 0, 0, 0);
+	//std3D_generateIntermediateFbo(width, height, &deferred, GL_RGBA8, 0, 0, 0);
 
 	// the refraction buffers use the same depth-stencil as the main scene
 	std3D_generateIntermediateFbo(width, height, &refr, GL_RG8_SNORM, 0, 1, std3D_framebuffer.ztex);
