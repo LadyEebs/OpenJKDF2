@@ -222,6 +222,7 @@ vec3 rgb2ycocg(vec3 RGB)
     o.z = -0.25 * RGB.r + 0.5 * RGB.g - 0.25 * RGB.b;
 
 	//o.yz += (0.5 * 256.0 / 255.0);
+	o.yz *= 2.0;
 
     return o;
 }
@@ -229,6 +230,7 @@ vec3 rgb2ycocg(vec3 RGB)
 vec3 ycocg2rgb(vec3 YCoCg)
 {
 	//YCoCg.yz = YCoCg.yz - (0.5 * 256.0 / 255.0);
+	YCoCg.yz *= 0.5;
 
     vec3 o;
     o.r = YCoCg.x + YCoCg.y - YCoCg.z;
