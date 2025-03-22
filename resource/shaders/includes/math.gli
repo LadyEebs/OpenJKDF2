@@ -173,7 +173,7 @@ vec3 project_to_sphere(vec3 pos, vec3 reflected, vec3 center, float radius)
 	if (d < 0)
 		return reflected;
 
-	return normalize((sqrt(d) - dp) * reflected + diff);
+	return normalize((sqrt(d) - dp) * reflected + v);
 }
 
 // conversions
