@@ -735,6 +735,55 @@ void sithRender_ResetState()
 	rdSetCullFlags(1);
 }
 
+
+void sithRender_RenderOccludersAndDecals()
+{
+	if (!jkPlayer_enableShadows && !jkPlayer_enableDecals)
+		return;
+
+	// iterate all visible things and add their occluder volumes
+	for (int i = 0; i < sithRender_numSectors2; i++)
+	{
+		sithSector* sector = sithRender_aSectors2[i];
+
+		int safeguard = 0;
+		for (sithThing* thingIter = sector->thingsList; thingIter; thingIter = thingIter->nextThing)
+		{
+			if (++safeguard >= SITH_MAX_THINGS)
+				break;
+
+			if ((thingIter->thingflags & (SITH_TF_DISABLED | SITH_TF_INVISIBLE | SITH_TF_WILLBEREMOVED)))
+				continue;
+
+			if (thingIter->rdthing.type != RD_THINGTYPE_MODEL && thingIter->rdthing.type != RD_THINGTYPE_DECAL)
+				continue;
+
+			if (thingIter->rdthing.type == RD_THINGTYPE_MODEL && !jkPlayer_enableShadows)
+				continue;
+			else if (thingIter->rdthing.type == RD_THINGTYPE_DECAL && !jkPlayer_enableDecals)
+				continue;
+
+			// todo: cache me
+			rdMatrix_TransformPoint34(&thingIter->screenPos, &thingIter->position, &rdCamera_pCurCamera->view_matrix);
+
+			// todo: cache me toooo
+			float radius = thingIter->rdthing.model3->radius;
+			int clippingVal = rdClip_SphereInFrustrum(sector->clipFrustum, &thingIter->screenPos, radius);
+
+			thingIter->rdthing.clippingIdk = clippingVal;
+			if (clippingVal == 2 || sithRender_008d1668) // MoTS added: sithRender_008d1668
+				continue;
+
+			thingIter->lookOrientation.scale = thingIter->position;
+			if (thingIter->rdthing.type == RD_THINGTYPE_MODEL)
+				rdModel3_DrawOccluders(&thingIter->rdthing, &thingIter->lookOrientation);
+			else
+				rdDecal_Draw(&thingIter->rdthing, &thingIter->lookOrientation);
+			rdVector_Zero3(&thingIter->lookOrientation.scale);
+		}
+	}
+}
+
 #endif
 
 void sithRender_Draw()
@@ -850,7 +899,7 @@ void sithRender_Draw()
     if ( (sithRender_flag & 2) != 0 )
         sithRender_RenderDynamicLights();
 
-	// todo: put occluder and decal collection here when render passes are removed
+	sithRender_RenderOccludersAndDecals();
 
 #ifdef JKM_LIGHTING
     // MOTS added
@@ -1713,6 +1762,12 @@ void sithRender_RenderLevelGeometry()
 
 			if (pThing->thingflags & (SITH_TF_DISABLED | SITH_TF_INVISIBLE | SITH_TF_WILLBEREMOVED))
 				continue;
+
+#ifdef RENDER_DROID2
+			// decals are rendered before everything else in sithRender_RenderOccludersAndDecals
+			if (pThing->rdthing.type == RD_THINGTYPE_DECAL)
+				continue;
+#endif
 
 #ifndef FP_LEGS
 			if (!((sithCamera_currentCamera->cameraPerspective & 0xFC) != 0 || pThing != sithCamera_currentCamera->primaryFocus))
@@ -2712,40 +2767,6 @@ void sithRender_RenderDynamicLights()
 	for (int i = 0; i < rdCamera_pCurCamera->numLights; i++)
 		rdAddLight(rdCamera_pCurCamera->lights[i], &rdCamera_pCurCamera->lightPositions[i]);
 
-	// iterate all visible things and add their occluder volumes
-	// todo: cache any frustum tests etc for later
-	//for (int i = 0; i < sithRender_numSectors2; i++)
-	//{
-	//	sithSector* sector = sithRender_aSectors2[i];		
-	//
-	//	int safeguard = 0;
-	//	for (sithThing* thingIter = sector->thingsList; thingIter; thingIter = thingIter->nextThing)
-	//	{
-	//		if (++safeguard >= SITH_MAX_THINGS)
-	//			break;
-	//
-	//		if ((thingIter->thingflags & (SITH_TF_DISABLED | SITH_TF_INVISIBLE | SITH_TF_WILLBEREMOVED)))
-	//			continue;
-	//
-	//		if (thingIter->rdthing.type != RD_THINGTYPE_MODEL)
-	//			continue;
-	//
-	//		// todo: cache me
-	//		rdMatrix_TransformPoint34(&thingIter->screenPos, &thingIter->position, &rdCamera_pCurCamera->view_matrix);
-	//
-	//		// todo: cache me toooo
-	//		float radius = thingIter->rdthing.model3->radius;
-	//		int clippingVal = rdClip_SphereInFrustrum(sector->clipFrustum, &thingIter->screenPos, radius);
-	//	
-	//		thingIter->rdthing.clippingIdk = clippingVal;
-	//		if (clippingVal == 2 || sithRender_008d1668) // MoTS added: sithRender_008d1668
-	//			continue;
-	//
-	//		thingIter->lookOrientation.scale = thingIter->position;
-	//		rdModel3_DrawOccluders(&thingIter->rdthing, &thingIter->lookOrientation);
-	//		rdVector_Zero3(&thingIter->lookOrientation.scale);
-	//	}
-	//}
 #else
     sithSector *sectorIter;
     rdLight **curCamera_lights;
@@ -2897,6 +2918,12 @@ void sithRender_RenderThings()
             if (++safeguard >= SITH_MAX_THINGS) {
                 break;
             }
+
+		#ifdef RENDER_DROID2
+			// decals are rendered before everything else in sithRender_RenderOccludersAndDecals
+			if (thingIter->rdthing.type == RD_THINGTYPE_DECAL)
+				continue;
+		#endif
 
             if ( (thingIter->thingflags & (SITH_TF_DISABLED| SITH_TF_INVISIBLE |SITH_TF_WILLBEREMOVED)) == 0
               && (thingIter->thingflags & SITH_TF_LEVELGEO) == 0

@@ -1403,7 +1403,7 @@ void rdModel3_DrawMesh(rdMesh *meshIn, rdMatrix34 *mat)
     rdMatrix_InvertOrtho34(&matInv, mat);
 
 #ifdef RENDER_DROID2
-	rdAddOccluder(&mat->scale, meshIn->radius);
+//	rdAddOccluder(&mat->scale, meshIn->radius);
 #elif defined(SPHERE_AO)
 	rdCache_DrawOccluder(&out.scale, meshIn->radius);
 #endif
