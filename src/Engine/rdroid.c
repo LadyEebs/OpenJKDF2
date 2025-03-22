@@ -88,6 +88,8 @@ void rdResetRasterState()
 	rdroid_rasterState.viewport.x = rdroid_rasterState.viewport.y = 0;
 	rdroid_rasterState.viewport.width = 640;
 	rdroid_rasterState.viewport.height = 480;
+
+	rdroid_rasterState.colorMask = 0xFFFFFFFF;
 }
 
 void rdResetBlendState()
@@ -1050,6 +1052,14 @@ void rdStencilBit(uint8_t bit)
 void rdStencilMode(uint8_t mode)
 {
 	rdroid_rasterState.stencilMode = mode;
+}
+
+void rdColorMask(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+	rdroid_rasterState.colorMask  = r ? 0x000000FF : 0x0;
+	rdroid_rasterState.colorMask |= g ? 0x0000FF00 : 0x0;
+	rdroid_rasterState.colorMask |= b ? 0x00FF0000 : 0x0;
+	rdroid_rasterState.colorMask |= a ? 0xFF000000 : 0x0;
 }
 
 // todo: actually get IDs from renderer..

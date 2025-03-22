@@ -169,6 +169,8 @@ void rdSetOverbright(float overbright);
 void rdStencilBit(uint8_t bit);
 void rdStencilMode(uint8_t mode);
 
+void rdColorMask(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+
 // shader
 // todo: actually get IDs from renderer..
 void rdSetShader(int shaderId);

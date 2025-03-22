@@ -983,6 +983,7 @@ typedef struct std3D_TransformState
 
 typedef struct std3D_RasterState
 {
+	uint32_t       colorMask;
 	rdViewportRect viewport;
 	rdScissorRect  scissor;
 

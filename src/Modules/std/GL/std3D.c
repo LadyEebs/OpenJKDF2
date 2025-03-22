@@ -401,10 +401,12 @@ static uint32_t std3D_clusterBits[CLUSTER_GRID_TOTAL_SIZE];
 typedef enum STD3D_DRAW_LIST
 {
 	DRAW_LIST_Z,
-	DRAW_LIST_Z_ALPHATEST,
+	//DRAW_LIST_Z_ALPHATEST,
 	DRAW_LIST_Z_REFRACTION,
 	DRAW_LIST_COLOR_ZPREPASS,
-	DRAW_LIST_COLOR_NOZPREPASS,
+	DRAW_LIST_COLOR_ZWRITE,
+	DRAW_LIST_COLOR_ZREAD,
+	DRAW_LIST_COLOR_STENCIL,
 	DRAW_LIST_COLOR_ALPHABLEND,
 	DRAW_LIST_COLOR_REFRACTION,
 	DRAW_LIST_COUNT
@@ -6255,7 +6257,32 @@ void std3D_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallSta
 		shaderID = SHADER_COLOR_REFRACTION;
 		listIndex = DRAW_LIST_COLOR_REFRACTION;
 	}
-	else if (!blending && writesZ && !alphaTest) // add to z-prepass if applicable
+	else if (pDrawCallState->rasterState.colorMask == 0) // no color write
+	{
+		pDrawCallState->stateBits.fogMode = 0;
+		pDrawCallState->stateBits.blend = 0;
+		pDrawCallState->stateBits.srdBlend = 1;
+		pDrawCallState->stateBits.dstBlend = 0;
+		pDrawCallState->stateBits.lightMode = 0;
+
+		memset(&pDrawCallState->fogState, 0, sizeof(std3D_FogState));
+		memset(&pDrawCallState->lightingState, 0, sizeof(std3D_LightingState));
+
+		shaderID = std3D_GetShaderID(pDrawCallState);
+		listIndex = (writesZ ? DRAW_LIST_COLOR_ZWRITE : DRAW_LIST_COLOR_ZREAD);
+		//if (alphaTest)
+		//	std3D_AddListDrawCall(type, &std3D_renderPasses[renderPass].drawCallLists[listIndex], pDrawCallState, shaderID, paVertices, numVertices);
+		//else
+		//	std3D_AddZListDrawCall(type, &std3D_renderPasses[renderPass].drawCallLists[listIndex], pDrawCallState, paVertices, numVertices);
+		//return;
+
+		//shaderID = SHADER_DEPTH;
+		//listIndex = writesZ ? DRAW_LIST_COLOR_ZWRITE : DRAW_LIST_COLOR_ZREAD;
+
+		// draw it at the end
+		pDrawCallState->header.sortOrder = 255;
+	}
+	else if (!blending && writesZ && !alphaTest && !pDrawCallState->rasterState.stencilMode) // add to z-prepass if applicable
 	{
 		std3D_AddZListDrawCall(type, &std3D_renderPasses[renderPass].drawCallLists[DRAW_LIST_Z + alphaTest], pDrawCallState, paVertices, numVertices);
 
@@ -6271,11 +6298,6 @@ void std3D_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallSta
 		shaderID  = SHADER_COLOR_UNLIT + lighting + pixelLit;// + specular;
 		listIndex = DRAW_LIST_COLOR_ZPREPASS;
 	}
-	else if (pDrawCallState->rasterState.stencilMode == 2) // hack for stencil only
-	{
-		std3D_AddZListDrawCall(type, &std3D_renderPasses[renderPass].drawCallLists[DRAW_LIST_Z], pDrawCallState, paVertices, numVertices);
-		return;
-	}
 	else
 	{
 		shaderID = std3D_GetShaderID(pDrawCallState);
@@ -6284,7 +6306,10 @@ void std3D_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallSta
 		//pDrawCallState->stateBits.srdBlend = 1;
 		//pDrawCallState->stateBits.dstBlend = 0;
 
-		listIndex = blending ? DRAW_LIST_COLOR_ALPHABLEND : DRAW_LIST_COLOR_NOZPREPASS;
+		if (pDrawCallState->rasterState.stencilMode)
+			listIndex = DRAW_LIST_COLOR_STENCIL; // todo: handle blending?
+		else
+			listIndex = blending ? DRAW_LIST_COLOR_ALPHABLEND : (writesZ ? DRAW_LIST_COLOR_ZWRITE : DRAW_LIST_COLOR_ZREAD);
 	}
 
 	std3D_AddListDrawCall(type, &std3D_renderPasses[renderPass].drawCallLists[listIndex], pDrawCallState, shaderID, paVertices, numVertices);
@@ -6383,6 +6408,12 @@ void std3D_SetRasterState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 			glStencilFunc(GL_EQUAL, pState->rasterState.stencilBit, 0xFF);
 		}
 	}
+
+	GLboolean r = (pState->rasterState.colorMask & 0x000000FF) != 0;
+	GLboolean g = (pState->rasterState.colorMask & 0x0000FF00) != 0;
+	GLboolean b = (pState->rasterState.colorMask & 0x00FF0000) != 0;
+	GLboolean a = (pState->rasterState.colorMask & 0xFF000000) != 0;
+	glColorMask(r, g, b, a);
 
 	glViewport(pRasterState->viewport.x, pRasterState->viewport.y, pRasterState->viewport.width, pRasterState->viewport.height);
 	if(pState->stateBits.scissorMode == RD_SCISSOR_ENABLED)
@@ -7076,7 +7107,7 @@ void std3D_FlushZDrawCalls(std3D_RenderPass* pRenderPass)
 	//glColorMask(0,0,0,0);
 
 	std3D_FlushDrawCallList(pRenderPass,           &pRenderPass->drawCallLists[DRAW_LIST_Z], std3D_DrawCallCompareSortKey,           "Z Prepass");
-	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_Z_ALPHATEST], std3D_DrawCallCompareSortKey, "Z Prepass Alphatest");
+	//std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_Z_ALPHATEST], std3D_DrawCallCompareSortKey, "Z Prepass Alphatest");
 
 	//glColorMask(1,1,1,1);
 
@@ -7098,9 +7129,11 @@ void std3D_FlushColorDrawCallsRefraction(std3D_RenderPass* pRenderPass)
 	GLenum bufs[] = { GL_COLOR_ATTACHMENT0 };//, GL_COLOR_ATTACHMENT1 };
 	glDrawBuffers(ARRAYSIZE(bufs), bufs);
 
-	std3D_FlushDrawCallList(pRenderPass,   &pRenderPass->drawCallLists[DRAW_LIST_COLOR_ZPREPASS], std3D_DrawCallCompareSortKey,    "Color ZPrepass");
-	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_NOZPREPASS], std3D_DrawCallCompareSortKey, "Color No ZPrepass");
-	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_ALPHABLEND],   std3D_DrawCallCompareDepth,  "Color Alphablend");
+	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_ZPREPASS], std3D_DrawCallCompareSortKey,    "Color Z Prepass");
+	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_ZWRITE], std3D_DrawCallCompareSortKey, "Color Z Write");
+	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_ZREAD], std3D_DrawCallCompareDepth, "Color Z Read");
+	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_STENCIL], std3D_DrawCallCompareSortKey, "Color Stencil");
+	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_ALPHABLEND], std3D_DrawCallCompareDepth,  "Color Alphablend");
 	
 	glDisable(GL_STENCIL_TEST);
 
@@ -7119,8 +7152,10 @@ void std3D_FlushColorDrawCalls(std3D_RenderPass* pRenderPass)
 
 	std3D_bindTexture(GL_TEXTURE_2D, pRenderPass->flags & RD_RENDERPASS_AMBIENT_OCCLUSION ? ssao.tex : blank_tex_white, TEX_SLOT_AO);
 
-	std3D_FlushDrawCallList(pRenderPass,   &pRenderPass->drawCallLists[DRAW_LIST_COLOR_ZPREPASS], std3D_DrawCallCompareSortKey,    "Color ZPrepass");
-	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_NOZPREPASS], std3D_DrawCallCompareSortKey, "Color No ZPrepass");
+	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_ZPREPASS], std3D_DrawCallCompareSortKey,    "Color Z Prepass");
+	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_ZWRITE], std3D_DrawCallCompareSortKey, "Color Z Write");
+	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_ZREAD], std3D_DrawCallCompareDepth, "Color Z Read");
+	std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_COLOR_STENCIL], std3D_DrawCallCompareSortKey, "Color Stencil");
 
 	std3D_bindTexture(GL_TEXTURE_2D, blank_tex_white, TEX_SLOT_AO);
 
@@ -7227,7 +7262,8 @@ void std3D_FlushPostFX()
 	STD_END_PROFILER_LABEL();
 }
 
-// fixme: flush this when rdCache_Flush is called instead of trying to lump everything into a bunch of draw lists?
+// todo: funneling everything through these draw lists is a massive pain
+// remove the render pass stuff and handle the ordering at a higher level with rdCache_Flush
 void std3D_FlushDrawCalls()
 {
 	if (Main_bHeadless) return;
@@ -7326,6 +7362,7 @@ void std3D_FlushDrawCalls()
 	glBindSampler(TEX_SLOT_DIFFUSE, 0);
 	glBindSampler(TEX_SLOT_EMISSIVE, 0);
 	glBindSampler(TEX_SLOT_DISPLACEMENT, 0);
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
 	std3D_popDebugGroup();
 	STD_END_PROFILER_LABEL();

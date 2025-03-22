@@ -627,11 +627,14 @@ void sithRender_SetCameraFog()
 
 void sithRender_DrawBackdrop()
 {
+	rdCache_Flush();
+
 	// todo: drawing this first hurts fillrate due to overdraw
 	// try to merge it into the main pass or maybe use stenciling or something
-	rdRenderPass("sithRender_DrawBackdrop", 1, RD_RENDERPASS_NO_CLUSTERING);
+	//rdRenderPass("sithRender_DrawBackdrop", 1, RD_RENDERPASS_NO_CLUSTERING);
 	//rdDepthRange(0.0f, 0.0f);
 	rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
+	//rdSortOrder(255);
 
 	rdSetCullFlags(0);
 	rdStencilMode(1);
@@ -712,6 +715,26 @@ void sithRender_DrawBackdrop()
 	sithCamera_currentCamera->sector = origSector;
 	rdCamera_pCurCamera->view_matrix.scale = viewOriginal.scale;
 }
+
+void sithRender_ResetState()
+{
+	rdMatrixMode(RD_MATRIX_PROJECTION);
+	rdIdentity();
+	rdPerspective(rdCamera_pCurCamera->fov, rdCamera_pCurCamera->screenAspectRatio, rdCamera_pCurCamera->pClipFrustum->field_0.y, rdCamera_pCurCamera->pClipFrustum->field_0.z);
+
+	rdMatrixMode(RD_MATRIX_MODEL);
+	rdIdentity();
+
+	rdRenderPass("sithRender_Draw", 0, RD_RENDERPASS_REFRACTION | RD_RENDERPASS_CLEAR_DEPTH | (jkPlayer_enableSSAO ? RD_RENDERPASS_AMBIENT_OCCLUSION : 0));
+	rdDepthRange(0.0f, 1.0f);
+
+	rdMatrixMode(RD_MATRIX_VIEW);
+	rdIdentity();
+	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
+
+	rdSetCullFlags(1);
+}
+
 #endif
 
 void sithRender_Draw()
@@ -827,6 +850,8 @@ void sithRender_Draw()
     if ( (sithRender_flag & 2) != 0 )
         sithRender_RenderDynamicLights();
 
+	// todo: put occluder and decal collection here when render passes are removed
+
 #ifdef JKM_LIGHTING
     // MOTS added
     if (sithRender_008d4094 != 0) {
@@ -887,21 +912,7 @@ void sithRender_Draw()
 	tex_h = tex_w * (float)Window_ySize / Window_xSize;
 	rdViewport(0, 0, tex_w, tex_h);
 
-	rdMatrixMode(RD_MATRIX_PROJECTION);
-	rdIdentity();
-	rdPerspective(rdCamera_pCurCamera->fov, rdCamera_pCurCamera->screenAspectRatio, rdCamera_pCurCamera->pClipFrustum->field_0.y, rdCamera_pCurCamera->pClipFrustum->field_0.z);
-
-	rdMatrixMode(RD_MATRIX_MODEL);
-	rdIdentity();
-
-	rdRenderPass("sithRender_Draw", 0, RD_RENDERPASS_REFRACTION | RD_RENDERPASS_CLEAR_DEPTH | (jkPlayer_enableSSAO ? RD_RENDERPASS_AMBIENT_OCCLUSION : 0));
-	rdDepthRange(0.0f, 1.0f);
-
-	rdMatrixMode(RD_MATRIX_VIEW);
-	rdIdentity();
-	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
-
-	rdSetCullFlags(1);
+	sithRender_ResetState();
 #endif
 
     sithRender_RenderLevelGeometry();
@@ -916,6 +927,12 @@ void sithRender_Draw()
 #ifdef SPHERE_AO
 	rdCache_FlushOccluders();
 #endif
+
+	if (sithWorld_pCurrentWorld->backdropSector && sithRender_numSkyPortals > 0)
+	{
+		sithRender_DrawBackdrop();
+		sithRender_ResetState();
+	}
 
     if ( sithRender_numSurfaces )
         sithRender_RenderAlphaSurfaces();
@@ -956,9 +973,6 @@ void sithRender_Draw()
 #ifdef SDL2_RENDER
 	rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
 #endif
-
-	if (sithWorld_pCurrentWorld->backdropSector && sithRender_numSkyPortals > 0)
-		sithRender_DrawBackdrop();
 #endif
 
 #ifdef PARTICLE_LIGHTS
@@ -1335,6 +1349,7 @@ void sithRender_DrawSkyStencil(sithSurface* surface)
 	rdTexGenParams(0, 0, 0, 0);
 	rdTexOffset(RD_TEXCOORD0, 0, 0);
 
+	rdColorMask(0,0,0,0); // no color writes
 	rdStencilMode(2);
 	rdStencilBit(1);
 
@@ -1357,6 +1372,7 @@ void sithRender_DrawSkyStencil(sithSurface* surface)
 		rdEndPrimitive();
 	}
 
+	rdColorMask(1, 1, 1, 1); // no color writes
 	rdStencilMode(0);
 	rdStencilBit(0);
 	rdSetShader(0);
