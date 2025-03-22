@@ -160,9 +160,6 @@ void rdSetTexMode(rdTexMode_t a1);
 void rdDitherMode(rdDitherMode_t mode);
 void rdSetGlowIntensity(float intensity);
 
-void rdRenderPass(const char* name, int8_t renderPass, rdRenderPassFlags_t renderPassFlags);
-void rdDepthRange(float znearNorm, float zfarNorm);
-
 void rdSetDecalMode(rdDecalMode_t mode);
 void rdSetOverbright(float overbright);
 
@@ -190,10 +187,6 @@ int rdBindMaterial(rdMaterial* pMaterial, int cel);
 int rdAddLight(rdLight* pLight, rdVector3* pPosition);
 void rdAddOccluder(rdVector3* position, float radius);
 void rdAddDecal(rdDecal* decal, rdMatrix34* matrix, rdVector3* color, rdVector3* scale, float angleFade);
-
-void rdClearLights();
-void rdClearOccluders();
-void rdClearDecals();
 
 void rdAmbientFlags(uint32_t flags);
 void rdAmbientLight(float r, float g, float b);

@@ -11,4 +11,13 @@ typedef struct rdRect
     int32_t height;
 } rdRect;
 
+
+typedef struct rdRectf
+{
+	float x;
+	float y;
+	float width;
+	float height;
+} rdRectf;
+
 #endif // _RDRECT_H

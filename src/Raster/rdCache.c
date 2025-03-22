@@ -40,7 +40,7 @@ void rdCache_ClearFrameCounters()
 
 void rdCache_Flush()
 {
-	//std3D_FlushDrawCalls();
+	std3D_FlushDrawCalls();
 	rdCache_drawnFaces += rdCache_numProcFaces;
 	rdCache_Reset();
 }

@@ -38,6 +38,7 @@
 #include "Engine/sithCollision.h"
 #endif
 #include "Modules/std/stdProfiler.h"
+#include "Modules/rdroid/Engine/rdCluster.h"
 
 
 // DO NOT FORGET TO ADD TO jkPlayer_ResetVars()
@@ -1149,6 +1150,11 @@ void jkPlayer_DrawPov()
 
 	rdMatrixMode(RD_MATRIX_MODEL);
 	rdIdentity();
+
+	// rebuild clusters for FP
+	rdMatrix44 proj;
+	rdGetMatrix(&proj, RD_MATRIX_PROJECTION);
+	rdCluster_Build(&proj, tex_w, tex_h);
 #endif
 
     if ( playerThings[playerThingIdx].povModel.puppet )
@@ -1238,14 +1244,14 @@ void jkPlayer_DrawPov()
 #ifdef SDL2_RENDER
         // Force weapon to draw in front of scene
 	#ifdef RENDER_DROID2
-		rdRenderPass("jkPlayer_DrawPov", 2, RD_RENDERPASS_CLEAR_DEPTH | (jkPlayer_enableSSAO ? RD_RENDERPASS_AMBIENT_OCCLUSION : 0));
+		//rdRenderPass("jkPlayer_DrawPov", 2, RD_RENDERPASS_CLEAR_DEPTH | (jkPlayer_enableSSAO ? RD_RENDERPASS_AMBIENT_OCCLUSION : 0));
 		rdSetDecalMode(RD_DECALS_DISABLED);
 		//if (jkPlayer_enableShadows)
 		//	rdEnable(RD_SHADOWS);
 		//else
 		//	rdDisable(RD_SHADOWS);
 		// only draw very near the camera
-		rdDepthRange(0.0f, 0.1f / sithCamera_currentCamera->rdCam.pClipFrustum->field_0.z);
+		//rdDepthRange(0.0f, 0.1f / sithCamera_currentCamera->rdCam.pClipFrustum->field_0.z);
 	#else
         std3D_ClearZBuffer();
 	#endif

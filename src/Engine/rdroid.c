@@ -9,6 +9,8 @@
 #include "Win95/stdDisplay.h"
 #include "Primitives/rdPrimit3.h"
 
+#include "Modules/rdroid/Engine/rdCluster.h"
+
 #ifdef FOG
 int rdroid_curFogEnabled;
 rdVector4 rdroid_curFogColor;
@@ -926,17 +928,6 @@ void rdTexOffseti(uint8_t i, float u, float v)
 	}
 }
 
-// Framebuffer
-void rdRenderPass(const char* name, int8_t renderPass, rdRenderPassFlags_t renderPassFlags)
-{
-	std3D_SetRenderPass(name, renderPass, renderPassFlags);
-	rdroid_dcHeader.renderPass = renderPass;
-}
-
-void rdDepthRange(float znearNorm, float zfarNorm)
-{
-	std3D_SetDepthRange(rdroid_dcHeader.renderPass, znearNorm, zfarNorm);
-}
 
 // States
 void rdSetZBufferCompare(rdCompare_t compare)
@@ -1077,22 +1068,7 @@ int rdAddLight(rdLight* pLight, rdVector3* pPosition)
 
 	rdVector4 viewPos;
 	rdMatrix_TransformPoint44(&viewPos, &pos4, &rdroid_matrices[RD_MATRIX_VIEW]);
-	return std3D_AddLight(pLight, (rdVector3*)&viewPos, 1.0f / rdroid_overbright);
-}
-
-void rdClearLights()
-{
-	std3D_ClearLights();
-}
-
-void rdClearOccluders()
-{
-	std3D_ClearOccluders();
-}
-
-void rdClearDecals()
-{
-	std3D_ClearDecals();
+	return rdCluster_AddLight(pLight, (rdVector3*)&viewPos, 1.0f / rdroid_overbright);
 }
 
 extern int jkPlayer_enableShadows;
@@ -1107,7 +1083,7 @@ void rdAddOccluder(rdVector3* position, float radius)
 	
 	rdVector4 viewPos;
 	rdMatrix_TransformPoint44(&viewPos, &pos4, &rdroid_matrices[RD_MATRIX_VIEW]);
-	std3D_DrawOccluder((rdVector3*)&viewPos, radius, NULL);
+	rdCluster_AddOccluder((rdVector3*)&viewPos, radius, NULL);
 }
 
 extern int jkPlayer_enableDecals;
@@ -1134,7 +1110,7 @@ void rdAddDecal(rdDecal* decal, rdMatrix34* modelMat, rdVector3* color, rdVector
 	rdMatrix44 decalMatrix;
 	rdMatrix_Multiply44(&decalMatrix, &rdroid_matrices[RD_MATRIX_VIEW], &rdroid_matrices[RD_MATRIX_MODEL]);
 
-	std3D_DrawDecal(sith_tex_sel->texture_struct[0], tex2_arr_sel, scale, &decalMatrix, color, decal->flags, angleFade);
+	rdCluster_AddDecal(sith_tex_sel->texture_struct[0], tex2_arr_sel, scale, &decalMatrix, color, decal->flags, angleFade);
 }
 
 void rdAmbientFlags(uint32_t flags)

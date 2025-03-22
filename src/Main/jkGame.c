@@ -189,7 +189,7 @@ int jkGame_Update()
     jkPlayer_DrawPov();
 
 #ifdef RENDER_DROID2
-	std3D_FlushDrawCalls();
+	std3D_FlushPostFX();// std3D_FlushDrawCalls();
 #endif
 
 #if 1

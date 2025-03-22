@@ -24,6 +24,8 @@
 
 #define RD_NUM_TEXCOORDS 4
 
+// render state
+
 typedef uint8_t rdBlend_t;
 typedef enum RD_BLEND
 {
@@ -105,16 +107,6 @@ enum RD_TEXFILTER
 {
 	RD_TEXFILTER_NEAREST  = 0,
 	RD_TEXFILTER_BILINEAR = 1,
-};
-
-typedef uint8_t rdRenderPassFlags_t;
-enum RD_RENDERPASS
-{
-	RD_RENDERPASS_NONE              = 0x0,
-	RD_RENDERPASS_CLEAR_DEPTH       = 0x1,
-	RD_RENDERPASS_AMBIENT_OCCLUSION = 0x2,
-	RD_RENDERPASS_REFRACTION        = 0x4,
-	RD_RENDERPASS_NO_CLUSTERING     = 0x800, // temp, remove when the cluster functions take a render pass
 };
 
 typedef uint8_t rdDitherMode_t;

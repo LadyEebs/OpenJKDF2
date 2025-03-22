@@ -36,6 +36,8 @@
 #include "World/sithSoundClass.h"
 #endif
 
+#include "Modules/rdroid/Engine/rdCluster.h"
+
 #if defined(DECAL_RENDERING) || defined(RENDER_DROID2)
 #include "World/sithDecal.h"
 #endif
@@ -629,12 +631,7 @@ void sithRender_DrawBackdrop()
 {
 	rdCache_Flush();
 
-	// todo: drawing this first hurts fillrate due to overdraw
-	// try to merge it into the main pass or maybe use stenciling or something
-	//rdRenderPass("sithRender_DrawBackdrop", 1, RD_RENDERPASS_NO_CLUSTERING);
-	//rdDepthRange(0.0f, 0.0f);
 	rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
-	//rdSortOrder(255);
 
 	rdSetCullFlags(0);
 	rdStencilMode(1);
@@ -724,9 +721,6 @@ void sithRender_ResetState()
 
 	rdMatrixMode(RD_MATRIX_MODEL);
 	rdIdentity();
-
-	rdRenderPass("sithRender_Draw", 0, RD_RENDERPASS_REFRACTION | RD_RENDERPASS_CLEAR_DEPTH | (jkPlayer_enableSSAO ? RD_RENDERPASS_AMBIENT_OCCLUSION : 0));
-	rdDepthRange(0.0f, 1.0f);
 
 	rdMatrixMode(RD_MATRIX_VIEW);
 	rdIdentity();
@@ -870,9 +864,19 @@ void sithRender_Draw()
 	rdSetDecalMode(jkPlayer_enableDecals ? RD_DECALS_ENABLED : RD_DECALS_DISABLED);
 	rdDitherMode(jkPlayer_enableDithering ? RD_DITHER_4x4 : RD_DITHER_NONE);
 	rdAmbientFlags(sithRender_aoFlags);
-	rdClearLights();
-	rdClearOccluders();
-	rdClearDecals();
+	rdCluster_Clear();
+
+	// todo: get this out of here
+	extern int Window_xSize;
+	extern int Window_ySize;
+
+	int32_t tex_w = (int32_t)((double)Window_xSize * jkPlayer_ssaaMultiple);
+	int32_t tex_h = (int32_t)((double)Window_ySize * jkPlayer_ssaaMultiple);
+	tex_w = (tex_w < 320 ? 320 : tex_w);
+	tex_h = tex_w * (float)Window_ySize / Window_xSize;
+	rdViewport(0, 0, tex_w, tex_h);
+
+	sithRender_ResetState();
 #endif
 
     //printf("------\n");
@@ -900,6 +904,11 @@ void sithRender_Draw()
         sithRender_RenderDynamicLights();
 
 	sithRender_RenderOccludersAndDecals();
+
+	// all cluster stuff should be ready now, build it
+	rdMatrix44 proj;
+	rdGetMatrix(&proj, RD_MATRIX_PROJECTION);
+	rdCluster_Build(&proj, tex_w, tex_h);
 
 #ifdef JKM_LIGHTING
     // MOTS added
@@ -948,20 +957,6 @@ void sithRender_Draw()
             sithRender_008d409c = 0.0;
         }
     }
-#endif
-
-#ifdef RENDER_DROID2
-	// todo: get this out of here
-	extern int Window_xSize;
-	extern int Window_ySize;
-
-	int32_t tex_w = (int32_t)((double)Window_xSize * jkPlayer_ssaaMultiple);
-	int32_t tex_h = (int32_t)((double)Window_ySize * jkPlayer_ssaaMultiple);
-	tex_w = (tex_w < 320 ? 320 : tex_w);
-	tex_h = tex_w * (float)Window_ySize / Window_xSize;
-	rdViewport(0, 0, tex_w, tex_h);
-
-	sithRender_ResetState();
 #endif
 
     sithRender_RenderLevelGeometry();

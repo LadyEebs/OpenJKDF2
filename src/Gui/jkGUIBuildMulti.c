@@ -27,6 +27,8 @@
 #include "Platform/std3D.h"
 #include "Win95/Window.h"
 
+#include "Modules/rdroid/Engine/rdCluster.h"
+
 #include "jk.h"
 #include "types.h"
 #include "types_enums.h"
@@ -732,14 +734,9 @@ void jkGuiBuildMulti_ModelDrawer(jkGuiElement *pElement, jkGuiMenu *pMenu, stdVB
         rdAdvanceFrame();
 
 #ifdef RENDER_DROID2
-		rdRenderPass("jkGguiBuildMulti_DisplayModel", 0, 0);
-		//rdEnable(RD_SHADOWS);
 		rdSetDecalMode(RD_DECALS_DISABLED);
-		rdDepthRange(0.0f, 1.0f);
 		rdDitherMode(jkPlayer_enableDithering ? RD_DITHER_4x4 : RD_DITHER_NONE);
-		rdClearLights();
-		rdClearOccluders();
-		rdClearDecals();
+		rdCluster_Clear();
 
 		rdAddLight(&jkGuiBuildMulti_light, &jkGuiBuildMulti_lightPos);
 		rdAmbientLight(jkGuiBuildMulti_pCamera->ambientLight.x, jkGuiBuildMulti_pCamera->ambientLight.y, jkGuiBuildMulti_pCamera->ambientLight.z);
@@ -763,6 +760,10 @@ void jkGuiBuildMulti_ModelDrawer(jkGuiElement *pElement, jkGuiMenu *pMenu, stdVB
 		float w = (260.0f / 640.0f) * menu_w;
 		float h = (260.0f / 480.0f) * Window_ySize;
 		rdViewport(x, y, w, h);
+
+		rdMatrix44 proj;
+		rdGetMatrix(&proj, RD_MATRIX_PROJECTION);
+		rdCluster_Build(&proj, w, h);
 
 		// make sure we don't draw out of bounds
 		rdScissorMode(RD_SCISSOR_ENABLED);
@@ -790,7 +791,7 @@ void jkGuiBuildMulti_ModelDrawer(jkGuiElement *pElement, jkGuiMenu *pMenu, stdVB
         rdThing_Draw(jkGuiBuildMulti_pThingGun, jkGuiBuildMulti_thing->hierarchyNodeMatrices + 12);
         rdFinishFrame();
 #ifdef RENDER_DROID2
-		std3D_FlushDrawCalls();
+		std3D_FlushPostFX();// std3D_FlushDrawCalls();
 		rdScissorMode(RD_SCISSOR_DISABLED);
 #endif
         stdDisplay_VBufferUnlock(jkGuiBuildMulti_pVBuf1);

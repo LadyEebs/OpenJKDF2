@@ -492,6 +492,57 @@ typedef struct rdLight
     float falloffMax;
 } rdLight;
 
+
+// clustering
+typedef struct rdCluster
+{
+	int       lastUpdateFrame;
+	rdVector3 minb;
+	rdVector3 maxb;
+} rdCluster;
+
+typedef struct rdClusterLight
+{
+	rdVector4 position;
+	rdVector4 direction_intensity;
+	rdVector4 color;
+
+	float     radiusSqr;
+	float     pad0;
+	float     invFalloff;
+	uint32_t  pad1;
+
+	int32_t   type;
+	float     falloffMin;
+	float     falloffMax;
+	float     lux;
+
+	float     angleX;
+	float     cosAngleX;
+	float     angleY;
+	float     cosAngleY;
+} rdClusterLight;
+
+typedef struct rdClusterOccluder
+{
+	rdVector4 position;
+	float     invRadius;
+	float     pad0, pad1, pad2;
+} rdClusterOccluder;
+
+typedef struct rdClusterDecal
+{
+	rdMatrix44 decalMatrix;
+	rdMatrix44 invDecalMatrix;
+	rdVector4  uvScaleBias;
+	rdVector4  posRad;
+	rdVector4  color;
+	uint32_t   flags;
+	float      angleFade;
+	float      padding0;
+	float      padding1;
+} rdClusterDecal;
+
 #ifdef RGB_AMBIENT
 // ambient cube
 typedef struct rdAmbient
