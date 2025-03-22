@@ -166,6 +166,9 @@ void rdDepthRange(float znearNorm, float zfarNorm);
 void rdSetDecalMode(rdDecalMode_t mode);
 void rdSetOverbright(float overbright);
 
+void rdStencilBit(uint8_t bit);
+void rdStencilMode(uint8_t mode);
+
 // shader
 // todo: actually get IDs from renderer..
 void rdSetShader(int shaderId);

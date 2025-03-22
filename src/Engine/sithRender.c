@@ -629,10 +629,13 @@ void sithRender_DrawBackdrop()
 {
 	// todo: drawing this first hurts fillrate due to overdraw
 	// try to merge it into the main pass or maybe use stenciling or something
-	rdRenderPass("sithRender_DrawBackdrop", 0, RD_RENDERPASS_NO_CLUSTERING);
-	rdDepthRange(0.0f, 0.0f);
+	rdRenderPass("sithRender_DrawBackdrop", 1, RD_RENDERPASS_NO_CLUSTERING);
+	//rdDepthRange(0.0f, 0.0f);
+	rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
 
 	rdSetCullFlags(0);
+	rdStencilMode(1);
+	rdStencilBit(1);
 
 	rdMatrixMode(RD_MATRIX_VIEW);
 	rdIdentity();
@@ -702,6 +705,9 @@ void sithRender_DrawBackdrop()
 
 		backdropSector = backdropSector->nextBackdropSector;
 	}
+
+	rdStencilMode(0);
+	rdStencilBit(0);
 
 	sithCamera_currentCamera->sector = origSector;
 	rdCamera_pCurCamera->view_matrix.scale = viewOriginal.scale;
@@ -888,10 +894,7 @@ void sithRender_Draw()
 	rdMatrixMode(RD_MATRIX_MODEL);
 	rdIdentity();
 
-	if (sithWorld_pCurrentWorld->backdropSector && sithRender_numSkyPortals > 0)
-		sithRender_DrawBackdrop();
-
-	rdRenderPass("sithRender_Draw", 1, RD_RENDERPASS_REFRACTION | RD_RENDERPASS_CLEAR_DEPTH | (jkPlayer_enableSSAO ? RD_RENDERPASS_AMBIENT_OCCLUSION : 0));
+	rdRenderPass("sithRender_Draw", 0, RD_RENDERPASS_REFRACTION | RD_RENDERPASS_CLEAR_DEPTH | (jkPlayer_enableSSAO ? RD_RENDERPASS_AMBIENT_OCCLUSION : 0));
 	rdDepthRange(0.0f, 1.0f);
 
 	rdMatrixMode(RD_MATRIX_VIEW);
@@ -949,9 +952,13 @@ void sithRender_Draw()
 		}
 	}
 	rdCache_Flush();
+
 #ifdef SDL2_RENDER
 	rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
 #endif
+
+	if (sithWorld_pCurrentWorld->backdropSector && sithRender_numSkyPortals > 0)
+		sithRender_DrawBackdrop();
 #endif
 
 #ifdef PARTICLE_LIGHTS
@@ -1316,6 +1323,45 @@ void sithRender_Clip(sithSector *sector, rdClipFrustum *frustumArg, float a3)
 }
 
 #ifdef RENDER_DROID2
+void sithRender_DrawSkyStencil(sithSurface* surface)
+{
+	rdSetShader(0);
+
+	rdSetGeoMode(RD_GEOMODE_SOLIDCOLOR);
+	rdSetLightMode(RD_LIGHTMODE_NOTLIT);
+	rdSetTexMode(RD_TEXTUREMODE_AFFINE);
+	rdTexFilterMode(RD_TEXFILTER_NEAREST);
+	rdTexGen(RD_TEXGEN_NONE);
+	rdTexGenParams(0, 0, 0, 0);
+	rdTexOffset(RD_TEXCOORD0, 0, 0);
+
+	rdStencilMode(2);
+	rdStencilBit(1);
+
+	rdAmbientLight(0, 0, 0);
+	rdAmbientLightSH(NULL);
+
+	rdSetCullMode(RD_CULL_MODE_BACK);
+
+	rdSetBlendEnabled(RD_FALSE);
+	rdSetZBufferMethod(RD_ZBUFFER_READ_NOWRITE);
+
+	if (rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
+	{
+		for (int j = 0; j < surface->surfaceInfo.face.numVertices; j++)
+		{
+			int posidx = surface->surfaceInfo.face.vertexPosIdx[j];
+			rdVector3* v = &sithWorld_pCurrentWorld->vertices[posidx];
+			rdVertex3v(&v->x);
+		}
+		rdEndPrimitive();
+	}
+
+	rdStencilMode(0);
+	rdStencilBit(0);
+	rdSetShader(0);
+}
+
 void sithRender_DrawSurface(sithSurface* surface)
 {
 	if(!surface->surfaceInfo.face.material)
@@ -1327,6 +1373,7 @@ void sithRender_DrawSurface(sithSurface* surface)
 		&& sithWorld_pCurrentWorld->backdropSector != surface->parent_sector
 	)
 	{
+		sithRender_DrawSkyStencil(surface);
 		return;
 	}
 

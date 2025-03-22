@@ -985,6 +985,10 @@ typedef struct std3D_RasterState
 {
 	rdViewportRect viewport;
 	rdScissorRect  scissor;
+
+	// todo: this should be in depth stencil state
+	uint8_t stencilBit;
+	uint8_t stencilMode;
 } std3D_RasterState;
 
 typedef struct std3D_DrawCallState

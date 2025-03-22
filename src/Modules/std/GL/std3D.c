@@ -6271,6 +6271,11 @@ void std3D_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallSta
 		shaderID  = SHADER_COLOR_UNLIT + lighting + pixelLit;// + specular;
 		listIndex = DRAW_LIST_COLOR_ZPREPASS;
 	}
+	else if (pDrawCallState->rasterState.stencilMode == 2) // hack for stencil only
+	{
+		std3D_AddZListDrawCall(type, &std3D_renderPasses[renderPass].drawCallLists[DRAW_LIST_Z], pDrawCallState, paVertices, numVertices);
+		return;
+	}
 	else
 	{
 		shaderID = std3D_GetShaderID(pDrawCallState);
@@ -6357,6 +6362,27 @@ int std3D_DrawCallCompareDepth(std3D_DrawCall** a, std3D_DrawCall** b)
 void std3D_SetRasterState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 {
 	std3D_RasterState* pRasterState = &pState->rasterState;
+
+	// todo: this should be in depth stencil
+	if (pState->rasterState.stencilMode == 0)
+	{
+		glDisable(GL_STENCIL_TEST);
+	}
+	else
+	{
+		glEnable(GL_STENCIL_TEST);
+		glStencilMask(0xFF);
+		if (pState->rasterState.stencilMode == 2) // write
+		{
+			glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+			glStencilFunc(GL_ALWAYS, pState->rasterState.stencilBit, 0xFF);
+		}
+		else // test
+		{
+			glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+			glStencilFunc(GL_EQUAL, pState->rasterState.stencilBit, 0xFF);
+		}
+	}
 
 	glViewport(pRasterState->viewport.x, pRasterState->viewport.y, pRasterState->viewport.width, pRasterState->viewport.height);
 	if(pState->stateBits.scissorMode == RD_SCISSOR_ENABLED)
@@ -7019,7 +7045,7 @@ void std3D_FlushRefractionZDrawCalls(std3D_RenderPass* pRenderPass)
 	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 	glStencilFunc(GL_ALWAYS, 0xFF, 0xFF);
 	glClearColor(0, 0, 0, 0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT);// | GL_STENCIL_BUFFER_BIT);
 
 	//std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_Z], std3D_DrawCallCompareSortKey, "Z Prepass");
 	//std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_Z_ALPHATEST], std3D_DrawCallCompareSortKey, "Z Prepass Alphatest");
@@ -7042,7 +7068,7 @@ void std3D_FlushZDrawCalls(std3D_RenderPass* pRenderPass)
 	{
 		glDepthMask(GL_TRUE);
 		glClearColor(1, 1, 1, 1);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	}
 
 	std3D_setupWorldTextures();

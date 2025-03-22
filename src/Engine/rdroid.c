@@ -1042,6 +1042,16 @@ void rdSetOverbright(float overbright)
 	rdroid_overbright = stdMath_Clamp(overbright, 0.1f, 4.0f);
 }
 
+void rdStencilBit(uint8_t bit)
+{
+	rdroid_rasterState.stencilBit = 1;
+}
+
+void rdStencilMode(uint8_t mode)
+{
+	rdroid_rasterState.stencilMode = mode;
+}
+
 // todo: actually get IDs from renderer..
 void rdSetShader(int shaderId)
 {
