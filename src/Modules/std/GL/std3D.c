@@ -3397,6 +3397,7 @@ void std3D_DrawMenu()
     glBindFramebuffer(GL_FRAMEBUFFER, std3D_windowFbo);
     glDepthMask(GL_TRUE);
     glCullFace(GL_FRONT);
+	glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthFunc(GL_ALWAYS);
 	std3D_useProgram(programMenu);
