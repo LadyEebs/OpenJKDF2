@@ -466,7 +466,7 @@ int rdMaterial_GetFillColor(rdVector3* pOutColor, rdMaterial* pMaterial, rdColor
 			if (pColormap)
 			{
 				if(lightLevel >= 0)
-					paletteIndex = ((uint8_t*)pColormap->lightlevel)[paletteIndex * 64 + lightLevel];
+					paletteIndex = ((uint8_t*)pColormap->lightlevel)[lightLevel * 256 + paletteIndex];
 
 				pOutColor->x = (float)pColormap->colors[paletteIndex].r / 255.0f;
 				pOutColor->y = (float)pColormap->colors[paletteIndex].g / 255.0f;
