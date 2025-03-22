@@ -1,5 +1,7 @@
 // shader fast math
 
+#include "defines.gli"
+
 #ifndef FASTMATH_H
 #define FASTMATH_H
 
@@ -50,30 +52,51 @@ float fastLog2(float v)
 {
     return float(floatBitsToUint(v)) * uintBitsToFloat(IEEEInvScale) - uintBitsToFloat(IEEEOffset);
 }
+vec2 fastLog2(vec2 v)
+{
+    return vec2(fastLog2(v.x), fastLog2(v.y));
+}
+vec3 fastLog2(vec3 v)
+{
+    return vec3(fastLog2(v.x), fastLog2(v.y), fastLog2(v.z));
+}
+vec4 fastLog2(vec4 v)
+{
+    return vec4(fastLog2(v.x), fastLog2(v.y), fastLog2(v.z), fastLog2(v.w));
+}
 
 float fastExp2(float v)
 {
     return uintBitsToFloat(uint(v * uintBitsToFloat(IEEEScale) + uintBitsToFloat(IEEEScaleOffset)));
+}
+vec2 fastExp2(vec2 v)
+{
+    return vec2(fastExp2(v.x), fastExp2(v.y));
+}
+vec3 fastExp2(vec3 v)
+{
+    return vec3(fastExp2(v.x), fastExp2(v.y), fastExp2(v.z));
+}
+vec4 fastExp2(vec4 v)
+{
+    return vec4(fastExp2(v.x), fastExp2(v.y), fastExp2(v.z), fastExp2(v.w));
 }
 
 float fastPow(float b, float p)
 {
     return uintBitsToFloat(uint(p * float(floatBitsToUint(b)) - (p - 1.0) * uintBitsToFloat(IEEEScaleOffset)));
 }
-
-vec3 fastExp2x3(vec3 v)
+vec2 fastPow(vec2 b, vec2 p)
 {
-	return vec3(fastExp2(v.x), fastExp2(v.y), fastExp2(v.z));
+    return vec2(fastPow(b.x, p.x), fastPow(b.y, p.y));
 }
-
-vec3 fastLog2x3(vec3 v)
+vec3 fastPow(vec3 b, vec3 p)
 {
-    return vec3(fastLog2(v.x), fastLog2(v.y), fastLog2(v.z));
+    return vec3(fastPow(b.x, p.x), fastPow(b.y, p.y), fastPow(b.z, p.z));
 }
-
-vec3 fastPowx3(vec3 v, float p)
+vec4 fastPow(vec4 b, vec4 p)
 {
-    return vec3(fastPow(v.x, p), fastPow(v.y, p), fastPow(v.z, p));
+    return vec4(fastPow(b.x, p.x), fastPow(b.y, p.y), fastPow(b.z, p.z), fastPow(b.w, p.w));
 }
 
 const int IEEE_INT_RCP_CONST_NR0 = 0x7EF311C2;
@@ -122,6 +145,18 @@ float fastRcpSqrtNR0(float inX)
 	float  xRcpSqrt = rcpSqrtIEEEIntApproximation(inX, IEEE_INT_RCP_SQRT_CONST_NR0);
 	return xRcpSqrt;
 }
+vec2 fastRcpSqrtNR0(vec2 v)
+{
+    return vec2(fastRcpSqrtNR0(v.x), fastRcpSqrtNR0(v.y));
+}
+vec3 fastRcpSqrtNR0(vec3 v)
+{
+    return vec3(fastRcpSqrtNR0(v.x), fastRcpSqrtNR0(v.y), fastRcpSqrtNR0(v.z));
+}
+vec4 fastRcpSqrtNR0(vec4 v)
+{
+    return vec4(fastRcpSqrtNR0(v.x), fastRcpSqrtNR0(v.y), fastRcpSqrtNR0(v.z), fastRcpSqrtNR0(v.w));
+}
 
 //
 // Using 1 Newton Raphson iterations
@@ -135,6 +170,18 @@ float fastRcpSqrtNR1(float inX)
 	float  xRcpSqrt = rcpSqrtIEEEIntApproximation(inX, IEEE_INT_RCP_SQRT_CONST_NR1);
 	xRcpSqrt = rcpSqrtNewtonRaphson(xhalf, xRcpSqrt);
 	return xRcpSqrt;
+}
+vec2 fastRcpSqrtNR1(vec2 v)
+{
+    return vec2(fastRcpSqrtNR1(v.x), fastRcpSqrtNR1(v.y));
+}
+vec3 fastRcpSqrtNR1(vec3 v)
+{
+    return vec3(fastRcpSqrtNR1(v.x), fastRcpSqrtNR1(v.y), fastRcpSqrtNR1(v.z));
+}
+vec4 fastRcpSqrtNR1(vec4 v)
+{
+    return vec4(fastRcpSqrtNR1(v.x), fastRcpSqrtNR1(v.y), fastRcpSqrtNR1(v.z), fastRcpSqrtNR1(v.w));
 }
 
 //
@@ -151,7 +198,18 @@ float fastRcpSqrtNR2(float inX)
 	xRcpSqrt = rcpSqrtNewtonRaphson(xhalf, xRcpSqrt);
 	return xRcpSqrt;
 }
-
+vec2 fastRcpSqrtNR2(vec2 v)
+{
+    return vec2(fastRcpSqrtNR2(v.x), fastRcpSqrtNR2(v.y));
+}
+vec3 fastRcpSqrtNR2(vec3 v)
+{
+    return vec3(fastRcpSqrtNR2(v.x), fastRcpSqrtNR2(v.y), fastRcpSqrtNR2(v.z));
+}
+vec4 fastRcpSqrtNR2(vec4 v)
+{
+    return vec4(fastRcpSqrtNR2(v.x), fastRcpSqrtNR2(v.y), fastRcpSqrtNR2(v.z), fastRcpSqrtNR2(v.w));
+}
 
 //
 // SQRT
@@ -174,6 +232,18 @@ float fastSqrtNR0(float inX)
 	float  xRcp = sqrtIEEEIntApproximation(inX, IEEE_INT_SQRT_CONST_NR0);
 	return xRcp;
 }
+vec2 fastSqrtNR0(vec2 v)
+{
+    return vec2(fastSqrtNR0(v.x), fastSqrtNR0(v.y));
+}
+vec3 fastSqrtNR0(vec3 v)
+{
+    return vec3(fastSqrtNR0(v.x), fastSqrtNR0(v.y), fastSqrtNR0(v.z));
+}
+vec4 fastSqrtNR0(vec4 v)
+{
+    return vec4(fastSqrtNR0(v.x), fastSqrtNR0(v.y), fastSqrtNR0(v.z), fastSqrtNR0(v.w));
+}
 
 //
 // Use inverse Rcp Sqrt
@@ -186,6 +256,18 @@ float fastSqrtNR1(float inX)
 {
 	// Inverse Rcp Sqrt
 	return inX * fastRcpSqrtNR1(inX);
+}
+vec2 fastSqrtNR1(vec2 v)
+{
+    return vec2(fastSqrtNR1(v.x), fastSqrtNR1(v.y));
+}
+vec3 fastSqrtNR1(vec3 v)
+{
+    return vec3(fastSqrtNR1(v.x), fastSqrtNR1(v.y), fastSqrtNR1(v.z));
+}
+vec4 fastSqrtNR1(vec4 v)
+{
+    return vec4(fastSqrtNR1(v.x), fastSqrtNR1(v.y), fastSqrtNR1(v.z), fastSqrtNR1(v.w));
 }
 
 //
@@ -200,7 +282,18 @@ float fastSqrtNR2(float inX)
 	// Inverse Rcp Sqrt
 	return inX * fastRcpSqrtNR2(inX);
 }
-
+vec2 fastSqrtNR2(vec2 v)
+{
+    return vec2(fastSqrtNR2(v.x), fastSqrtNR2(v.y));
+}
+vec3 fastSqrtNR2(vec3 v)
+{
+    return vec3(fastSqrtNR2(v.x), fastSqrtNR2(v.y), fastSqrtNR2(v.z));
+}
+vec4 fastSqrtNR2(vec4 v)
+{
+    return vec4(fastSqrtNR2(v.x), fastSqrtNR2(v.y), fastSqrtNR2(v.z), fastSqrtNR2(v.w));
+}
 //
 // RCP
 //
@@ -228,7 +321,18 @@ float fastRcpNR0(float inX)
 	float  xRcp = rcpIEEEIntApproximation(inX, IEEE_INT_RCP_CONST_NR0);
 	return xRcp;
 }
-
+vec2 fastRcpNR0(vec2 v)
+{
+    return vec2(fastRcpNR0(v.x), fastRcpNR0(v.y));
+}
+vec3 fastRcpNR0(vec3 v)
+{
+    return vec3(fastRcpNR0(v.x), fastRcpNR0(v.y), fastRcpNR0(v.z));
+}
+vec4 fastRcpNR0(vec4 v)
+{
+    return vec4(fastRcpNR0(v.x), fastRcpNR0(v.y), fastRcpNR0(v.z), fastRcpNR0(v.w));
+}
 //
 // Using 1 Newton Raphson iterations
 // Relative error : < 0.02% over full
@@ -241,7 +345,18 @@ float fastRcpNR1(float inX)
 	xRcp = rcpNewtonRaphson(inX, xRcp);
 	return xRcp;
 }
-
+vec2 fastRcpNR1(vec2 v)
+{
+    return vec2(fastRcpNR1(v.x), fastRcpNR1(v.y));
+}
+vec3 fastRcpNR1(vec3 v)
+{
+    return vec3(fastRcpNR1(v.x), fastRcpNR1(v.y), fastRcpNR1(v.z));
+}
+vec4 fastRcpNR1(vec4 v)
+{
+    return vec4(fastRcpNR1(v.x), fastRcpNR1(v.y), fastRcpNR1(v.z), fastRcpNR1(v.w));
+}
 //
 // Using 2 Newton Raphson iterations
 // Relative error : < 5.0e-005%  over full
@@ -254,6 +369,18 @@ float fastRcpNR2(float inX)
 	xRcp = rcpNewtonRaphson(inX, xRcp);
 	xRcp = rcpNewtonRaphson(inX, xRcp);
 	return xRcp;
+}
+vec2 fastRcpNR2(vec2 v)
+{
+    return vec2(fastRcpNR2(v.x), fastRcpNR2(v.y));
+}
+vec3 fastRcpNR2(vec3 v)
+{
+    return vec3(fastRcpNR2(v.x), fastRcpNR2(v.y), fastRcpNR2(v.z));
+}
+vec4 fastRcpNR2(vec4 v)
+{
+    return vec4(fastRcpNR2(v.x), fastRcpNR2(v.y), fastRcpNR2(v.z), fastRcpNR2(v.w));
 }
 
 

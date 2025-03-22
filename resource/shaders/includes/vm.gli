@@ -96,10 +96,6 @@ void run_vm()
 			result = mix( read_src2(s_ir), read_src1(s_ir), greaterThan( read_src0(s_ir), vec4(0.5) ));
 			break;
 
-		case OP_DIV:
-			result = sat4( read_src0(s_ir) / read_src1(s_ir) );
-			break;
-
 		case OP_DP2:
 			result = vec4(dot( read_src0(s_ir).xy, read_src1(s_ir).xy ));
 			break;
@@ -113,8 +109,33 @@ void run_vm()
 			break;
 
 		case OP_POW:
-			result = pow( read_src0(s_ir), read_src1(s_ir) );
+			if (s_ir.prec)
+				result = pow( read_src0(s_ir), read_src1(s_ir) );
+			else
+				result = fastPow( read_src0(s_ir), read_src1(s_ir) );
 			break;
+
+		case OP_EXP2:
+			if (s_ir.prec)
+				result = exp2( read_src0(s_ir) );
+			else
+				result = fastExp2( read_src1(s_ir) );
+			break;
+
+		case OP_LOG2:
+			if (s_ir.prec)
+				result = log2( read_src0(s_ir) );
+			else
+				result = fastLog2( read_src1(s_ir) );
+			break;
+
+		case OP_DIV:
+			if (s_ir.prec)
+				result = sat4( read_src0(s_ir) / read_src1(s_ir) );
+			else
+				result = sat4( read_src0(s_ir) * fastRcpNR0(read_src1(s_ir)) );
+			break;
+
 
 		default:
 		case OP_NOP:

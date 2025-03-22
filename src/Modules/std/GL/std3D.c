@@ -1018,6 +1018,8 @@ typedef enum
 	OP_DP2,		// dot2
 	OP_DP3,		// dot3
 	OP_DP4,		// dot4
+	OP_EXP2,    // base 2 exponential
+	OP_LOG2,    // base 2 logarithm
 	OP_MAC,     // multiply accumulate
 	OP_MAD,		// multiply add
 	OP_MAX,		// maximum
@@ -1026,6 +1028,7 @@ typedef enum
 	OP_MOV,		// move
 	OP_MUL,		// multiply
 	OP_POW,		// power
+	OP_RCP,     // reciprocal
 	OP_SUB,		// subtract
 	OP_TEX,     // texture
 	OP_TEXDUDV, // texture with offset
@@ -1037,8 +1040,8 @@ static_assert(MAX_ALU_OPS <= 32, "std3D_ShaderAluOp must not exceed 32 op codes.
 static const char* std3D_opCodeKeywords[MAX_ALU_OPS] =
 {
 	"nop", "add", "cmp", "cnd", "div", "dp2", "dp3", "dp4",
-	"mac", "mad", "max", "min", "min", "mov", "mul", "pow",
-	"sub", "tex", "texdudv", "opm"
+	"exp2", "log2", "mac", "mad", "max", "min", "min", "mov",
+	"mul", "pow", "sub", "tex", "texdudv", "opm"
 };
 
 uint8_t std3D_parseOpCode(const char* name)
@@ -1171,13 +1174,14 @@ uint32_t std3D_assembleOpAndDst(
 	uint8_t index,
 	uint8_t swizzle,
 	uint8_t modifiers,
-	uint8_t write_mask
+	uint8_t write_mask,
+	uint8_t precise
 )
 {
 	uint32_t result;
-	result = (opcode & 0x1F);
-	result |= (fmt & 0x3) << 5;
-	// spare result |= (spare & 0x1) << 7;
+	result  = (opcode & 0x1F);
+	result |= (precise & 0x1) << 5;
+	result |= (fmt & 0x3) << 6;
 	result |= (index & 0xFF) << 8;
 	result |= (swizzle & 0xFF) << 16;
 	result |= (modifiers & 0xF) << 24;
@@ -1213,10 +1217,11 @@ typedef struct
 
 typedef struct
 {
-	uint8_t              opcode;   // Opcode (e.g., "add")
-	std3D_AsmDestOperand dest;	   // Destination operand
-	std3D_AsmSrcOperand  src[3];   // Source operands
-	uint8_t              srcCount; // Number of source operands
+	uint8_t              opcode;
+	std3D_AsmDestOperand dest;
+	std3D_AsmSrcOperand  src[3];
+	uint8_t              srcCount;
+	uint8_t              precise;
 } std3D_AsmInstruction;
 
 typedef struct std3D_ShaderVariable
@@ -1246,7 +1251,8 @@ int std3D_assembleInstruction(std3D_Instr* result, std3D_AsmInstruction* inst)
 											inst->dest.reg.address,
 											inst->dest.reg.swizzle,
 											inst->dest.modifier,
-											inst->dest.reg.mask);
+											inst->dest.reg.mask,
+											inst->precise);
 
 
 	// if we have 3 operands, then immediate values must be 8 bit
@@ -1620,6 +1626,8 @@ void std3D_parseInstructionModifiers(const char* modifierStart, std3D_AsmInstruc
 		uint8_t modifier = std3D_parseOutputModifier(token);
 		if (modifier)
 			inst->dest.modifier = modifier;
+		else if(strnicmp(token, "precise", 7) == 0)
+			inst->precise = 1;
 		else
 			inst->dest.reg.fmt = std3D_parseEncoding(token);
 

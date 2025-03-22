@@ -21,18 +21,20 @@
 #define OP_DP2       5  // dot2
 #define OP_DP3		 6	// dot3
 #define OP_DP4		 7	// dot4
-#define OP_MAC       8  // multiply accumulate
-#define OP_MAD		 9	// multiply add
-#define OP_MAX		10	// maximum
-#define OP_MIN		11	// minimum
-#define OP_MIX		12	// mix/interpolate
-#define OP_MOV		13	// move
-#define OP_MUL		14	// multiply
-#define OP_POW      15  // power
-#define OP_SUB      16  // subtract
-#define OP_TEX		17	// texture sample
-#define OP_TEXDUDV  18  // texture sample with offset
-#define OP_OPM      19  // offset parallax
+#define OP_EXP2      8  // base 2 exponential
+#define OP_LOG2      9  // base 2 logarithm
+#define OP_MAC      10  // multiply accumulate
+#define OP_MAD		11	// multiply add
+#define OP_MAX		12	// maximum
+#define OP_MIN		13	// minimum
+#define OP_MIX		14	// mix/interpolate
+#define OP_MOV		15	// move
+#define OP_MUL		16	// multiply
+#define OP_POW      17  // power
+#define OP_SUB      18  // subtract
+#define OP_TEX		19	// texture sample
+#define OP_TEXDUDV  20  // texture sample with offset
+#define OP_OPM      21  // offset parallax
 
 // source types
 #define REG_TYPE_GPR	0	// register
@@ -124,6 +126,7 @@ struct vm_src
 struct vm_instr
 {
 	uint   opcode;
+	uint   prec;
 	uint   imm;
 	vm_dst dst;
 	vm_src src0;
@@ -141,44 +144,49 @@ uint s_expand_mask(uint s_mask)
 	return s_result;
 }
 
-void s_decode_opcode(out uint s_opcode, uint s_instr)
+void s_decode_opcode(out uint s_opcode, uint s_ir)
 {
-	s_opcode = (s_instr & 0x1F);
+	s_opcode = (s_ir & 0x1F);
 }
 
-void s_decode_dst_operand(out vm_dst s_dst, uint s_instr)
+void s_decode_precision(out uint s_precision, uint s_ir)
 {
-	s_dst.fmt       = (s_instr >>  5) & 0x3;
-	//spare         = (s_instr >>  7) & 0x1;
-	s_dst.addr      = (s_instr >>  8) & 0xFF;
-	s_dst.swizzle   = (s_instr >> 16) & 0xFF;
-	s_dst.modifier  = (s_instr >> 24) &  0xF;
-	s_dst.mask      = (s_instr >> 28) &  0xF;
+	s_precision = (s_ir >> 5) & 0x1;
+}
+
+void s_decode_dst_operand(out vm_dst s_dst, uint s_ir)
+{
+	s_dst.fmt       = (s_ir >>  6) & 0x3;
+	s_dst.addr      = (s_ir >>  8) & 0xFF;
+	s_dst.swizzle   = (s_ir >> 16) & 0xFF;
+	s_dst.modifier  = (s_ir >> 24) &  0xF;
+	s_dst.mask      = (s_ir >> 28) &  0xF;
 	s_dst.mask      = s_expand_mask(s_dst.mask);
 }
 
-void s_decode_src_operand(out vm_src s_src, uint s_instr)
+void s_decode_src_operand(out vm_src s_src, uint s_ir)
 {
-	s_src.type       = (s_instr      ) &  0x7;
-	s_src.absolute   = (s_instr >>  3) &  0x1;
-	s_src.fmt        = (s_instr >>  4) &  0x3;
-	s_src.idx        = (s_instr >>  6) &  0x3;
-	s_src.addr       = (s_instr >>  8) & 0xFF;
-	s_src.swizzle    = (s_instr >> 16) & 0xFF;
-	s_src.neg_inv    = (s_instr >> 24) &  0x3;
-	s_src.scale_bias = (s_instr >> 26) &  0x7;
-	s_src.reduction  = (s_instr >> 29) &  0x7;
+	s_src.type       = (s_ir      ) &  0x7;
+	s_src.absolute   = (s_ir >>  3) &  0x1;
+	s_src.fmt        = (s_ir >>  4) &  0x3;
+	s_src.idx        = (s_ir >>  6) &  0x3;
+	s_src.addr       = (s_ir >>  8) & 0xFF;
+	s_src.swizzle    = (s_ir >> 16) & 0xFF;
+	s_src.neg_inv    = (s_ir >> 24) &  0x3;
+	s_src.scale_bias = (s_ir >> 26) &  0x7;
+	s_src.reduction  = (s_ir >> 29) &  0x7;
 }
 
-void s_decode_instr(out vm_instr s_instr_out, uvec4 s_instr)
+void s_decode_instr(out vm_instr s_ir_out, uvec4 s_ir)
 {
-	s_instr_out.imm = s_instr.w;
+	s_ir_out.imm = s_ir.w;
 
-	s_decode_opcode     (s_instr_out.opcode, s_instr.x);
-	s_decode_dst_operand(s_instr_out.dst,    s_instr.x);
-	s_decode_src_operand(s_instr_out.src0,   s_instr.y);
-	s_decode_src_operand(s_instr_out.src1,   s_instr.z);
-	s_decode_src_operand(s_instr_out.src2,   s_instr.w);
+	s_decode_opcode     (s_ir_out.opcode,    s_ir.x);
+	s_decode_precision  (s_ir_out.prec,      s_ir.x);
+	s_decode_dst_operand(s_ir_out.dst,       s_ir.x);
+	s_decode_src_operand(s_ir_out.src0,      s_ir.y);
+	s_decode_src_operand(s_ir_out.src1,      s_ir.z);
+	s_decode_src_operand(s_ir_out.src2,      s_ir.w);
 }
 
 #endif

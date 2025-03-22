@@ -96,7 +96,7 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	if (dotVector >= lights[light_index].radiusSqr)
 		return;
 
-	float rcpLen = inversesqrt(dotVector);
+	float rcpLen = fastRcpSqrtNR1(dotVector);
 	float len    = rcpLen * dotVector;
 	lvec         = lvec * rcpLen;
 

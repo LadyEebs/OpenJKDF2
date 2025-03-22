@@ -53,14 +53,14 @@ vec2 read_texcoord_reg(uint i)
 
 uint pack_vertex_reg(vec4 unpackedInput)
 {
-	unpackedInput.rgb = fastExp2x3(-unpackedInput.rgb);
+	unpackedInput.rgb = fastExp2(-unpackedInput.rgb);
 	return packUnorm4x8(unpackedInput);
 }
 
 vec4 unpack_vertex_reg(uint packedInput)
 {
 	vec4 v = unpackUnorm4x8(packedInput);
-	v.rgb = -fastLog2x3(v.rgb);
+	v.rgb = -fastLog2(v.rgb);
 	return v;
 }
 

@@ -25,12 +25,11 @@ in vec4 v_uv[4];	// up to 4 texcoords
 
 #if defined(VERTEX_SHADER) || !defined(FRAG_ATTR_FETCH)
 
-	VAPI vec4 f_color[COLOR_SETS];
-
 	VAPI vec3 f_uv[UV_SETS];
-	
 	VAPI vec4 f_coord;
+
 	VAPI vec3 f_normal;
+	VAPI vec4 f_color[COLOR_SETS];
 
 	VAPI float f_lodbias;
 
@@ -44,15 +43,19 @@ in vec4 v_uv[4];	// up to 4 texcoords
 
 #else
 
+	// some attributes can be packed and unpacked during
+	// interpolation to reduce LDS use (color, normal, etc)
+
 	#if defined(GL_EXT_fragment_shader_barycentric )
 
 		#define gl_BaryCoord gl_BaryCoordEXT
 		#define vertexAttribute(A, I) A[I]
 
-		pervertexEXT VAPI vec4 f_color[COLOR_SETS][3];
 		pervertexEXT VAPI vec3 f_uv[UV_SETS][3];
 		pervertexEXT VAPI vec4 f_coord[3];
-		pervertexEXT VAPI vec3 f_normal[3];
+
+		pervertexEXT VAPI uint f_color[COLOR_SETS][3];
+		pervertexEXT VAPI uint f_normal[3];
 
 		pervertexEXT VAPI float f_lodbias;
 
@@ -61,10 +64,11 @@ in vec4 v_uv[4];	// up to 4 texcoords
 		#define gl_BaryCoord gl_BaryCoordSmoothAMD
 		#define vertexAttribute(A, I) interpolateAtVertexAMD(A, I)
 
-		__explicitInterpAMD VAPI vec4 f_color[COLOR_SETS];
 		__explicitInterpAMD VAPI vec3 f_uv[UV_SETS];
 		__explicitInterpAMD VAPI vec4 f_coord;
-		__explicitInterpAMD VAPI vec3 f_normal;
+
+		__explicitInterpAMD VAPI uint f_color[COLOR_SETS];
+		__explicitInterpAMD VAPI uint f_normal;
 	
 		__explicitInterpAMD VAPI float f_lodbias;
 
@@ -73,46 +77,54 @@ in vec4 v_uv[4];	// up to 4 texcoords
 		#define gl_BaryCoord gl_BaryCoordNV
 		#define vertexAttribute(A, I) A[I]
 
-		pervertexNV VAPI vec4 f_color[COLOR_SETS][3];
 		pervertexNV VAPI vec3 f_uv[UV_SETS][3];
 		pervertexNV VAPI vec4 f_coord[3];
-		pervertexNV VAPI vec3 f_normal[3];
+
+		pervertexNV VAPI uint f_color[COLOR_SETS][3];
+		pervertexNV VAPI uint f_normal[3];
 
 		pervertexNV VAPI float f_lodbias;
 
 	#endif
 
-	vec4 lerp_attr4(vec4 v0, vec4 v1, vec4 vec2)
+	vec3 get_bary()
 	{
-		float a = gl_BaryCoord.x;
-		float b = gl_BaryCoord.y;
-		float c = (1.0 - a - b);
-		return a * v0 + (b * v1 + (v2 * c));
+	#if defined(GL_AMD_shader_explicit_vertex_parameter )
+		return vec3(
+			1.0 - gl_BaryCoord.x - gl_BaryCoord.y,
+			gl_BaryCoord.x
+			gl_BaryCoord.y
+		);
+	#else
+		return gl_BaryCoord;
+	#endif
 	}
 
-	vec3 lerp_attr3(vec3 v0, vec3 v1, vec3 vec2)
+	vec4 lerp_attr(vec4 v0, vec4 v1, vec4 v2)
 	{
-		float a = gl_BaryCoord.x;
-		float b = gl_BaryCoord.y;
-		float c = (1.0 - a - b);
-		return a * v0 + (b * v1 + (v2 * c));
+		vec3 bary = get_bary();
+		return bary.x * v0 + (bary.y * v1 + (bary.z * v2));
 	}
 
-	float lerp_attr(float v0, float v1, float vec2)
+	vec3 lerp_attr(vec3 v0, vec3 v1, vec3 v2)
 	{
-		float a = gl_BaryCoord.x;
-		float b = gl_BaryCoord.y;
-		float c = (1.0 - a - b);
-		return a * v0 + (b * v1 + (v2 * c));
+		vec3 bary = get_bary();
+		return bary.x * v0 + (bary.y * v1 + (bary.z * v2));
+	}
+
+	float lerp_attr(float v0, float v1, float v2)
+	{
+		vec3 bary = get_bary();
+		return bary.x * v0 + (bary.y * v1 + (bary.z * v2));
 	}
 
 	vec4 fetch_vtx_color(int i)
 	{
-		vec4 c0 = vertexAttribute(f_color[i], 0);
-		vec4 c1 = vertexAttribute(f_color[i], 1);
-		vec4 c2 = vertexAttribute(f_color[i], 2);
+		vec4 c0 = unpackUnorm4x8(vertexAttribute(f_color[i], 0));
+		vec4 c1 = unpackUnorm4x8(vertexAttribute(f_color[i], 1));
+		vec4 c2 = unpackUnorm4x8(vertexAttribute(f_color[i], 2));
 	
-		return lerp_attr4(c0, c1, c2);
+		return lerp_attr(c0, c1, c2);
 	}
 
 	vec2 fetch_vtx_uv(int i)
@@ -121,17 +133,17 @@ in vec4 v_uv[4];	// up to 4 texcoords
 		vec3 uv1 = vertexAttribute(f_uv[i], 1).xyz;
 		vec3 uv2 = vertexAttribute(f_uv[i], 2).xyz;
 	
-		vec3 uv = lerp_attr3(uv0, uv1, uv2);
+		vec3 uv = lerp_attr(uv0, uv1, uv2);
 		return uv.xy / uv.z;
 	}
 
 	vec3 fetch_vtx_normal()
 	{
-		vec3 n0 = vertexAttribute(f_normal, 0).xyz;
-		vec3 n1 = vertexAttribute(f_normal, 1).xyz;
-		vec3 n2 = vertexAttribute(f_normal, 2).xyz;
+		vec3 n0 = unpackSnorm4x8(vertexAttribute(f_normal, 0)).xyz;
+		vec3 n1 = unpackSnorm4x8(vertexAttribute(f_normal, 1)).xyz;
+		vec3 n2 = unpackSnorm4x8(vertexAttribute(f_normal, 2)).xyz;
 	
-		return lerp_attr3(n0, n1, n2);
+		return lerp_attr(n0, n1, n2);
 	}
 
 	vec3 fetch_vtx_pos()
@@ -140,7 +152,7 @@ in vec4 v_uv[4];	// up to 4 texcoords
 		vec3 v1 = vertexAttribute(f_coord, 1).xyz;
 		vec3 v2 = vertexAttribute(f_coord, 2).xyz;
 	
-		return lerp_attr3(v0, v1, v2);
+		return lerp_attr(v0, v1, v2);
 	}
 
 	float fetch_vtx_depth()

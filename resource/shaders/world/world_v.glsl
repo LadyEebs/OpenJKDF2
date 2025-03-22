@@ -74,12 +74,12 @@ void main(void)
 	mat3 normalMatrix = transpose(inverse(mat3(modelMatrix))); // if we ever need scaling
 	vec3 normal = normalMatrix * (v_normal.xyz * 2.0 - 1.0);
 	normal = normalize(normal);
-	f_normal.xyz = vec3(normal);
+
 	f_lodbias = min(compute_mip_bias(viewPos.y), (numMips - 1));
 
     gl_Position = pos;
-    f_color[0] = vec4(clamp(v_color[0].bgra, vec4(0.0), vec4(1.0)));
-	f_color[1] = vec4(clamp(v_color[1].bgra, vec4(0.0), vec4(1.0)));
+    vec4 color0 = vec4(clamp(v_color[0].bgra, vec4(0.0), vec4(1.0)));
+	vec4 color1 = vec4(clamp(v_color[1].bgra, vec4(0.0), vec4(1.0)));
 
     f_uv[0] = v_uv[0].xyw;
 	f_uv[0].xy += uv_offset[0].xy;
@@ -100,40 +100,36 @@ void main(void)
 	
 	vec3 view = normalize(-viewPos.xyz);
 
-	f_color[1].a = 0.0;
+	color1.a = 0.0;
 	if(fogEnabled > 0)
-		f_color[1].a = clamp((pos.w - fogStart) / (fogEnd - fogStart), 0.0, 1.0);
+		color1.a = clamp((pos.w - fogStart) / (fogEnd - fogStart), 0.0, 1.0);
 
 #ifdef UNLIT
-	f_color[1].rgb = vec3(0.0);
+	color1.rgb = vec3(0.0);
 
 	if(lightMode == 0) // full lit
-		f_color[0].xyz = vec3(light_mult);
+		color0.xyz = vec3(light_mult);
 	else if(lightMode == 1) // not lit
-		f_color[0].xyz = vec3(0.0);
+		color0.xyz = vec3(0.0);
 
 #else
 	// do ambient diffuse in vertex shader
 	if (lightMode >= 2)
-		f_color[0].xyz = max(f_color[0].xyz, ambientColor.xyz);
+		color0.xyz = max(color0.xyz, ambientColor.xyz);
 	
 	if(lightMode >= 2)
-		f_color[0].xyz += CalculateAmbientDiffuse(normal);
+		color0.xyz += CalculateAmbientDiffuse(normal);
 
-	f_color[1].rgb = vec3(0.0);
+	color1.rgb = vec3(0.0);
 	if(lightMode >= 2)
-		f_color[1].xyz = CalculateAmbientSpecular(roughnessFactor, normal, view, reflect(-view, normal));
-
-	//f_color[0].rgb *= (255.0);
-	//f_color[1].rgb *= (255.0);
-
+		color1.xyz = CalculateAmbientSpecular(roughnessFactor, normal, view, reflect(-view, normal));
 
 	// light mode "diffuse" (a.k.a new gouraud)
 #ifdef VERTEX_LIT
 	{
 		light_result result;
-		result.diffuse = packF2x11_1x10(f_color[0].rgb);
-		result.specular = packF2x11_1x10(f_color[1].rgb);
+		result.diffuse = packF2x11_1x10(color0.rgb);
+		result.specular = packF2x11_1x10(color1.rgb);
 
 		if(numLights > 0u)
 		{
@@ -146,7 +142,7 @@ void main(void)
 			params.view      = encode_octahedron_uint(view);
 			params.reflected = encode_octahedron_uint(reflect(-view, normal));
 			params.spec_c    = calc_spec_c(a);
-			params.tint      = packUnorm4x8(f_color[0]);
+			params.tint      = packUnorm4x8(color0);
 
 			// loop light buckets
 			uint first_item = firstLight;
@@ -174,11 +170,21 @@ void main(void)
 				}
 			}
 	
-			f_color[0].rgb = unpackF2x11_1x10(result.diffuse);
-			f_color[1].rgb = unpackF2x11_1x10(result.specular);
+			color0.rgb = unpackF2x11_1x10(result.diffuse);
+			color1.rgb = unpackF2x11_1x10(result.specular);
 		}
 	}
 #endif
 
+#endif
+
+#ifdef FRAG_ATTR_FETCH
+	f_color[0] = packUnorm4x8(color0);
+	f_color[1] = packUnorm4x8(color1);
+	f_normal = packSnorm4x8(normal.xyzz);
+#else
+	f_color[0] = color0;
+	f_color[1] = color1;
+	f_normal.xyz = vec3(normal);
 #endif
 }
