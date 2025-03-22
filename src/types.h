@@ -497,11 +497,12 @@ typedef struct rdLight
 typedef struct rdAmbient
 {
 #ifdef RENDER_DROID2
-	rdVector3 sgs[8]; // 8 spherical gaussian lobes
+	rdVector3 sgs[RD_AMBIENT_LOBES]; // spherical gaussian lobes
 #else
 	rdVector4 r, g, b; // rgb coefficients (linear SH)
 	rdVector3 dominantDir; // precomputed dominant light direction
 #endif
+	rdVector4 center;
 } rdAmbient;
 #endif
 
@@ -954,11 +955,12 @@ typedef struct std3D_LightingState // todo: pack this
 {
 	uint32_t ambientFlags;
 	uint32_t ambientColor;
-	uint32_t ambientLobes[8]; // 8 spherical gaussian lobes
+	uint32_t ambientLobes[RD_AMBIENT_LOBES]; //spherical gaussian lobes
 	//rdVector3 ambientColor;   // rgb ambient color
 	//rdAmbient ambientStateSH; // directional ambient
+	rdVector4 ambientCenter;
 } std3D_LightingState;
-static_assert(sizeof(std3D_LightingState) == sizeof(uint32_t) * 10, "std3D_TextureState not 40 bytes");
+//static_assert(sizeof(std3D_LightingState) == sizeof(uint32_t) * 10, "std3D_TextureState not 40 bytes");
 
 typedef struct std3D_ShaderState
 {

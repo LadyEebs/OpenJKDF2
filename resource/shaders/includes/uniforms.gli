@@ -17,13 +17,14 @@ uniform int blend_mode;
 
 uniform int aoFlags;
 uniform vec3 ambientColor;
-uniform vec4 ambientSG[8];
+uniform vec4 ambientSG[RD_AMBIENT_LOBES];
+uniform vec4 ambientCenter;
 uniform uint ambientNumSG; // get around loop unrolling
 
 // Shared uniforms across batch calls and render passes
 layout(std140) uniform sharedBlock
 {
-	vec4  ambientSGBasis[8];
+	vec4  ambientSGBasis[RD_AMBIENT_LOBES];
 
 	vec4  mipDistances;
 

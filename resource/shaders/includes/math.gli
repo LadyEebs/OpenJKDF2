@@ -163,6 +163,19 @@ float rolloff_fixed(float x)
     return result;
 }
 
+vec3 project_to_sphere(vec3 pos, vec3 reflected, vec3 center, float radius)
+{
+	vec3  v  = pos.xyz - center.xyz;
+	float lenSq = dot(v, v);
+	float dp = dot(reflected, v);
+	float d = dp * dp - (-radius * radius + lenSq);
+	
+	if (d < 0)
+		return reflected;
+
+	return normalize((sqrt(d) - dp) * reflected + diff);
+}
+
 // conversions
 
 

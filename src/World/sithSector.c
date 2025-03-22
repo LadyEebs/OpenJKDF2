@@ -365,10 +365,12 @@ void sithWorld_ComputeSectorRGBAmbient(sithSector* sector)
 		if (!surface->surfaceInfo.face.material)
 			continue;
 
-		total += surface->surfaceInfo.face.numVertices;
 
 		float el = stdMath_Clamp(surface->surfaceInfo.face.extraLight, 0.0f, 1.0f);
 		sflight += el;
+
+		rdVector3 negNormal;
+		rdVector_Neg3(&negNormal, &surface->surfaceInfo.face.normal);
 
 		float minlight = el;
 		if ((surface->surfaceInfo.face.geometryMode != RD_GEOMODE_NOTRENDERED) && surface->surfaceInfo.face.lightingMode == RD_LIGHTMODE_FULLYLIT)
@@ -378,10 +380,17 @@ void sithWorld_ComputeSectorRGBAmbient(sithSector* sector)
 		if ((surface->surfaceFlags & SITH_SURFACE_HORIZON_SKY) || (surface->surfaceFlags & SITH_SURFACE_CEILING_SKY))
 			emissiveLightLevel = -1;
 
-		//rdVector3 emissive;
-		//if((surface->surfaceInfo.face.geometryMode != RD_GEOMODE_NOTRENDERED) && rdMaterial_GetFillColor(&emissive, surface->surfaceInfo.face.material, pWorld->sectors[i].colormap, 0, emissiveLightLevel))
-		//	rdAmbient_Acc(&sector->ambientSH, &emissive, &surface->surfaceInfo.face.normal);
 
+		rdVector3 emissive;
+		if((surface->surfaceInfo.face.geometryMode != RD_GEOMODE_NOTRENDERED)
+			&& rdMaterial_GetFillColor(&emissive, surface->surfaceInfo.face.material, surface->parent_sector->colormap, 0, emissiveLightLevel)
+		)
+		{
+			total += 1.0f;
+			rdAmbient_Acc(&sector->ambientSH, &emissive, &negNormal);// &surface->surfaceInfo.face.normal);
+		}
+
+		//	total += surface->surfaceInfo.face.numVertices;
 		for (int k = 0; k < surface->surfaceInfo.face.numVertices; ++k)
 		{
 			rdVector3 col;
@@ -389,16 +398,48 @@ void sithWorld_ComputeSectorRGBAmbient(sithSector* sector)
 			col.y = stdMath_Clamp(surface->surfaceInfo.intensities[k + surface->surfaceInfo.face.numVertices * 2], minlight, 1.0f);
 			col.z = stdMath_Clamp(surface->surfaceInfo.intensities[k + surface->surfaceInfo.face.numVertices * 3], minlight, 1.0f);
 			rdVector_Add3Acc(&sector->ambientRGB, &col);
-
+			
 			// we get more directionality by using the vertex to sector center instead of surface normal
 			rdVector3* vertex = &sithWorld_pCurrentWorld->vertices[surface->surfaceInfo.face.vertexPosIdx[k]];
 			rdVector3 dirToCenter;
 			rdVector_Sub3(&dirToCenter, vertex, &sector->center);
 			rdVector_Normalize3Acc(&dirToCenter);
-
+			
 			rdAmbient_Acc(&sector->ambientSH, &col, &dirToCenter);
 		}
 	}
+
+	//if(sector->lightBuckets)
+	//{
+	//	for (int bucket = 0; bucket < sithWorld_pCurrentWorld->numLightBuckets; ++bucket)
+	//	{
+	//		uint64_t lightOffset = bucket * 64;
+	//		uint64_t bucketBits = sector->lightBuckets[bucket];
+	//		while (bucketBits != 0)
+	//		{
+	//			int bitIndex = stdMath_FindLSB64(bucketBits);
+	//			bucketBits ^= 1ull << bitIndex;
+	//
+	//			int lightIndex = bitIndex + lightOffset;
+	//			total += 1.0f;
+
+	//			rdVector3 col;
+	//			col.x = col.y = col.z = sithWorld_pCurrentWorld->lights[lightIndex].rdlight.intensity;
+	//		
+	//			rdVector3 lightDir;
+	//			rdVector_Sub3(&lightDir, &sithWorld_pCurrentWorld->lights[lightIndex].pos , &sector->center);
+	//			rdVector_Normalize3Acc(&lightDir);
+	//		
+	//			rdAmbient_Acc(&sector->ambientSH, &col, &lightDir);
+	//		}
+	//	}
+	//}
+
+	sector->ambientSH.center.x = sector->center.x;
+	sector->ambientSH.center.y = sector->center.y;
+	sector->ambientSH.center.z = sector->center.z;
+	sector->ambientSH.center.w = sector->radius;//rdVector_Dist3(&sector->boundingbox_onecorner, &sector->boundingbox_othercorner) * 0.5f;
+
 	//sflight /= (float)pWorld->sectors[i].numSurfaces;
 	rdVector_InvScale3Acc(&sector->ambientRGB, total);
 #ifdef RENDER_DROID2

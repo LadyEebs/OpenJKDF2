@@ -112,7 +112,7 @@ void calc_light()
 	// light mode "gouraud" (a.k.a new per pixel)
 	{
 		// loop lights
-		//if (numLights > 0u)
+		if (numLights > 0u)
 		{
 			uint s_first_item   = firstLight;
 			uint s_last_item    = s_first_item + numLights - 1u;
@@ -266,7 +266,7 @@ layout(location = 1) out vec4 fragGlow;
 void main(void)
 {
 	vec2 uv     = fetch_vtx_uv(0);
-	mat3 tbn    = construct_tbn(uv, fetch_vtx_pos());
+	mat3 tbn    = construct_tbn(uv, fetch_vtx_pos(), fetch_vtx_normal());
 	vdir        = encodeHemiUnitVector(fetch_vtx_dir() * tbn);
 
 	// pack interpolated vertex data to reduce register pressure

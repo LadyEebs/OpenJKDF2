@@ -572,7 +572,7 @@ void rdLight_CalcDistFaceIntensity(){}
 #ifdef RGB_AMBIENT
 
 // pre-baked spherical gaussian axis and sharpness
-rdVector4 rdLight_sgBasis[8] =
+/*rdVector4 rdLight_sgBasis[8] =
 {
 	{ 0.752576709,  0.000000000, -0.658504605, 4.93992233},
 	{-0.625373423,  0.572653592, -0.530071616, 4.93992233},
@@ -582,18 +582,19 @@ rdVector4 rdLight_sgBasis[8] =
 	{ 0.790152431, -0.502328515,  0.351176947, 4.93992233},
 	{-0.220158905,  0.818896949,  0.530035675, 4.93992233},
 	{-0.346642911, -0.667932153,  0.658563018, 4.93992233}
-};
+};*/
+rdVector4 rdLight_sgBasis[RD_AMBIENT_LOBES];
 
 int rdLight_basisInit = 0;
 
 void rdLight_InitSGBasis()
 {
-/*	if (rdLight_basisInit)
+	if (rdLight_basisInit)
 		return;
 
-	uint32_t N = 8;
+	uint32_t N = RD_AMBIENT_LOBES;
 
-	rdVector3 means[8];
+	rdVector3 means[RD_AMBIENT_LOBES];
 	float inc = M_PI * (3.0f - stdMath_Sqrt(5.0f));
 	float off = 2.0f / N;
 	for (uint32_t k = 0; k < N; ++k)
@@ -601,7 +602,10 @@ void rdLight_InitSGBasis()
 		float y = k * off - 1.0f + (off / 2.0f);
 		float r = stdMath_Sqrt(1.0f - y * y);
 		float phi = k * inc;
-		stdMath_SinCos(phi * 180.0f / M_PI, &means[k].y, &means[k].x);
+		//stdMath_SinCos(phi * 180.0f / M_PI, &means[k].y, &means[k].x);
+
+		means[k].x = cosf(phi) * r;
+		means[k].y = sinf(phi) * r;
 		means[k].z = y;
 	}
 
@@ -619,7 +623,7 @@ void rdLight_InitSGBasis()
 
 	float sharpness = (logf(0.65f) * N) / (minDP - 1.0001f);
 	for (uint32_t i = 0; i < N; ++i)
-		rdLight_sgBasis[i].w = sharpness;*/
+		rdLight_sgBasis[i].w = sharpness;
 }
 
 void rdAmbient_Zero(rdAmbient* ambient)
@@ -654,8 +658,8 @@ void rdAmbient_Acc(rdAmbient* ambient, rdVector3* color, rdVector3* dir)
 	rdVector_Add4Acc(&ambient->g, &shG);
 	rdVector_Add4Acc(&ambient->b, &shB);
 #else
-	rdLight_InitSGBasis();
-	for (uint32_t sg = 0; sg < 8; ++sg)
+	//rdLight_InitSGBasis();
+	for (uint32_t sg = 0; sg < RD_AMBIENT_LOBES; ++sg)
 	{
 		rdVector4 sg1 = rdLight_sgBasis[sg];
 		rdVector4 sg2;
@@ -664,7 +668,7 @@ void rdAmbient_Acc(rdAmbient* ambient, rdVector3* color, rdVector3* dir)
 		{
 			float dp = rdVector_Dot3((rdVector3*)&sg1, (rdVector3*)&sg2);
 			float factor = (dp - 1.0f) * sg1.w;
-			float wgt = exp(factor + 0.0001f);
+			float wgt = expf(factor);// + 0.0001f);
 			rdVector_MultAcc3(&ambient->sgs[sg], color, wgt);
 		}
 	}
@@ -678,7 +682,7 @@ void rdAmbient_Scale(rdAmbient* ambient, float scale)
 	rdVector_Scale4Acc(&ambient->g, scale);
 	rdVector_Scale4Acc(&ambient->b, scale);
 #else
-	for(int i = 0; i < 8; ++i)
+	for(int i = 0; i < RD_AMBIENT_LOBES; ++i)
 		rdVector_Scale3Acc(&ambient->sgs[i], scale);
 #endif
 }
@@ -706,7 +710,7 @@ void rdAmbient_CalculateVertexColor(rdAmbient* ambient, rdVector3* normal, rdVec
 	outColor->y = fmax(0.0f, rdVector_Dot4(&shN, &ambient->g)) / M_PI;
 	outColor->z = fmax(0.0f, rdVector_Dot4(&shN, &ambient->b)) / M_PI;
 #else
-	rdLight_InitSGBasis();
+	//rdLight_InitSGBasis();
 	// todo?
 #endif
 }

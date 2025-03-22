@@ -446,6 +446,8 @@ int sithWorld_NewEntry(sithWorld *pWorld)
 #endif
 
 #ifdef RGB_AMBIENT
+			rdLight_InitSGBasis();
+
 			// JED doesn't export colored ambient, so compute it on load
 		#ifdef JOB_SYSTEM
 			stdJob_Dispatch(pWorld->numSectors, 16, sithWorld_ComputeSectorRGBAmbients);

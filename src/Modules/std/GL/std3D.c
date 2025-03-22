@@ -206,7 +206,7 @@ GLuint cluster_tbo;
 // uniforms shared across draw lists during flush
 typedef struct std3D_SharedUniforms
 {
-	rdVector4 sgBasis[8];
+	rdVector4 sgBasis[RD_AMBIENT_LOBES];
 	rdVector4 mipDistances;
 
 	float     timeSeconds;
@@ -540,7 +540,7 @@ typedef struct std3D_worldStage
 	GLuint program;
 	GLint attribute_coord3d, attribute_v_color, attribute_v_light, attribute_v_uv, attribute_v_norm;
 	GLint uniform_projection, uniform_modelMatrix, uniform_viewMatrix;
-	GLint uniform_ambient_color, uniform_ambient_sg, uniform_ambient_sg_count;
+	GLint uniform_ambient_color, uniform_ambient_sg, uniform_ambient_sg_count, uniform_ambient_center;
 	GLint uniform_geo_mode,  uniform_fillColor, uniform_textures, uniform_tex, uniform_texEmiss, uniform_displacement_map, uniform_texDecals, uniform_texz, uniform_texssao, uniform_texrefraction, uniform_texclip;
 	GLint uniform_worldPalette, uniform_worldPaletteLights, uniform_dithertex, uniform_diffuse_light, uniform_blackbody_tex;
 	GLint uniform_light_mode, uniform_ao_flags;
@@ -2476,6 +2476,7 @@ int std3D_loadWorldStage(std3D_worldStage* pStage, int isZPass, const char* defi
 	pStage->uniform_ambient_color = std3D_tryFindUniform(pStage->program, "ambientColor");
 	pStage->uniform_ambient_sg = std3D_tryFindUniform(pStage->program, "ambientSG");
 	pStage->uniform_ambient_sg_count = std3D_tryFindUniform(pStage->program, "ambientNumSG");
+	pStage->uniform_ambient_center = std3D_tryFindUniform(pStage->program, "ambientCenter");
 	pStage->uniform_fillColor = std3D_tryFindUniform(pStage->program, "fillColor");
 	pStage->uniform_textures = std3D_tryFindUniform(pStage->program, "textures");
 	pStage->uniform_tex = std3D_tryFindUniform(pStage->program, "tex");
@@ -6301,8 +6302,8 @@ void std3D_UpdateSharedUniforms()
 	rdVector_Set2(&uniforms.clusterScaleBias, sliceScalingFactor, sliceBiasFactor);	
 	rdVector_Set2(&uniforms.resolution, std3D_framebuffer.w, std3D_framebuffer.h);
 
-	extern rdVector4 rdroid_sgBasis[8]; //eww
-	memcpy(uniforms.sgBasis, rdroid_sgBasis, sizeof(rdVector4)*8);
+	extern rdVector4 rdroid_sgBasis[RD_AMBIENT_LOBES]; //eww
+	memcpy(uniforms.sgBasis, rdroid_sgBasis, sizeof(rdVector4) * RD_AMBIENT_LOBES);
 
 	float mipScale = 1.0 / rdCamera_GetMipmapScalar();
 	rdVector_Set4(&uniforms.mipDistances, mipScale * rdroid_aMipDistances.x, mipScale * rdroid_aMipDistances.y, mipScale * rdroid_aMipDistances.z, mipScale * rdroid_aMipDistances.w);
@@ -6603,8 +6604,8 @@ void std3D_SetLightingState(std3D_worldStage* pStage, std3D_DrawCallState* pStat
 	float b = ((pState->lightingState.ambientColor >>  0) & 0x3FF) / 255.0f;
 	glUniform3f(pStage->uniform_ambient_color, r, g, b);
 
-	rdVector4 sgs[8];
-	for (int i = 0; i < 8; ++i)
+	rdVector4 sgs[RD_AMBIENT_LOBES];
+	for (int i = 0; i < RD_AMBIENT_LOBES; ++i)
 	{
 		float r = ((pState->lightingState.ambientLobes[i] >> 20) & 0x3FF) / 255.0f;
 		float g = ((pState->lightingState.ambientLobes[i] >> 10) & 0x3FF) / 255.0f;
@@ -6612,10 +6613,11 @@ void std3D_SetLightingState(std3D_worldStage* pStage, std3D_DrawCallState* pStat
 		float a = ((pState->lightingState.ambientLobes[i] >> 30) & 0x2);
 		rdVector_Set4(&sgs[i], r, g, b, a);
 	}
-	glUniform4fv(pStage->uniform_ambient_sg, 8, &sgs[0].x);
+	glUniform4fv(pStage->uniform_ambient_sg, RD_AMBIENT_LOBES, &sgs[0].x);
+	glUniform4fv(pStage->uniform_ambient_center, 1, &pState->lightingState.ambientCenter);
 
 	//glUniform1uiv(pStage->uniform_ambient_sg, 8, &pState->lightingState.ambientLobes[0]);
-	glUniform1ui(pStage->uniform_ambient_sg_count, 8);
+	glUniform1ui(pStage->uniform_ambient_sg_count, RD_AMBIENT_LOBES);
 }
 
 void std3D_SetShaderState(std3D_worldStage* pStage, std3D_DrawCallState* pState)

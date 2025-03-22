@@ -45,7 +45,7 @@ static const rdDirtyBit rdroid_matrixBit[3] =
 };
 
 // todo: completely remove this in favor of a light type
-rdVector4 rdroid_sgBasis[8];
+rdVector4 rdroid_sgBasis[RD_AMBIENT_LOBES];
 float    rdroid_overbright = 1.0f;
 
 void rdUpdateDirtyState();
@@ -431,7 +431,7 @@ void rdUpdateDirtyState()
 
 		rdMatrix34 viewMat;
 		rdMatrix_Copy44to34(&viewMat, &rdroid_matrices[RD_MATRIX_VIEW]);
-		for (int i = 0; i < 8; ++i)
+		for (int i = 0; i < RD_AMBIENT_LOBES; ++i)
 		{
 			rdMatrix_TransformVector34((rdVector3*)&rdroid_sgBasis[i].x, &rdLight_sgBasis[i].x, &viewMat);
 			rdroid_sgBasis[i].w = rdLight_sgBasis[i].w;
@@ -1148,12 +1148,12 @@ void rdAmbientLightSH(rdAmbient* amb)
 {
 	if (!amb)
 	{
-		memset(rdroid_lightingState.ambientLobes, 0, 8 * sizeof(uint32_t));
+		memset(rdroid_lightingState.ambientLobes, 0, RD_AMBIENT_LOBES * sizeof(uint32_t));
 		return;
 	}
 
 	float scale = 255.0f / rdroid_overbright; // still rgb8, but with 4x the dynamic range
-	for(int i = 0; i < 8; ++i)
+	for(int i = 0; i < RD_AMBIENT_LOBES; ++i)
 	{
 		float r = amb->sgs[i].x * scale;
 		float g = amb->sgs[i].y * scale;
@@ -1173,6 +1173,18 @@ void rdAmbientLightSH(rdAmbient* amb)
 		uint32_t ib = stdMath_ClampInt(b, 0, 1023);
 		rdroid_lightingState.ambientLobes[i] = RD_PACK_COLOR10(ir, ig, ib, 1);
 	}
+
+	rdVector4 pos4;
+	rdVector_Copy3(&pos4, &amb->center);
+	pos4.w = 1.0f;
+
+	rdVector4 viewPos;
+	rdMatrix_TransformPoint44(&viewPos, &pos4, &rdroid_matrices[RD_MATRIX_VIEW]);
+
+	rdroid_lightingState.ambientCenter.x = viewPos.x;
+	rdroid_lightingState.ambientCenter.y = viewPos.y;
+	rdroid_lightingState.ambientCenter.z = viewPos.z;
+	rdroid_lightingState.ambientCenter.w = amb->center.w;
 }
 
 int rdGenShader()

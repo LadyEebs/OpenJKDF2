@@ -536,18 +536,22 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 		//"}\n"
 		;
 
+	char limits[256];
+	sprintf_s(limits, 256, "#define RD_AMBIENT_LOBES %d\n", RD_AMBIENT_LOBES);
+
 	const GLchar* sources[] = {
 		version,
 		type_name,
 		extensions,
 		defines,
 		featureDefines,
+		limits,
 		userDefs,
 		precision,
 		intrinsics,
 		source
 	};
-	glShaderSource(res, 9, sources, NULL);
+	glShaderSource(res, 10, sources, NULL);
 	
 	glCompileShader(res);
 	GLint compile_ok = GL_FALSE;

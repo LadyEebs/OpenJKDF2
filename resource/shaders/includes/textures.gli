@@ -130,14 +130,12 @@ vec2 parallax(in sampler2D s, in vec2 uv, vec3 view_dir)
 	return view_dir.xy * height;// + uv.xy;
 }
 
-mat3 construct_tbn(vec2 uv, vec3 pos)
+mat3 construct_tbn(vec2 uv, vec3 pos, vec3 n)
 {
     vec3 dp1  = dFdx(pos.xyz);
     vec3 dp2  = dFdy(pos.xyz);
     vec2 duv1 = dFdx(uv.xy);
     vec2 duv2 = dFdy(uv.xy);
-
-	vec3 n = normalize(cross(dp1, dp2)); // todo: use f_normal?
 
     vec3 dp2perp = cross(dp2, n);
     vec3 dp1perp = cross(n, dp1);

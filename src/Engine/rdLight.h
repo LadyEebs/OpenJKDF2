@@ -45,8 +45,9 @@ void rdLight_CalcDistVertexIntensities();
 void rdLight_CalcDistFaceIntensity();
 
 #ifdef RGB_AMBIENT
-extern rdVector4 rdLight_sgBasis[8];
+extern rdVector4 rdLight_sgBasis[RD_AMBIENT_LOBES];
 
+void rdLight_InitSGBasis();
 void rdAmbient_Zero(rdAmbient* ambient);
 int rdAmbient_Compare(const rdAmbient* a, const rdAmbient* b);
 void rdAmbient_Acc(rdAmbient* ambient, rdVector3* color, rdVector3* dir);
