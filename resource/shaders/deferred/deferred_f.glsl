@@ -26,7 +26,7 @@ out vec4 fragOut;
 // interleaved chroma
 vec2 encode_result(vec3 color)
 {
-	vec3 YCoCg = rgb2ycocg(color.rgb);
+	vec3 YCoCg = rgb2ycocg_unorm(color.rgb);
 	ivec2 crd = ivec2(gl_FragCoord.xy);
 	return ((crd.x & 1) == (crd.y & 1)) ? YCoCg.rg : YCoCg.rb;
 }
@@ -35,14 +35,15 @@ void main(void)
 {
 	float depth = texelFetch(tex, ivec2(gl_FragCoord.xy), 0).x;
 	fragOut = vec4(linearize_depth(depth)) / 128.0;
-#if 0
-	float z = depth * 2.0 - 1.0;
 
-	vec4 normalRoughness = textureLod(tex2, f_uv.xy, 0);
+#if 0
+	vec4 normalRoughness = texelFetch(tex2, ivec2(gl_FragCoord.xy), 0);
 	vec3 normal = normalize(normalRoughness.xyz * 2.0 - 1.0);
 	float roughness = normalRoughness.w;
 
-    vec4 clipPos = vec4(f_uv.xy * 2.0 - 1.0, z, 1.0);
+	vec2 uv = gl_FragCoord.xy / iResolution.xy;
+	float z = depth * 2.0 - 1.0;
+    vec4 clipPos = vec4(uv.xy * 2.0 - 1.0, z, 1.0);
     vec4 viewPos = inverse(projMatrix) * clipPos;
     viewPos /= viewPos.w;
 
@@ -113,7 +114,7 @@ void main(void)
 			
 				if (occluder_index >= first_item && occluder_index <= last_item)
 				{
-					calc_shadow(shadow, occluder_index - first_item, params.pos, params.normal);
+					calc_shadow(shadow, occluder_index - first_item, params);
 				}
 				else if (occluder_index > last_item)
 				{
@@ -123,12 +124,8 @@ void main(void)
 			}
 		}
 			
-		vec3 ao = vec3(shadow * 0.8 + 0.2); // remap so we don't overdarken
-		result.diffuse.xyz *= ao;
-
-		float ndotv = dot(normal.xyz, view.xyz);
-		vec3 specAO = mix(ao * ao, vec3(1.0), clamp(-0.3 * ndotv * ndotv, 0.0, 1.0));
-		result.specular.xyz *= specAO;
+		result.diffuse = packF2x11_1x10(unpackF2x11_1x10(result.diffuse) * shadow);
+		result.specular = packF2x11_1x10(unpackF2x11_1x10(result.specular) * shadow);
 	}
 
 	// we kinda throw out some color info here so we could probably do all the math in ycocg
@@ -138,8 +135,7 @@ void main(void)
 	//fragOut.y = pack_argb2101010(vec4(result.specular.rgb, 1.0));
 
 	// do decals
-
-	if(numDecals > 0u)
+/*	if(numDecals > 0u)
 	{
 		vec4 color, glow;
 		color = glow = vec4(0.0);
@@ -159,40 +155,7 @@ void main(void)
 			
 				if (decal_index >= first_item && decal_index <= last_item)
 				{
-					decal dec = decals[decal_index - first_item];
-
-					vec4 objectPosition = inverse(dec.decalMatrix) * vec4(viewPos.xyz, 1.0);				
-					vec3 falloff = 0.5f - abs(objectPosition.xyz);
-					if( any(lessThanEqual(falloff, vec3(0.0))) )
-						continue;
-				
-					vec2 decalTexCoord = objectPosition.xz + 0.5;
-					decalTexCoord = decalTexCoord.xy * dec.uvScaleBias.zw + dec.uvScaleBias.xy;
-				
-					vec4 decalColor = textureLod(decalAtlas, decalTexCoord, 0);
-				
-					bool isHeat = (dec.flags & 0x2u) == 0x2u;
-					bool isAdditive = (dec.flags & 0x4u) == 0x4u;
-					bool isRgbAlpha = (dec.flags & 0x8u) == 0x8u;
-					if(isRgbAlpha)
-						decalColor.a = max(decalColor.r, max(decalColor.g, decalColor.b));
-
-					if(decalColor.a < 0.001)
-						continue;
-				
-					decalColor.rgb *= dec.color.rgb;
-				
-					if(isHeat)
-					{
-						decalColor.rgb = blackbody(decalColor.r);
-						glow.rgb += decalColor.rgb;
-					}
-				
-					float edgeBlend = 1.0 - pow(clamp(abs(objectPosition.z), 0.0, 1.0), 8);
-					if(isAdditive)
-						color.rgb += edgeBlend * decalColor.rgb;
-					else
-						color = mix(color, vec4(decalColor.rgb, 1.0), decalColor.w * edgeBlend);
+					calc_decal(decal_index - first_item);
 				}
 				else if (decal_index > last_item)
 				{
@@ -201,6 +164,6 @@ void main(void)
 				}
 			}
 		}
-	}
+	}*/
 #endif
 }

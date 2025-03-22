@@ -871,6 +871,12 @@ typedef struct rdVertex
 	rdTexVertex texcoords[RD_NUM_TEXCOORDS];
 } rdVertex;
 
+typedef struct rdVertexBase
+{
+	float       x, y, z;
+	//uint32_t    norm10a2;
+} rdVertexBase;
+
 typedef struct rdViewportRect
 {
 	float x, y, width, height;

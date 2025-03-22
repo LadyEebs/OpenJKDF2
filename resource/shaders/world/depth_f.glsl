@@ -4,6 +4,7 @@
 #include "math.gli"
 
 in float f_depth;
+//in vec3 f_normal;
 
 //layout(location = 0) out vec4 fragNormalRoughness;
 layout(location = 0) out float fragDepth;

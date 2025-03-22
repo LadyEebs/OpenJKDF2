@@ -89,6 +89,40 @@ void calc_light()
 
 #else // UNLIT
 
+#if 0//ndef ALPHA_DISCARD
+
+	v[0] = pack_vertex_reg(fetch_vtx_color(0));
+	v[1] = pack_vertex_reg(vec4(fetch_vtx_color(1).rgb, fog));
+
+	vec4 lighting = texelFetch(diffuseLightTex, ivec2(gl_FragCoord.xy), 0);
+	vec4 a0 = texelFetch(diffuseLightTex, ivec2(gl_FragCoord.xy + vec2(1.0, 0.0)), 0);
+	vec4 a1 = texelFetch(diffuseLightTex, ivec2(gl_FragCoord.xy - vec2(1.0, 0.0)), 0);
+	vec4 a2 = texelFetch(diffuseLightTex, ivec2(gl_FragCoord.xy + vec2(0.0 ,1.0)), 0);
+	vec4 a3 = texelFetch(diffuseLightTex, ivec2(gl_FragCoord.xy - vec2(0.0 ,1.0)), 0);		
+
+	float chroma_d = edge_filter(lighting.rg, a0.rg, a1.rg, a2.rg, a3.rg);
+	float chroma_s = edge_filter(lighting.ba, a0.ba, a1.ba, a2.ba, a3.ba);
+
+	ivec2 crd = ivec2(gl_FragCoord.xy);
+	bool pattern = ((crd.x & 1) == (crd.y & 1));
+
+	vec3 diffuse = pattern ? vec3(lighting.rg, chroma_d) : vec3(lighting.r, chroma_d, lighting.g);
+	diffuse.rgb = ycocg2rgb_unorm(diffuse.rgb);
+
+	vec3 specular = pattern ? vec3(lighting.ba, chroma_s) : vec3(lighting.b, chroma_s, lighting.a);
+	specular.rgb = ycocg2rgb_unorm(specular.rgb);
+	
+	vec3 specularScale = specularFactor.rgb;
+	vec3 diffuseScale  = 1.0 - specularFactor.rgb;
+
+	uint v0 = pack_vertex_reg(vec4(diffuse.rgb * diffuseScale.rgb, 0));
+	uint v1 = pack_vertex_reg(vec4(specular.rgb * specularScale.rgb, 0));
+
+	v[0] = (v[0] & 0xFF000000) | (v0 & 0x00FFFFFF);
+	v[1] = (v[1] & 0xFF000000) | (v1 & 0x00FFFFFF);
+
+#else
+
 	v[0] = pack_vertex_reg(vec4(0.0, 0.0, 0.0, fetch_vtx_color(0).w));
 	v[1] = pack_vertex_reg(vec4(0.0, 0.0, 0.0, fog));
 
@@ -198,6 +232,7 @@ void calc_light()
 		result.diffuse = packF2x11_1x10(unpackF2x11_1x10(result.diffuse) * shadow);
 		result.specular = packF2x11_1x10(unpackF2x11_1x10(result.specular) * shadow);
 	}
+
 #endif
 
 	// gamma hack
@@ -216,6 +251,9 @@ void calc_light()
 
 	v[0] = (v[0] & 0xFF000000) | (v0 & 0x00FFFFFF);
 	v[1] = (v[1] & 0xFF000000) | (v1 & 0x00FFFFFF);
+
+#endif // ALPHA_DISCARD
+
 #endif // UNLIT
 }
 

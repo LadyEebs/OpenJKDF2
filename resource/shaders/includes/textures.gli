@@ -17,7 +17,7 @@ uniform sampler2D ssaotex;
 uniform sampler2D refrtex;
 //uniform sampler2D cliptex;
 //uniform sampler2D dithertex;
-//uniform sampler2D diffuseLightTex;
+uniform sampler2D diffuseLightTex;
 uniform sampler1D blackbodyTex;
 
 uint dither_value(uvec2 xy)

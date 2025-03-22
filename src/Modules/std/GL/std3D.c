@@ -423,7 +423,7 @@ typedef struct std3D_DrawCallList
 	std3D_DrawCall*  drawCalls;
 	uint16_t*        drawCallIndices;
 	rdVertex*        drawCallVertices;
-	rdVector3*       drawCallPosVertices;
+	rdVertexBase*    drawCallPosVertices;
 	std3D_DrawCall** drawCallPtrs;
 } std3D_DrawCallList;
 
@@ -451,7 +451,7 @@ void std3D_initDrawList(std3D_DrawCallList* pList)
 	pList->drawCallPtrs = malloc(sizeof(std3D_DrawCall*) * STD3D_MAX_DRAW_CALLS);
 
 	if (pList->bPosOnly)
-		pList->drawCallPosVertices = malloc(sizeof(rdVector3) * STD3D_MAX_DRAW_CALL_VERTS);
+		pList->drawCallPosVertices = malloc(sizeof(rdVertexBase) * STD3D_MAX_DRAW_CALL_VERTS);
 	else
 		pList->drawCallVertices = malloc(sizeof(rdVertex) * STD3D_MAX_DRAW_CALL_VERTS);
 }
@@ -2053,7 +2053,8 @@ void std3D_generateExtraFramebuffers(int32_t width, int32_t height)
 			std3D_generateIntermediateFbo(bloomLayers[i - 1].w / 2, bloomLayers[i - 1].h / 2, &bloomLayers[i], GL_R11F_G11F_B10F, 1, 0, 0);
 	}
 
-	std3D_generateIntermediateFbo(width, height, &deferred, /*GL_RGBA8*/GL_R32F, 0, 0, 0);
+	//std3D_generateIntermediateFbo(width, height, &deferred, /*GL_RGBA8*/GL_R32F, 0, 0, 0);
+	std3D_generateIntermediateFbo(width, height, &deferred, GL_RGBA8, 0, 0, 0);
 
 	// the refraction buffers use the same depth-stencil as the main scene
 	std3D_generateIntermediateFbo(width, height, &refr, GL_RG8_SNORM, 0, 1, std3D_framebuffer.ztex);
@@ -2659,10 +2660,20 @@ void std3D_setupDrawCallVAO(std3D_worldStage* pStage)
 				3,                 // number of elements per vertex, here (x,y,z)
 				GL_FLOAT,          // the type of each element
 				GL_FALSE,          // normalize fixed-point data?
-				sizeof(rdVector3),                 // data stride
+				sizeof(rdVertexBase),                 // data stride
 				0                  // offset of first element
 			);
 			glEnableVertexAttribArray(pStage->attribute_coord3d);
+
+			//glVertexAttribPointer(
+			//	pStage->attribute_v_norm, // attribute
+			//	GL_BGRA,                 // number of elements per vertex, here (x,y,z)
+			//	GL_UNSIGNED_INT_2_10_10_10_REV,          // the type of each element
+			//	GL_TRUE,          // normalize fixed-point data?
+			//	sizeof(rdVertexBase), // data stride
+			//	(GLvoid*)offsetof(rdVertexBase, norm10a2) // offset of first element
+			//);
+			//glEnableVertexAttribArray(pStage->attribute_v_norm);
 		}
 		else
 		{
@@ -2734,20 +2745,20 @@ int init_resources()
 
     if ((programMenu = std3D_loadProgram("shaders/menu", "")) == 0) return false;
 
-	if (!std3D_loadWorldStage(&worldStages[SHADER_DEPTH], 1, "Z_PREPASS")) return false;
+	if (!std3D_loadWorldStage(&worldStages[SHADER_DEPTH], 1, "Z_PREPASS;WORLD")) return false;
 	//if (!std3D_loadWorldStage(&worldStages[SHADER_DEPTH_ALPHATEST], 1, "Z_PREPASS;ALPHA_DISCARD")) return false;
 	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR], 0, "")) return false;
 	//if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_SPEC], 0, "SPECULAR")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_UNLIT], 0, "UNLIT")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_VERTEX_LIT], 0, "VERTEX_LIT")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHATEST], 0, "ALPHA_DISCARD")) return false;
+	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_UNLIT], 0, "UNLIT;WORLD")) return false;
+	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_VERTEX_LIT], 0, "VERTEX_LIT;WORLD")) return false;
+	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHATEST], 0, "ALPHA_DISCARD;WORLD")) return false;
 	//if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHATEST_SPEC], 0, "ALPHA_DISCARD;SPECULAR")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHATEST_VERTEXLIT], 0, "ALPHA_DISCARD;VERTEX_LIT")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHATEST_UNLIT], 0, "ALPHA_DISCARD;UNLIT")) return false;
+	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHATEST_VERTEXLIT], 0, "ALPHA_DISCARD;VERTEX_LIT;WORLD")) return false;
+	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHATEST_UNLIT], 0, "ALPHA_DISCARD;UNLIT;WORLD")) return false;
 	//if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHABLEND], 0, "ALPHA_DISCARD;ALPHA_BLEND")) return false;
 	//if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHABLEND_SPEC], 0, "ALPHA_DISCARD;ALPHA_BLEND;SPECULAR")) return false;
 	//if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHABLEND_UNLIT], 0, "ALPHA_DISCARD;ALPHA_BLEND;UNLIT")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_REFRACTION], 0, "ALPHA_DISCARD;ALPHA_BLEND;REFRACTION")) return false;
+	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_REFRACTION], 0, "ALPHA_DISCARD;ALPHA_BLEND;REFRACTION;WORLD")) return false;
 
     if (!std3D_loadSimpleTexProgram("shaders/ui", &std3D_uiProgram)) return false;
     if (!std3D_loadSimpleTexProgram("shaders/texfbo", &std3D_texFboStage)) return false;
@@ -6075,6 +6086,7 @@ void std3D_AddListVertices(std3D_DrawCall* pDrawCall, rdPrimitiveType_t type, st
 			pList->drawCallPosVertices[firstVertex + i].x = paVertices[i].x;
 			pList->drawCallPosVertices[firstVertex + i].y = paVertices[i].y;
 			pList->drawCallPosVertices[firstVertex + i].z = paVertices[i].z;
+			//pList->drawCallPosVertices[firstVertex + i].norm10a2 = paVertices->norm10a2;
 		}
 	}
 	else
@@ -6766,7 +6778,7 @@ void std3D_FlushDrawCallList(std3D_RenderPass* pRenderPass, std3D_DrawCallList* 
 	std3D_BindStage(pStage);
 
 	if (pList->bPosOnly)
-		glBufferSubData(GL_ARRAY_BUFFER, 0, pList->drawCallVertexCount * sizeof(rdVector3), pList->drawCallPosVertices);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, pList->drawCallVertexCount * sizeof(rdVertexBase), pList->drawCallPosVertices);
 	else
 		glBufferSubData(GL_ARRAY_BUFFER, 0, pList->drawCallVertexCount * sizeof(rdVertex), pList->drawCallVertices);
 
@@ -7118,7 +7130,7 @@ void std3D_FlushDeferred(std3D_RenderPass* pRenderPass)
 	// deferred is a lot more expensive at 4k than cramming it all into 1 shader
 	//std3D_DrawSimpleTex(&std3D_deferredStage, &deferred, std3D_framebuffer.ztex, std3D_framebuffer.ntex, 0, 1.0f, 1.0f, 1.0f, 0, "Deferred Opaque");
 	//if (!(pRenderPass->flags & RD_RENDERPASS_NO_CLUSTERING))
-	//	std3D_DoDeferredLighting();
+		//std3D_DoDeferredLighting();
 
 	std3D_popDebugGroup();
 	STD_END_PROFILER_LABEL();
