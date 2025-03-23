@@ -932,6 +932,7 @@ typedef enum
 	OP_POW,		// power
 	OP_TEX,     // texture
 	OP_OPM,     // offset parallax
+	OP_POM,     // steep parallax
 
 	// 3 operands
 	OP_MAD,		// multiply add
@@ -948,7 +949,7 @@ static const char* std3D_opCodeKeywords[MAX_ALU_OPS] =
 {
 	"nop", "mov", "rcp", "exp2", "log2", "sqrt", "add", "sub",
 	"mul", "div", "max", "min", "mac", "dp2", "dp3", "dp4",
-	"pow", "tex", "opm", "mad", "mix", "cmp", "cnd", "texdudv"
+	"pow", "tex", "opm", "pom", "mad", "mix", "cmp", "cnd", "texdudv"
 };
 
 uint8_t std3D_parseOpCode(const char* name)
@@ -1050,10 +1051,10 @@ typedef enum
 
 uint8_t std3D_parseEncoding(const char* token)
 {
-	if (strnicmp(token, "fmt:u8x4", 8) == 0) return REG_U8;
-	if (strnicmp(token, "fmt:s8x4", 8) == 0) return REG_S8;
-	if (strnicmp(token, "fmt:f16x2", 9) == 0) return REG_F16;
-	if (strnicmp(token, "fmt:f32", 7) == 0) return REG_F32;
+	if (strnicmp(token, "fmt:ubyte4", 10) == 0) return REG_U8;
+	if (strnicmp(token, "fmt:sbyte4", 10) == 0) return REG_S8;
+	if (strnicmp(token, "fmt:half2", 9) == 0) return REG_F16;
+	if (strnicmp(token, "fmt:float", 9) == 0) return REG_F32;
 	return REG_U8;
 }
 
@@ -1770,11 +1771,14 @@ void std3D_initJkgmShader()
 
 	const char* code =
 		"ps.1.0\n"
-		"opm r1, t2, t0 fmt:f16x2 # parallax\n"
-		"texdudv r0, t0, t0, r1[fmt:f16x2] # sample diffuse\n"
-		"mul r0, r0, v0 # multiply diffuse color with diffuse light\n"
-		"texdudv r1, t1, t0, r1[fmt:f16x2] # sample emissive\n"
-		"max r0, r0, r1 # max of diffuse and emissive\n";
+		"var offset, r1\n"
+		"var diffuse, r0\n"
+		"var glow, r1\n"
+		"pom offset, t2, t0 fmt:half2 # parallax\n"
+		"texdudv diffuse, t0, t0, offset[fmt:half2] # sample diffuse\n"
+		"mul diffuse, diffuse, v0 # multiply diffuse color with diffuse light\n"
+		"texdudv glow, t1, t0, offset[fmt:half2] # sample glow\n"
+		"max diffuse, diffuse, glow # max of diffuse and glow\n";
 	std3D_assembleShader(&shader, code);
 
 	glBindBuffer(GL_UNIFORM_BUFFER, jkgmShaderUBO);
