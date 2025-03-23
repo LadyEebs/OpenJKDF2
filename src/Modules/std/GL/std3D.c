@@ -490,6 +490,7 @@ static size_t GL_tmpUIVerticesAmt = 0;
 rdDDrawSurface* std3D_aLoadedSurfaces[STD3D_MAX_TEXTURES] = {0};
 GLuint std3D_aLoadedTextures[STD3D_MAX_TEXTURES] = {0};
 size_t std3D_loadedTexturesAmt = 0;
+
 static rdTri GL_tmpTris[STD3D_MAX_TRIS] = {0};
 static size_t GL_tmpTrisAmt = 0;
 static rdLine GL_tmpLines[STD3D_MAX_VERTICES] = {0};
@@ -680,13 +681,13 @@ static inline GLuint std3D_getImageFormat(GLuint format)
 	return isInteger ? intTypeForChannels[numChannels] : typeForChannels[numChannels];
 }
 
-static inline void std3D_pushDebugGroup(const char* name)
+static inline void std3D_PushDebugGroup(const char* name)
 {
 	if(GLEW_KHR_debug)
 		glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, -1, name);
 }
 
-static inline void std3D_popDebugGroup()
+static inline void std3D_PopDebugGroup()
 {
 	if(GLEW_KHR_debug)
 		glPopDebugGroup();
@@ -2286,7 +2287,7 @@ void std3D_BlitDrawSurface(std3D_DrawSurface* src, rdRect* srcRect, std3D_DrawSu
 	if(!src || !dst || !srcRect || !dstRect)
 		return;
 
-	std3D_pushDebugGroup("std3D_BlitDrawSurface");
+	std3D_PushDebugGroup("std3D_BlitDrawSurface");
 
 	std3D_MakeDrawSurfaceResident(src);
 	std3D_MakeDrawSurfaceResident(dst);
@@ -2316,14 +2317,14 @@ void std3D_BlitDrawSurface(std3D_DrawSurface* src, rdRect* srcRect, std3D_DrawSu
 	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 
 void std3D_ClearDrawSurface(std3D_DrawSurface* surface, int fillColor, rdRect* rect)
 {
 	std3D_MakeDrawSurfaceResident(surface);
 
-	std3D_pushDebugGroup("std3D_ClearDrawSurface");
+	std3D_PushDebugGroup("std3D_ClearDrawSurface");
 
 	std3DIntermediateFbo* pFb = (std3DIntermediateFbo*)surface;
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, pFb->fbo);
@@ -2339,7 +2340,7 @@ void std3D_ClearDrawSurface(std3D_DrawSurface* surface, int fillColor, rdRect* r
 
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 #endif
 
@@ -3196,7 +3197,7 @@ int std3D_StartScene()
         }
     }
 
-	std3D_pushDebugGroup("std3D_StartScene");
+	std3D_PushDebugGroup("std3D_StartScene");
     
     rendered_tris = 0;
     
@@ -3285,7 +3286,7 @@ int std3D_StartScene()
 
 	std3D_ResetDrawCalls();
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 
     return 1;
 }
@@ -3478,7 +3479,7 @@ void std3D_DrawMenu()
 {
     if (Main_bHeadless) return;
 
-	std3D_pushDebugGroup("std3D_DrawMenu");
+	std3D_PushDebugGroup("std3D_DrawMenu");
 
     //printf("Draw menu\n");
  //   std3D_DrawSceneFbo();
@@ -3804,7 +3805,7 @@ void std3D_DrawMenu()
 
     last_flags = 0;
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 
 void std3D_DrawMapOverlay()
@@ -4365,7 +4366,7 @@ void std3D_DrawUIRenderList()
 // todo: clean this shit up
 void std3D_DrawSimpleTex(std3DSimpleTexStage* pStage, std3DIntermediateFbo* pFbo, GLuint texId, GLuint texId2, GLuint texId3, float param1, float param2, float param3, int gen_mips, const char* debugName)
 {
-	std3D_pushDebugGroup(debugName);
+	std3D_PushDebugGroup(debugName);
 
     glBindFramebuffer(GL_FRAMEBUFFER, pFbo->fbo);
     glDepthFunc(GL_ALWAYS);
@@ -4453,7 +4454,7 @@ void std3D_DrawSimpleTex(std3DSimpleTexStage* pStage, std3DIntermediateFbo* pFbo
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 
 int std3D_SetCurrentPalette(rdColor24 *a1, int a2)
@@ -6704,13 +6705,52 @@ void std3D_SortDrawCallList(std3D_DrawCallList* pList, std3D_SortFunc sortFunc)
 	STD_END_PROFILER_LABEL();
 }
 
+void std3D_SendVerticesToHardware(void* data, uint32_t count, uint32_t stride)
+{
+	glBufferSubData(GL_ARRAY_BUFFER, 0, count * sizeof(rdVertexBase), data);
+}
+
+void std3D_SendIndicesToHardware(void* data, uint32_t count)
+{
+	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, count * sizeof(uint16_t), data);
+}
+
+void std3D_DrawElements(rdGeoMode_t geoMode, uint32_t count, uint32_t indexOffset)
+{
+	glDrawElements(std3D_PrimitiveForGeoMode(geoMode + 1), count, GL_UNSIGNED_SHORT, (void*)(indexOffset * sizeof(uint16_t)));
+}
+
+void std3D_ResetDrawState()
+{
+	glBindVertexArray(vao);
+
+	glBindTexture(GL_TEXTURE_2D, worldpal_texture);
+	glEnable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
+	glDisable(GL_STENCIL_TEST);
+	glDisable(GL_SCISSOR_TEST);
+	glCullFace(GL_FRONT);
+	glBindSampler(0, 0);
+	glBindSampler(TEX_SLOT_DIFFUSE, 0);
+	glBindSampler(TEX_SLOT_EMISSIVE, 0);
+	glBindSampler(TEX_SLOT_DISPLACEMENT, 0);
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+	glBindSampler(0, 0);
+	glBindSampler(TEX_SLOT_DIFFUSE, 0);
+	glBindSampler(TEX_SLOT_EMISSIVE, 0);
+	glBindSampler(TEX_SLOT_DISPLACEMENT, 0);
+	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_SHADER, defaultShaderUBO);
+}
+
 void std3D_FlushDrawCallList(std3D_DrawCallList* pList, std3D_SortFunc sortFunc, const char* debugName)
 {
 	if (!pList->drawCallCount)
 		return;
 
 	STD_BEGIN_PROFILER_LABEL();
-	std3D_pushDebugGroup(debugName);
+	std3D_PushDebugGroup(debugName);
 
 	// sort draw calls to reduce state changes and maximize batching
 	uint16_t* indexArray;
@@ -6742,11 +6782,11 @@ void std3D_FlushDrawCallList(std3D_DrawCallList* pList, std3D_SortFunc sortFunc,
 	std3D_BindStage(pStage);
 
 	if (pList->bPosOnly)
-		glBufferSubData(GL_ARRAY_BUFFER, 0, pList->drawCallVertexCount * sizeof(rdVertexBase), pList->drawCallPosVertices);
+		std3D_SendVerticesToHardware(pList->drawCallPosVertices, pList->drawCallVertexCount, sizeof(rdVertexBase));
 	else
-		glBufferSubData(GL_ARRAY_BUFFER, 0, pList->drawCallVertexCount * sizeof(rdVertex), pList->drawCallVertices);
+		std3D_SendVerticesToHardware(pList->drawCallVertices, pList->drawCallVertexCount, sizeof(rdVertex));
 
-	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, pList->drawCallIndexCount * sizeof(uint16_t), indexArray);
+	std3D_SendIndicesToHardware(indexArray, pList->drawCallIndexCount);
 	
 	int last_tex = pState->textureState.pTexture ? pState->textureState.pTexture->texture_id : blank_tex_white;
 	std3D_SetRasterState(pStage, pState);
@@ -6782,8 +6822,7 @@ void std3D_FlushDrawCallList(std3D_DrawCallList* pList, std3D_SortFunc sortFunc,
 
 		if (dirtyBits)
 		{
-			//glDrawArrays(std3D_PrimitiveForGeoMode(lastState.raster.geoMode), vertexOffset, batch_verts);
-			glDrawElements(std3D_PrimitiveForGeoMode(lastState.stateBits.geoMode + 1), batchIndices, GL_UNSIGNED_SHORT, (void*)(indexOffset * sizeof(uint16_t)));
+			std3D_DrawElements(lastState.stateBits.geoMode, batchIndices, indexOffset);
 
 			if (lastShader != pDrawCall->shaderID)//dirtyBits & STD3D_SHADER)
 			{
@@ -6832,21 +6871,18 @@ void std3D_FlushDrawCallList(std3D_DrawCallList* pList, std3D_SortFunc sortFunc,
 	}
 
 	if (batchIndices)
-		glDrawElements(std3D_PrimitiveForGeoMode(pDrawCall->state.stateBits.geoMode + 1), batchIndices, GL_UNSIGNED_SHORT, (void*)(indexOffset * sizeof(uint16_t)));
+		std3D_DrawElements(pDrawCall->state.stateBits.geoMode, batchIndices, indexOffset);
 
-	glBindSampler(0, 0);
-	glBindSampler(TEX_SLOT_DIFFUSE, 0);
-	glBindSampler(TEX_SLOT_EMISSIVE, 0);
-	glBindSampler(TEX_SLOT_DISPLACEMENT, 0);
-	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_SHADER, defaultShaderUBO);
+	//std3D_ResetDrawState();
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
+
 	STD_END_PROFILER_LABEL();
 }
 
 void std3D_DoSSAO()
 {
-	std3D_pushDebugGroup("SSAO");
+	std3D_PushDebugGroup("SSAO");
 
 	// downscale the depth buffer with lower precision
 	std3D_DrawSimpleTex(&std3D_texFboStage, &ssaoDepth, /*std3D_framebuffer.ztex*/deferred.tex, 0, 0, 1.0, 1.0, 1.0, 0, "Z Downscale");
@@ -6881,12 +6917,12 @@ void std3D_DoSSAO()
 	std3D_bindTexture(GL_TEXTURE_2D, 0, 1);
 	std3D_bindTexture(GL_TEXTURE_2D, 0, 2);
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 
 void std3D_DoDeferredLighting()
 {
-	std3D_pushDebugGroup("Deferred Lighting");
+	std3D_PushDebugGroup("Deferred Lighting");
 
 	// enable depth testing to prevent running on empty pixels
 	glEnable(GL_DEPTH_TEST);
@@ -6923,7 +6959,7 @@ void std3D_DoDeferredLighting()
 	std3D_bindTexture(GL_TEXTURE_2D, 0, 1);
 	std3D_bindTexture(GL_TEXTURE_2D, 0, 2);
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 
 void std3D_setupWorldTextures()
@@ -6950,7 +6986,7 @@ void std3D_setupWorldTextures()
 
 void std3D_FlushRefractionZDrawCalls()
 {
-	std3D_pushDebugGroup("std3D_FlushRefractionZDrawCalls");
+	std3D_PushDebugGroup("std3D_FlushRefractionZDrawCalls");
 
 	glBindFramebuffer(GL_FRAMEBUFFER, refrZ.fbo);
 
@@ -6966,12 +7002,12 @@ void std3D_FlushRefractionZDrawCalls()
 	
 	glDisable(GL_STENCIL_TEST);
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 
 void std3D_FlushZDrawCalls()
 {
-	std3D_pushDebugGroup("std3D_FlushZDrawCalls");
+	std3D_PushDebugGroup("std3D_FlushZDrawCalls");
 
 	glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.zfbo);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
@@ -6985,12 +7021,12 @@ void std3D_FlushZDrawCalls()
 
 	//glColorMask(1,1,1,1);
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 
 void std3D_FlushColorDrawCallsRefraction()
 {
-	std3D_pushDebugGroup("std3D_FlushColorDrawCallsRefraction");
+	std3D_PushDebugGroup("std3D_FlushColorDrawCallsRefraction");
 
 	std3D_setupWorldTextures();
 	std3D_bindTexture(GL_TEXTURE_2D, refrZ.tex, TEX_SLOT_CLIP);
@@ -7011,12 +7047,12 @@ void std3D_FlushColorDrawCallsRefraction()
 	
 	glDisable(GL_STENCIL_TEST);
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 
 void std3D_FlushColorDrawCalls()
 {
-	std3D_pushDebugGroup("std3D_FlushColorDrawCalls");
+	std3D_PushDebugGroup("std3D_FlushColorDrawCalls");
 	
 	std3D_setupWorldTextures();
 
@@ -7035,12 +7071,12 @@ void std3D_FlushColorDrawCalls()
 
 	std3D_FlushDrawCallList(&drawCallLists[DRAW_LIST_COLOR_ALPHABLEND],   std3D_DrawCallCompareDepth,  "Color Alphablend");
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 
 void std3D_FlushRefractionDrawCalls()
 {
-	std3D_pushDebugGroup("std3D_FlushRefractionDrawCalls");
+	std3D_PushDebugGroup("std3D_FlushRefractionDrawCalls");
 
 	std3D_setupWorldTextures();
 
@@ -7050,13 +7086,13 @@ void std3D_FlushRefractionDrawCalls()
 
 	std3D_FlushDrawCallList(&drawCallLists[DRAW_LIST_COLOR_REFRACTION], std3D_DrawCallCompareDepth, "Color Refraction");
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 
 void std3D_FlushDeferred()
 {
 	STD_BEGIN_PROFILER_LABEL();
-	std3D_pushDebugGroup("std3D_FlushDeferred");
+	std3D_PushDebugGroup("std3D_FlushDeferred");
 	
 	// linearize the depth buffer for readback
 	//int hasSSAO = pRenderPass->flags & RD_RENDERPASS_AMBIENT_OCCLUSION;
@@ -7073,7 +7109,7 @@ void std3D_FlushDeferred()
 	//if (!(pRenderPass->flags & RD_RENDERPASS_NO_CLUSTERING))
 		//std3D_DoDeferredLighting();
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 	STD_END_PROFILER_LABEL();
 }
 
@@ -7091,7 +7127,7 @@ void std3D_DoBloom()
 	const float blendLerp = 0.6f;
 	const float uvScale = 1.0f; // debug for the kernel radius
 
-	std3D_pushDebugGroup("Bloom");
+	std3D_PushDebugGroup("Bloom");
 
 	// downscale layers using a simple gaussian filter
 	std3D_DrawSimpleTex(&std3D_bloomStage, &bloomLayers[0], std3D_framebuffer.tex1, 0, 0, uvScale, 1.0, 1.0, 0, "Bloom Downscale");
@@ -7105,7 +7141,7 @@ void std3D_DoBloom()
 	for (int i = ARRAY_SIZE(bloomLayers) - 2; i >= 0; --i)
 		std3D_DrawSimpleTex(&std3D_bloomStage, &bloomLayers[i], bloomLayers[i + 1].tex, 0, 0, uvScale, blendLerp, 1.0, 0, "Bloom Upscale");
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 	
 	STD_END_PROFILER_LABEL();
 }
@@ -7114,7 +7150,7 @@ void std3D_FlushPostFX()
 {
 	STD_BEGIN_PROFILER_LABEL();
 
-	std3D_pushDebugGroup("std3D_FlushPostFX");
+	std3D_PushDebugGroup("std3D_FlushPostFX");
 
 	glBindFramebuffer(GL_FRAMEBUFFER, window.fbo);
 	//glClear(GL_COLOR_BUFFER_BIT);
@@ -7129,21 +7165,13 @@ void std3D_FlushPostFX()
 	glDisable(GL_BLEND);
 	std3D_DrawSimpleTex(&std3D_postfxStage, &window, std3D_framebuffer.tex0, bloomLayers[0].tex, 0, (rdCamera_pCurCamera->flags & 0x1) ? sithTime_curSeconds : -1.0, jkPlayer_enableDithering, jkPlayer_gamma, 0, "Final Output");
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 
 	STD_END_PROFILER_LABEL();
 }
 
-// todo: funneling everything through these draw lists is a massive pain
-// remove the render pass stuff and handle the ordering at a higher level with rdCache_Flush
-void std3D_FlushDrawCalls()
+void std3D_BeginFlush()
 {
-	if (Main_bHeadless) return;
-	if (!has_initted) return;
-
-	STD_BEGIN_PROFILER_LABEL();
-	std3D_pushDebugGroup("std3D_FlushDrawCalls");
-
 	glViewport(0, 0, std3D_framebuffer.w, std3D_framebuffer.h);
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_TRUE);
@@ -7162,9 +7190,20 @@ void std3D_FlushDrawCalls()
 	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_SHADER, defaultShaderUBO);
 	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_SHADER_CONSTS, shaderConstsUbo);
 
-	std3D_pushDebugGroup("std3D_FlushDrawCalls");
-
 	std3D_UpdateSharedUniforms();
+}
+
+// todo: funneling everything through these draw lists is a massive pain
+// remove the render pass stuff and handle the ordering at a higher level with rdCache_Flush
+void std3D_FlushDrawCalls()
+{
+	if (Main_bHeadless) return;
+	if (!has_initted) return;
+
+	STD_BEGIN_PROFILER_LABEL();
+	std3D_PushDebugGroup("std3D_FlushDrawCalls");
+
+	std3D_BeginFlush();
 
 	// fill the depth buffer with opaque draw calls
 	std3D_FlushZDrawCalls();
@@ -7208,26 +7247,10 @@ void std3D_FlushDrawCalls()
 	// for refraction case, the depth buffer will clip out anything below the refraction surfaces
 	std3D_FlushColorDrawCalls();
 
-	std3D_popDebugGroup();
-
 	std3D_ResetDrawCalls();
+	std3D_ResetDrawState();
 
-	glBindVertexArray(vao);
-
-	glBindTexture(GL_TEXTURE_2D, worldpal_texture);
-	glEnable(GL_BLEND);
-	glEnable(GL_DEPTH_TEST);
-	glDepthMask(GL_TRUE);
-	glDisable(GL_STENCIL_TEST);
-	glDisable(GL_SCISSOR_TEST);
-	glCullFace(GL_FRONT);
-	glBindSampler(0, 0);
-	glBindSampler(TEX_SLOT_DIFFUSE, 0);
-	glBindSampler(TEX_SLOT_EMISSIVE, 0);
-	glBindSampler(TEX_SLOT_DISPLACEMENT, 0);
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 	STD_END_PROFILER_LABEL();
 }
 
@@ -7401,7 +7424,7 @@ int std3D_UploadDecalTexture(rdRectf* out, stdVBuffer* vbuf, rdDDrawSurface* pTe
 		std3D_decalAtlasNode* node = std3D_InsertDecal(&decalRootNode, &rect, pTexture);
 		if (node)
 		{
-			std3D_pushDebugGroup("std3D_InsertDecalTexture");
+			std3D_PushDebugGroup("std3D_InsertDecalTexture");
 
 			glBindFramebuffer(GL_FRAMEBUFFER, decalAtlasFBO.fbo);
 			glDrawBuffer(GL_COLOR_ATTACHMENT0);
@@ -7429,7 +7452,7 @@ int std3D_UploadDecalTexture(rdRectf* out, stdVBuffer* vbuf, rdDDrawSurface* pTe
 
 			stdHashTable_SetKeyVal(decalHashTable, node->name, node);
 	
-			std3D_popDebugGroup();
+			std3D_PopDebugGroup();
 			
 			out->x = (float)rect.x / DECAL_ATLAS_SIZE;
 			out->y = (float)rect.y / DECAL_ATLAS_SIZE;

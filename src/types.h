@@ -509,7 +509,7 @@ typedef struct rdClusterLight
 
 	float     radiusSqr;
 	float     pad0;
-	float     invFalloff;
+	float     invRadius;
 	uint32_t  pad1;
 
 	int32_t   type;

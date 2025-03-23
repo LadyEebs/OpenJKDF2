@@ -92,7 +92,7 @@ struct light
 
 	float radiusSqr;
 	uint lux_intensity;
-	float invFalloff;
+	float invRadius;
 	uint pad1;
 	
 	int   type;

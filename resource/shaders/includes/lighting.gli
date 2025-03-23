@@ -111,19 +111,16 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
     //        intensity = (1.0 - (lights[light_index].cosAngleX - angle) * lights[light_index].lux.x) * intensity;
 	//}
 
-	// this is JK's dynamic light attenuation model
-	// note it depends on scalar value matching whatever was used to calculate the intensity, it seems
 	if (lights[light_index].type > 0)
 	{
-		const float scalar = 0.4; // todo: needs to come from rdCamera_pCurCamera->attenuationMin
-		intensity -= scalar * len;
+		// this is JK's dynamic light attenuation model
+		// note it depends on scalar value matching whatever was used to calculate the intensity, it seems
+		intensity = -len * lights[light_index].invRadius + intensity;
 	}
 	else // jed attenuation for static lights
 	{
-		float range = 1.0 - len * lights[light_index].invFalloff;
-
-		//range *= range; // squared
-		intensity *= range * range; // gamma 2.0 compensation
+		float range = -len * lights[light_index].invRadius + 1.0;
+		intensity *= range * range;
 	}
 
 	if (intensity <= float(0.0))
