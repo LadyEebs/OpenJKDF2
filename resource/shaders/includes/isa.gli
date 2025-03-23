@@ -32,11 +32,12 @@
 #define OP_POW		16	// power
 #define OP_TEX		17	// texture
 #define OP_OPM		18	// offset parallax
-#define OP_MAD		19	// multiply add
-#define OP_MIX		20	// mix/interpolate
-#define OP_CMP		21	// compare
-#define OP_CND		22	// condition
-#define OP_TEXDUDV	23	// texture with offset
+#define OP_POM		19	// steep parallax
+#define OP_MAD		20	// multiply add
+#define OP_MIX		21	// mix/interpolate
+#define OP_CMP		22	// compare
+#define OP_CND		23	// condition
+#define OP_TEXDUDV	24	// texture with offset
 
 // source types
 #define REG_TYPE_GPR	0	// register
