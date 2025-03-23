@@ -2008,22 +2008,17 @@ typedef struct std3D_DrawSurface
 
 	int32_t iw;
 	int32_t ih;
+
+	void* data;
+
+	std3D_DrawSurface* prev;
+	std3D_DrawSurface* next;
 } std3D_DrawSurface;
 
-// todo: use the format...
-std3D_DrawSurface* std3D_AllocDrawSurface(stdVBufferTexFmt* fmt, int32_t width, int32_t height)
+std3D_DrawSurface* drawSurfaces = NULL;
+
+void std3D_SetupDrawSurface(std3D_DrawSurface* surface)
 {
-	std3D_DrawSurface* surface = malloc(sizeof(std3D_DrawSurface));
-	
-	// Generate the framebuffer
-	memset(surface, 0, sizeof(std3D_DrawSurface));
-
-	memcpy(&surface->fmt, fmt, sizeof(stdVBufferTexFmt));
-	surface->w = width;
-	surface->h = height;
-	surface->iw = width;
-	surface->ih = height;
-
 	glActiveTexture(GL_TEXTURE0);
 
 	glGenFramebuffers(1, &surface->fbo);
@@ -2032,36 +2027,93 @@ std3D_DrawSurface* std3D_AllocDrawSurface(stdVBufferTexFmt* fmt, int32_t width, 
 	// Set up our framebuffer texture
 	glGenTextures(1, &surface->tex);
 	glBindTexture(GL_TEXTURE_2D, surface->tex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, std3D_getImageFormat(GL_RGBA8), std3D_getUploadFormat(GL_RGBA8), NULL);
+	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, std3D_getImageFormat(GL_RGBA8), std3D_getUploadFormat(GL_RGBA8), NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, surface->w, surface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	//if (mipMaps)
-	//{
-	//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 1);
-	//	glGenerateMipmap(GL_TEXTURE_2D);
-	//}
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 1);
 
 	// Attach fbTex to our currently bound framebuffer fb
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, surface->tex, 0);
 
-	// Set up our render buffer
-	//if (useDepth)
-	//{
-	//	glGenRenderbuffers(1, &pFbo->rbo);
-	//	glBindRenderbuffer(GL_RENDERBUFFER, pFbo->rbo);
-	//	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
-	//	glBindRenderbuffer(GL_RENDERBUFFER, 0);
-	//
-	//	// Bind it to our framebuffer fb
-	//	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, pFbo->rbo);
-	//}
-
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	int status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (status != GL_FRAMEBUFFER_COMPLETE)
+	{
 		stdPlatform_Printf("std3D: ERROR, Framebuffer is incomplete!\n");
+
+		switch (status)
+		{
+		case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+			stdPlatform_Printf("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT\n");
+			break;
+		case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT:
+			stdPlatform_Printf("GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS\n");
+			break;
+		case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+			stdPlatform_Printf("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT\n");
+			break;
+		case GL_FRAMEBUFFER_UNSUPPORTED:
+			stdPlatform_Printf("GL_FRAMEBUFFER_UNSUPPORTED\n");
+			break;
+		default:
+			break;
+		}
+	}
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void std3D_PurgeDrawSurface(std3D_DrawSurface* surface)
+{
+	if(surface->fbo)
+		glDeleteFramebuffers(1, &surface->fbo);
+	
+	if(surface->tex)
+		glDeleteTextures(1, &surface->tex);
+
+	if (surface->rbo)
+		glDeleteRenderbuffers(1, &surface->rbo);
+
+	surface->fbo = surface->tex = surface->rbo = 0;
+}
+
+void std3D_PurgeDrawSurfaces()
+{
+	std3D_DrawSurface* surface = drawSurfaces;
+	while(surface)
+	{
+		std3D_PurgeDrawSurface(surface);
+		surface = surface->next;
+	}
+}
+
+// todo: use the format...
+std3D_DrawSurface* std3D_AllocDrawSurface(stdVBufferTexFmt* fmt, int32_t width, int32_t height)
+{
+	std3D_DrawSurface* surface = malloc(sizeof(std3D_DrawSurface));
+	if(!surface)
+		return NULL;
+	memset(surface, 0, sizeof(std3D_DrawSurface));
+
+	surface->next = drawSurfaces;
+	if (drawSurfaces)
+		drawSurfaces->prev = surface;
+
+	surface->prev = NULL;
+	drawSurfaces = surface;
+	
+	//width = stdMath_NextPow2(width);
+	//height = stdMath_NextPow2(height);
+
+	surface->w = width;
+	surface->h = height;
+	surface->iw = width;
+	surface->ih = height;
+	memcpy(&surface->fmt, fmt, sizeof(stdVBufferTexFmt));
+
+//	std3D_SetupDrawSurface(surface);
 
 	return surface;
 }
@@ -2071,17 +2123,55 @@ void std3D_FreeDrawSurface(std3D_DrawSurface* surface)
 	if(!surface)
 		return;
 
-	glDeleteFramebuffers(1, &surface->fbo);
-	glDeleteTextures(1, &surface->tex);
+	std3D_DrawSurface* prev = surface->prev;
+	std3D_DrawSurface* next = surface->next;
+	if (prev)
+	{
+		prev->next = next;
+		if (next)
+			next->prev = prev;
+	}
+	else
+	{
+		drawSurfaces = next;
+		if (next)
+		{
+			next->prev = NULL;
+		}
+	}
 
-	if(surface->rbo)
-		glDeleteRenderbuffers(1, &surface->rbo);
+	surface->prev = NULL;
+	surface->next = NULL;
+
+	if (surface->data)
+	{
+		free(surface->data);
+		surface->data = 0;
+	}
+
+	std3D_PurgeDrawSurface(surface);
 
 	free(surface);
 }
 
+void std3D_MakeDrawSurfaceResident(std3D_DrawSurface* surface)
+{
+	if (surface->fbo == 0)
+	{
+		std3D_SetupDrawSurface(surface);
+
+		if (surface->data)
+		{
+			glBindTexture(GL_TEXTURE_2D, surface->tex);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface->w, surface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->data);
+		}
+	}
+}
+
 void std3D_UploadDrawSurface(std3D_DrawSurface* src, int width, int height, void* pixels, uint8_t* palette)
 {
+	std3D_MakeDrawSurfaceResident(src);
+
 	glBindTexture(GL_TEXTURE_2D, src->tex);
 
 	uint8_t* image_8bpp = pixels;
@@ -2089,7 +2179,7 @@ void std3D_UploadDrawSurface(std3D_DrawSurface* src, int width, int height, void
 	uint8_t* pal = palette;
 
 	// temp, currently all RGBA8
-	uint8_t* image_data = malloc(width * height * 4);
+	uint8_t* image_data = src->data ? src->data : malloc(width * height * 4);
 
 	if (0)//src->fmt.format.colorMode)
 	{
@@ -2183,10 +2273,12 @@ void std3D_UploadDrawSurface(std3D_DrawSurface* src, int width, int height, void
 			}
 		}
 
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, image_data);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
 	}
 
-	free(image_data);
+	src->data = image_data;
+
+	//free(image_data);
 }
 
 void std3D_BlitDrawSurface(std3D_DrawSurface* src, rdRect* srcRect, std3D_DrawSurface* dst, rdRect* dstRect)
@@ -2195,7 +2287,10 @@ void std3D_BlitDrawSurface(std3D_DrawSurface* src, rdRect* srcRect, std3D_DrawSu
 		return;
 
 	std3D_pushDebugGroup("std3D_BlitDrawSurface");
-		
+
+	std3D_MakeDrawSurfaceResident(src);
+	std3D_MakeDrawSurfaceResident(dst);
+
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, src->fbo);
 	if(glGetError() == GL_INVALID_OPERATION)
 		printf("fuckkk\n");
@@ -2226,6 +2321,8 @@ void std3D_BlitDrawSurface(std3D_DrawSurface* src, rdRect* srcRect, std3D_DrawSu
 
 void std3D_ClearDrawSurface(std3D_DrawSurface* surface, int fillColor, rdRect* rect)
 {
+	std3D_MakeDrawSurfaceResident(surface);
+
 	std3D_pushDebugGroup("std3D_ClearDrawSurface");
 
 	std3DIntermediateFbo* pFb = (std3DIntermediateFbo*)surface;
@@ -5759,6 +5856,11 @@ void std3D_PurgeTextureCache()
         return;
     }
 
+#ifdef HW_VBUFFER
+	std3D_PurgeDrawSurfaces();
+#endif
+	std3D_PurgeDecals();
+
     if (!std3D_loadedTexturesAmt) {
         jk_printf("Skipping texture cache purge, nothing loaded.\n");
         return;
@@ -5770,8 +5872,6 @@ void std3D_PurgeTextureCache()
         std3D_PurgeTextureEntry(i);
     }
     std3D_loadedTexturesAmt = 0;
-
-	std3D_PurgeDecals();
 }
 
 void std3D_InitializeViewport(rdRect *viewRect)
