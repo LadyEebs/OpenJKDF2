@@ -143,6 +143,13 @@ void run_vm()
 				result = fastRcpNR0(read_src0(s_ir));
 			break;
 
+		case OP_SQRT:
+			if (s_ir.prec)
+				result = sqrt(read_src0(s_ir));
+			else
+				result = fastSqrtNR0(read_src0(s_ir));
+			break;
+
 		default:
 		case OP_NOP:
 			return;

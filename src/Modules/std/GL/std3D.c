@@ -795,14 +795,14 @@ static const char std3D_registerTypePrefix[] =
 
 typedef enum
 {
-	SRC_NEG_INV_NONE,
-	SRC_NEG_INV_NEG,	// negate: -x
-	SRC_NEG_INV_INV,	// invert: 1 - x
-	SRC_NEG_INV_RSV,	// reserved for future use
+	NEG_INV_NONE,
+	NEG_INV_NEG,	// negate: -x
+	NEG_INV_INV,	// invert: 1 - x
+	NEG_INV_RSV,	// reserved for future use
 
-	SRC_NEG_INV_COUNT
+	NEG_INV_COUNT
 } std3D_ShaderSrcNegateInvertMode;
-static_assert(SRC_NEG_INV_COUNT <= 4, "SRC_NEG_INV_COUNT must not exceed 4.");
+static_assert(NEG_INV_COUNT <= 4, "NEG_INV_COUNT must not exceed 4.");
 
 typedef enum
 {
@@ -812,21 +812,20 @@ typedef enum
 	SRC_SCALE_BIAS_D2,		// x / 2
 	SRC_SCALE_BIAS_D4,		// x / 4
 	SRC_SCALE_BIAS_BIAS,	// x - 0.5
-	SRC_SCALE_BIAS_BX2,		// x * 2 - 1
-	SRC_SCALE_BIAS_RSV,		// reserved for future use
+	SRC_SCALE_BIAS_RSV0,	// reserved for future use
+	SRC_SCALE_BIAS_RSV1,	// reserved for future use
 
 	SRC_SCALE_BIAS_COUNT
 } std3D_ShaderSrcBiasScaleMode;
-static_assert(SRC_SCALE_BIAS_COUNT <= 8, "SRC_NEG_INV_COUNT must not exceed 8.");
+static_assert(SRC_SCALE_BIAS_COUNT <= 8, "SRC_SCALE_BIAS_COUNT must not exceed 8.");
 
 uint8_t std3D_parseScaleBias(const char* token)
 {
-	if (strcmp(token, "mul:2") == 0) return SRC_SCALE_BIAS_2X;
-	if (strcmp(token, "mul:4") == 0) return SRC_SCALE_BIAS_4X;
-	if (strcmp(token, "div:2") == 0) return SRC_SCALE_BIAS_D2;
-	if (strcmp(token, "div:4") == 0) return SRC_SCALE_BIAS_D4;
-	if (strcmp(token, "expand") == 0) return SRC_SCALE_BIAS_BX2;
-	if (strcmp(token, "bias") == 0) return SRC_SCALE_BIAS_BIAS;
+	if (strncmp(token, "mul:2", 5) == 0) return SRC_SCALE_BIAS_2X;
+	if (strncmp(token, "mul:4", 5) == 0) return SRC_SCALE_BIAS_4X;
+	if (strncmp(token, "div:2", 5) == 0) return SRC_SCALE_BIAS_D2;
+	if (strncmp(token, "div:4", 5) == 0) return SRC_SCALE_BIAS_D4;
+	if (strncmp(token, "bias", 4) == 0) return SRC_SCALE_BIAS_BIAS;
 	return SRC_SCALE_BIAS_NONE; // Unknown keyword
 }
 
@@ -860,27 +859,39 @@ uint8_t std3D_parseReduction(const char* name)
 	return SRC_RED_NONE;
 }
 
-// only one at a time
 typedef enum
 {
-	DST_MOD_NONE,
-	DST_MOD_X2,
-	DST_MOD_X4,
-	DST_MOD_D2,
-	DST_MOD_D4,
+	DST_MUL_NONE,
+	DST_MUL_X2,
+	DST_MUL_X4,
+	DST_MUL_D2,
+	DST_MUL_D4,
+
+	DST_MUL_COUNT
+} std3D_ShaderDstMultiplier;
+static_assert(DST_MUL_COUNT <= 8, "DST_MUL_COUNT must not exceed 3 bits.");
+
+/*
 	DST_MOD_POW2,
 	DST_MOD_POW4,
 	DST_MOD_SQRT,
-	DST_MOD_PACK,
+
 	DST_MOD_ABS,
 	DST_MOD_NEG,
 	DST_MOD_ROLLOFF,
+*/
 
-	DST_MOD_COUNT
-} std3D_ShaderDstModifiers;
-static_assert(DST_MOD_COUNT <= 16, "DST_MOD_COUNT must not exceed 4 bits.");
+uint8_t std3D_parseOutputMultiplier(const char* token)
+{
+	if (strnicmp(token, "mul:2", 5) == 0) return DST_MUL_X2;
+	if (strnicmp(token, "mul:4", 5) == 0) return DST_MUL_X4;
+	if (strnicmp(token, "div:2", 5) == 0) return DST_MUL_D2;
+	if (strnicmp(token, "div:4", 5) == 0) return DST_MUL_D4;
+	return DST_MUL_NONE;
+}
 
-uint8_t std3D_parseOutputModifier(const char* token)
+/*
+uint8_t std3D_parseOutputMultiplier(const char* token)
 {
 	if (strnicmp(token, "mul:2", 5) == 0) return DST_MOD_X2;
 	if (strnicmp(token, "mul:4", 5) == 0) return DST_MOD_X4;
@@ -888,13 +899,12 @@ uint8_t std3D_parseOutputModifier(const char* token)
 	if (strnicmp(token, "div:4", 5) == 0) return DST_MOD_D4;
 	if (strnicmp(token, "pow:2", 5) == 0) return DST_MOD_POW2;
 	if (strnicmp(token, "pow:4", 5) == 0) return DST_MOD_POW4;
-	if (strnicmp(token, "sqrt", 5) == 0) return DST_MOD_SQRT;
-	if (strnicmp(token, "pack", 4) == 0) return DST_MOD_PACK;
+	if (strnicmp(token, "sqrt", 4) == 0) return DST_MOD_SQRT;
 	if (strnicmp(token, "abs", 3) == 0) return DST_MOD_ABS;
 	if (strnicmp(token, "negate", 6) == 0) return DST_MOD_NEG;
 	if (strnicmp(token, "rolloff", 7) == 0) return DST_MOD_ROLLOFF;
 	return DST_MOD_NONE;
-}
+}*/
 
 typedef enum
 {
@@ -906,6 +916,7 @@ typedef enum
 	OP_RCP,     // reciprocal
 	OP_EXP2,    // base 2 exponential
 	OP_LOG2,    // base 2 logarithm
+	OP_SQRT,    // square root
 
 	// 2 operands
 	OP_ADD,		// addition
@@ -935,9 +946,9 @@ static_assert(MAX_ALU_OPS <= 32, "std3D_ShaderAluOp must not exceed 32 op codes.
 
 static const char* std3D_opCodeKeywords[MAX_ALU_OPS] =
 {
-	"nop", "mov", "rcp", "exp2", "log2", "add", "sub", "mul",
-	"div", "max", "min", "mac", "dp2", "dp3", "dp4", "pow",
-	"tex", "opm", "mad", "mix", "cmp", "cnd", "texdudv"
+	"nop", "mov", "rcp", "exp2", "log2", "sqrt", "add", "sub",
+	"mul", "div", "max", "min", "mac", "dp2", "dp3", "dp4",
+	"pow", "tex", "opm", "mad", "mix", "cmp", "cnd", "texdudv"
 };
 
 uint8_t std3D_parseOpCode(const char* name)
@@ -1039,10 +1050,10 @@ typedef enum
 
 uint8_t std3D_parseEncoding(const char* token)
 {
-	if (strnicmp(token, "fmt:u8x4]", 6) == 0) return REG_U8;
-	if (strnicmp(token, "fmt:s8x4]", 5) == 0) return REG_S8;
-	if (strnicmp(token, "fmt:f16x2]", 5) == 0) return REG_F16;
-	if (strnicmp(token, "fmt:f32]", 4) == 0) return REG_F32;
+	if (strnicmp(token, "fmt:u8x4", 8) == 0) return REG_U8;
+	if (strnicmp(token, "fmt:s8x4", 8) == 0) return REG_S8;
+	if (strnicmp(token, "fmt:f16x2", 9) == 0) return REG_F16;
+	if (strnicmp(token, "fmt:f32", 7) == 0) return REG_F32;
 	return REG_U8;
 }
 
@@ -1076,25 +1087,29 @@ uint32_t std3D_assembleSrc(
 }
 
 // operation + destination layout
-// |31         29|28         25|24       17|16     9|   8  |7     6|5       0|
-// | write mask  |  modifiers  |  swizzle  |  index | type | spare | op code |
+// |31         29|28         25|24       17|16     9|   8  |7       6|5       0|
+// | write mask  |  modifiers  |  swizzle  |  index | type | precise | op code |
 uint32_t std3D_assembleOpAndDst(
 	uint8_t opcode,
 	uint8_t fmt,
 	uint8_t index,
 	uint8_t swizzle,
-	uint8_t modifiers,
+	uint8_t multiplier,
 	uint8_t write_mask,
-	uint8_t precise
+	uint8_t precise,
+	uint8_t abs,
+	uint8_t neg
 )
 {
 	uint32_t result;
 	result  = (opcode & 0x1F);
 	result |= (precise & 0x1) << 5;
 	result |= (fmt & 0x3) << 6;
-	result |= (index & 0xFF) << 8;
+	result |= (neg & 0x1) << 8;
+	result |= (index & 0x7F) << 9;
 	result |= (swizzle & 0xFF) << 16;
-	result |= (modifiers & 0xF) << 24;
+	result |= (multiplier & 0x7) << 24;
+	result |= (abs & 0x1) << 27;
 	result |= (write_mask & 0xF) << 28;
 	return result;
 }
@@ -1108,13 +1123,13 @@ typedef struct
 	uint8_t swizzle;
 	uint8_t mask;
 	float   immediate;
+	uint8_t abs;
+	uint8_t negate_or_invert;
 } std3D_AsmRegister;
 
 typedef struct
 {
 	std3D_AsmRegister reg;
-	uint8_t           abs;
-	uint8_t           negate_or_invert;
 	uint8_t           scale_bias;
 	uint8_t           reduction;
 } std3D_AsmSrcOperand;
@@ -1122,7 +1137,7 @@ typedef struct
 typedef struct
 {
 	std3D_AsmRegister reg;
-	uint8_t  modifier;
+	uint8_t           multiplier;
 } std3D_AsmDestOperand;
 
 typedef struct
@@ -1160,9 +1175,11 @@ int std3D_assembleInstruction(std3D_Instr* result, std3D_AsmInstruction* inst)
 											inst->dest.reg.fmt,
 											inst->dest.reg.address,
 											inst->dest.reg.swizzle,
-											inst->dest.modifier,
+											inst->dest.multiplier,
 											inst->dest.reg.mask,
-											inst->precise);
+											inst->precise,
+											inst->dest.reg.abs,
+											inst->dest.reg.negate_or_invert);
 
 
 	// if we have 3 operands, then immediate values must be 8 bit
@@ -1179,9 +1196,9 @@ int std3D_assembleInstruction(std3D_Instr* result, std3D_AsmInstruction* inst)
 	                                 inst->src[0].reg.type,
 									 inst->src[0].reg.fmt,
 									 inst->src[0].reg.address,
-									 inst->src[0].abs,
+									 inst->src[0].reg.abs,
 									 inst->src[0].reg.swizzle,
-									 inst->src[0].negate_or_invert,
+									 inst->src[0].reg.negate_or_invert,
 									 inst->src[0].scale_bias,
 									 inst->src[0].reduction);
 
@@ -1189,9 +1206,9 @@ int std3D_assembleInstruction(std3D_Instr* result, std3D_AsmInstruction* inst)
 									 inst->src[1].reg.type,
 									 inst->src[1].reg.fmt,
 									 inst->src[1].reg.address,
-									 inst->src[1].abs,
+									 inst->src[1].reg.abs,
 									 inst->src[1].reg.swizzle,
-									 inst->src[1].negate_or_invert,
+									 inst->src[1].reg.negate_or_invert,
 									 inst->src[1].scale_bias,
 									 inst->src[1].reduction);
 
@@ -1208,9 +1225,9 @@ int std3D_assembleInstruction(std3D_Instr* result, std3D_AsmInstruction* inst)
 										 inst->src[2].reg.type,
 										 inst->src[2].reg.fmt,
 										 inst->src[2].reg.address,
-										 inst->src[2].abs,
+										 inst->src[2].reg.abs,
 										 inst->src[2].reg.swizzle,
-										 inst->src[2].negate_or_invert,
+										 inst->src[2].reg.negate_or_invert,
 										 inst->src[2].scale_bias,
 										 inst->src[2].reduction);
 	}
@@ -1429,6 +1446,10 @@ void std3D_parseSourceOperandExpression(char* token, std3D_AsmSrcOperand* op)
 			uint8_t scale_bias = std3D_parseScaleBias(modifier);
 			if (scale_bias)
 				op->scale_bias = scale_bias;
+			else if (strnicmp(modifier, "negate", 6) == 0)
+				op->reg.negate_or_invert = NEG_INV_NEG;
+			else if (strnicmp(modifier, "invert", 6) == 0)
+				op->reg.negate_or_invert = NEG_INV_INV;
 			else
 				op->reg.fmt = std3D_parseEncoding(modifier);
 
@@ -1444,18 +1465,18 @@ void std3D_parseSourceOperandWithModifiers(char* token, std3D_AsmSrcOperand* op)
 {
 	if (token[0] == '-') // check for negate
 	{
-		op->negate_or_invert = 1;
+		op->reg.negate_or_invert = NEG_INV_NEG;
 		token++;
 	}
-	else if (strncmp(token, "1 - ", 4) == 0) // check for invert
+	else if (strncmp(token, "1 - ", 4) == 0) // check for invert, todo: fix spaces
 	{
-		op->negate_or_invert = 2;
+		op->reg.negate_or_invert = NEG_INV_INV;
 		token += 4;
 	}
 
 	if (strncmp(token, "abs", 3) == 0) // check for abs
 	{
-		op->abs = 1;
+		op->reg.abs = 1;
 		token += 3;
 
 		char temp[64];
@@ -1533,12 +1554,15 @@ void std3D_parseInstructionModifiers(const char* modifierStart, std3D_AsmInstruc
 
 	while (token)
 	{
-		// try to parse multipliers first
-		uint8_t modifier = std3D_parseOutputModifier(token);
-		if (modifier)
-			inst->dest.modifier = modifier;
+		uint8_t multiplier = std3D_parseOutputMultiplier(token);
+		if (multiplier)
+			inst->dest.multiplier = multiplier;
 		else if(strnicmp(token, "precise", 7) == 0)
 			inst->precise = 1;
+		else if (strnicmp(token, "abs", 3) == 0)
+			inst->dest.reg.abs = 1;
+		else if (strnicmp(token, "negate", 6) == 0)
+			inst->dest.reg.negate_or_invert = NEG_INV_NEG;
 		else
 			inst->dest.reg.fmt = std3D_parseEncoding(token);
 

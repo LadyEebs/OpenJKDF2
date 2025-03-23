@@ -18,24 +18,25 @@
 #define OP_RCP		 2	// reciprocal
 #define OP_EXP2		 3	// base 2 exponential
 #define OP_LOG2		 4	// base 2 logarithm
-#define OP_ADD		 5	// addition
-#define OP_SUB		 6	// subtract
-#define OP_MUL		 7	// multiply
-#define OP_DIV		 8	// division
-#define OP_MAX		 9	// maximum
-#define OP_MIN		10	// minimum
-#define OP_MAC		11	// multiply accumulate
-#define OP_DP2		12	// dot2
-#define OP_DP3		13	// dot3
-#define OP_DP4		14	// dot4
-#define OP_POW		15	// power
-#define OP_TEX		16	// texture
-#define OP_OPM		17	// offset parallax
-#define OP_MAD		18	// multiply add
-#define OP_MIX		19	// mix/interpolate
-#define OP_CMP		20	// compare
-#define OP_CND		21	// condition
-#define OP_TEXDUDV	22	// texture with offset
+#define OP_SQRT      5  // square root
+#define OP_ADD		 6	// addition
+#define OP_SUB		 7	// subtract
+#define OP_MUL		 8	// multiply
+#define OP_DIV		 9	// division
+#define OP_MAX		10	// maximum
+#define OP_MIN		11	// minimum
+#define OP_MAC		12	// multiply accumulate
+#define OP_DP2		13	// dot2
+#define OP_DP3		14	// dot3
+#define OP_DP4		15	// dot4
+#define OP_POW		16	// power
+#define OP_TEX		17	// texture
+#define OP_OPM		18	// offset parallax
+#define OP_MAD		19	// multiply add
+#define OP_MIX		20	// mix/interpolate
+#define OP_CMP		21	// compare
+#define OP_CND		22	// condition
+#define OP_TEXDUDV	23	// texture with offset
 
 // source types
 #define REG_TYPE_GPR	0	// register
@@ -64,7 +65,6 @@
 #define SRC_SCALE_BIAS_D2	3	// x / 2
 #define SRC_SCALE_BIAS_D4	4	// x / 4
 #define SRC_SCALE_BIAS_BIAS	5	// x - 0.5
-#define SRC_SCALE_BIAS_BX2	6	// x * 2 - 1
 
 // source reduction operations
 #define SRC_RED_NONE 0
@@ -76,18 +76,10 @@
 #define SRC_RED_MAG  6	// length(xyz)
 
 // destination modifiers
-#define DST_MOD_NONE     0 // no modifier
-#define DST_MOD_X2       1 // x * 2
-#define DST_MOD_X4       2 // x * 4
-#define DST_MOD_D2       3 // x / 2
-#define DST_MOD_D4       4 // x / 4
-#define DST_MOD_POW2     5 // x * x
-#define DST_MOD_POW4     6 // x * x
-#define DST_MOD_SQRT     7 // sqrt(x)
-#define DST_MOD_PACK     8 // x * 0.5 + 0.5
-#define DST_MOD_ABS      9 // abs(x)
-#define DST_MOD_NEG     10 // -x
-#define DST_MOD_ROLLOFF 11 // x/(1+x)
+#define DST_MUL_X2 1
+#define DST_MUL_X4 2
+#define DST_MUL_D2 3
+#define DST_MUL_D4 4
 
 // system register ids
 #define SHADER_SYS_TIME 0
@@ -108,7 +100,9 @@ struct vm_dst
 	uint mask;
 	uint dest;
 	uint swizzle;
-	uint modifier;
+	uint multiplier;
+	uint absolute;
+	uint negate;
 };
 
 struct vm_src
@@ -157,12 +151,14 @@ void s_decode_precision(out uint s_precision, uint s_ir)
 
 void s_decode_dst_operand(out vm_dst s_dst, uint s_ir)
 {
-	s_dst.fmt       = (s_ir >>  6) & 0x3;
-	s_dst.addr      = (s_ir >>  8) & 0xFF;
-	s_dst.swizzle   = (s_ir >> 16) & 0xFF;
-	s_dst.modifier  = (s_ir >> 24) &  0xF;
-	s_dst.mask      = (s_ir >> 28) &  0xF;
-	s_dst.mask      = s_expand_mask(s_dst.mask);
+	s_dst.fmt        = (s_ir >>  6) &  0x3;
+	s_dst.negate     = (s_ir >>  8) &  0x1;
+	s_dst.addr       = (s_ir >>  9) & 0x7F;
+	s_dst.swizzle    = (s_ir >> 16) & 0xFF;
+	s_dst.multiplier = (s_ir >> 24) &  0x7;
+	s_dst.absolute   = (s_ir >> 27) &  0x1;
+	s_dst.mask       = (s_ir >> 28) &  0xF;
+	s_dst.mask       = s_expand_mask(s_dst.mask);
 }
 
 void s_decode_src_operand(out vm_src s_src, uint s_ir)

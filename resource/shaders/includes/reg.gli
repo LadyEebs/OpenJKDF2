@@ -130,10 +130,23 @@ uint encode_reg(vec4 reg, uint s_fmt)
 	}
 }
 
+uint encode_reg_abs(vec4 reg, uint s_fmt)
+{
+	switch(s_fmt)
+	{
+	default:
+	case REG_U8:	return packUnorm4x8(abs(reg));
+	case REG_S8:	return packSnorm4x8(abs(reg));
+	case REG_F16:	return packHalf2x16(abs(reg.xy));
+	case REG_F32:	return floatBitsToUint(abs(reg.x));
+	}
+}
+
 vec4 read_system_value(uint s_addr)
 {
 	switch(s_addr)
 	{
+	default:							return vec4(0.0);
 	case SHADER_SYS_TIME:				return vec4(timeSeconds);
 	case SHADER_SYS_Z:					return vec4(read_z());
 	case SHADER_SYS_POS:				return vec4(read_vpos(), 0.0);
@@ -144,8 +157,6 @@ vec4 read_system_value(uint s_addr)
 	case SHADER_SYS_MAT_SPECULAR:		return specularFactor;
 	case SHADER_SYS_MAT_ROUGHNESS:		return vec4(roughnessFactor);
 	case SHADER_SYS_MAT_DISPLACEMENT:	return vec4(displacement_factor);
-	default:
-		return vec4(0.0);
 	}
 }
 
@@ -153,6 +164,7 @@ vec4 fetch_reg(vm_src s_operand, uint s_imm)
 {
 	switch(s_operand.type)
 	{
+	default:			 return vec4(0.0);
 	case REG_TYPE_GPR:	 return decode_reg(r[s_operand.addr], s_operand.fmt);
 	case REG_TYPE_CLR:	 return read_color_reg(s_operand.addr);
 	case REG_TYPE_CON:	 return shaderConstants[s_operand.addr];
@@ -160,7 +172,6 @@ vec4 fetch_reg(vm_src s_operand, uint s_imm)
 	case REG_TYPE_IMM8:	 return vec4(unpackSnorm4x8(s_operand.addr).x);
 	case REG_TYPE_IMM16: return vec4(unpackHalf2x16(s_imm >> (s_operand.idx << 4)).x);
 	case REG_TYPE_SYS:   return read_system_value(s_operand.addr);
-	default:			 return vec4(0.0);
 	}
 }
 
@@ -168,13 +179,12 @@ vec4 apply_scale_bias(vec4 reg, uint s_scalebias)
 {
 	switch(s_scalebias)
 	{
+	default:					return reg;
 	case SRC_SCALE_BIAS_2X:		return reg * 2.0;
 	case SRC_SCALE_BIAS_4X:		return reg * 4.0;
 	case SRC_SCALE_BIAS_D2:		return reg * 0.5;
 	case SRC_SCALE_BIAS_D4:		return reg * 0.25;
 	case SRC_SCALE_BIAS_BIAS:	return reg + -0.5;
-	case SRC_SCALE_BIAS_BX2:	return reg * 2.0 + (-1.0);
-	default:					return reg;
 	}
 }
 
@@ -182,9 +192,9 @@ vec4 apply_neg_inv(vec4 reg, uint s_neg_inv)
 {
 	switch(s_neg_inv)
 	{
+	default:				return reg;
 	case SRC_NEG_INV_NEG:	return -reg; 
 	case SRC_NEG_INV_INV:	return 1.0 - reg;
-	default:				return reg;
 	}
 }
 
@@ -192,9 +202,9 @@ vec4 apply_neg_inv_abs(vec4 reg, uint s_neg_inv)
 {
 	switch(s_neg_inv)
 	{
+	default:				return abs(reg);
 	case SRC_NEG_INV_NEG:	return -abs(reg); 
 	case SRC_NEG_INV_INV:	return 1.0 - abs(reg);
-	default:				return abs(reg);
 	}
 }
 
@@ -202,13 +212,37 @@ vec4 apply_reduction(vec4 reg, uint s_reduction)
 {
 	switch(s_reduction)
 	{
+	default:			return reg;
 	case SRC_RED_LUM:	return vec4( dot(reg.rgb, vec3(0.2125, 0.7154, 0.0721)) );
 	case SRC_RED_SUM:	return vec4( reg.r + reg.g + reg.b );
-	case SRC_RED_AVG:	return vec4( (reg.r + reg.g + reg.b) / 3.0 );
+	case SRC_RED_AVG:	return vec4( (reg.r + reg.g + reg.b) * 0.3333 );
 	case SRC_RED_MIN:	return vec4( min3(reg.r, reg.g, reg.b) );
 	case SRC_RED_MAX:	return vec4( max3(reg.r, reg.g, reg.b) );
 	case SRC_RED_MAG:	return vec4( fastLength(reg.rgb) );
-	default:			return reg;
+	}
+}
+
+vec4 apply_dst_multiplier(vec4 reg, uint s_multiplier)
+{
+	switch (s_multiplier)
+	{
+		default:		 return        reg;
+		case DST_MUL_X2: return  reg * 2.0;
+		case DST_MUL_X4: return  reg * 4.0;
+		case DST_MUL_D2: return  reg * 0.5;
+		case DST_MUL_D4: return reg * 0.25;
+	}
+}
+
+vec4 apply_dst_multiplier_neg(vec4 reg, uint s_multiplier)
+{
+	switch (s_multiplier)
+	{
+		default:		 return        -reg;
+		case DST_MUL_X2: return  -reg * 2.0;
+		case DST_MUL_X4: return  -reg * 4.0;
+		case DST_MUL_D2: return  -reg * 0.5;
+		case DST_MUL_D4: return -reg * 0.25;
 	}
 }
 
@@ -255,24 +289,20 @@ void write_reg(vm_instr s_ir, vec4 reg)
 	// swizzle for the destination
 	reg = swizzle_reg(reg, s_ir.dst.swizzle);
 
-	switch (s_ir.dst.modifier)
-	{
-		case DST_MOD_X2:		reg =         reg * 2.0;	break;
-		case DST_MOD_X4:		reg =         reg * 4.0;	break;
-		case DST_MOD_D2:		reg =         reg * 0.5;	break;
-		case DST_MOD_D4:		reg =        reg * 0.25;	break;
-		case DST_MOD_POW2:		reg =         pow2(reg);	break;
-		case DST_MOD_POW4:		reg =         pow4(reg);	break;
-		case DST_MOD_SQRT:		reg =         sqrt(reg);	break;
-		case DST_MOD_PACK:		reg =   reg * 0.5 + 0.5;	break;
-		case DST_MOD_ABS:		reg =          abs(reg);	break;
-		case DST_MOD_NEG:		reg =              -reg;	break;
-		case DST_MOD_ROLLOFF:   reg = reg / (1.0 + reg);	break;
-		default:				reg =               reg;	break;
-	}
+	// apply any multipliers
+	if (s_ir.dst.negate)
+		reg = apply_dst_multiplier_neg(reg, s_ir.dst.multiplier);
+	else
+		reg = apply_dst_multiplier(reg, s_ir.dst.multiplier);
 
-	// write it
-	uint p = encode_reg(reg, s_ir.dst.fmt);
+	// encode + abs
+	uint p;
+	if(s_ir.dst.absolute)
+		p = encode_reg_abs(reg, s_ir.dst.fmt);
+	else
+		p = encode_reg(reg, s_ir.dst.fmt);
+
+	// write the masked bits
 	r[s_ir.dst.addr] |= (p & s_ir.dst.mask);
 }
 
