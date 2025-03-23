@@ -1384,10 +1384,11 @@ void std3D_parseSourceOperandExpression(char* token, std3D_AsmSrcOperand* op)
 	while (isspace(*token)) // skip whitespace
 		token++;
 
-	if (token[0] == '[')
+	char* modifiers = strchr(token, '[');
+	if (modifiers)
 	{
 		char tmp[128];
-		char* arg = stdString_GetEnclosedStringContents(token, tmp, 64, '[', ']');
+		char* arg = stdString_GetEnclosedStringContents(modifiers, tmp, 64, '[', ']');
 		if (!arg)
 			return;
 
@@ -1536,7 +1537,10 @@ int std3D_parseInstruction(char* line, std3D_Instr* result)
 	// split the line into instruction and modifiers
 	char* modifierPos = strchr(line, ':');
 	if (modifierPos)
+	{
 		std3D_parseInstructionModifiers(modifierPos + 1, &inst);
+		*modifierPos = '\0';
+	}
 
 	// copy the line to a buffer for manipulation
 	char buffer[256];
@@ -1698,8 +1702,8 @@ void std3D_initJkgmShader()
 
 	const char* code =
 		"ps.1.0\n"
-		"opm r2, t2, t0 : rg16f # parallax\n"
-		"texdudv r0, t0, t0, r2[rg16f] # sample diffuse\n"
+		"opm r1, t2, t0 : rg16f # parallax\n"
+		"texdudv r0, t0, t0, r1[rg16f] # sample diffuse\n"
 		"mul r0, r0, v0 # multiply diffuse color with diffuse light\n"
 		"tex r1, t1, t0 # sample emissive\n"
 		"max r0, r0, r1 # max of diffuse and emissive\n";

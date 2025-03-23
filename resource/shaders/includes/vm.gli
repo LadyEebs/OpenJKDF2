@@ -142,8 +142,7 @@ void run_vm()
 			return;
 		}
 
-		if(s_ir.opcode != OP_OPM)
-			write_reg(s_ir, result);
+		write_reg(s_ir, result);
 	}
 }
 
