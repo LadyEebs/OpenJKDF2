@@ -579,6 +579,14 @@ void rdScissorMode(rdScissorMode_t mode)
 
 void rdScissor(int x, int y, int width, int height)
 {
+	rdroid_rasterState.scissor.x = (float)x / rdroid_rasterState.viewport.width;
+	rdroid_rasterState.scissor.y = (float)y / rdroid_rasterState.viewport.height;
+	rdroid_rasterState.scissor.width = (float)width / rdroid_rasterState.viewport.width;
+	rdroid_rasterState.scissor.height = (float)height / rdroid_rasterState.viewport.height;
+}
+
+void rdScissorf(float x, float y, float width, float height)
+{
 	rdroid_rasterState.scissor.x = x;
 	rdroid_rasterState.scissor.y = y;
 	rdroid_rasterState.scissor.width = width;

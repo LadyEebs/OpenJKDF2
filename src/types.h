@@ -660,6 +660,9 @@ typedef struct rdClipFrustum
 #if defined(VIEW_SPACE_GBUFFER) || defined(RENDER_DROID2)
   rdVector3 lt, rt, lb, rb;
 #endif
+#ifdef RENDER_DROID2
+	float x, y, width, height;
+#endif
 } rdClipFrustum;
 
 

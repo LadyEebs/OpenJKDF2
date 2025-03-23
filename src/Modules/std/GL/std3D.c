@@ -6381,7 +6381,13 @@ void std3D_SetRasterState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 		glEnable(GL_SCISSOR_TEST);
 	else
 		glDisable(GL_SCISSOR_TEST);
-	glScissor(pRasterState->scissor.x, pRasterState->scissor.y, pRasterState->scissor.width, pRasterState->scissor.height);
+	
+	glScissor(
+		pRasterState->scissor.x * pRasterState->viewport.width,
+		(1.0f - pRasterState->scissor.height - pRasterState->scissor.y) * pRasterState->viewport.height,
+		pRasterState->scissor.width * pRasterState->viewport.width,
+		pRasterState->scissor.height * pRasterState->viewport.height
+	);
 
 	if(pState->stateBits.cullMode == RD_CULL_MODE_NONE)
 		glDisable(GL_CULL_FACE);

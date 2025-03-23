@@ -1702,6 +1702,9 @@ void sithRender_RenderLevelGeometry()
 		//	sithRender_SetCameraFog();
 		//}
 
+		rdScissorMode(RD_SCISSOR_ENABLED);
+		rdScissorf(pSector->clipFrustum->x, pSector->clipFrustum->y, pSector->clipFrustum->width, pSector->clipFrustum->height);
+
 		sithSurface* surface = pSector->surfaces;
 		for (int v75 = 0; v75 < pSector->numSurfaces; ++surface, v75++)
 		{
@@ -1839,6 +1842,8 @@ void sithRender_RenderLevelGeometry()
 
 	rdCache_Flush();
 	rdCamera_pCurCamera->pClipFrustum = clipFrustum;
+
+	rdScissorMode(RD_SCISSOR_DISABLED);
 }
 #else
 // MOTS altered
@@ -2884,6 +2889,9 @@ void sithRender_RenderThings()
         thingIter = v1->thingsList;
         v16 = v1->colormap == sithWorld_pCurrentWorld->colormaps;
 
+		rdScissorMode(RD_SCISSOR_ENABLED);
+		rdScissorf(v1->clipFrustum->x, v1->clipFrustum->y, v1->clipFrustum->width, v1->clipFrustum->height);
+
         int safeguard = 0;
         for (; thingIter; thingIter = thingIter->nextThing)
         {
@@ -3182,6 +3190,8 @@ void sithRender_RenderThings()
     }
     rdCache_Flush();
 
+	rdScissorMode(RD_SCISSOR_DISABLED);
+
 #ifdef RENDER_DROID2
 	rdSetDecalMode(jkPlayer_enableDecals ? RD_DECALS_ENABLED : RD_DECALS_DISABLED);
 	rdSortOrder(0);
@@ -3336,6 +3346,9 @@ void sithRender_RenderAlphaSurfaces()
 		sithSurface* surface = sithRender_aSurfaces[i];
 		sithSector* sector = surface->parent_sector;
 
+		rdScissorMode(RD_SCISSOR_ENABLED);
+		rdScissorf(sector->clipFrustum->x, sector->clipFrustum->y, sector->clipFrustum->width, sector->clipFrustum->height);
+
 		//if ((sector->flags & SITH_SECTOR_UNDERWATER) && !(sithCamera_currentCamera->sector->flags & SITH_SECTOR_UNDERWATER))
 		//{
 		//	rdVector4 fog = { sector->tint.x, sector->tint.y, sector->tint.z, 1.0f };
@@ -3364,6 +3377,7 @@ void sithRender_RenderAlphaSurfaces()
 	rdCache_Flush();
 	rdSetBlendEnabled(RD_FALSE);
 	rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
+	rdScissorMode(RD_SCISSOR_DISABLED);
 }
 #else
 void sithRender_RenderAlphaSurfaces()

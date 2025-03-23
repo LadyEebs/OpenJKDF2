@@ -202,6 +202,13 @@ int rdCamera_BuildFOV(rdCamera *camera)
     if ( !canvas )
         return 0;
 
+#ifdef RENDER_DROID2
+	clipFrustum->x = (float)canvas->xStart / (float)(canvas->widthMinusOne + 1);
+	clipFrustum->y = (float)canvas->yStart / (float)(canvas->heightMinusOne + 1);
+	clipFrustum->width = 1.0f;
+	clipFrustum->height = 1.0f;
+#endif
+
     switch (camera->projectType)
     {
         case rdCameraProjectType_Ortho:
@@ -266,6 +273,7 @@ int rdCamera_BuildFOV(rdCamera *camera)
     return 1;
 }
 
+// todo: the input names are kinda fucked (height is width, width is height??)
 int rdCamera_BuildClipFrustum(rdCamera *camera, rdClipFrustum *outClip, signed int height, signed int width, signed int height2, signed int width2)
 {   
     //jk_printf("%u %u %u %u\n", height, width, height2, width2);
@@ -274,6 +282,13 @@ int rdCamera_BuildClipFrustum(rdCamera *camera, rdClipFrustum *outClip, signed i
     rdCanvas* canvas = camera->canvas;
     if ( !canvas )
         return 0;
+
+#ifdef RENDER_DROID2
+	outClip->x = (float)height / (float)(canvas->widthMinusOne + 1);
+	outClip->y = (float)width / (float)(canvas->heightMinusOne + 1);
+	outClip->width = (float)(height2 - height) / (float)(canvas->widthMinusOne + 1);
+	outClip->height = (float)(width2 - width) / (float)(canvas->heightMinusOne + 1);
+#endif
 
 #ifdef QOL_IMPROVEMENTS
     float overdraw = 1.0; // Added: HACK for 1px off on the bottom of the screen

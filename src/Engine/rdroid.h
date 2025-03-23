@@ -119,6 +119,7 @@ void rdGetViewport(rdViewportRect* pOut);
 // scissor
 void rdScissorMode(rdScissorMode_t mode);
 void rdScissor(int x, int y, int width, int height);
+void rdScissorf(float x, float y, float width, float height);
 
 // primitives
 int rdBeginPrimitive(rdPrimitiveType_t type);
