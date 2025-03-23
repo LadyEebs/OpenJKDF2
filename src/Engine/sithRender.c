@@ -778,6 +778,24 @@ void sithRender_RenderOccludersAndDecals()
 	}
 }
 
+int sithRender_AddSurfaceLight(sithSurface* surface)
+{
+	rdMaterial_GetFillColor(&sithRender_aLights[sithRender_numLights].color, surface->surfaceInfo.face.material, surface->parent_sector->colormap, surface->surfaceInfo.face.wallCel, -1);
+
+	float radius = fmax(surface->radius, 0.025f);
+
+	rdVector3 offset;
+	rdVector_Scale3(&offset, &surface->surfaceInfo.face.normal, radius * 0.015);
+
+	rdVector3 center;
+	rdVector_Add3(&center, &surface->center, &offset);
+
+	sithRender_aLights[sithRender_numLights].intensity = radius / rdCamera_pCurCamera->attenuationMin;
+
+	rdCamera_AddLight(rdCamera_pCurCamera, &sithRender_aLights[sithRender_numLights], &center);
+	return ++sithRender_numLights;
+}
+
 #endif
 
 void sithRender_Draw()
@@ -1088,31 +1106,10 @@ void sithRender_Clip(sithSector *sector, rdClipFrustum *frustumArg, float a3)
 		for (int i = 0; i < sector->numSurfaces; ++i)
 		{
 			if (sector->surfaces[i].surfaceInfo.face.material && sector->surfaces[i].surfaceFlags & SITH_SURFACE_EMISSIVE)
-			{
-				rdMaterial_GetFillColor(&sithRender_aLights[lightIdx].color, sector->surfaces[i].surfaceInfo.face.material, sector->colormap, sector->surfaces[i].surfaceInfo.face.wallCel, -1);
-
-				//float radius;
-				//rdVector3 center;
-				//sithSurface_GetCenterRadius(&sector->surfaces[i], &center, &radius);
-
-				float radius = fmax(sector->surfaces[i].radius, 0.025f);
-
-				rdVector3 offset;
-				rdVector_Scale3(&offset, &sector->surfaces[i].surfaceInfo.face.normal, radius * 0.015);
-				
-				rdVector3 center;
-				rdVector_Add3(&center, &sector->surfaces[i].center, &offset);
-
-				sithRender_aLights[lightIdx].intensity = radius / rdCamera_pCurCamera->attenuationMin;
-
-				rdCamera_AddLight(rdCamera_pCurCamera, &sithRender_aLights[lightIdx], &center);
-				lightIdx = ++sithRender_numLights;
-			}
+				lightIdx = sithRender_AddSurfaceLight(&sector->surfaces[i]);
 
 			if (sector->surfaces[i].surfaceFlags & (SITH_SURFACE_HORIZON_SKY | SITH_SURFACE_CEILING_SKY))
-			{
 				++sithRender_numSkyPortals;
-			}
 		}
 #endif
 
@@ -2628,26 +2625,7 @@ void sithRender_UpdateLights(sithSector *sector, float prev, float dist, int dep
 		for (int i = 0; i < sector->numSurfaces; ++i)
 		{
 			if(sector->surfaces[i].surfaceInfo.face.material && sector->surfaces[i].surfaceFlags & SITH_SURFACE_EMISSIVE)
-			{
-				rdMaterial_GetFillColor(&sithRender_aLights[sithRender_numLights].color, sector->surfaces[i].surfaceInfo.face.material, sector->colormap, sector->surfaces[i].surfaceInfo.face.wallCel, -1);
-
-				//float radius;
-				//rdVector3 center;
-				//sithSurface_GetCenterRadius(&sector->surfaces[i], &center, &radius);
-
-				float radius = fmax(sector->surfaces[i].radius, 0.025f);
-
-				rdVector3 offset;
-				rdVector_Scale3(&offset, &sector->surfaces[i].surfaceInfo.face.normal, radius * 0.015);
-				
-				rdVector3 center;
-				rdVector_Add3(&center, &sector->surfaces[i].center, &offset);
-
-				sithRender_aLights[sithRender_numLights].intensity = radius / rdCamera_pCurCamera->attenuationMin;
-
-				rdCamera_AddLight(rdCamera_pCurCamera, &sithRender_aLights[sithRender_numLights], &center);
-				++sithRender_numLights;
-			}
+				sithRender_AddSurfaceLight(&sector->surfaces[i]);
 		}
 #endif
 
