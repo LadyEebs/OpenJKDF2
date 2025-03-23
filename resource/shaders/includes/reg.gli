@@ -111,10 +111,10 @@ vec4 decode_reg(uint reg, uint s_fmt)
 	switch(s_fmt)
 	{
 	default:
-	case REG_UNORM8:	return unpackUnorm4x8(reg);
-	case REG_SNORM8:	return unpackSnorm4x8(reg);
-	case REG_RG16F:		return vec4( unpackHalf2x16(reg), 0, 0);
-	case REG_R32F:		return vec4( uintBitsToFloat(reg) );
+	case REG_U8:	return unpackUnorm4x8(reg);
+	case REG_S8:	return unpackSnorm4x8(reg);
+	case REG_F16:	return vec4( unpackHalf2x16(reg), 0, 0);
+	case REG_F32:	return vec4( uintBitsToFloat(reg) );
 	}
 }
 
@@ -123,10 +123,10 @@ uint encode_reg(vec4 reg, uint s_fmt)
 	switch(s_fmt)
 	{
 	default:
-	case REG_UNORM8:	return packUnorm4x8(reg);
-	case REG_R32F:		return floatBitsToUint(reg.x);
-	case REG_RG16F:		return packHalf2x16(reg.xy);
-	case REG_SNORM8:	return packSnorm4x8(reg);
+	case REG_U8:	return packUnorm4x8(reg);
+	case REG_S8:	return packSnorm4x8(reg);
+	case REG_F16:	return packHalf2x16(reg.xy);
+	case REG_F32:	return floatBitsToUint(reg.x);
 	}
 }
 
@@ -257,18 +257,18 @@ void write_reg(vm_instr s_ir, vec4 reg)
 
 	switch (s_ir.dst.modifier)
 	{
-		case DST_MOD_X2:		reg = sat4(        reg * 2.0);	break;
-		case DST_MOD_X4:		reg = sat4(        reg * 4.0);	break;
-		case DST_MOD_D2:		reg = sat4(        reg * 0.5);	break;
-		case DST_MOD_D4:		reg = sat4(       reg * 0.25);	break;
-		case DST_MOD_POW2:		reg = sat4(        pow2(reg));	break;
-		case DST_MOD_POW4:		reg = sat4(        pow4(reg));	break;
-		case DST_MOD_SQRT:		reg = sat4(        sqrt(reg));	break;
-		case DST_MOD_PACK:		reg = sat4(  reg * 0.5 + 0.5);	break;
-		case DST_MOD_ABS:		reg = sat4(         abs(reg));	break;
-		case DST_MOD_NEG:		reg = sat4(             -reg);	break;
-		case DST_MOD_ROLLOFF:   reg = sat4(reg / (1.0 + reg));	break;
-		default:				reg = sat4(              reg);	break;
+		case DST_MOD_X2:		reg =         reg * 2.0;	break;
+		case DST_MOD_X4:		reg =         reg * 4.0;	break;
+		case DST_MOD_D2:		reg =         reg * 0.5;	break;
+		case DST_MOD_D4:		reg =        reg * 0.25;	break;
+		case DST_MOD_POW2:		reg =         pow2(reg);	break;
+		case DST_MOD_POW4:		reg =         pow4(reg);	break;
+		case DST_MOD_SQRT:		reg =         sqrt(reg);	break;
+		case DST_MOD_PACK:		reg =   reg * 0.5 + 0.5;	break;
+		case DST_MOD_ABS:		reg =          abs(reg);	break;
+		case DST_MOD_NEG:		reg =              -reg;	break;
+		case DST_MOD_ROLLOFF:   reg = reg / (1.0 + reg);	break;
+		default:				reg =               reg;	break;
 	}
 
 	// write it

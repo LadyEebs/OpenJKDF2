@@ -14,27 +14,28 @@
 // arithmetic op codes, must match std3D_ShaderAluOp
 // todo: pass these into the code so they always match the enum
 #define OP_NOP		 0	// no op
-#define OP_ADD		 1	// addition
-#define OP_CMP       2  // compare
-#define OP_CND       3  // condition
-#define OP_DIV       4  // division
-#define OP_DP2       5  // dot2
-#define OP_DP3		 6	// dot3
-#define OP_DP4		 7	// dot4
-#define OP_EXP2      8  // base 2 exponential
-#define OP_LOG2      9  // base 2 logarithm
-#define OP_MAC      10  // multiply accumulate
-#define OP_MAD		11	// multiply add
-#define OP_MAX		12	// maximum
-#define OP_MIN		13	// minimum
-#define OP_MIX		14	// mix/interpolate
-#define OP_MOV		15	// move
-#define OP_MUL		16	// multiply
-#define OP_POW      17  // power
-#define OP_SUB      18  // subtract
-#define OP_TEX		19	// texture sample
-#define OP_TEXDUDV  20  // texture sample with offset
-#define OP_OPM      21  // offset parallax
+#define OP_MOV		 1	// move
+#define OP_RCP		 2	// reciprocal
+#define OP_EXP2		 3	// base 2 exponential
+#define OP_LOG2		 4	// base 2 logarithm
+#define OP_ADD		 5	// addition
+#define OP_SUB		 6	// subtract
+#define OP_MUL		 7	// multiply
+#define OP_DIV		 8	// division
+#define OP_MAX		 9	// maximum
+#define OP_MIN		10	// minimum
+#define OP_MAC		11	// multiply accumulate
+#define OP_DP2		12	// dot2
+#define OP_DP3		13	// dot3
+#define OP_DP4		14	// dot4
+#define OP_POW		15	// power
+#define OP_TEX		16	// texture
+#define OP_OPM		17	// offset parallax
+#define OP_MAD		18	// multiply add
+#define OP_MIX		19	// mix/interpolate
+#define OP_CMP		20	// compare
+#define OP_CND		21	// condition
+#define OP_TEXDUDV	22	// texture with offset
 
 // source types
 #define REG_TYPE_GPR	0	// register
@@ -46,10 +47,10 @@
 #define REG_TYPE_RSV1	6	// reserved for future use
 #define REG_TYPE_SYS	7	// system value
 
-#define REG_UNORM8 0
-#define REG_SNORM8 1
-#define REG_RG16F  2
-#define REG_R32F   3
+#define REG_U8  0
+#define REG_S8  1
+#define REG_F16 2
+#define REG_F32 3
 
 // source negate or invert
 #define SRC_NEG_INV_NONE 0

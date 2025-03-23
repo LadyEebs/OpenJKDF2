@@ -45,7 +45,7 @@ void run_vm()
 			break;
 		
 		case OP_OPM:
-			result.xy = parallax(
+			result.xy = steep_parallax(
 						textures[s_ir.src0.addr],
 						read_texcoord_reg(s_ir.src1.addr),
 						decode_octahedron_uint(vdir)).xy;
@@ -53,27 +53,27 @@ void run_vm()
 			break;
 
 		case OP_MOV:
-			result = sat4( read_src0(s_ir) );
+			result = read_src0(s_ir);
 			break;
 
 		case OP_ADD:
-			result = sat4( read_src0(s_ir) + read_src1(s_ir) );
+			result = read_src0(s_ir) + read_src1(s_ir);
 			break;
 
 		case OP_SUB:
-			result = sat4( read_src0(s_ir) - read_src1(s_ir) );
+			result = read_src0(s_ir) - read_src1(s_ir);
 			break;
 
 		case OP_MAC:
-			result = sat4( read_src0(s_ir) * read_src1(s_ir) + read_dest(s_ir) );
+			result = read_src0(s_ir) * read_src1(s_ir) + read_dest(s_ir);
 			break;
 
 		case OP_MAD:
-			result = sat4( read_src0(s_ir) * read_src1(s_ir) + read_src2(s_ir) );
+			result = read_src0(s_ir) * read_src1(s_ir) + read_src2(s_ir);
 			break;
 
 		case OP_MUL:
-			result = sat4( read_src0(s_ir) * read_src1(s_ir) );
+			result = read_src0(s_ir) * read_src1(s_ir);
 			break;
 			
 		case OP_MAX:
@@ -85,7 +85,7 @@ void run_vm()
 			break;
 
 		case OP_MIX:
-			result = sat4(mix( read_src0(s_ir), read_src1(s_ir), read_src2(s_ir) ));
+			result = mix( read_src0(s_ir), read_src1(s_ir), read_src2(s_ir) );
 			break;
 
 		case OP_CMP:
@@ -131,11 +131,17 @@ void run_vm()
 
 		case OP_DIV:
 			if (s_ir.prec)
-				result = sat4( read_src0(s_ir) / read_src1(s_ir) );
+				result = read_src0(s_ir) / read_src1(s_ir);
 			else
-				result = sat4( read_src0(s_ir) * fastRcpNR0(read_src1(s_ir)) );
+				result = read_src0(s_ir) * fastRcpNR0(read_src1(s_ir));
 			break;
 
+		case OP_RCP:
+			if (s_ir.prec)
+				result = vec4(1.0) / read_src0(s_ir);
+			else
+				result = fastRcpNR0(read_src0(s_ir));
+			break;
 
 		default:
 		case OP_NOP:

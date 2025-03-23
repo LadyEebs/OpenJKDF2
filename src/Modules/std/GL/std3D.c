@@ -898,38 +898,46 @@ uint8_t std3D_parseOutputModifier(const char* token)
 
 typedef enum
 {
+	// 0 operands
 	OP_NOP,		// no op
+
+	// 1 operand
+	OP_MOV,		// move
+	OP_RCP,     // reciprocal
+	OP_EXP2,    // base 2 exponential
+	OP_LOG2,    // base 2 logarithm
+
+	// 2 operands
 	OP_ADD,		// addition
-	OP_CMP,     // compare
-	OP_CND,     // condition
+	OP_SUB,		// subtract
+	OP_MUL,		// multiply
 	OP_DIV,     // division
+	OP_MAX,		// maximum
+	OP_MIN,		// minimum
+	OP_MAC,     // multiply accumulate
 	OP_DP2,		// dot2
 	OP_DP3,		// dot3
 	OP_DP4,		// dot4
-	OP_EXP2,    // base 2 exponential
-	OP_LOG2,    // base 2 logarithm
-	OP_MAC,     // multiply accumulate
-	OP_MAD,		// multiply add
-	OP_MAX,		// maximum
-	OP_MIN,		// minimum
-	OP_MIX,		// mix/interpolate
-	OP_MOV,		// move
-	OP_MUL,		// multiply
 	OP_POW,		// power
-	OP_RCP,     // reciprocal
-	OP_SUB,		// subtract
 	OP_TEX,     // texture
-	OP_TEXDUDV, // texture with offset
 	OP_OPM,     // offset parallax
+
+	// 3 operands
+	OP_MAD,		// multiply add
+	OP_MIX,		// mix/interpolate
+	OP_CMP,     // compare
+	OP_CND,     // condition
+	OP_TEXDUDV, // texture with offset
+
 	MAX_ALU_OPS
 } std3D_ShaderAluOp;
 static_assert(MAX_ALU_OPS <= 32, "std3D_ShaderAluOp must not exceed 32 op codes.");
 
 static const char* std3D_opCodeKeywords[MAX_ALU_OPS] =
 {
-	"nop", "add", "cmp", "cnd", "div", "dp2", "dp3", "dp4",
-	"exp2", "log2", "mac", "mad", "max", "min", "min", "mov",
-	"mul", "pow", "sub", "tex", "texdudv", "opm"
+	"nop", "mov", "rcp", "exp2", "log2", "add", "sub", "mul",
+	"div", "max", "min", "mac", "dp2", "dp3", "dp4", "pow",
+	"tex", "opm", "mad", "mix", "cmp", "cnd", "texdudv"
 };
 
 uint8_t std3D_parseOpCode(const char* name)
@@ -940,6 +948,20 @@ uint8_t std3D_parseOpCode(const char* name)
 			return i;
 	}
 	return OP_NOP;
+}
+
+uint8_t std3D_operandCount(uint8_t opcode)
+{
+	if (opcode < OP_MOV)
+		return 0;
+	else if (opcode < OP_ADD)
+		return 1;
+	else if (opcode < OP_MAD)
+		return 2;
+	else if (opcode < MAX_ALU_OPS)
+		return 3;
+	else
+		return 0;
 }
 
 typedef enum
@@ -1009,19 +1031,19 @@ uint8_t std3D_swizzleMask(uint8_t x, uint8_t y, uint8_t z, uint8_t w)
 
 typedef enum
 {
-	REG_UNORM8,
-	REG_SNORM8,
-	REG_RG16F,
-	REG_R32F
+	REG_U8,
+	REG_S8,
+	REG_F16,
+	REG_F32
 } std3D_ShaderRegEncoding;
 
 uint8_t std3D_parseEncoding(const char* token)
 {
-	if (strnicmp(token, "unorm8", 6) == 0) return REG_UNORM8;
-	if (strnicmp(token, "snorm8", 5) == 0) return REG_SNORM8;
-	if (strnicmp(token, "rg16f", 5) == 0) return REG_RG16F;
-	if (strnicmp(token, "r32f", 4) == 0) return REG_R32F;
-	return REG_UNORM8;
+	if (strnicmp(token, "fmt:u8x4]", 6) == 0) return REG_U8;
+	if (strnicmp(token, "fmt:s8x4]", 5) == 0) return REG_S8;
+	if (strnicmp(token, "fmt:f16x2]", 5) == 0) return REG_F16;
+	if (strnicmp(token, "fmt:f32]", 4) == 0) return REG_F32;
+	return REG_U8;
 }
 
 // source operand layout
@@ -1395,7 +1417,7 @@ void std3D_parseSourceOperandExpression(char* token, std3D_AsmSrcOperand* op)
 		char* modifier = tmp;
 		while (*modifier)
 		{
-			char* next_comma = strchr(modifier, ',');
+			char* next_comma = strchr(modifier, ' ');
 			if (next_comma)
 				*next_comma = '\0';
 
@@ -1502,7 +1524,7 @@ void std3D_parseInstructionModifiers(const char* modifierStart, std3D_AsmInstruc
 	buffer[64 - 1] = '\0';
 
 	// split the modifiers by commas
-	char* token = strtok(buffer, ",");
+	char* token = strtok(buffer, " ");
 	if (!token)
 		return;
 
@@ -1520,8 +1542,22 @@ void std3D_parseInstructionModifiers(const char* modifierStart, std3D_AsmInstruc
 		else
 			inst->dest.reg.fmt = std3D_parseEncoding(token);
 
-		token = strtok(NULL, ",");
+		token = strtok(NULL, " ");
 	}
+}
+
+char* strrpbrk(const char* szString, const char* szChars)
+{
+	const char* p;
+	char* p0, * p1;
+
+	for (p = szChars, p0 = p1 = NULL; p && *p; ++p)
+	{
+		p1 = strrchr(szString, *p);
+		if (p1 && p1 > p0)
+			p0 = p1;
+	}
+	return p0;
 }
 
 int std3D_parseInstruction(char* line, std3D_Instr* result)
@@ -1532,15 +1568,23 @@ int std3D_parseInstruction(char* line, std3D_Instr* result)
 	// kill any comments
 	char* commentPos = strchr(line, '#');
 	if(commentPos)
+	{
+		// if we're not the first character, trim spaces before the comment too
+		if (line != commentPos)
+		{
+			while (isspace(commentPos[-1]))
+				--commentPos;
+		}
 		*commentPos = '\0';
+	}
 
 	// split the line into instruction and modifiers
-	char* modifierPos = strchr(line, ':');
-	if (modifierPos)
-	{
-		std3D_parseInstructionModifiers(modifierPos + 1, &inst);
-		*modifierPos = '\0';
-	}
+	//char* modifierPos = strrpbrk(line, " \t");
+	//if (modifierPos)
+	//{
+	//	std3D_parseInstructionModifiers(modifierPos + 1, &inst);
+	//	*modifierPos = '\0';
+	//}
 
 	// copy the line to a buffer for manipulation
 	char buffer[256];
@@ -1548,7 +1592,7 @@ int std3D_parseInstruction(char* line, std3D_Instr* result)
 	buffer[sizeof(buffer) - 1] = '\0';
 
 	// split the line into tokens
-	char* token = strtok(buffer, " ");
+	char* token = strtok(buffer, " \t");
 	if (!token)
 		return 0;
 
@@ -1563,18 +1607,26 @@ int std3D_parseInstruction(char* line, std3D_Instr* result)
 	std3D_parseDestinationOperand(token, &inst.dest);
 
 	// parse the source operands
-	inst.srcCount = 0;
-	while ((token = strtok(NULL, ",")))
+	inst.srcCount = std3D_operandCount(inst.opcode);
+	for (int i = 0; i < inst.srcCount; ++i)
 	{
-		if (inst.srcCount >= 3)
-			break;
+		token = strtok(NULL, ",");
+		if (!token)
+			break; // todo: error
 
 		while (isspace(token[0]))
-			token++;
+			++token;
 
-		uint32_t idx = inst.srcCount++;
-		inst.src[idx].reg.idx = idx;
-		std3D_parseSourceOperand(token, &inst.src[idx]);
+		inst.src[i].reg.idx = i;
+		std3D_parseSourceOperand(token, &inst.src[i]);
+	}
+
+	// anything else is a modifier for the instruction
+	if(token && token[0] != '\0')
+	{
+		char* modifiers = strpbrk(token, " \t");
+		if (modifiers)
+			std3D_parseInstructionModifiers(modifiers + 1, &inst);
 	}
 
 	return std3D_assembleInstruction(result, &inst);
@@ -1702,10 +1754,10 @@ void std3D_initJkgmShader()
 
 	const char* code =
 		"ps.1.0\n"
-		"opm r1, t2, t0 : rg16f # parallax\n"
-		"texdudv r0, t0, t0, r1[rg16f] # sample diffuse\n"
+		"opm r1, t2, t0 fmt:f16x2 # parallax\n"
+		"texdudv r0, t0, t0, r1[fmt:f16x2] # sample diffuse\n"
 		"mul r0, r0, v0 # multiply diffuse color with diffuse light\n"
-		"tex r1, t1, t0 # sample emissive\n"
+		"texdudv r1, t1, t0, r1[fmt:f16x2] # sample emissive\n"
 		"max r0, r0, r1 # max of diffuse and emissive\n";
 	std3D_assembleShader(&shader, code);
 
