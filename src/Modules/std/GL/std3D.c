@@ -1649,6 +1649,38 @@ int std3D_parseInstruction(char* line, std3D_Instr* result)
 	return std3D_assembleInstruction(result, &inst);
 }
 
+void std3D_parseVar(char* name)
+{
+	char* comma = strchr(name, ',');
+	if (comma)
+	{
+		*comma = '\0';
+		while (isspace(*name))
+			name++;
+
+		char* alias = (char*)stdHashTable_GetKeyVal(std3D_pCurrentAssembler->varHash, name);
+		if (!alias)
+		{
+			std3D_ShaderVariable* var = (std3D_ShaderVariable*)malloc(sizeof(std3D_ShaderVariable));
+			if (!var)
+			{
+				// todo: error
+				return;
+			}
+			stdString_SafeStrCopy(var->name, name, 16);
+
+			char* reg = comma + 1;
+			while (isspace(*reg))
+				reg++;
+			stdString_SafeStrCopy(var->reg, reg, 16);
+
+			var->next = std3D_pCurrentAssembler->firstVar;
+			std3D_pCurrentAssembler->firstVar = var;
+			alias = stdHashTable_SetKeyVal(std3D_pCurrentAssembler->varHash, var->name, var->reg);
+		}
+	}
+}
+
 void std3D_assembleShader(std3D_Shader* shader, const char* code)
 {
 	char tmp[256];
@@ -1680,37 +1712,7 @@ void std3D_assembleShader(std3D_Shader* shader, const char* code)
 			if(ln && ln[0] != '#') // early skip pure comment lines
 			{
 				if (strnicmp(ln, "var", 3) == 0)
-				{
-					char* name = ln + 3;
-					char* comma = strchr(name, ',');
-					if (comma)
-					{
-						*comma = '\0';
-						while (isspace(*name))
-							name++;
-
-						char* alias = (char*)stdHashTable_GetKeyVal(assembler.varHash, name);
-						if(!alias)
-						{
-							std3D_ShaderVariable* var = (std3D_ShaderVariable*)malloc(sizeof(std3D_ShaderVariable));
-							if(!var)
-							{
-								// todo: error
-								continue;
-							}
-							stdString_SafeStrCopy(var->name, name, 16);
-
-							char* reg = comma + 1;
-							while (isspace(*reg))
-								reg++;
-							stdString_SafeStrCopy(var->reg, reg, 16);
-
-							var->next = assembler.firstVar;
-							assembler.firstVar = var;
-							alias = stdHashTable_SetKeyVal(assembler.varHash, var->name, var->reg);
-						}
-					}
-				}
+					std3D_parseVar(ln + 3);
 				else if(std3D_parseInstruction(tmp, &shader->instr[shader->count]))
 					++shader->count;
 			}
