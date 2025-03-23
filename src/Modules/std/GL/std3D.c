@@ -1578,14 +1578,6 @@ int std3D_parseInstruction(char* line, std3D_Instr* result)
 		*commentPos = '\0';
 	}
 
-	// split the line into instruction and modifiers
-	//char* modifierPos = strrpbrk(line, " \t");
-	//if (modifierPos)
-	//{
-	//	std3D_parseInstructionModifiers(modifierPos + 1, &inst);
-	//	*modifierPos = '\0';
-	//}
-
 	// copy the line to a buffer for manipulation
 	char buffer[256];
 	strncpy(buffer, line, sizeof(buffer));
