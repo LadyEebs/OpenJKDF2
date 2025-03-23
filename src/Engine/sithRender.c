@@ -1438,8 +1438,8 @@ void sithRender_DrawSurface(sithSurface* surface)
 	}
 
 	int isWater = 0;
-	if (surface->adjoin && (surface->parent_sector->flags & SITH_SECTOR_UNDERWATER || surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER))
-		isWater = 1;
+//	if (surface->adjoin && (surface->parent_sector->flags & SITH_SECTOR_UNDERWATER || surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER))
+//		isWater = 1;
 	//else if (!(surface->parent_sector->flags & SITH_SECTOR_UNDERWATER) && (surface->surfaceFlags & SITH_SURFACE_WATER || surface->surfaceFlags & SITH_SURFACE_PUDDLE || surface->surfaceFlags & SITH_SURFACE_VERYDEEPWATER))
 		//isWater = 1;
 

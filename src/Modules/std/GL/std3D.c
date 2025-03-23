@@ -6155,29 +6155,30 @@ void std3D_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallSta
 	int listIndex;
 	int shaderID;
 
-	if (blending && isWater)
-	{
-		std3D_AddZListDrawCall(type, &drawCallLists[DRAW_LIST_Z_REFRACTION], pDrawCallState, paVertices, numVertices);
-		
-		// water surfaces are refractive and split the render into 2
-		// in order for this to work correctly, they MUST write Z so that the content above them clips correctly
-		if(pDrawCallState->stateBits.zMethod == RD_ZBUFFER_NOREAD_NOWRITE)
-			pDrawCallState->stateBits.zMethod = RD_ZBUFFER_NOREAD_WRITE;
-		else if (pDrawCallState->stateBits.zMethod == RD_ZBUFFER_READ_NOWRITE)
-			pDrawCallState->stateBits.zMethod = RD_ZBUFFER_READ_WRITE;
-
-		// since the surface will be refractive/read the refraction buffer for composite, we can disable actual alpha blending
-		pDrawCallState->stateBits.blend = 0;
-		pDrawCallState->stateBits.srdBlend = 1;
-		pDrawCallState->stateBits.dstBlend = 0;
-
-		// use simple lighting on the refractive surfaces for now
-		pDrawCallState->stateBits.lightMode = RD_LIGHTMODE_DIFFUSE;
-
-		shaderID = SHADER_COLOR_REFRACTION;
-		listIndex = DRAW_LIST_COLOR_REFRACTION;
-	}
-	else if (pDrawCallState->rasterState.colorMask == 0) // no color write
+	//if (blending && isWater)
+	//{
+	//	std3D_AddZListDrawCall(type, &drawCallLists[DRAW_LIST_Z_REFRACTION], pDrawCallState, paVertices, numVertices);
+	//	
+	//	// water surfaces are refractive and split the render into 2
+	//	// in order for this to work correctly, they MUST write Z so that the content above them clips correctly
+	//	if(pDrawCallState->stateBits.zMethod == RD_ZBUFFER_NOREAD_NOWRITE)
+	//		pDrawCallState->stateBits.zMethod = RD_ZBUFFER_NOREAD_WRITE;
+	//	else if (pDrawCallState->stateBits.zMethod == RD_ZBUFFER_READ_NOWRITE)
+	//		pDrawCallState->stateBits.zMethod = RD_ZBUFFER_READ_WRITE;
+	//
+	//	// since the surface will be refractive/read the refraction buffer for composite, we can disable actual alpha blending
+	//	pDrawCallState->stateBits.blend = 0;
+	//	pDrawCallState->stateBits.srdBlend = 1;
+	//	pDrawCallState->stateBits.dstBlend = 0;
+	//
+	//	// use simple lighting on the refractive surfaces for now
+	//	pDrawCallState->stateBits.lightMode = RD_LIGHTMODE_DIFFUSE;
+	//
+	//	shaderID = SHADER_COLOR_REFRACTION;
+	//	listIndex = DRAW_LIST_COLOR_REFRACTION;
+	//}
+	//else
+	if (pDrawCallState->rasterState.colorMask == 0) // no color write
 	{
 		pDrawCallState->stateBits.fogMode = 0;
 		pDrawCallState->stateBits.blend = 0;
