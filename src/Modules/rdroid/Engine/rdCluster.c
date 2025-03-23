@@ -366,12 +366,8 @@ int rdCluster_AddLight(rdLight* light, rdVector3* position, float intensity)
 	clusterLight->cosAngleY = light->cosAngleY;
 	clusterLight->lux = light->lux;
 #endif
-
-	float radius = (light->type > 0) ? rdCamera_pCurCamera->attenuationMin : light->falloffMin;
-
-	clusterLight->radiusSqr = radius * radius;
-	clusterLight->invRadius = 1.0f / radius;
-
+	clusterLight->radiusSqr = light->falloffMin * light->falloffMin;
+	clusterLight->invFalloff = 1.0f / light->falloffMin;
 	clusterLight->falloffMin = light->falloffMin;
 	clusterLight->falloffMax = light->falloffMax;
 
