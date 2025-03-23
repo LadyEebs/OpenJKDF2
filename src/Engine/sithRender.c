@@ -798,6 +798,7 @@ int sithRender_AddSurfaceLight(sithSurface* surface)
 
 #endif
 
+// todo: in order to do refractions better, we need to split the frame into before and after water surfaces
 void sithRender_Draw()
 {
     sithSector *v2; // edi
