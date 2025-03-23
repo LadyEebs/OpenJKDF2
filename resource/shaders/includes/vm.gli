@@ -48,7 +48,7 @@ void run_vm()
 			result.xy = parallax(
 						textures[s_ir.src0.addr],
 						read_texcoord_reg(s_ir.src1.addr),
-						decodeHemiUnitVector(vdir)).xy;
+						decode_octahedron_uint(vdir)).xy;
 			result.zw = vec2(0.0);
 			break;
 

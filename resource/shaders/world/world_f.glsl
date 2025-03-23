@@ -304,8 +304,8 @@ layout(location = 1) out vec4 fragGlow;
 void main(void)
 {
 	vec2 uv     = fetch_vtx_uv(0);
-	mat3 tbn    = construct_tbn(uv, fetch_vtx_pos(), fetch_vtx_normal());
-	vdir        = encodeHemiUnitVector(fetch_vtx_dir() * tbn);
+	mat3 tbn    = construct_tbn(uv, fetch_vtx_pos(), normalize(fetch_vtx_normal()));
+	vdir        = encode_octahedron_uint(fetch_vtx_dir() * tbn);
 
 	// pack interpolated vertex data to reduce register pressure
 #ifndef FRAG_ATTR_FETCH
