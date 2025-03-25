@@ -87,6 +87,91 @@ vec3 decode_octahedron_uint(uint p)
     return normalize(n);
 }
 
+// https://ubm-twvideo01.s3.amazonaws.com/o1/vault/gdc2015/presentations/McAuley_Stephen_Rendering_the_World.pdf
+vec4 tbnToQuat(mat3 m)
+{
+	vec3 tangent  = m[0];
+	vec3 binormal = m[1];
+	vec3 normal   = m[2];
+	
+	vec4 quat;
+	quat.x = normal.y - binormal.z;
+	quat.y = tangent.z - normal.x;
+	quat.z = binormal.x - tangent.y;
+	quat.w = 1.0 + tangent.x + binormal.y + normal.z;
+	
+	return normalize(quat);
+}
+
+mat3 quatToTbn(vec4 quat)
+{
+	mat3 m;
+	m[0] = vec3(1,0,0)
+		+ vec3(-2, 2, 2) * quat.y * quat.yxw
+		+ vec3(-2, -2, 2) * quat.z * quat.zwx;
+	
+	m[1] = vec3(0,1,0)
+		+ vec3(2, -2, 2) * quat.z * quat.wzy
+		+ vec3(2, -2, -2) * quat.x * quat.yxw;
+		
+	m[2] = vec3(0, 0, 1)
+		+ vec3(2, 2, -2) * quat.x * quat.zwx
+		+ vec3(-2,2,-2) * quat.y * quat.wzy;
+
+	return m;
+}
+
+uint findBiggestComponent(vec4 q)
+{
+    uint xyzIndex = uint(cubeFaceIndex(q.xyz) * 0.5);
+    uint wIndex = 3;
+
+    bool wBiggest = abs(q.w) > max3(abs(q.x), abs(q.y), abs(q.z));
+
+    return wBiggest ? wIndex : xyzIndex;
+}
+
+vec4 packQuat(vec4 quat)
+{
+    uint index = findBiggestComponent(quat);
+
+    if (index == 0u) quat = quat.yzwx;
+    if (index == 1u) quat = quat.xzwy;
+    if (index == 2u) quat = quat.xywz;
+
+    vec4 packedQuat;
+    packedQuat.xyz = quat.xyz * sign(quat.w) * sqrt(0.5) + 0.5;
+    packedQuat.w = float(index) / 3.0;
+
+    return packedQuat;
+}
+
+vec4 unpackQuat(vec4 packedQuat)
+{
+    uint index = uint(packedQuat.w * 3.0);
+
+    vec4 quat;
+    quat.xyz = packedQuat.xyz * sqrt(2.0) - (inversesqrt(2.0));
+    quat.w = sqrt(1.0 - sat1(dot(quat.xyz, quat.xyz)));
+
+    if (index == 0u) quat = quat.wxyz;
+    if (index == 1u) quat = quat.xwyz;
+    if (index == 2u) quat = quat.xywz;
+
+    return quat;
+}
+
+uint encodeQuat(vec4 quat)
+{
+	return packUnorm4x10_2(packQuat(quat));	
+}
+
+vec4 decodeQuat(uint q)
+{
+	return unpackQuat(unpackUnorm4x10_2(q));
+}
+
+
 float fastSqrtInvAroundOne(float x)
 {
 	const float a0 =  15.0f / 8.0f;
