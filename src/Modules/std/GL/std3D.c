@@ -3693,7 +3693,7 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
     //glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, numMips-1);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, numMips-1);
 
 	if (jkPlayer_enableTextureFilter && texture->is_16bit)
 	{
@@ -3746,18 +3746,30 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 			width = (*vbufIter)->format.width;
 			height = (*vbufIter)->format.height;
 
-			if (!is_alpha_tex)
+			if ((*vbufIter)->format.format.bpp == 32)
 			{
-				glTexImage2D(GL_TEXTURE_2D, mip, GL_RGB565, width, height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, image_8bpp);
+				glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+				if (!is_alpha_tex)
+					glTexImage2D(GL_TEXTURE_2D, mip, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image_8bpp);
+				else
+					glTexImage2D(GL_TEXTURE_2D, mip, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_8bpp);
 			}
 			else
 			{
-				if ((*vbufIter)->format.format.g_bits == 4) // todo: make this an alpha check or something
-					glTexImage2D(GL_TEXTURE_2D, mip, GL_RGBA4, width, height, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, image_8bpp);
+				glPixelStorei(GL_UNPACK_ALIGNMENT, 2);
+				if (!is_alpha_tex)
+				{
+					glTexImage2D(GL_TEXTURE_2D, mip, GL_RGB565, width, height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, image_8bpp);
+				}
 				else
 				{
-					glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-					glTexImage2D(GL_TEXTURE_2D, mip, GL_RGB5_A1, width, height, 0, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, image_8bpp);
+					if ((*vbufIter)->format.format.g_bits == 4) // todo: make this an alpha check or something
+						glTexImage2D(GL_TEXTURE_2D, mip, GL_RGBA4, width, height, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, image_8bpp);
+					else
+					{
+						glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+						glTexImage2D(GL_TEXTURE_2D, mip, GL_RGB5_A1, width, height, 0, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, image_8bpp);
+					}
 				}
 			}
 		}
