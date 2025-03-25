@@ -88,11 +88,8 @@ vec4 load_tex_light(in sampler2D s, in vec2 tc, in float light, float lodbias)
 }
 
 
-vec2 steep_parallax(in sampler2D s, in vec2 uv, vec3 view_dir)
+vec2 steep_parallax(in sampler2D s, in vec2 uv, vec3 view_dir, float depth)
 {
-	if(abs(displacement_factor) <= 1e-4)
-		return vec2(0.0);// uv.xy;
-
 	const float min_layers = float(32.0);
     const float max_layers = float(128.0);
     float num_layers = mix(max_layers, min_layers, abs(view_dir.z));
@@ -100,7 +97,7 @@ vec2 steep_parallax(in sampler2D s, in vec2 uv, vec3 view_dir)
 
     float layer_depth = inv_num_layers;
     float current_layer_depth = float(0.0);
-    vec2 shift_per_layer = (view_dir.xy / (-view_dir.z)) * displacement_factor;
+    vec2 shift_per_layer = (view_dir.xy / (-view_dir.z)) * depth;
 	vec2 d_tc = shift_per_layer * inv_num_layers;
 
     vec2 current_tc = uv.xy;
@@ -124,9 +121,9 @@ vec2 steep_parallax(in sampler2D s, in vec2 uv, vec3 view_dir)
     return adj_tc - uv;
 }
 
-vec2 parallax(in sampler2D s, in vec2 uv, vec3 view_dir)
+vec2 parallax(in sampler2D s, in vec2 uv, vec3 view_dir, float depth)
 {
-	float height = textureLod(s, uv.xy, 0).r * displacement_factor;
+	float height = textureLod(s, uv.xy, 0).r * depth;
 	return view_dir.xy * height;// + uv.xy;
 }
 

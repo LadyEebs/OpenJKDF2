@@ -141,7 +141,7 @@ void rdResetLightingState()
 
 void rdResetShaderState()
 {
-	rdroid_shaderState.shaderId = 0;
+	rdroid_shaderState.shader = NULL;
 }
 #endif
 
@@ -1062,9 +1062,9 @@ void rdColorMask(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 }
 
 // todo: actually get IDs from renderer..
-void rdSetShader(int shaderId)
+void rdSetShader(rdShader* shader)
 {
-	rdroid_shaderState.shaderId = shaderId;
+	rdroid_shaderState.shader = shader;
 }
 
 // Lighting

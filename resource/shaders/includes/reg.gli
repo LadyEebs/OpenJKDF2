@@ -17,10 +17,8 @@
 // todo: this should be permutations
 #ifdef REFRACTION
 #define REG_COUNT    6
-#define REG_FP_COUNT 4
 #else
-#define REG_COUNT    2
-#define REG_FP_COUNT 1
+#define REG_COUNT    3
 #endif
 
 // registers
@@ -28,12 +26,12 @@ uint  vdir;         //    16:16 - tangent space view dir
 uint  r[REG_COUNT]; // flexible - temp registers (rgba8, rg16f, r32f)
 
 #if !defined(UNLIT) || !defined(FRAG_ATTR_FETCH)
-uint  v[2]; // 8:8:8:8 - color registers (tone mapped)
+uint  v[COLOR_SETS]; // 8:8:8:8 - color registers (tone mapped)
 #endif
 
 #ifndef FRAG_ATTR_FETCH
 uvec2 vpos;			   // 16:16:16:16 - view space position + depth
-vec2 tr[REG_FP_COUNT]; // 32:32 - texture coordinate registers
+vec2 tr[UV_SETS]; // 32:32 - texture coordinate registers
 #endif
 
 vec2 packTexcoordRegister(vec2 unpackedInput)
@@ -130,26 +128,17 @@ uint encode_reg(vec4 reg, uint s_fmt)
 	}
 }
 
-uint encode_reg_abs(vec4 reg, uint s_fmt)
-{
-	switch(s_fmt)
-	{
-	default:
-	case REG_U8:	return packUnorm4x8(abs(reg));
-	case REG_S8:	return packSnorm4x8(abs(reg));
-	case REG_F16:	return packHalf2x16(abs(reg.xy));
-	case REG_F32:	return floatBitsToUint(abs(reg.x));
-	}
-}
-
 vec4 read_system_value(uint s_addr)
 {
 	switch(s_addr)
 	{
 	default:							return vec4(0.0);
 	case SHADER_SYS_TIME:				return vec4(timeSeconds);
+	case SHADER_SYS_XY:					return vec4(gl_FragCoord.xy, 0, 0);
 	case SHADER_SYS_Z:					return vec4(read_z());
 	case SHADER_SYS_POS:				return vec4(read_vpos(), 0.0);
+	case SHADER_SYS_UV:					return vec4(gl_FragCoord.xy / iResolution.xy, 0, 0);
+	case SHADER_SYS_AR:					return vec4(gl_FragCoord.y / gl_FragCoord.x, 1.0, 0, 0);
 		// material registers
 	case SHADER_SYS_MAT_FILL:			return fillColor;
 	case SHADER_SYS_MAT_ALBEDO:			return albedoFactor;
@@ -168,7 +157,7 @@ vec4 fetch_reg(vm_src s_operand, uint s_imm)
 	case REG_TYPE_GPR:	 return decode_reg(r[s_operand.addr], s_operand.fmt);
 	case REG_TYPE_CLR:	 return read_color_reg(s_operand.addr);
 	case REG_TYPE_CON:	 return shaderConstants[s_operand.addr];
-	case REG_TYPE_TEX:	 return tr[s_operand.addr].xyxy;
+	case REG_TYPE_TEX:	 return read_texcoord_reg(s_operand.addr).xyxy;
 	case REG_TYPE_IMM8:	 return vec4(unpackSnorm4x8(s_operand.addr).x);
 	case REG_TYPE_IMM16: return vec4(unpackHalf2x16(s_imm >> (s_operand.idx << 4)).x);
 	case REG_TYPE_SYS:   return read_system_value(s_operand.addr);
@@ -185,6 +174,7 @@ vec4 apply_scale_bias(vec4 reg, uint s_scalebias)
 	case SRC_SCALE_BIAS_D2:		return reg * 0.5;
 	case SRC_SCALE_BIAS_D4:		return reg * 0.25;
 	case SRC_SCALE_BIAS_BIAS:	return reg + -0.5;
+	case SRC_SCALE_BIAS_EXPAND:	return reg * 2.0 - 1.0;
 	}
 }
 
@@ -295,10 +285,14 @@ void write_reg(vm_instr s_ir, vec4 reg)
 	else
 		reg = apply_dst_multiplier(reg, s_ir.dst.multiplier);
 
-	// encode + abs
+	// encode + abs + clamp
 	uint p;
-	if(s_ir.dst.absolute)
-		p = encode_reg_abs(reg, s_ir.dst.fmt);
+	if(s_ir.dst.absolute == 1 && s_ir.sat == 1)
+		p = encode_reg(sat4(abs(reg)), s_ir.dst.fmt);
+	else if (s_ir.dst.absolute == 1)
+		p = encode_reg(abs(reg), s_ir.dst.fmt);
+	else if (s_ir.sat == 1)
+		p = encode_reg(sat4(reg), s_ir.dst.fmt);
 	else
 		p = encode_reg(reg, s_ir.dst.fmt);
 

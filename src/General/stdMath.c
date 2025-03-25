@@ -1024,3 +1024,8 @@ float stdMath_HalfToFloat(uint16_t value)
 	uint32_t result = ((value & 0x8000) << 16) | ((exponent + 112) << 23) | (mantissa << 13);
 	return *(float*)&result;
 }
+
+uint32_t stdMath_PackHalf2x16(float x, float y)
+{
+	return ((uint32_t)stdMath_FloatToHalf(y) << 16) | stdMath_FloatToHalf(x);
+}

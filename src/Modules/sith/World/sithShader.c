@@ -45,16 +45,17 @@ rdShader* sithShader_LoadEntry(char* fname)
 	rdShader* result = (rdShader*)stdHashTable_GetKeyVal(sithShader_hashmap, fname);
 	if (!result)
 	{
-		if (world->numShadersLoaded < world->numParticles)
+		if (world->numShadersLoaded < world->numShaders)
 		{
 			rdShader* shader = &world->shaders[world->numShadersLoaded];
+			rdShader_NewEntry(shader, fname);
 			
 			char path[128]; // [esp+Ch] [ebp-80h] BYREF
-			_sprintf(path, "%s%c%s", "misc\\shader", '\\', fname);
+			_sprintf(path, "%s%s", "shader\\", fname);
 			if (rdShader_LoadEntry(path, shader))
 			{
 				stdHashTable_SetKeyVal(sithShader_hashmap, shader->name, shader);
-				++world->numParticlesLoaded;
+				++world->numShadersLoaded;
 				result = shader;
 			}
 		}

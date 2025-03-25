@@ -1646,6 +1646,20 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 
 	rdBindMaterial(face->material, face->wallCel);
 
+	extern int jkPlayer_bEnableJkgm;
+	extern rdShader* sithRender_jkgmShader;
+	extern rdShader* sithRender_defaultShader;
+	if (jkPlayer_bEnableJkgm
+			 && face->material->textures
+			 && face->material->textures->has_jkgm_override)
+	{
+		rdSetShader(sithRender_jkgmShader);
+	}
+	else
+	{
+		rdSetShader(sithRender_defaultShader);
+	}
+
 	rdVector3 ambientLight;
 #ifdef RGB_AMBIENT
 	if (rdroid_curRenderOptions & RD_USE_AMBIENT_LIGHT)

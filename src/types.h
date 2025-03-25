@@ -543,6 +543,35 @@ typedef struct rdClusterDecal
 	float      padding1;
 } rdClusterDecal;
 
+// shader
+typedef struct rdShaderInstr
+{
+	uint32_t op_dst, src0, src1, src2;
+} rdShaderInstr;
+
+typedef struct rdShaderByteCode
+{
+	float         version;
+	uint32_t      padding0, padding1;
+	uint32_t      instructionCount;
+	rdShaderInstr instructions[32];
+} rdShaderByteCode;
+
+typedef struct rdShaderConstants
+{
+	rdVector4 constants[8];
+} rdShaderConstants;
+
+typedef struct rdShader
+{
+	int               id;
+	int               shaderid;
+	int               hasReadback;
+	char              name[32];
+	rdShaderConstants constants;
+	rdShaderByteCode  byteCode;
+} rdShader;
+
 #ifdef RGB_AMBIENT
 // ambient cube
 typedef struct rdAmbient
@@ -1024,8 +1053,7 @@ typedef struct std3D_LightingState // todo: pack this
 
 typedef struct std3D_ShaderState
 {
-	// temp
-	uint32_t shaderId;
+	rdShader* shader;
 } std3D_ShaderState;
 
 typedef struct std3D_TransformState

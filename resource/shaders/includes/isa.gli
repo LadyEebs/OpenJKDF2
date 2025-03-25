@@ -11,33 +11,34 @@
 
 #ifdef FRAGMENT_SHADER
 
-// arithmetic op codes, must match std3D_ShaderAluOp
-// todo: pass these into the code so they always match the enum
+// op codes, must match rdShader_OpCodes
 #define OP_NOP		 0	// no op
-#define OP_MOV		 1	// move
-#define OP_RCP		 2	// reciprocal
-#define OP_EXP2		 3	// base 2 exponential
-#define OP_LOG2		 4	// base 2 logarithm
-#define OP_SQRT      5  // square root
-#define OP_ADD		 6	// addition
-#define OP_SUB		 7	// subtract
-#define OP_MUL		 8	// multiply
-#define OP_DIV		 9	// division
-#define OP_MAX		10	// maximum
-#define OP_MIN		11	// minimum
+#define OP_ADD		 1	// addition
+#define OP_CMP		 2	// compare
+#define OP_CND		 3	// condition
+#define OP_DIV		 4	// division
+#define OP_DP2		 5	// dot2
+#define OP_DP3		 6	// dot3
+#define OP_DP4		 7	// dot4
+#define OP_EXP2		 8	// base 2 exponential
+#define OP_FBR       9  // framebuffer read
+#define OP_FRC		10	// fractional
+#define OP_LOG2		11	// base 2 logarithm
 #define OP_MAC		12	// multiply accumulate
-#define OP_DP2		13	// dot2
-#define OP_DP3		14	// dot3
-#define OP_DP4		15	// dot4
-#define OP_POW		16	// power
-#define OP_TEX		17	// texture
-#define OP_OPM		18	// offset parallax
-#define OP_POM		19	// steep parallax
-#define OP_MAD		20	// multiply add
-#define OP_MIX		21	// mix/interpolate
-#define OP_CMP		22	// compare
-#define OP_CND		23	// condition
-#define OP_TEXDUDV	24	// texture with offset
+#define OP_MAD		13	// multiply add
+#define OP_MAX		14	// maximum
+#define OP_MIN		15	// minimum
+#define OP_MIX		16	// mix/interpolate
+#define OP_MOV		17	// move
+#define OP_MUL		18	// multiply
+#define OP_OPM		19	// offset parallax
+#define OP_POM      20  // steep parallax
+#define OP_POW		21	// power
+#define OP_RCP		22	// reciprocal
+#define OP_SQRT		23	// square root
+#define OP_SUB		24	// subtract
+#define OP_TEX		25	// texture
+#define OP_TEXDUDV	26	// texture with offset
 
 // source types
 #define REG_TYPE_GPR	0	// register
@@ -46,8 +47,7 @@
 #define REG_TYPE_TEX	3	// texcoord
 #define REG_TYPE_IMM8	4	// 8 bit immediate value
 #define REG_TYPE_IMM16	5	// 16 bit immediate value
-#define REG_TYPE_RSV1	6	// reserved for future use
-#define REG_TYPE_SYS	7	// system value
+#define REG_TYPE_SYS	6	// system value
 
 #define REG_U8  0
 #define REG_S8  1
@@ -60,12 +60,13 @@
 #define SRC_NEG_INV_INV  2	// invert: 1 - x
 
 // source scale and bias
-#define SRC_SCALE_BIAS_NONE	0
-#define SRC_SCALE_BIAS_2X	1	// x * 2
-#define SRC_SCALE_BIAS_4X	2	// x * 4
-#define SRC_SCALE_BIAS_D2	3	// x / 2
-#define SRC_SCALE_BIAS_D4	4	// x / 4
-#define SRC_SCALE_BIAS_BIAS	5	// x - 0.5
+#define SRC_SCALE_BIAS_NONE   0	
+#define SRC_SCALE_BIAS_2X	  1	// x * 2
+#define SRC_SCALE_BIAS_4X	  2	// x * 4
+#define SRC_SCALE_BIAS_D2	  3	// x / 2
+#define SRC_SCALE_BIAS_D4	  4	// x / 4
+#define SRC_SCALE_BIAS_BIAS   5	// x - 0.5
+#define SRC_SCALE_BIAS_EXPAND 6	// x * 2 - 1
 
 // source reduction operations
 #define SRC_RED_NONE 0
@@ -84,15 +85,18 @@
 
 // system register ids
 #define SHADER_SYS_TIME 0
-#define SHADER_SYS_POS  1
-#define SHADER_SYS_Z 2
+#define SHADER_SYS_XY   1
+#define SHADER_SYS_Z    2
+#define SHADER_SYS_POS  3
+#define SHADER_SYS_UV   4
+#define SHADER_SYS_AR   5
 // material registers
-#define SHADER_SYS_MAT_FILL         3
-#define SHADER_SYS_MAT_ALBEDO       4
-#define SHADER_SYS_MAT_EMISSIVE     5
-#define SHADER_SYS_MAT_SPECULAR     6
-#define SHADER_SYS_MAT_ROUGHNESS    7
-#define SHADER_SYS_MAT_DISPLACEMENT 8
+#define SHADER_SYS_MAT_FILL         6
+#define SHADER_SYS_MAT_ALBEDO       7
+#define SHADER_SYS_MAT_EMISSIVE     8
+#define SHADER_SYS_MAT_SPECULAR     9
+#define SHADER_SYS_MAT_ROUGHNESS    10
+#define SHADER_SYS_MAT_DISPLACEMENT 11
 
 struct vm_dst
 {
@@ -123,6 +127,7 @@ struct vm_instr
 {
 	uint   opcode;
 	uint   prec;
+	uint   sat;
 	uint   imm;
 	vm_dst dst;
 	vm_src src0;
@@ -150,11 +155,16 @@ void s_decode_precision(out uint s_precision, uint s_ir)
 	s_precision = (s_ir >> 5) & 0x1;
 }
 
+void s_decode_sat(out uint s_sat, uint s_ir)
+{
+	s_sat = (s_ir >>  9) &  0x1;
+}
+
 void s_decode_dst_operand(out vm_dst s_dst, uint s_ir)
 {
 	s_dst.fmt        = (s_ir >>  6) &  0x3;
 	s_dst.negate     = (s_ir >>  8) &  0x1;
-	s_dst.addr       = (s_ir >>  9) & 0x7F;
+	s_dst.addr       = (s_ir >> 10) & 0x3F;
 	s_dst.swizzle    = (s_ir >> 16) & 0xFF;
 	s_dst.multiplier = (s_ir >> 24) &  0x7;
 	s_dst.absolute   = (s_ir >> 27) &  0x1;
@@ -181,6 +191,7 @@ void s_decode_instr(out vm_instr s_ir_out, uvec4 s_ir)
 
 	s_decode_opcode     (s_ir_out.opcode,    s_ir.x);
 	s_decode_precision  (s_ir_out.prec,      s_ir.x);
+	s_decode_sat        (s_ir_out.sat,       s_ir.x);
 	s_decode_dst_operand(s_ir_out.dst,       s_ir.x);
 	s_decode_src_operand(s_ir_out.src0,      s_ir.y);
 	s_decode_src_operand(s_ir_out.src1,      s_ir.z);

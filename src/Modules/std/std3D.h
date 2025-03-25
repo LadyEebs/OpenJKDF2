@@ -70,6 +70,7 @@ int  std3D_IsReady();
 
 int  std3D_GenShader();
 void std3D_DeleteShader(int id);
+void std3D_UploadShader(rdShader* shader);
 
 void std3D_FlushPostFX();
 

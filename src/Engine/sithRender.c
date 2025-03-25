@@ -42,6 +42,10 @@
 #include "World/sithDecal.h"
 #endif
 
+#ifdef RENDER_DROID2
+#include "Modules/sith/World/sithShader.h"
+#endif
+
 #ifdef QOL_IMPROVEMENTS
 #include "General/stdFont.h"
 
@@ -82,6 +86,10 @@ sithThing* sithRender_alphaDrawThing = NULL; // list of things to render after w
 #ifdef RENDER_DROID2
 rdAmbientFlags_t sithRender_aoFlags = 0;
 uint32_t sithRender_numStaticLights = 0;
+
+rdShader* sithRender_defaultShader = NULL;
+rdShader* sithRender_jkgmShader = NULL;
+rdShader* sithRender_waterShader = NULL;
 #endif
 
 #ifdef RGB_THING_LIGHTS
@@ -460,6 +468,7 @@ int sithRender_Startup()
     sithRender_weaponRenderHandle = 0;
 #endif
 
+
     return 1;
 }
 
@@ -485,6 +494,12 @@ int sithRender_Open()
     rdColormap_SetIdentity(sithWorld_pCurrentWorld->colormaps);
 
     sithRenderSky_Open(sithWorld_pCurrentWorld->horizontalPixelsPerRev, sithWorld_pCurrentWorld->horizontalDistance, sithWorld_pCurrentWorld->ceilingSky);
+
+#ifdef RENDER_DROID2
+	sithRender_defaultShader = sithShader_LoadEntry("default.asm");
+	sithRender_jkgmShader = sithShader_LoadEntry("jkgm.asm");
+	sithRender_waterShader = sithShader_LoadEntry("water.asm");
+#endif
 
     sithRender_lightingIRMode = 0; 
     sithRender_needsAspectReset = 0;
@@ -531,6 +546,12 @@ void sithRender_Close()
 	rdModel3_Free(ambientDebugThing_model3);
 	rdThing_Free(ambientDebugThing);
 #endif
+#endif
+
+#ifdef RENDER_DROID2
+	sithRender_defaultShader = 0;
+	sithRender_jkgmShader = 0;
+	sithRender_waterShader = 0;
 #endif
 
     sithRenderSky_Close();
@@ -875,7 +896,7 @@ void sithRender_Draw()
 	sithRender_numStaticLights = 0;
 
 	rdSetGlowIntensity(0.4f);
-	//rdSetOverbright(1.5f);
+	rdSetOverbright(1.5f);
 
 	_memset(sithWorld_pCurrentWorld->lightBuckets, 0, sizeof(uint64_t)*sithWorld_pCurrentWorld->numLightBuckets);
 
@@ -1443,17 +1464,17 @@ void sithRender_DrawSurface(sithSurface* surface)
 
 	if (isWater)
 	{
-		rdSetShader(1);
+		rdSetShader(sithRender_waterShader);
 	}
 	else if (jkPlayer_bEnableJkgm
 		&& surface->surfaceInfo.face.material->textures
 		&& surface->surfaceInfo.face.material->textures->has_jkgm_override)
 	{
-		rdSetShader(2);
+		rdSetShader(sithRender_jkgmShader);
 	}
 	else
 	{
-		rdSetShader(0);
+		rdSetShader(sithRender_defaultShader);
 	}		
 
 	int wallCel = surface->surfaceInfo.face.wallCel;

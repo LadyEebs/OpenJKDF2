@@ -114,6 +114,8 @@ float stdMath_Cos(float angle);
 uint16_t stdMath_FloatToHalf(float val);
 float stdMath_HalfToFloat(uint16_t value);
 
+uint32_t stdMath_PackHalf2x16(float x, float y);
+
 extern const float aSinTable[4096];
 extern const float aTanTable[4096];
 

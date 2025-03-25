@@ -9,6 +9,7 @@
 #include "textures.gli"
 #include "decals.gli"
 #include "occluders.gli"
+#include "framebuffer.gli"
 #include "isa.gli"
 #include "reg.gli"
 #include "attr.gli"
@@ -27,41 +28,17 @@ void run_vm()
 
 		vec4 result;
 		switch(s_ir.opcode)
-		{					
-		case OP_TEX:
-			result = load_tex(
-				textures[s_ir.src0.addr],
-				read_texcoord_reg(s_ir.src1.addr),
-				fetch_vtx_lodbias()
-			);
-			break;
-
-		case OP_TEXDUDV:
-			result = load_tex(
-				textures[s_ir.src0.addr],
-				read_texcoord_reg(s_ir.src1.addr) + read_src2(s_ir).xy,
-				fetch_vtx_lodbias()
-			);
-			break;
-		
-		case OP_OPM:
-			result.xy = parallax(
-						textures[s_ir.src0.addr],
-						read_texcoord_reg(s_ir.src1.addr),
-						decode_octahedron_uint(vdir)).xy;
-			result.zw = vec2(0.0);
-			break;
-
-		case OP_POM:
-			result.xy = steep_parallax(
-						textures[s_ir.src0.addr],
-						read_texcoord_reg(s_ir.src1.addr),
-						decode_octahedron_uint(vdir)).xy;
-			result.zw = vec2(0.0);
-			break;
+		{			
+		default:
+		case OP_NOP:
+			return;
 
 		case OP_MOV:
 			result = read_src0(s_ir);
+			break;
+
+		case OP_FRC:
+			result = fract(read_src0(s_ir));
 			break;
 
 		case OP_ADD:
@@ -70,14 +47,6 @@ void run_vm()
 
 		case OP_SUB:
 			result = read_src0(s_ir) - read_src1(s_ir);
-			break;
-
-		case OP_MAC:
-			result = read_src0(s_ir) * read_src1(s_ir) + read_dest(s_ir);
-			break;
-
-		case OP_MAD:
-			result = read_src0(s_ir) * read_src1(s_ir) + read_src2(s_ir);
 			break;
 
 		case OP_MUL:
@@ -91,6 +60,26 @@ void run_vm()
 		case OP_MIN:
 			result = min( read_src0(s_ir), read_src1(s_ir) );
 			break;
+			
+		case OP_DP2:
+			result = vec4(dot( read_src0(s_ir).xy, read_src1(s_ir).xy ));
+			break;
+
+		case OP_DP3:
+			result = vec4(dot( read_src0(s_ir).xyz, read_src1(s_ir).xyz ));
+			break;
+
+		case OP_DP4:
+			result = vec4(dot( read_src0(s_ir), read_src1(s_ir) ));
+			break;
+
+		case OP_MAC:
+			result = read_src0(s_ir) * read_src1(s_ir) + read_dest(s_ir);
+			break;
+
+		case OP_MAD:
+			result = read_src0(s_ir) * read_src1(s_ir) + read_src2(s_ir);
+			break;
 
 		case OP_MIX:
 			result = mix( read_src0(s_ir), read_src1(s_ir), read_src2(s_ir) );
@@ -102,18 +91,6 @@ void run_vm()
 
 		case OP_CND:
 			result = mix( read_src2(s_ir), read_src1(s_ir), greaterThan( read_src0(s_ir), vec4(0.5) ));
-			break;
-
-		case OP_DP2:
-			result = vec4(dot( read_src0(s_ir).xy, read_src1(s_ir).xy ));
-			break;
-
-		case OP_DP3:
-			result = vec4(dot( read_src0(s_ir).xyz, read_src1(s_ir).xyz ));
-			break;
-
-		case OP_DP4:
-			result = vec4(dot( read_src0(s_ir), read_src1(s_ir) ));
 			break;
 
 		case OP_POW:
@@ -158,9 +135,51 @@ void run_vm()
 				result = fastSqrtNR0(read_src0(s_ir));
 			break;
 
-		default:
-		case OP_NOP:
-			return;
+		case OP_FBR:
+			result = vec4(
+				sampleFramebuffer(
+					refrtex,
+					fract(read_src0(s_ir).xy)
+				).xyz,
+				1.0
+			);
+			break;
+
+		case OP_TEX:
+			result = load_tex(
+				textures[s_ir.src0.addr],
+				read_src1(s_ir).xy,
+				fetch_vtx_lodbias()
+			);
+			break;
+
+		case OP_TEXDUDV:
+			result = load_tex(
+				textures[s_ir.src0.addr],
+				read_src1(s_ir).xy + read_src2(s_ir).xy,
+				fetch_vtx_lodbias()
+			);
+			break;
+		
+		case OP_OPM:
+			result.xy = parallax(
+						textures[s_ir.src0.addr],
+						read_src1(s_ir).xy,
+						decode_octahedron_uint(vdir),
+						read_src2(s_ir).x
+					).xy;
+			result.zw = vec2(0.0);
+			break;
+
+		case OP_POM:
+			result.xy = steep_parallax(
+						textures[s_ir.src0.addr],
+						read_src1(s_ir).xy,
+						decode_octahedron_uint(vdir),
+						read_src2(s_ir).x
+					).xy;
+			result.zw = vec2(0.0);
+			break;
 		}
 
 		write_reg(s_ir, result);
