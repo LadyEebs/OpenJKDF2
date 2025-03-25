@@ -2911,8 +2911,8 @@ void sithRender_RenderThings()
         thingIter = v1->thingsList;
         v16 = v1->colormap == sithWorld_pCurrentWorld->colormaps;
 
-		rdScissorMode(RD_SCISSOR_ENABLED);
-		rdScissorf(v1->clipFrustum->x, v1->clipFrustum->y, v1->clipFrustum->width, v1->clipFrustum->height);
+		//rdScissorMode(RD_SCISSOR_ENABLED);
+		//rdScissorf(v1->clipFrustum->x, v1->clipFrustum->y, v1->clipFrustum->width, v1->clipFrustum->height);
 
         int safeguard = 0;
         for (; thingIter; thingIter = thingIter->nextThing)
