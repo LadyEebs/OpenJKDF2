@@ -202,7 +202,8 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 #endif
 
 #if defined(WIN64_STANDALONE)
-    version = "#version 330\n";
+	extern int Window_GL4;
+    version = Window_GL4 ? "#version 460\n" : "#version 330\n";
     extensions =	"#extension GL_ARB_texture_gather : enable\n"
 					"#extension GL_ARB_gpu_shader5 : enable\n"
 					"#extension GL_ARB_texture_query_lod : enable\n"
