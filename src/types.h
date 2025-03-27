@@ -22,6 +22,8 @@ extern "C" {
 #define QUAKE_CONSOLE
 #endif
 
+#define SAFE_DELETE(p) if ((p) != NULL) { free(p); (p) = NULL; }
+
 // Ghidra tutorial:
 // File > Parse C Source...
 //
