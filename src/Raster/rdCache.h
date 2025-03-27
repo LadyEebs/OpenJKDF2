@@ -34,6 +34,11 @@ void rdCache_ResetRenderList();
 void rdCache_DrawRenderList();
 int rdCache_TriCompare(const void* a_, const void* b_);
 
+#ifdef RENDER_DROID2
+void rdCache_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallState, rdVertex* paVertices, int numVertices);
+
+#endif
+
 int rdCache_ProcFaceCompareByDistance(rdProcEntry *a, rdProcEntry *b);
 #ifdef QOL_IMPROVEMENTS
 int rdCache_ProcFaceCompareByState(rdProcEntry* a, rdProcEntry* b);

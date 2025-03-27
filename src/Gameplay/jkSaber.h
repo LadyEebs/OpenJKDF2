@@ -32,6 +32,10 @@ void jkSaber_Disable(sithThing *player);
 extern int jkSaber_dismember;
 #endif
 
+#ifdef LIGHTSABER_GLOW
+void jkSaber_DrawGlow(rdMatrix34*);
+#endif
+
 #ifdef LIGHTSABER_TRAILS
 extern int jkSaber_trails;
 extern float jkSaber_trailMinVel;

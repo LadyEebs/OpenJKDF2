@@ -1,10 +1,10 @@
 // decal functionality
 
-#include "math.gli"
-#include "uniforms.gli"
-#include "textures.gli"
-#include "reg.gli"
-#include "attr.gli"
+import "math.gli"
+import "uniforms.gli"
+import "textures.gli"
+import "reg.gli"
+import "attr.gli"
 
 #ifndef DECALS_H
 #define DECALS_H
@@ -42,11 +42,7 @@ void calc_decal(uint decal_index)
 
 	//r0 = packUnorm4x8(vec4(1.0));
 
-#ifdef FRAG_ATTR_FETCH
-	vec3 viewPos = fetch_vtx_pos();
-#else
 	vec3 viewPos = unpackHalf4x16(vpos).xyz;
-#endif
 
 	vec3 objectPosition = vec3(transform44(dec.invDecalMatrix, viewPos.xyz));				
 	vec3 falloff        = (0.5) - abs(objectPosition.xyz);

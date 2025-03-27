@@ -1,6 +1,6 @@
 // math utilities
 
-#include "fastmath.gli"
+import "fastmath.gli"
 
 #ifndef MATH_H
 #define MATH_H

@@ -1,6 +1,6 @@
 // shader fast math
 
-#include "defines.gli"
+import "defines.gli"
 
 #ifndef FASTMATH_H
 #define FASTMATH_H

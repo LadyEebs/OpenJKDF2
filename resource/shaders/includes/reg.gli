@@ -4,10 +4,11 @@
 // this should eventually be tested and changes made as needed (or even a simple alternative path with fixed shading)
 // ....what I would give for packed math support or 8 bit arithmetic on older gpus *sobs*
 
-#include "defines.gli"
-#include "uniforms.gli"
-#include "math.gli"
-#include "isa.gli"
+import "defines.gli"
+import "uniforms.gli"
+import "math.gli"
+import "isa.gli"
+import "attr.gli"
 
 #ifndef REG_H
 #define REG_H
@@ -21,18 +22,15 @@
 #define REG_COUNT    3
 #endif
 
+uint s_lodbias;
+
 // registers
 uint  vdir;         //    16:16 - tangent space view dir
 uint  r[REG_COUNT]; // flexible - temp registers (rgba8, rg16f, r32f)
-
-#if !defined(UNLIT) || !defined(FRAG_ATTR_FETCH)
 uint  v[COLOR_SETS]; // 8:8:8:8 - color registers (tone mapped)
-#endif
 
-#ifndef FRAG_ATTR_FETCH
 uvec2 vpos;			   // 16:16:16:16 - view space position + depth
 vec2 tr[UV_SETS]; // 32:32 - texture coordinate registers
-#endif
 
 vec2 packTexcoordRegister(vec2 unpackedInput)
 {
@@ -41,52 +39,35 @@ vec2 packTexcoordRegister(vec2 unpackedInput)
 
 vec2 read_texcoord_reg(uint i)
 {
-#ifndef GL_AMD_shader_explicit_vertex_parameter
 	return tr[i];//unpackHalf2x16(tr[i]).xy + 0.5;
-#else
-	vec3 uv = fetch_vtx_uv(i);
-	return uv.xy / uv.z;
-#endif
 }
 
 uint pack_vertex_reg(vec4 unpackedInput)
 {
-	unpackedInput.rgb = fastExp2(-unpackedInput.rgb);
+	//unpackedInput.rgb = fastExp2(-unpackedInput.rgb);
 	return packUnorm4x8(unpackedInput);
 }
 
 vec4 unpack_vertex_reg(uint packedInput)
 {
 	vec4 v = unpackUnorm4x8(packedInput);
-	v.rgb = -fastLog2(v.rgb);
+//	v.rgb = -fastLog2(v.rgb);
 	return v;
 }
 
 vec4 read_color_reg(uint i)
 {
-#if defined(UNLIT) && defined(FRAG_ATTR_FETCH)
-	return fetch_vtx_color(i);
-#else
 	return unpack_vertex_reg(v[i]);
-#endif
 }
 
 vec3 read_vpos()
 {
-#ifdef FRAG_ATTR_FETCH
-	return fetch_vtx_pos();
-#else
 	return unpackHalf4x16(vpos).xyz;
-#endif
 }
 
 float read_z()
 {
-#ifdef FRAG_ATTR_FETCH
-	return fetch_vtx_depth();
-#else
 	return unpackHalf4x16(vpos).w;
-#endif
 }
 
 uint swizzle_comp(uint s_swizzle, uint idx)
@@ -139,6 +120,7 @@ vec4 read_system_value(uint s_addr)
 	case SHADER_SYS_POS:				return vec4(read_vpos(), 0.0);
 	case SHADER_SYS_UV:					return vec4(gl_FragCoord.xy / iResolution.xy, 0, 0);
 	case SHADER_SYS_AR:					return vec4(gl_FragCoord.y / gl_FragCoord.x, 1.0, 0, 0);
+	case SHADER_SYS_TEXSIZE:			return vec4(texsize.xy, 0, 0);
 		// material registers
 	case SHADER_SYS_MAT_FILL:			return fillColor;
 	case SHADER_SYS_MAT_ALBEDO:			return albedoFactor;
@@ -158,43 +140,9 @@ vec4 fetch_reg(vm_src s_operand, uint s_imm)
 	case REG_TYPE_CLR:	 return read_color_reg(s_operand.addr);
 	case REG_TYPE_CON:	 return shaderConstants[s_operand.addr];
 	case REG_TYPE_TEX:	 return read_texcoord_reg(s_operand.addr).xyxy;
-	case REG_TYPE_IMM8:	 return vec4(unpackSnorm4x8(s_operand.addr).x);
+	case REG_TYPE_IMM8:	 return vec4(unpackUnorm4x8(s_operand.addr).x);
 	case REG_TYPE_IMM16: return vec4(unpackHalf2x16(s_imm >> (s_operand.idx << 4)).x);
 	case REG_TYPE_SYS:   return read_system_value(s_operand.addr);
-	}
-}
-
-vec4 apply_scale_bias(vec4 reg, uint s_scalebias)
-{
-	switch(s_scalebias)
-	{
-	default:					return reg;
-	case SRC_SCALE_BIAS_2X:		return reg * 2.0;
-	case SRC_SCALE_BIAS_4X:		return reg * 4.0;
-	case SRC_SCALE_BIAS_D2:		return reg * 0.5;
-	case SRC_SCALE_BIAS_D4:		return reg * 0.25;
-	case SRC_SCALE_BIAS_BIAS:	return reg + -0.5;
-	case SRC_SCALE_BIAS_EXPAND:	return reg * 2.0 - 1.0;
-	}
-}
-
-vec4 apply_neg_inv(vec4 reg, uint s_neg_inv)
-{
-	switch(s_neg_inv)
-	{
-	default:				return reg;
-	case SRC_NEG_INV_NEG:	return -reg; 
-	case SRC_NEG_INV_INV:	return 1.0 - reg;
-	}
-}
-
-vec4 apply_neg_inv_abs(vec4 reg, uint s_neg_inv)
-{
-	switch(s_neg_inv)
-	{
-	default:				return abs(reg);
-	case SRC_NEG_INV_NEG:	return -abs(reg); 
-	case SRC_NEG_INV_INV:	return 1.0 - abs(reg);
 	}
 }
 
@@ -212,30 +160,6 @@ vec4 apply_reduction(vec4 reg, uint s_reduction)
 	}
 }
 
-vec4 apply_dst_multiplier(vec4 reg, uint s_multiplier)
-{
-	switch (s_multiplier)
-	{
-		default:		 return        reg;
-		case DST_MUL_X2: return  reg * 2.0;
-		case DST_MUL_X4: return  reg * 4.0;
-		case DST_MUL_D2: return  reg * 0.5;
-		case DST_MUL_D4: return reg * 0.25;
-	}
-}
-
-vec4 apply_dst_multiplier_neg(vec4 reg, uint s_multiplier)
-{
-	switch (s_multiplier)
-	{
-		default:		 return        -reg;
-		case DST_MUL_X2: return  -reg * 2.0;
-		case DST_MUL_X4: return  -reg * 4.0;
-		case DST_MUL_D2: return  -reg * 0.5;
-		case DST_MUL_D4: return -reg * 0.25;
-	}
-}
-
 vec4 read_src(vm_src s_operand, vm_instr s_ir)
 {
 	// fetch the relevant register or immediate value
@@ -244,14 +168,14 @@ vec4 read_src(vm_src s_operand, vm_instr s_ir)
 	// apply swizzle
 	reg = swizzle_reg(reg, s_operand.swizzle);
 	
-	// do any needed scaling and biasing
-	reg = apply_scale_bias(reg, s_operand.scale_bias);
+	// branchless scale + bias
+	reg = reg * aScaleBias[s_operand.scale_bias].x + aScaleBias[s_operand.scale_bias].y;
 	
-	// take absolute if necessary
-	if( s_operand.absolute)
-		reg = apply_neg_inv_abs(reg, s_operand.neg_inv);
-	else
-		reg = apply_neg_inv(reg, s_operand.neg_inv);
+	// modifiers
+	if( s_operand.absolute)	reg = abs(reg);
+	
+	// branchless negate or invert
+	reg = reg * aNegInv[s_operand.neg_inv].x + aNegInv[s_operand.neg_inv].y;
 
 	return apply_reduction(reg, s_operand.reduction);
 }
@@ -279,22 +203,16 @@ void write_reg(vm_instr s_ir, vec4 reg)
 	// swizzle for the destination
 	reg = swizzle_reg(reg, s_ir.dst.swizzle);
 
-	// apply any multipliers
-	if (s_ir.dst.negate)
-		reg = apply_dst_multiplier_neg(reg, s_ir.dst.multiplier);
-	else
-		reg = apply_dst_multiplier(reg, s_ir.dst.multiplier);
+	// branchless multiplier
+	reg *= aScaleBias[s_ir.dst.multiplier].x;
 
-	// encode + abs + clamp
-	uint p;
-	if(s_ir.dst.absolute == 1 && s_ir.sat == 1)
-		p = encode_reg(sat4(abs(reg)), s_ir.dst.fmt);
-	else if (s_ir.dst.absolute == 1)
-		p = encode_reg(abs(reg), s_ir.dst.fmt);
-	else if (s_ir.sat == 1)
-		p = encode_reg(sat4(reg), s_ir.dst.fmt);
-	else
-		p = encode_reg(reg, s_ir.dst.fmt);
+	// modifiers
+	if (s_ir.dst.absolute)	reg = abs(reg);
+	if (s_ir.sat)			reg = sat4(reg);
+	if (s_ir.dst.negate)	reg = -reg;
+
+	// encode
+	uint p = encode_reg(reg, s_ir.dst.fmt);
 
 	// write the masked bits
 	r[s_ir.dst.addr] |= (p & s_ir.dst.mask);

@@ -75,6 +75,7 @@ typedef enum
 	RD_SHADER_UV,
 	RD_SHADER_AR,
 	RD_SHADER_POS,
+	RD_SHADER_TEXSIZE,
 
 	// material registers
 	RD_SHADER_MAT_FILL,
@@ -140,19 +141,19 @@ static_assert(RD_SHADER_SRC_RED_COUNT <= 8, "RD_SHADER_SRC_RED_COUNT must not ex
 
 typedef enum
 {
-	WRITE_RGBA	= 0b1111, // 0xF
-	WRITE_RGB	= 0b0111, // 0x7
-	WRITE_RED	= 0b0001, // 0x1
-	WRITE_GREEN = 0b0010, // 0x2
-	WRITE_BLUE	= 0b0100, // 0x4
-	WRITE_ALPHA = 0b1000, // 0x8
+	RD_WRITE_RGBA	= 0b1111, // 0xF
+	RD_WRITE_RGB	= 0b0111, // 0x7
+	RD_WRITE_RED	= 0b0001, // 0x1
+	RD_WRITE_GREEN	= 0b0010, // 0x2
+	RD_WRITE_BLUE	= 0b0100, // 0x4
+	RD_WRITE_ALPHA	= 0b1000, // 0x8
 } rdShader_WriteMask;
 
 typedef enum
 {
 	// only enum common swizzles since every combo is a lot
-	SWIZZLE_XYZW = 0xe4
-} stdShader_Swizzles;
+	RD_SWIZZLE_XYZW = 0xe4
+} rdShader_Swizzles;
 
 typedef enum
 {
@@ -181,6 +182,12 @@ int rdShader_NewEntry(rdShader* shader, char* path);
 void rdShader_Free(rdShader* shader);
 void rdShader_FreeEntry(rdShader* shader);
 int rdShader_LoadEntry(char* fpath, rdShader* shader);
+
+uint32_t rdShader_AssembleSrc(uint8_t idx, uint8_t type, uint8_t fmt, uint8_t addr,
+	uint8_t abs, uint8_t swizzle, uint8_t negate_or_invert, uint8_t scale_bias, uint8_t reduction);
+
+uint32_t rdShader_AssembleOpAndDst(uint8_t opcode, uint8_t fmt, uint8_t addr, uint8_t swizzle,
+	uint8_t multiplier, uint8_t write_mask, uint8_t precise, uint8_t abs, uint8_t neg, uint8_t clamp);
 
 #endif
 

@@ -1,16 +1,13 @@
 // this pass helps offset vgpr pressure from the main pass
-// but the bandwidth overhead on older cards (a.k.a my rx480)
-// makes going deferred slower
+// but the bandwidth overhead tends to make this slower overall
 
-#define SPECULAR // force specular path
-
-#include "defines.gli"
-#include "uniforms.gli"
-#include "clustering.gli"
-#include "math.gli"
-#include "lighting.gli"
-#include "decals.gli"
-#include "occluders.gli"
+import "defines.gli"
+import "uniforms.gli"
+import "clustering.gli"
+import "math.gli"
+import "lighting.gli"
+import "decals.gli"
+import "occluders.gli"
 
 uniform sampler2D tex2;
 uniform sampler2D tex3;
@@ -77,6 +74,9 @@ void main(void)
 		for (uint bucket = first_bucket; bucket <= last_bucket; ++bucket)
 		{
 			uint bucket_bits = uint(texelFetch(clusterBuffer, int(cluster * CLUSTER_BUCKETS_PER_CLUSTER + bucket)).x);
+		#if defined(GL_KHR_shader_subgroup_ballot) && defined(GL_KHR_shader_subgroup_arithmetic)
+			bucket_bits = subgroupBroadcastFirst(subgroupOr(bucket_bits));
+		#endif
 			while(bucket_bits != 0u)
 			{
 				uint bucket_bit_index = findLSB_unsafe(bucket_bits);
@@ -106,6 +106,9 @@ void main(void)
 		for (uint bucket = first_bucket; bucket <= last_bucket; ++bucket)
 		{
 			uint bucket_bits = uint(texelFetch(clusterBuffer, int(cluster * CLUSTER_BUCKETS_PER_CLUSTER + bucket)).x);
+		#if defined(GL_KHR_shader_subgroup_ballot) && defined(GL_KHR_shader_subgroup_arithmetic)
+			bucket_bits = subgroupBroadcastFirst(subgroupOr(bucket_bits));
+		#endif
 			while (bucket_bits != 0u)
 			{
 				uint bucket_bit_index = uint(findLSB(bucket_bits));
@@ -147,6 +150,9 @@ void main(void)
 		for (uint bucket = first_bucket; bucket <= last_bucket; ++bucket)
 		{
 			uint bucket_bits = uint(texelFetch(clusterBuffer, int(cluster * CLUSTER_BUCKETS_PER_CLUSTER + bucket)).x);
+		#if defined(GL_KHR_shader_subgroup_ballot) && defined(GL_KHR_shader_subgroup_arithmetic)
+			bucket_bits = subgroupBroadcastFirst(subgroupOr(bucket_bits));
+		#endif
 			while(bucket_bits != 0u)
 			{
 				uint bucket_bit_index = findLSB_unsafe(bucket_bits);

@@ -1,18 +1,16 @@
 // simple dx8 style microcode shader VM
-// I'm seeing big performance gains from amd driver 22.7.1 and higher (the release notes indicate boosts in minecraft, related?)
-// unfortunately those don't work with renderdoc's assembly view, ugh...
 
-#include "defines.gli"
-#include "uniforms.gli"
-#include "math.gli"
-#include "lighting.gli"
-#include "textures.gli"
-#include "decals.gli"
-#include "occluders.gli"
-#include "framebuffer.gli"
-#include "isa.gli"
-#include "reg.gli"
-#include "attr.gli"
+import "defines.gli"
+import "uniforms.gli"
+import "math.gli"
+import "lighting.gli"
+import "textures.gli"
+import "decals.gli"
+import "occluders.gli"
+import "framebuffer.gli"
+import "isa.gli"
+import "reg.gli"
+import "attr.gli"
 
 #ifndef VM_H
 #define VM_H
@@ -21,12 +19,21 @@
 
 void run_vm()
 {
+	for (uint i = 0; i < REG_COUNT; ++i)
+		r[i] = 0;
+
 	for (uint s_pc = 0; s_pc < shaderInstructionCount; ++s_pc)
 	{
 		vm_instr s_ir;
 		s_decode_instr(s_ir, shaderInstructions[s_pc]);
 
-		vec4 result;
+		// read source operands upfront (or else the compile times crawl)
+		vec4 s0 = read_src0(s_ir);
+		vec4 s1 = read_src1(s_ir);
+		vec4 s2 = read_src2(s_ir);
+
+		vec4 result = read_dest(s_ir);
+
 		switch(s_ir.opcode)
 		{			
 		default:
@@ -34,151 +41,138 @@ void run_vm()
 			return;
 
 		case OP_MOV:
-			result = read_src0(s_ir);
+			result = s0;
 			break;
 
 		case OP_FRC:
-			result = fract(read_src0(s_ir));
+			result = fract(s0);
 			break;
 
 		case OP_ADD:
-			result = read_src0(s_ir) + read_src1(s_ir);
+			result = s0 + s1;
 			break;
 
 		case OP_SUB:
-			result = read_src0(s_ir) - read_src1(s_ir);
+			result = s0 - s1;
 			break;
 
 		case OP_MUL:
-			result = read_src0(s_ir) * read_src1(s_ir);
+			result = s0 * s1;
 			break;
 			
 		case OP_MAX:
-			result = max( read_src0(s_ir), read_src1(s_ir) );
+			result = max( s0, s1 );
 			break;
 		
 		case OP_MIN:
-			result = min( read_src0(s_ir), read_src1(s_ir) );
+			result = min( s0, s1 );
 			break;
 			
 		case OP_DP2:
-			result = vec4(dot( read_src0(s_ir).xy, read_src1(s_ir).xy ));
+			result = vec4(dot( s0.xy, s1.xy ));
 			break;
 
 		case OP_DP3:
-			result = vec4(dot( read_src0(s_ir).xyz, read_src1(s_ir).xyz ));
+			result = vec4(dot( s0.xyz, s1.xyz ));
 			break;
 
 		case OP_DP4:
-			result = vec4(dot( read_src0(s_ir), read_src1(s_ir) ));
+			result = vec4(dot( s0, s1 ));
 			break;
 
 		case OP_MAC:
-			result = read_src0(s_ir) * read_src1(s_ir) + read_dest(s_ir);
+			result = s0 * s1 + result;
 			break;
 
 		case OP_MAD:
-			result = read_src0(s_ir) * read_src1(s_ir) + read_src2(s_ir);
+			result = s0 * s1 + s2;
 			break;
 
 		case OP_MIX:
-			result = mix( read_src0(s_ir), read_src1(s_ir), read_src2(s_ir) );
+			result = mix( s0, s1, s2 );
 			break;
 
 		case OP_CMP:
-			result = mix( read_src2(s_ir), read_src1(s_ir), greaterThan( read_src0(s_ir), vec4(0.0) ));
+			result = mix( s2, s1, greaterThan( s0, vec4(0.0) ));
 			break;
 
 		case OP_CND:
-			result = mix( read_src2(s_ir), read_src1(s_ir), greaterThan( read_src0(s_ir), vec4(0.5) ));
+			result = mix( s2, s1, greaterThan( s0, vec4(0.5) ));
 			break;
 
 		case OP_POW:
-			if (s_ir.prec)
-				result = pow( read_src0(s_ir), read_src1(s_ir) );
-			else
-				result = fastPow( read_src0(s_ir), read_src1(s_ir) );
+			result = s_ir.prec ? pow( s0, s1 ) : fastPow( s0, s1 );
 			break;
 
 		case OP_EXP2:
-			if (s_ir.prec)
-				result = exp2( read_src0(s_ir) );
-			else
-				result = fastExp2( read_src1(s_ir) );
+			result = s_ir.prec ? exp2( s0 ) : fastExp2( s1 );
 			break;
 
 		case OP_LOG2:
-			if (s_ir.prec)
-				result = log2( read_src0(s_ir) );
-			else
-				result = fastLog2( read_src1(s_ir) );
+			result = s_ir.prec ? log2( s0 ) : fastLog2( s1 );
 			break;
 
 		case OP_DIV:
-			if (s_ir.prec)
-				result = read_src0(s_ir) / read_src1(s_ir);
-			else
-				result = read_src0(s_ir) * fastRcpNR0(read_src1(s_ir));
+			result = s_ir.prec ? s0 / s1 : s0 * fastRcpNR0(s1);
 			break;
 
 		case OP_RCP:
-			if (s_ir.prec)
-				result = vec4(1.0) / read_src0(s_ir);
-			else
-				result = fastRcpNR0(read_src0(s_ir));
+			result = s_ir.prec ? (1.0 / s0) : fastRcpNR0(s0);
 			break;
 
 		case OP_SQRT:
-			if (s_ir.prec)
-				result = sqrt(read_src0(s_ir));
-			else
-				result = fastSqrtNR0(read_src0(s_ir));
+			result = s_ir.prec ? sqrt(s0) : fastSqrtNR0(s0);
 			break;
 
 		case OP_FBR:
-			result = vec4(
-				sampleFramebuffer(
-					refrtex,
-					fract(read_src0(s_ir).xy)
-				).xyz,
-				1.0
-			);
+			result = vec4(textureLod(refrtex, fract(s0.xy), s1.x).xyz, 1.0);
 			break;
 
 		case OP_TEX:
-			result = load_tex(
-				textures[s_ir.src0.addr],
-				read_src1(s_ir).xy,
-				fetch_vtx_lodbias()
-			);
+			if (tex_mode == TEX_MODE_TEST)
+				result = vec4(fillColor.xyz, 1.0);
+			else
+				result = texture(textures[s_ir.src0.addr], s1.xy, s_lodbias);
+			break;
+		
+		case OP_TEXLOD:
+			if (tex_mode == TEX_MODE_TEST)
+				result = vec4(fillColor.xyz, 1.0);
+			else
+				result = textureLod(textures[s_ir.src0.addr], s1.xy, s2.x);
 			break;
 
 		case OP_TEXDUDV:
-			result = load_tex(
-				textures[s_ir.src0.addr],
-				read_src1(s_ir).xy + read_src2(s_ir).xy,
-				fetch_vtx_lodbias()
-			);
+			if (tex_mode == TEX_MODE_TEST)
+				result = vec4(fillColor.xyz, 1.0);
+			else
+				result = texture(textures[s_ir.src0.addr], s1.xy + s2.xy, s_lodbias);
 			break;
 		
 		case OP_OPM:
-			result.xy = parallax(
-						textures[s_ir.src0.addr],
-						read_src1(s_ir).xy,
-						decode_octahedron_uint(vdir),
-						read_src2(s_ir).x
-					).xy;
-			result.zw = vec2(0.0);
+			if (tex_mode != TEX_MODE_TEST)
+			{
+				result.xy = parallax(
+							textures[s_ir.src0.addr],
+							s1.xy,
+							decode_octahedron_uint(vdir),
+							s2.x
+						).xy;
+				result.zw = vec2(0.0);
+			}
 			break;
 
 		case OP_POM:
-			result.xy = steep_parallax(
-						textures[s_ir.src0.addr],
-						read_src1(s_ir).xy,
-						decode_octahedron_uint(vdir),
-						read_src2(s_ir).x
-					).xy;
-			result.zw = vec2(0.0);
+			if (tex_mode != TEX_MODE_TEST)
+			{
+				result.xy = steep_parallax(
+							textures[s_ir.src0.addr],
+							s1.xy,
+							decode_octahedron_uint(vdir),
+							s2.x
+						).xy;
+				result.zw = vec2(0.0);
+			}
 			break;
 		}
 

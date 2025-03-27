@@ -59,17 +59,17 @@ void print_log(GLuint object) {
 
 int starts_with(const char* str, const char* prefix)
 {
-	return strncmp(str, prefix, strlen(prefix)) == 0;
+	return strnicmp(str, prefix, strlen(prefix)) == 0;
 }
 
-const char loadedIncludes[64][128];
-int numLoadedIncludes = 0;
+const char loadedImports[64][128];
+int numLoadedImports = 0;
 
-int already_included(const char* name)
+int already_imported(const char* name)
 {
-	for (int i = 0; i < numLoadedIncludes; ++i)
+	for (int i = 0; i < numLoadedImports; ++i)
 	{
-		if(strncmp(name, loadedIncludes[i], 128) == 0)
+		if(strnicmp(name, loadedImports[i], 128) == 0)
 			return 1;
 	}
 	return 0;
@@ -115,16 +115,16 @@ char* load_source(const char* filepath)
 		line_buffer[line_length] = '\0';
 		current += line_length + (next_newline ? 1 : 0);
 
-		// Process #include directives
-		if (starts_with(line_buffer, "#include "))
+		// Process import directives
+		if (starts_with(line_buffer, "import "))
 		{
 			char included_file[MAX_NAME_LENGTH];
-			strncpy(included_file, line_buffer + 10, MAX_NAME_LENGTH - 1); // remove "#include_
+			strncpy(included_file, line_buffer + 8, MAX_NAME_LENGTH - 1); // remove "import_
 			included_file[strlen(included_file) - 1] = '\0'; // Remove trailing "
 
-			if(!already_included(included_file))
+			if(!already_imported(included_file))
 			{
-				strcpy_s(loadedIncludes[numLoadedIncludes++], 128, included_file);
+				strcpy_s(loadedImports[numLoadedImports++], 128, included_file);
 
 				// For simplicity all includes are in the same folder
 				char resolved_path[MAX_PATH_LENGTH];
@@ -134,6 +134,8 @@ char* load_source(const char* filepath)
 				char* included_source = load_source(resolved_path);
 				if (included_source)
 				{
+					// todo: instead of concatenating, it might be better to append the contents
+					// to a buffer of strings and let glShaderSource handle it
 					strcat(full_source_code, included_source);
 					free(included_source);
 				}
@@ -150,7 +152,7 @@ char* load_source(const char* filepath)
 
 GLuint load_shader_file(const char* filepath, GLenum type, const char* userDefines)
 {
-	numLoadedIncludes = 0;
+	numLoadedImports = 0;
 
     char* shader_contents = load_source(filepath);// stdEmbeddedRes_Load(filepath, NULL);
 
@@ -208,15 +210,19 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 					"#extension GL_ARB_gpu_shader5 : enable\n"
 					"#extension GL_ARB_texture_query_lod : enable\n"
 					"#extension GL_ARB_shading_language_packing : enable\n"
-					// vertex fetching
-					"#extension GL_EXT_fragment_shader_barycentric : enable\n"
-					"#extension GL_AMD_shader_explicit_vertex_parameter : enable\n"
-					"#extension GL_NV_fragment_shader_barycentric : enable\n"
+					// eebs: welp all this shit is broken
+					//"#extension GL_EXT_fragment_shader_barycentric : enable\n" 
+					//"#extension GL_AMD_shader_explicit_vertex_parameter : enable\n"
 					// eebs: fp16 is unstable as hell
 					//"#extension GL_AMD_gpu_shader_half_float : enable\n"
 					//"#extension GL_AMD_gpu_shader_half_float_fetch : enable\n"
-					//"#extension GL_ARB_shader_ballot : enable\n"
-					//"#extension GL_KHR_shader_subgroup : enable\n"
+					"#extension GL_KHR_shader_subgroup_ballot  : enable\n"
+					"#extension GL_KHR_shader_subgroup_arithmetic : enable\n"
+					"#extension GL_KHR_shader_subgroup_vote : enable\n"
+					//"#extension GL_KHR_shader_subgroup_shuffle : enable\n"
+					//"#extension GL_KHR_shader_subgroup_shuffle_relative : enable\n"
+					//"#extension GL_KHR_shader_subgroup_clustered : enable\n"
+					//"#extension GL_KHR_shader_subgroup_quad : enable\n"
 					"#extension GL_AMD_shader_trinary_minmax : enable\n"
 					"#extension GL_AMD_gcn_shader : enable\n"
 					;

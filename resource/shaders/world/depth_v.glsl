@@ -1,5 +1,5 @@
-#include "uniforms.gli"
-#include "math.gli"
+import "uniforms.gli"
+import "math.gli"
 
 in vec3 coord3d;
 //in vec4 v_normal;	// vertex normal

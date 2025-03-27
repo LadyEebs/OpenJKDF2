@@ -13,14 +13,347 @@ int rdroid_curVertexColorMode = 0; // MOTS added
 #endif
 
 #ifdef RENDER_DROID2
+
+#include "Modules/std/stdProfiler.h"
+
+typedef struct rdCache_DrawCallList
+{
+	int              bSorted;
+	int              bPosOnly;
+	uint32_t         drawCallCount;
+	uint32_t         drawCallIndexCount;
+	uint32_t         drawCallVertexCount;
+	std3D_DrawCall*  drawCalls;
+	uint16_t*        drawCallIndices;
+	rdVertex*        drawCallVertices;
+	rdVertexBase*    drawCallPosVertices;
+	std3D_DrawCall** drawCallPtrs;
+} rdCache_DrawCallList;
+
+rdCache_DrawCallList rdCache_drawCalls;
+uint16_t rdCache_drawCallIndicesSorted[RD_CACHE_MAX_DRAW_CALL_INDICES];
+
+std3D_DrawCallState rdCache_lastState;
+
+typedef int(*rdCache_SortFunc)(std3D_DrawCall*, std3D_DrawCall*);
+
+int rdCache_DrawCallCompareSortKey(std3D_DrawCall** a, std3D_DrawCall** b)
+{
+	if ((*a)->sortKey > (*b)->sortKey)
+		return 1;
+	if ((*a)->sortKey < (*b)->sortKey)
+		return -1;
+	return 0;
+}
+
+int rdCache_DrawCallCompareDepth(std3D_DrawCall** a, std3D_DrawCall** b)
+{
+	if ((*a)->state.header.sortDistance > (*b)->state.header.sortDistance)
+		return 1;
+	if ((*a)->state.header.sortDistance < (*b)->state.header.sortDistance)
+		return -1;
+	return rdCache_DrawCallCompareSortKey(a, b);
+}
+
+
+void rdCache_InitDrawList(rdCache_DrawCallList* pList)
+{
+	memset(pList, 0, sizeof(rdCache_DrawCallList));
+
+	pList->drawCalls = malloc(sizeof(std3D_DrawCall) * RD_CACHE_MAX_DRAW_CALLS);
+	pList->drawCallIndices = malloc(sizeof(uint16_t) * RD_CACHE_MAX_DRAW_CALL_INDICES);
+	pList->drawCallPtrs = malloc(sizeof(std3D_DrawCall*) * RD_CACHE_MAX_DRAW_CALLS);
+
+	if (pList->bPosOnly)
+		pList->drawCallPosVertices = malloc(sizeof(rdVertexBase) * RD_CACHE_MAX_DRAW_CALL_VERTS);
+	else
+		pList->drawCallVertices = malloc(sizeof(rdVertex) * RD_CACHE_MAX_DRAW_CALL_VERTS);
+}
+
+void rdCache_FreeDrawList(rdCache_DrawCallList* pList)
+{
+	SAFE_DELETE(pList->drawCalls);
+	SAFE_DELETE(pList->drawCallIndices);
+	SAFE_DELETE(pList->drawCallVertices);
+	SAFE_DELETE(pList->drawCallPosVertices);
+	SAFE_DELETE(pList->drawCallPtrs);
+}
+
+uint64_t rdCache_GetSortKey(std3D_DrawCall* pDrawCall)
+{
+	int textureID = pDrawCall->state.textureState.pTexture ? pDrawCall->state.textureState.pTexture->texture_id : 0;
+
+	uint64_t offset = 0ull;
+
+	uint64_t sortKey = 0;
+	sortKey |= pDrawCall->state.stateBits.data & 0xFFFFFFFF;
+	sortKey |= ((uint64_t)textureID & 0xFFFF) << 32ull;
+	sortKey |= ((uint64_t)pDrawCall->shaderID & 0x4) << 48ull;
+	sortKey |= ((uint64_t)pDrawCall->state.header.sortOrder & 0xF) << 52ull;
+	if (pDrawCall->state.shaderState.shader)
+		sortKey |= ((uint64_t)pDrawCall->state.shaderState.shader->shaderid & 0xFF) << 56ull;
+
+	return sortKey;
+}
+
+void rdCache_AddListVertices(std3D_DrawCall* pDrawCall, rdPrimitiveType_t type, rdCache_DrawCallList* pList, rdVertex* paVertices, int numVertices)
+{
+	int firstIndex = pList->drawCallIndexCount;
+	int firstVertex = pList->drawCallVertexCount;
+
+	// copy the vertices
+	if (pList->bPosOnly)
+	{
+		for (int i = 0; i < numVertices; ++i)
+		{
+			pList->drawCallPosVertices[firstVertex + i].x = paVertices[i].x;
+			pList->drawCallPosVertices[firstVertex + i].y = paVertices[i].y;
+			pList->drawCallPosVertices[firstVertex + i].z = paVertices[i].z;
+			//pList->drawCallPosVertices[firstVertex + i].norm10a2 = paVertices->norm10a2;
+		}
+	}
+	else
+	{
+		memcpy(&pList->drawCallVertices[firstVertex], paVertices, sizeof(rdVertex) * numVertices);
+	}
+	pList->drawCallVertexCount += numVertices;
+
+	// generate indices
+	if (numVertices <= 3)
+	{
+		// single triangle fast path
+		pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + 0;
+		pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + 1;
+		pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + 2;
+	}
+	else if (type == RD_PRIMITIVE_TRIANGLES)
+	{
+		// generate triangle indices directly
+		int tris = numVertices / 3;
+		for (int i = 0; i < tris; ++i)
+		{
+			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i * 3 + 0;
+			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i * 3 + 1;
+			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i * 3 + 2;
+		}
+	}
+	else if (type == RD_PRIMITIVE_TRIANGLE_FAN)
+	{
+		// build indices from a single corner vertex
+		int verts = numVertices - 2;
+		for (int i = 0; i < verts; i++)
+		{
+			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + 0;
+			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i + 1;
+			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i + 2;
+		}
+	}
+	else if (type == RD_PRIMITIVE_POLYGON)
+	{
+		// build indices through simple triangulation
+		int verts = numVertices - 2;
+		int i1 = 0;
+		int i2 = 1;
+		int i3 = numVertices - 1;
+		for (int i = 0; i < verts; ++i)
+		{
+			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i1;
+			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i2;
+			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i3;
+			if ((i & 1) != 0)
+				i1 = i3--;
+			else
+				i1 = i2++;
+		}
+	}
+
+	pDrawCall->firstIndex = firstIndex;
+	pDrawCall->numIndices = pList->drawCallIndexCount - firstIndex;
+}
+
+void rdCache_AddListDrawCall(rdPrimitiveType_t type, rdCache_DrawCallList* pList, std3D_DrawCallState* pDrawCallState, int shaderID, rdVertex* paVertices, int numVertices)
+{
+	if (pList->drawCallCount + 1 > RD_CACHE_MAX_DRAW_CALLS)
+		rdCache_Flush();
+
+	if (pList->drawCallVertexCount + numVertices > RD_CACHE_MAX_DRAW_CALL_VERTS)
+		rdCache_Flush();
+
+	std3D_DrawCall* pDrawCall = &pList->drawCalls[pList->drawCallCount++];
+	pDrawCall->sortKey = rdCache_GetSortKey(pDrawCallState);
+	pDrawCall->state = *pDrawCallState;
+	pDrawCall->shaderID = shaderID;
+
+	rdCache_AddListVertices(pDrawCall, type, pList, paVertices, numVertices);
+}
+
+void rdCache_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallState, rdVertex* paVertices, int numVertices)
+{
+	if (pDrawCallState->rasterState.colorMask == 0) // no color write
+	{
+		pDrawCallState->stateBits.fogMode = 0;
+		pDrawCallState->stateBits.blend = 0;
+		pDrawCallState->stateBits.srdBlend = 1;
+		pDrawCallState->stateBits.dstBlend = 0;
+		pDrawCallState->stateBits.lightMode = 0;
+
+		memset(&pDrawCallState->fogState, 0, sizeof(std3D_FogState));
+		memset(&pDrawCallState->lightingState, 0, sizeof(std3D_LightingState));
+
+		// draw it at the end
+		pDrawCallState->header.sortOrder = 255;
+	}
+
+	rdCache_AddListDrawCall(type, &rdCache_drawCalls, pDrawCallState, 0, paVertices, numVertices);
+}
+
+uint16_t* rdCache_SortDrawCallIndices(rdCache_DrawCallList* pList)
+{
+	STD_BEGIN_PROFILER_LABEL();
+	int drawCallIndexCount = 0;
+	for (int i = 0; i < pList->drawCallCount; ++i)
+	{
+		memcpy(&rdCache_drawCallIndicesSorted[drawCallIndexCount], &pList->drawCallIndices[pList->drawCallPtrs[i]->firstIndex], sizeof(uint16_t) * pList->drawCallPtrs[i]->numIndices);
+		drawCallIndexCount += pList->drawCallPtrs[i]->numIndices;
+	}
+	STD_END_PROFILER_LABEL();
+	return rdCache_drawCallIndicesSorted;
+}
+
+void rdCache_SortDrawCallList(rdCache_DrawCallList* pList, rdCache_SortFunc sortFunc)
+{
+	STD_BEGIN_PROFILER_LABEL();
+	//if(!pList->bSorted)
+	_qsort(pList->drawCallPtrs, pList->drawCallCount, sizeof(std3D_DrawCall*), (int(__cdecl*)(const void*, const void*))sortFunc);
+	pList->bSorted = 1;
+	STD_END_PROFILER_LABEL();
+}
+
+uint32_t rdCache_CheckStateBits(std3D_DrawCall* pDrawCall)
+{
+	uint32_t dirtyBits = 0;
+	//dirtyBits |= (lastShader != pDrawCall->shaderID) ? STD3D_SHADER : 0;
+	//dirtyBits |= (last_tex != texid) ? STD3D_TEXTURE : 0;
+	dirtyBits |= (rdCache_lastState.stateBits.data != pDrawCall->state.stateBits.data) ? RD_CACHE_STATEBITS : 0; // todo: this probably triggers too many updates, make it more granular
+	dirtyBits |= (memcmp(&rdCache_lastState.fogState, &pDrawCall->state.fogState, sizeof(std3D_FogState)) != 0) ? RD_CACHE_FOG : 0;
+	dirtyBits |= (memcmp(&rdCache_lastState.rasterState, &pDrawCall->state.rasterState, sizeof(std3D_RasterState)) != 0) ? RD_CACHE_RASTER : 0;
+	dirtyBits |= (memcmp(&rdCache_lastState.textureState, &pDrawCall->state.textureState, sizeof(std3D_TextureState)) != 0) ? RD_CACHE_TEXTURE : 0;
+	dirtyBits |= (memcmp(&rdCache_lastState.materialState, &pDrawCall->state.materialState, sizeof(std3D_MaterialState)) != 0) ? RD_CACHE_TEXTURE : 0;
+	dirtyBits |= (memcmp(&rdCache_lastState.lightingState, &pDrawCall->state.lightingState, sizeof(std3D_LightingState)) != 0) ? RD_CACHE_LIGHTING : 0;
+	dirtyBits |= (memcmp(&rdCache_lastState.transformState, &pDrawCall->state.transformState, sizeof(std3D_TransformState)) != 0) ? RD_CACHE_TRANSFORM : 0;
+	dirtyBits |= (memcmp(&rdCache_lastState.shaderState, &pDrawCall->state.shaderState, sizeof(std3D_ShaderState)) != 0) ? RD_CACHE_SHADER_ID : 0;
+	return dirtyBits;
+}
+
+void rdCache_FlushDrawCallList(rdCache_DrawCallList* pList, const char* debugName)
+{
+	if (!pList->drawCallCount)
+		return;
+
+	STD_BEGIN_PROFILER_LABEL();
+//	std3D_PushDebugGroup(debugName);
+
+	// sort draw calls to reduce state changes and maximize batching
+	uint16_t* indexArray;
+	//if (rdroid_curSortingMethod)
+	{
+		if (rdroid_curSortingMethod == 2)
+			rdCache_SortDrawCallList(pList, rdCache_DrawCallCompareDepth);
+		else
+			rdCache_SortDrawCallList(pList, rdCache_DrawCallCompareSortKey);
+
+		// batching needs to follow the draw order, but index array becomes disjointed after sorting
+		// build a sorted list of indices to ensure sequential access during batching
+		indexArray = rdCache_SortDrawCallIndices(pList);
+	}
+	//else
+	//{
+	//	indexArray = pList->drawCallIndices;
+	//}
+
+	std3D_DrawCall* pDrawCall = pList->drawCallPtrs[0];
+	std3D_DrawCallState* pState = &pDrawCall->state;
+
+	memcpy(&rdCache_lastState, &pDrawCall->state, sizeof(std3D_DrawCallState));
+
+	std3D_AdvanceFrame();
+
+	std3D_SetState(pState, 0xFFFFFFFF);
+
+	if (pList->bPosOnly)
+		std3D_SendVerticesToHardware(pList->drawCallPosVertices, pList->drawCallVertexCount, sizeof(rdVertexBase));
+	else
+		std3D_SendVerticesToHardware(pList->drawCallVertices, pList->drawCallVertexCount, sizeof(rdVertex));
+
+	std3D_SendIndicesToHardware(indexArray, pList->drawCallIndexCount, sizeof(uint16_t));
+	
+	int batchIndices = 0;
+	int indexOffset = 0;
+	for (int j = 0; j < pList->drawCallCount; j++)
+	{
+		pDrawCall = pList->drawCallPtrs[j];
+		pState = &pDrawCall->state;
+
+		int texid = pState->textureState.pTexture ? pState->textureState.pTexture->texture_id : -1;
+
+		uint32_t dirtyBits = rdCache_CheckStateBits(pDrawCall);
+		if (dirtyBits)
+		{
+			// draw the batch
+			std3D_DrawElements(rdCache_lastState.stateBits.geoMode, batchIndices, indexOffset, sizeof(uint16_t));
+
+			// set the state for the next batch
+			std3D_SetState(pState, dirtyBits);
+
+			// update last state and reset batch
+			memcpy(&rdCache_lastState, &pDrawCall->state, sizeof(std3D_DrawCallState));
+			indexOffset += batchIndices;
+			batchIndices = 0;
+		}
+
+		batchIndices += pDrawCall->numIndices;
+	}
+
+	if (batchIndices)
+		std3D_DrawElements(pDrawCall->state.stateBits.geoMode, batchIndices, indexOffset, sizeof(uint16_t));
+
+	std3D_ResetState();
+
+	std3D_PopDebugGroup();
+	STD_END_PROFILER_LABEL();
+}
+
+void rdCache_FlushDrawCalls()
+{
+	STD_BEGIN_PROFILER_LABEL();
+	std3D_PushDebugGroup("rdCache_FlushDrawCalls");
+
+	rdCache_FlushDrawCallList(&rdCache_drawCalls, "Flush");
+
+	std3D_PopDebugGroup();
+	STD_END_PROFILER_LABEL();
+}
+
 int rdCache_Startup()
 {
+	//rdCache_drawCallLists[i].bPosOnly = (i <= DRAW_LIST_Z_REFRACTION);
+	rdCache_InitDrawList(&rdCache_drawCalls);
+	rdCache_Reset();
+
 	return 1;
+}
+
+void rdCache_Shutdown()
+{
+	rdCache_FreeDrawList(&rdCache_drawCalls);
 }
 
 void rdCache_AdvanceFrame()
 {
 	rdroid_curAcceleration = 1;
+
+	//memset(&rdCache_drawCalls, 0, sizeof(rdCache_DrawCallList));
+
 	std3D_StartScene();
 }
 
@@ -31,6 +364,17 @@ void rdCache_FinishFrame()
 
 void rdCache_Reset()
 {
+	rdCache_DrawCallList* pList = &rdCache_drawCalls;
+	pList->bSorted = 0;
+	pList->drawCallCount = 0;
+	pList->drawCallIndexCount = 0;
+	pList->drawCallVertexCount = 0;
+
+	// store pointers for sorting
+	std3D_DrawCall* drawCalls = pList->drawCalls;
+	std3D_DrawCall** drawCallPtrs = pList->drawCallPtrs;
+	for (int k = 0; k < RD_CACHE_MAX_DRAW_CALLS; ++k)
+		drawCallPtrs[k] = &drawCalls[k];
 }
 
 void rdCache_ClearFrameCounters()
@@ -40,7 +384,7 @@ void rdCache_ClearFrameCounters()
 
 void rdCache_Flush()
 {
-	std3D_FlushDrawCalls();
+	rdCache_FlushDrawCalls();
 	rdCache_drawnFaces += rdCache_numProcFaces;
 	rdCache_Reset();
 }
@@ -92,6 +436,11 @@ void rdCache_FlushOccluders();
 int rdCache_Startup()
 {
     return 1;
+}
+
+void rdCache_Shutdown()
+{
+
 }
 
 void rdCache_AdvanceFrame()

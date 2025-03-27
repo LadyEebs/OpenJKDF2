@@ -88,6 +88,8 @@ void rdClearPostStatistics();
 #define RD_PACK_COLOR10(r, g, b, a) (b | (g << 10) | (r << 20) | (a << 30))
 #define RD_PACK_COLOR8F(r, g, b, a)  (stdMath_ClampInt(b * 255, 0, 255) | (stdMath_ClampInt(g * 255, 0, 255) << 8) | (stdMath_ClampInt(r * 255, 0, 255) << 16) | (stdMath_ClampInt(a * 255, 0, 255) << 24))
 
+void rdDepthRange(float znear, float zfar);
+
 // todo: rdPushMatrix/rdPopMatrix?
 void rdMatrixMode(rdMatrixMode_t mode);
 void rdPerspective(float fov, float aspect, float nearPlane, float farPlane);
@@ -129,6 +131,7 @@ void rdColor4f(float r, float g, float b, float a);
 void rdTexCoord2f(uint8_t i, float u, float v); // normalized
 void rdTexCoord2i(uint8_t i, float u, float v); // unnormalized
 void rdTexCoord4i(uint8_t i, float u, float v, float t, float w); // unnormalized
+void rdTexCoordScaled2i(uint8_t i, float u, float v, float w, float h); // kinda suckyyy...
 void rdNormal3f(float x, float y, float z);
 void rdVertex3v(const float* v);
 void rdColor4v(const float* v);

@@ -398,6 +398,31 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 
 	rdBindMaterial(face->material, thing->wallCel);
 
+	float alpha = 1.0f;
+	if ((face->type & RD_FF_TEX_TRANSLUCENT) != 0)
+	{
+		alpha = 90.0f / 255.0f;
+		rdSetBlendEnabled(RD_TRUE);
+	}
+	else
+	{
+		rdSetBlendEnabled(RD_FALSE);
+	}
+	if (face->type & RD_FF_ADDITIVE)
+	{
+		rdSetBlendEnabled(RD_TRUE);
+		rdSetBlendMode(RD_BLEND_ONE, RD_BLEND_ONE);
+	}
+	else if (face->type & RD_FF_SCREEN)
+	{
+		rdSetBlendEnabled(RD_TRUE);
+		rdSetBlendMode(RD_BLEND_ONE, RD_BLEND_INVSRCCOLOR);
+	}
+	else
+	{
+		rdSetBlendMode(RD_BLEND_SRCALPHA, RD_BLEND_INVSRCALPHA);
+	}
+
 	// quadrilateral projection
 	rdVector3 uvs[4];
 	if (idxInfo->vertexUVs)
@@ -445,6 +470,7 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 		rdEndPrimitive();
 	}
 
+	rdSetBlendEnabled(RD_FALSE);
 	rdSortOrder(0);
 	rdTexOffseti(RD_TEXCOORD0, 0, 0);
 	rdMatrixMode(RD_MATRIX_VIEW);

@@ -1,8 +1,8 @@
-#include "uniforms.gli"
-#include "clustering.gli"
-#include "math.gli"
-#include "lighting.gli"
-#include "attr.gli"
+import "uniforms.gli"
+import "clustering.gli"
+import "math.gli"
+import "lighting.gli"
+import "attr.gli"
 
 vec3 CalculateAmbientDiffuse(vec3 normal)
 {
@@ -25,7 +25,7 @@ vec3 CalculateAmbientSpecular(float roughness, vec3 normal, vec3 view, vec3 refl
 	vec3 ambientSpec = vec3(0.0);
 
 	// project the reflection vector onto a sphere around the sector for this ambient SG
-	reflected = project_to_sphere(f_coord.xyz, reflected, ambientCenter.xyz, ambientCenter.w);
+	//reflected = project_to_sphere(f_coord.xyz, reflected, ambientCenter.xyz, ambientCenter.w);
 
 	float m = roughness * roughness;
 	float m2 = max(m * m, 1e-4);
@@ -81,51 +81,35 @@ void main(void)
     vec4 color0 = vec4(clamp(v_color[0].bgra, vec4(0.0), vec4(1.0)));
 	vec4 color1 = vec4(clamp(v_color[1].bgra, vec4(0.0), vec4(1.0)));
 
-    f_uv[0] = v_uv[0].xyw;
-	f_uv[0].xy += uv_offset[0].xy;
+	for (int i = 0; i < UV_SETS; ++i)
+	{
+		f_uv[i] = v_uv[i].xyw;
+		f_uv[i].xy += uv_offset[i].xy;
+	}
 
-#ifdef REFRACTION
-    f_uv[1] = v_uv[1].xyw;
-    f_uv[2] = v_uv[2].xyw;
-    f_uv[3] = v_uv[3].xyw;
-
-	f_uv[1].xy += uv_offset[1].xy;
-	f_uv[2].xy += uv_offset[2].xy;
-	f_uv[3].xy += uv_offset[3].xy;
-
-#endif
-
- 	f_coord.xyz = viewPos.xyz;
-	f_coord.w = pos.w / 128.0;
+ 	f_coord = vec4(viewPos.xyz, pos.w / 128.0);
 	
 	vec3 view = normalize(-viewPos.xyz);
 
 	color1.a = 0.0;
-	if(fogEnabled > 0)
+	if (fogEnabled > 0)
 		color1.a = clamp((pos.w - fogStart) / (fogEnd - fogStart), 0.0, 1.0);
 
-#ifdef UNLIT
 	color1.rgb = vec3(0.0);
 
-	if(lightMode == 0) // full lit
-		color0.xyz = vec3(light_mult);
-	else if(lightMode == 1) // not lit
-		color0.xyz = vec3(0.0);
-
-#else
 	// do ambient diffuse in vertex shader
 	if (lightMode >= 2)
 		color0.xyz = max(color0.xyz, ambientColor.xyz);
 	
-	if(lightMode >= 2)
+	if (lightMode >= 2)
 		color0.xyz += CalculateAmbientDiffuse(normal);
 
 	color1.rgb = vec3(0.0);
-	if(lightMode >= 2)
+	if (lightMode >= 2)
 		color1.xyz = CalculateAmbientSpecular(roughnessFactor, normal, view, reflect(-view, normal));
 
 	// light mode "diffuse" (a.k.a new gouraud)
-#ifdef VERTEX_LIT
+	if (lightMode == 2)
 	{
 		light_result result;
 		result.diffuse = packF2x11_1x10(color0.rgb);
@@ -135,9 +119,9 @@ void main(void)
 		{
 			float a = roughnessFactor;// * roughnessFactor;
 
-			uint cluster = compute_cluster_index(clamp(pos.xy / pos.w * 0.5 + 0.5, vec2(0.0), vec2(1.0)) * iResolution.xy, f_coord.y);
+			uint cluster = compute_cluster_index(clamp(pos.xy / pos.w * 0.5 + 0.5, vec2(0.0), vec2(1.0)) * iResolution.xy, viewPos.y);
 			light_input params;
-			params.pos       = uvec2(packHalf2x16(f_coord.xy), packHalf2x16(vec2(f_coord.z, f_coord.w)));
+			params.pos       = packHalf4x16(vec4(viewPos.xyz, pos.w));
 			params.normal    = encode_octahedron_uint(normal.xyz);
 			params.view      = encode_octahedron_uint(view);
 			params.reflected = encode_octahedron_uint(reflect(-view, normal));
@@ -174,17 +158,8 @@ void main(void)
 			color1.rgb = unpackF2x11_1x10(result.specular);
 		}
 	}
-#endif
 
-#endif
-
-#ifdef FRAG_ATTR_FETCH
-	f_color[0] = packUnorm4x8(color0);
-	f_color[1] = packUnorm4x8(color1);
-	f_normal = packSnorm4x8(normal.xyzz);
-#else
 	f_color[0] = color0;
 	f_color[1] = color1;
 	f_normal.xyz = vec3(normal);
-#endif
 }

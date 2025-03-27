@@ -170,6 +170,12 @@ int jkGame_Update()
     _memcpy(stdDisplay_masterPalette, sithWorld_pCurrentWorld->colormaps->colors, 0x300);
 #endif
     rdAdvanceFrame();
+
+#ifdef RENDER_DROID2
+	// draw POV first to avoid overdraw
+	jkPlayer_DrawPov();
+#endif
+
 #if !defined(SDL2_RENDER) && !defined(TARGET_TWL)
     if ( Video_modeStruct.b3DAccel )
 #endif
@@ -186,7 +192,10 @@ int jkGame_Update()
         stdDisplay_VBufferUnlock(Video_pMenuBuffer);
     }
 #endif
+
+#ifndef RENDER_DROID2
     jkPlayer_DrawPov();
+#endif
 
 #ifdef RENDER_DROID2
 	std3D_FlushPostFX();// std3D_FlushDrawCalls();

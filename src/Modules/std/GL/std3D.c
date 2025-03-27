@@ -17,6 +17,8 @@
 #include "Engine/rdClip.h"
 #include "Primitives/rdMath.h"
 
+#include "Modules/rdroid/World/rdShader.h"
+
 #include "jk.h"
 
 #include <stdbool.h>
@@ -202,6 +204,9 @@ typedef struct std3D_SharedUniforms
 
 	rdVector2 pad1;
 
+	rdVector4 scale_bias[8];
+
+	rdVector4 negInv[4];
 } std3D_SharedUniforms;
 std3D_SharedUniforms sharedUniforms;
 
@@ -317,109 +322,16 @@ static std3D_decalAtlasNode nodePool[(DECAL_ATLAS_SIZE / 4) * (DECAL_ATLAS_SIZE 
 static std3D_decalAtlasNode decalRootNode;
 static stdHashTable* decalHashTable = NULL;
 
-void std3D_PurgeDecals();
-
-#define STD3D_MAX_DRAW_CALLS 16384
-#define STD3D_MAX_DRAW_CALL_VERTS (STD3D_MAX_DRAW_CALLS * 24)
-#define STD3D_MAX_DRAW_CALL_INDICES (STD3D_MAX_DRAW_CALLS * 66)
-
-typedef enum STD3D_DRAW_LIST
-{
-	DRAW_LIST_Z,
-	//DRAW_LIST_Z_ALPHATEST,
-	DRAW_LIST_Z_REFRACTION,
-	DRAW_LIST_COLOR_ZPREPASS,
-	DRAW_LIST_COLOR_ZWRITE,
-	DRAW_LIST_COLOR_ZREAD,
-	DRAW_LIST_COLOR_STENCIL,
-	DRAW_LIST_COLOR_ALPHABLEND,
-	DRAW_LIST_COLOR_REFRACTION,
-	DRAW_LIST_COUNT
-} STD3D_DRAW_LIST;
-
 // define the maximum number of staging buffers needed for a whole frame to prevent reuse (vbo/ibo)
-#define STD3D_STAGING_COUNT (DRAW_LIST_COUNT)
+#define STD3D_STAGING_COUNT (4)
 
-typedef struct std3D_DrawCallList
-{
-	int              bSorted;
-	int              bPosOnly;
-	uint32_t         drawCallCount;
-	uint32_t         drawCallIndexCount;
-	uint32_t         drawCallVertexCount;
-	std3D_DrawCall*  drawCalls;
-	uint16_t*        drawCallIndices;
-	rdVertex*        drawCallVertices;
-	rdVertexBase*    drawCallPosVertices;
-	std3D_DrawCall** drawCallPtrs;
-} std3D_DrawCallList;
-
-std3D_DrawCallList  drawCallLists[DRAW_LIST_COUNT];
-
-void std3D_initDrawList(std3D_DrawCallList* pList)
-{
-	pList->drawCalls = malloc(sizeof(std3D_DrawCall) * STD3D_MAX_DRAW_CALLS);
-	pList->drawCallIndices = malloc(sizeof(uint16_t) * STD3D_MAX_DRAW_CALL_INDICES);
-	pList->drawCallPtrs = malloc(sizeof(std3D_DrawCall*) * STD3D_MAX_DRAW_CALLS);
-
-	if (pList->bPosOnly)
-		pList->drawCallPosVertices = malloc(sizeof(rdVertexBase) * STD3D_MAX_DRAW_CALL_VERTS);
-	else
-		pList->drawCallVertices = malloc(sizeof(rdVertex) * STD3D_MAX_DRAW_CALL_VERTS);
-}
-
-void std3D_freeDrawList(std3D_DrawCallList* pList)
-{
-	if (pList->drawCalls)
-	{
-		free(pList->drawCalls);
-		pList->drawCalls = 0;
-	}
-
-	if (pList->drawCallIndices)
-	{
-		free(pList->drawCallIndices);
-		pList->drawCallIndices = 0;
-	}
-
-	if (pList->drawCallVertices)
-	{
-		free(pList->drawCallVertices);
-		pList->drawCallVertices = 0;
-	}
-
-	if (pList->drawCallPosVertices)
-	{
-		free(pList->drawCallPosVertices);
-		pList->drawCallPosVertices = 0;
-	}
-
-	if (pList->drawCallPtrs)
-	{
-		free(pList->drawCallPtrs);
-		pList->drawCallPtrs = 0;
-	}
-}
-
+// try not to add too many permutations
 typedef enum STD3D_SHADER_ID
 {
-	SHADER_DEPTH,
-	//SHADER_DEPTH_ALPHATEST,
-
-	SHADER_COLOR_UNLIT,
-	SHADER_COLOR_VERTEX_LIT,
 	SHADER_COLOR,
-
-	SHADER_COLOR_ALPHATEST_UNLIT,
-	SHADER_COLOR_ALPHATEST_VERTEXLIT,
 	SHADER_COLOR_ALPHATEST,
-	//SHADER_COLOR_ALPHATEST_SPEC,
 
-	//SHADER_COLOR_ALPHABLEND_UNLIT,
-	//SHADER_COLOR_ALPHABLEND,
-	//SHADER_COLOR_ALPHABLEND_SPEC,
-
-	SHADER_COLOR_REFRACTION,
+	//SHADER_COLOR_REFRACTION,
 
 	SHADER_COUNT
 } STD3D_DRAW_LIST;
@@ -683,13 +595,13 @@ static inline GLuint std3D_getImageFormat(GLuint format)
 	return isInteger ? intTypeForChannels[numChannels] : typeForChannels[numChannels];
 }
 
-static inline void std3D_pushDebugGroup(const char* name)
+void std3D_PushDebugGroup(const char* name)
 {
 	if(GLEW_KHR_debug)
 		glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, -1, name);
 }
 
-static inline void std3D_popDebugGroup()
+void std3D_PopDebugGroup()
 {
 	if(GLEW_KHR_debug)
 		glPopDebugGroup();
@@ -732,32 +644,28 @@ void std3D_initDefaultShader()
 	shader.version = 1.0;
 	shader.instructionCount = 4;
 
-	// tex r0, t0, t0 # diffuse texture
-	shader.instructions[0].op_dst = 0xf0e4001a;
-	shader.instructions[0].src0   = 0xe40003;
-	shader.instructions[0].src1   = 0xe40003;
+	shader.instructions[0].op_dst = rdShader_AssembleOpAndDst(RD_SHADER_OP_TEX, RD_SHADER_U8, 0, RD_SWIZZLE_XYZW, 0, RD_WRITE_RGBA, 0, 0, 0, 0);
+	shader.instructions[0].src0 = rdShader_AssembleSrc(0, RD_SHADER_TEX, RD_SHADER_U8, 0, 0, RD_SWIZZLE_XYZW, 0, 0, 0);
+	shader.instructions[0].src1 = rdShader_AssembleSrc(1, RD_SHADER_TEX, RD_SHADER_U8, 0, 0, RD_SWIZZLE_XYZW, 0, 0, 0);
 
-	// mul r0, r0, v0 # diffuse light	
-	shader.instructions[1].op_dst = 0xf0e40014;
-	shader.instructions[1].src0   = 0xe40000;
-	shader.instructions[1].src1   = 0xe40041;
+	shader.instructions[1].op_dst = rdShader_AssembleOpAndDst(RD_SHADER_OP_MUL, RD_SHADER_U8, 0, RD_SWIZZLE_XYZW, 0, RD_WRITE_RGBA, 0, 0, 0, 0);
+	shader.instructions[1].src0 = rdShader_AssembleSrc(0, RD_SHADER_GPR, RD_SHADER_U8, 0, 0, RD_SWIZZLE_XYZW, 0, 0, 0);
+	shader.instructions[1].src1 = rdShader_AssembleSrc(1, RD_SHADER_CLR, RD_SHADER_U8, 0, 0, RD_SWIZZLE_XYZW, 0, 0, 0);
 
-	// tex r1, t1, t0 # glow
-	shader.instructions[2].op_dst = 0xf0e4021a;
-	shader.instructions[2].src0   = 0xe40043;
-	shader.instructions[2].src1   = 0xe40043;
+	shader.instructions[2].op_dst = rdShader_AssembleOpAndDst(RD_SHADER_OP_TEX, RD_SHADER_U8, 1, RD_SWIZZLE_XYZW, 0, RD_WRITE_RGBA, 0, 0, 0, 0);
+	shader.instructions[2].src0 = rdShader_AssembleSrc(0, RD_SHADER_TEX, RD_SHADER_U8, 1, 0, RD_SWIZZLE_XYZW, 0, 0, 0);
+	shader.instructions[2].src1 = rdShader_AssembleSrc(1, RD_SHADER_TEX, RD_SHADER_U8, 0, 0, RD_SWIZZLE_XYZW, 0, 0, 0);
 
-	// max r0, r0, r1 # max(diff, glow)
-	shader.instructions[3].op_dst = 0xf0e4000e;
-	shader.instructions[3].src0   = 0xe40000;
-	shader.instructions[3].src1   = 0xe40040;
+	shader.instructions[3].op_dst = rdShader_AssembleOpAndDst(RD_SHADER_OP_MAX, RD_SHADER_U8, 0, RD_SWIZZLE_XYZW, 0, RD_WRITE_RGB, 0, 0, 0, 0);
+	shader.instructions[3].src0 = rdShader_AssembleSrc(0, RD_SHADER_GPR, RD_SHADER_U8, 0, 0, RD_SWIZZLE_XYZW, 0, 0, 0);
+	shader.instructions[3].src1 = rdShader_AssembleSrc(1, RD_SHADER_GPR, RD_SHADER_U8, 1, 0, RD_SWIZZLE_XYZW, 0, 0, 0);
 
 	glBindBuffer(GL_UNIFORM_BUFFER, defaultShaderUBO);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(rdShaderByteCode), &shader, GL_STATIC_DRAW);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
-void std3D_generateIntermediateFbo(int32_t width, int32_t height, std3DIntermediateFbo* pFbo, uint32_t format, int mipMaps, int useDepth, int rbo)
+void std3D_generateIntermediateFbo(int32_t width, int32_t height, std3DIntermediateFbo* pFbo, uint32_t format, int mipMaps, int linear, int useDepth, int rbo)
 {
     // Generate the framebuffer
     memset(pFbo, 0, sizeof(*pFbo));
@@ -776,16 +684,24 @@ void std3D_generateIntermediateFbo(int32_t width, int32_t height, std3DIntermedi
     glGenTextures(1, &pFbo->tex);
     glBindTexture(GL_TEXTURE_2D, pFbo->tex);
     glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, std3D_getImageFormat(format), std3D_getUploadFormat(format), NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mipMaps ? GL_LINEAR : GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, mipMaps ? GL_LINEAR : GL_NEAREST);
+	if (linear)
+	{
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mipMaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, mipMaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+	}
+	else
+	{
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mipMaps ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, mipMaps ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST);
+	}
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-    //if(mipMaps)
-    //{
+    if(mipMaps)
+    {
     //    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 1);
-    //    glGenerateMipmap(GL_TEXTURE_2D);
-    //}
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
 
     // Attach fbTex to our currently bound framebuffer fb
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pFbo->tex, 0);
@@ -840,12 +756,20 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 
     glGenFramebuffers(1, &pFb->fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, pFb->fbo);
+
+#ifdef CHROMA_SUBSAMPLING
+	GLuint fboFormat = jkPlayer_enable32Bit ? GL_RG16_SNORM : GL_RG8_SNORM;
+	GLuint fboLayout = GL_RG;
+#else
+	GLuint fboFormat = jkPlayer_enable32Bit ? GL_RGB10_A2 : GL_RGB5_A1;
+	GLuint fboLayout = GL_RGBA;
+#endif
     
     // Set up our framebuffer texture
 	// we never really use the alpha channel, so for 32bit we use deep color (rgb10a20, and for 16bit we use high color (rgb5a1, to avoid green shift)
     glGenTextures(1, &pFb->tex0);
     glBindTexture(GL_TEXTURE_2D, pFb->tex0);
-    glTexImage2D(GL_TEXTURE_2D, 0, /*jkPlayer_enable32Bit ? GL_RGB10_A2 : GL_RGB5_A1*/ jkPlayer_enable32Bit ? GL_RG16_SNORM : GL_RG8_SNORM, width, height, 0, GL_RG, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, fboFormat, width, height, 0, fboLayout, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -861,13 +785,13 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 		// Set up our emissive fb texture
 		glGenTextures(1, &pFb->tex1);
 		glBindTexture(GL_TEXTURE_2D, pFb->tex1);
-		glTexImage2D(GL_TEXTURE_2D, 0, /*jkPlayer_enable32Bit ? GL_RGB10_A2 :*/ GL_RGB10_A2, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexImage2D(GL_TEXTURE_2D, 0, jkPlayer_enable32Bit ? GL_RGB10_A2 : GL_RGB565, width, height, 0, jkPlayer_enable32Bit? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 1);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 1);
 		//glGenerateMipmap(GL_TEXTURE_2D);
 		//glGenerateMipmap(GL_TEXTURE_2D);
     
@@ -940,8 +864,8 @@ void std3D_generateExtraFramebuffers(int32_t width, int32_t height)
 		int ssao_w = width > 320 ? width / 2 : width;
 		int ssao_h = ssao_w * ((float)height / width);
 
-		std3D_generateIntermediateFbo(width / 2, height / 2, &ssaoDepth, GL_R16F, 0, 0, 0);
-		std3D_generateIntermediateFbo(width, height, &ssao, GL_R8, 0, 1, std3D_framebuffer.ztex);
+		std3D_generateIntermediateFbo(width / 2, height / 2, &ssaoDepth, GL_R16F, 0, 0, 0, 0);
+		std3D_generateIntermediateFbo(width, height, &ssao, GL_R8, 0, 0, 1, std3D_framebuffer.ztex);
 		std3D_framebufferFlags |= 2;
 	}
 	else
@@ -952,17 +876,23 @@ void std3D_generateExtraFramebuffers(int32_t width, int32_t height)
 		int bloom_w = width > 320 ? 640 : 320;
 		int bloom_h = bloom_w * ((float)height / width);
 
-		std3D_generateIntermediateFbo(bloom_w, bloom_h, &bloomLayers[0], GL_R11F_G11F_B10F, 1, 0, 0);
+		std3D_generateIntermediateFbo(bloom_w, bloom_h, &bloomLayers[0], GL_R11F_G11F_B10F, 0, 1, 0, 0);
 		for (int i = 1; i < ARRAY_SIZE(bloomLayers); ++i)
-			std3D_generateIntermediateFbo(bloomLayers[i - 1].w / 2, bloomLayers[i - 1].h / 2, &bloomLayers[i], GL_R11F_G11F_B10F, 1, 0, 0);
+			std3D_generateIntermediateFbo(bloomLayers[i - 1].w / 2, bloomLayers[i - 1].h / 2, &bloomLayers[i], GL_R11F_G11F_B10F, 0, 1, 0, 0);
 	}
 
-	std3D_generateIntermediateFbo(width, height, &deferred, GL_R32F, 0, 0, 0);
+	std3D_generateIntermediateFbo(width, height, &deferred, GL_R32F, 0, 0, 0, 0);
 	//std3D_generateIntermediateFbo(width, height, &deferred, GL_RGBA8, 0, 0, 0);
 
 	// the refraction buffers use the same depth-stencil as the main scene
-	std3D_generateIntermediateFbo(width, height, &refr, GL_RG8_SNORM, 0, 1, std3D_framebuffer.ztex);
-	std3D_generateIntermediateFbo(width, height, &refrZ, GL_R32F, 0, 1, std3D_framebuffer.ztex);
+#ifdef CHROMA_SUBSAMPLING
+	GLuint refrFormat = GL_RG8_SNORM;
+#else
+	GLuint refrFormat = GL_RGB565;
+#endif
+
+	std3D_generateIntermediateFbo(width, height, &refr, refrFormat, 1, 0, 1, std3D_framebuffer.ztex);
+	std3D_generateIntermediateFbo(width, height, &refrZ, GL_R32F, 0, 0, 1, std3D_framebuffer.ztex);
 
 	std3D_mainFbo.fbo = std3D_framebuffer.fbo;
 	std3D_mainFbo.tex = std3D_framebuffer.tex1;
@@ -1294,7 +1224,7 @@ void std3D_BlitDrawSurface(std3D_DrawSurface* src, rdRect* srcRect, std3D_DrawSu
 	if(!src || !dst || !srcRect || !dstRect)
 		return;
 
-	std3D_pushDebugGroup("std3D_BlitDrawSurface");
+	std3D_PushDebugGroup("std3D_BlitDrawSurface");
 
 	std3D_MakeDrawSurfaceResident(src);
 	std3D_MakeDrawSurfaceResident(dst);
@@ -1324,14 +1254,14 @@ void std3D_BlitDrawSurface(std3D_DrawSurface* src, rdRect* srcRect, std3D_DrawSu
 	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 
 void std3D_ClearDrawSurface(std3D_DrawSurface* surface, int fillColor, rdRect* rect)
 {
 	std3D_MakeDrawSurfaceResident(surface);
 
-	std3D_pushDebugGroup("std3D_ClearDrawSurface");
+	std3D_PushDebugGroup("std3D_ClearDrawSurface");
 
 	std3DIntermediateFbo* pFb = (std3DIntermediateFbo*)surface;
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, pFb->fbo);
@@ -1347,7 +1277,7 @@ void std3D_ClearDrawSurface(std3D_DrawSurface* surface, int fillColor, rdRect* r
 
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 #endif
 
@@ -1742,20 +1672,10 @@ int init_resources()
 
     if ((programMenu = std3D_loadProgram("shaders/menu", "")) == 0) return false;
 
-	if (!std3D_loadWorldStage(&worldStages[SHADER_DEPTH], 1, "Z_PREPASS;WORLD")) return false;
-	//if (!std3D_loadWorldStage(&worldStages[SHADER_DEPTH_ALPHATEST], 1, "Z_PREPASS;ALPHA_DISCARD")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR], 0, "")) return false;
-	//if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_SPEC], 0, "SPECULAR")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_UNLIT], 0, "UNLIT;WORLD")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_VERTEX_LIT], 0, "VERTEX_LIT;WORLD")) return false;
+	//if (!std3D_loadWorldStage(&worldStages[SHADER_DEPTH], 1, "Z_PREPASS;WORLD")) return false;
+	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR], 0, "WORLD")) return false;
 	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHATEST], 0, "ALPHA_DISCARD;WORLD")) return false;
-	//if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHATEST_SPEC], 0, "ALPHA_DISCARD;SPECULAR")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHATEST_VERTEXLIT], 0, "ALPHA_DISCARD;VERTEX_LIT;WORLD")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHATEST_UNLIT], 0, "ALPHA_DISCARD;UNLIT;WORLD")) return false;
-	//if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHABLEND], 0, "ALPHA_DISCARD;ALPHA_BLEND")) return false;
-	//if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHABLEND_SPEC], 0, "ALPHA_DISCARD;ALPHA_BLEND;SPECULAR")) return false;
-	//if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHABLEND_UNLIT], 0, "ALPHA_DISCARD;ALPHA_BLEND;UNLIT")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_REFRACTION], 0, "ALPHA_DISCARD;ALPHA_BLEND;REFRACTION;WORLD")) return false;
+	//if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_REFRACTION], 0, "ALPHA_DISCARD;ALPHA_BLEND;REFRACTION;WORLD")) return false;
 
     if (!std3D_loadSimpleTexProgram("shaders/ui", &std3D_uiProgram)) return false;
     if (!std3D_loadSimpleTexProgram("shaders/texfbo", &std3D_texFboStage)) return false;
@@ -1765,7 +1685,7 @@ int init_resources()
 	if (!std3D_loadSimpleTexProgram("shaders/ssao", &std3D_ssaoStage)) return false;
 	if (!std3D_loadSimpleTexProgram("shaders/decal_insert", &std3D_decalAtlasStage)) return false;
 
-	std3D_generateIntermediateFbo(DECAL_ATLAS_SIZE, DECAL_ATLAS_SIZE, &decalAtlasFBO, GL_RGBA8, 0, 0, 0);
+	std3D_generateIntermediateFbo(DECAL_ATLAS_SIZE, DECAL_ATLAS_SIZE, &decalAtlasFBO, GL_RGBA8, 0, 9, 0, 0);
 
 	decalRootNode.rect.x = 0.0f;
 	decalRootNode.rect.y = 0.0f;
@@ -1941,24 +1861,24 @@ int init_resources()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 
-	float phase[256 * 256];
-	for (int y = 0; y < 255; ++y)
-	for (int x = 0; x < 255; ++x)
-	{
-		float k = (float)x / 255.0f;
-		float costh = ((float)y / 255.0f) * 2.0f - 1.0f;
-
-		//phase[y * 255 + x] = (1.0 - k * k) / (4.0 * 3.141592 * powf(1.0 - k * costh, 2.0));
-		//phase[y * 255 + x] = (1.0 - k * k) / (powf(1.0 - k * costh, 2.0));
-
-		float c = 1.0 - k * costh;
-		float f = (1.0 - k * k) / (c * c);
-		f /= (1.0 + f); // tone map it
-
-		phase[y * 255 + x] = f;
-	}
-
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, 256, 256, 0, GL_RED, GL_FLOAT, phase);
+//float phase[256 * 256];
+//for (int y = 0; y < 255; ++y)
+//for (int x = 0; x < 255; ++x)
+//{
+//	float k = (float)x / 255.0f;
+//	float costh = ((float)y / 255.0f) * 2.0f - 1.0f;
+//
+//	//phase[y * 255 + x] = (1.0 - k * k) / (4.0 * 3.141592 * powf(1.0 - k * costh, 2.0));
+//	//phase[y * 255 + x] = (1.0 - k * k) / (powf(1.0 - k * costh, 2.0));
+//
+//	float c = 1.0 - k * costh;
+//	float f = (1.0 - k * k) / (c * c);
+//	f /= (1.0 + f); // tone map it
+//
+//	phase[y * 255 + x] = f;
+//}
+//
+//glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, 256, 256, 0, GL_RED, GL_FLOAT, phase);
 
 	// blackbody
 	glGenTextures(1, &blackbody_texture);
@@ -2034,24 +1954,18 @@ int init_resources()
 	for (int i = 0; i < STD3D_STAGING_COUNT; ++i)
 	{
 		glBindBuffer(GL_ARRAY_BUFFER, world_vbo_all[i]);
-		glBufferData(GL_ARRAY_BUFFER, STD3D_MAX_DRAW_CALLS * sizeof(rdVertex), NULL, GL_STREAM_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, RD_CACHE_MAX_DRAW_CALLS * sizeof(rdVertex), NULL, GL_STREAM_DRAW);
 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_ibo_triangle[i]);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, STD3D_MAX_DRAW_CALL_INDICES * sizeof(uint16_t), NULL, GL_STREAM_DRAW);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, RD_CACHE_MAX_DRAW_CALL_INDICES * sizeof(uint16_t), NULL, GL_STREAM_DRAW);
 	}
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-	for (int i = 0; i < DRAW_LIST_COUNT; ++i)
-	{
-		drawCallLists[i].bPosOnly = (i <= DRAW_LIST_Z_REFRACTION);
-		std3D_initDrawList(&drawCallLists[i]);
-	}
-
 	std3D_setupUBOs();
 	for(int i = 0; i < SHADER_COUNT; ++i)
 	{
-		worldStages[i].bPosOnly = i == SHADER_DEPTH;//(i <= SHADER_DEPTH_ALPHATEST);
+		//worldStages[i].bPosOnly = i == SHADER_DEPTH;//(i <= SHADER_DEPTH_ALPHATEST);
 
 		std3D_setupDrawCallVAO(&worldStages[i]);
 		std3D_setupLightingUBO(&worldStages[i]);
@@ -2077,9 +1991,6 @@ int std3D_Startup()
 
     memset(&std3D_ui_colormap, 0, sizeof(std3D_ui_colormap));
     rdColormap_LoadEntry("misc\\cmp\\UIColormap.cmp", &std3D_ui_colormap);
-
-	for (int i = 0; i < DRAW_LIST_COUNT; ++i)
-		memset(&drawCallLists[i], 0, sizeof(std3D_DrawCallList));
 
     std3D_bReinitHudElements = 1;
 
@@ -2166,9 +2077,6 @@ void std3D_FreeResources()
 	glDeleteBuffers(1, &cluster_buffer);
 	glDeleteTextures(1, &cluster_tbo);
 
-	for (int i = 0; i < DRAW_LIST_COUNT; ++i)
-		std3D_freeDrawList(&drawCallLists[i]);
-
 	std3D_DeleteShader(defaultShaderUBO);
 
     std3D_bReinitHudElements = 1;
@@ -2200,7 +2108,7 @@ int std3D_StartScene()
         }
     }
 
-	std3D_pushDebugGroup("std3D_StartScene");
+	std3D_PushDebugGroup("std3D_StartScene");
     
     rendered_tris = 0;
     
@@ -2287,11 +2195,38 @@ int std3D_StartScene()
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 1, GL_RGB, GL_UNSIGNED_BYTE, displaypal_data);
     }
 
-	std3D_ResetDrawCalls();
+	//std3D_ResetDrawCalls();
 
-	std3D_popDebugGroup();
+	void std3D_UpdateSharedUniforms();
+	std3D_UpdateSharedUniforms();
 
-    return 1;
+	void std3D_setupWorldTextures();
+	std3D_setupWorldTextures();
+	std3D_bindTexture(GL_TEXTURE_2D, refrZ.tex, TEX_SLOT_CLIP);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.fbo);
+	GLenum bufs[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
+	glDrawBuffers(ARRAYSIZE(bufs), bufs);
+
+	std3D_bindTexture(GL_TEXTURE_2D, ssao.tex, TEX_SLOT_AO);
+
+	glViewport(0, 0, std3D_framebuffer.w, std3D_framebuffer.h);
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
+	glDepthFunc(GL_LESS);
+	glCullFace(GL_BACK);
+	glDisable(GL_STENCIL_TEST);
+	glDisable(GL_SCISSOR_TEST);
+
+	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_LIGHTS, light_ubo);
+	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_OCCLUDERS, occluder_ubo);
+	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_DECALS, decal_ubo);
+	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_SHARED, shared_ubo);
+	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_FOG, fog_ubo);
+	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_TEX, tex_ubo);
+	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_MATERIAL, material_ubo);
+	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_SHADER, defaultShaderUBO);
+	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_SHADER_CONSTS, shaderConstsUbo);
 }
 
 int std3D_EndScene()
@@ -2302,9 +2237,36 @@ int std3D_EndScene()
         return 1;
     }
 
+	std3D_ResetState();
+
     last_tex = NULL;
     last_flags = 0;
     return 1;
+}
+
+void std3D_ResetState()
+{
+	glBindVertexArray(vao);
+
+	glBindTexture(GL_TEXTURE_2D, worldpal_texture);
+
+	//glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+	glDepthFunc(GL_ALWAYS);
+	glDisable(GL_CULL_FACE);
+
+	glDisable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
+	glDisable(GL_STENCIL_TEST);
+	glDisable(GL_SCISSOR_TEST);
+	glCullFace(GL_FRONT);
+	glBindSampler(0, 0);
+	glBindSampler(TEX_SLOT_DIFFUSE, 0);
+	glBindSampler(TEX_SLOT_EMISSIVE, 0);
+	glBindSampler(TEX_SLOT_DISPLACEMENT, 0);
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
 }
 
 void std3D_ResetUIRenderList()
@@ -2482,7 +2444,7 @@ void std3D_DrawMenu()
 {
     if (Main_bHeadless) return;
 
-	std3D_pushDebugGroup("std3D_DrawMenu");
+	std3D_PushDebugGroup("std3D_DrawMenu");
 
     //printf("Draw menu\n");
  //   std3D_DrawSceneFbo();
@@ -2808,7 +2770,7 @@ void std3D_DrawMenu()
 
     last_flags = 0;
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 
 void std3D_DrawMapOverlay()
@@ -3369,11 +3331,12 @@ void std3D_DrawUIRenderList()
 // todo: clean this shit up
 void std3D_DrawSimpleTex(std3DSimpleTexStage* pStage, std3DIntermediateFbo* pFbo, GLuint texId, GLuint texId2, GLuint texId3, float param1, float param2, float param3, int gen_mips, const char* debugName)
 {
-	std3D_pushDebugGroup(debugName);
+	std3D_PushDebugGroup(debugName);
 
     glBindFramebuffer(GL_FRAMEBUFFER, pFbo->fbo);
     glDepthFunc(GL_ALWAYS);
 	glDisable(GL_CULL_FACE);
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	std3D_useProgram(pStage->program);
     
 	glBindVertexArray(vao);
@@ -3457,7 +3420,7 @@ void std3D_DrawSimpleTex(std3DSimpleTexStage* pStage, std3DIntermediateFbo* pFbo
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 
 int std3D_SetCurrentPalette(rdColor24 *a1, int a2)
@@ -4987,288 +4950,15 @@ GLuint std3D_PrimitiveForGeoMode(rdGeoMode_t geoMode)
 	}
 }
 
-uint64_t std3D_GetSortKey(std3D_DrawCall* pDrawCall)
-{
-	int textureID = pDrawCall->state.textureState.pTexture ? pDrawCall->state.textureState.pTexture->texture_id : 0;
-
-	uint64_t offset = 0ull;
-	
-	uint64_t sortKey = 0;
-	sortKey |= pDrawCall->state.stateBits.data & 0xFFFFFFFF;
-	sortKey |= ((uint64_t)textureID & 0xFFFF) << 32ull;
-	sortKey |= ((uint64_t)pDrawCall->shaderID & 0x4) << 48ull;
-	sortKey |= ((uint64_t)pDrawCall->state.header.sortOrder & 0xFF) << 52ull;
-	if(pDrawCall->state.shaderState.shader)
-		sortKey |= ((uint64_t)pDrawCall->state.shaderState.shader->shaderid & 0xF) << 60ull;
-
-	return sortKey;
-}
-
 int std3D_GetShaderID(std3D_DrawCallState* pState)
 {
 	int alphaTest = pState->stateBits.alphaTest & 1;
 	int blending  = pState->stateBits.blend & 1;
-	int lighting  = pState->stateBits.lightMode >= RD_LIGHTMODE_DIFFUSE;
-	int pixelLit  = pState->stateBits.lightMode > RD_LIGHTMODE_DIFFUSE;
-	//int specular  = pState->stateBits.lightMode == RD_LIGHTMODE_SPECULAR;
-
-	// todo: clean this up by using some array indexing or something
-	//if (blending)
-		//return SHADER_COLOR_ALPHABLEND_UNLIT + lighting + specular;
 
 	if (alphaTest || blending)
-		return SHADER_COLOR_ALPHATEST_UNLIT + lighting + pixelLit;// + specular;
+		return SHADER_COLOR_ALPHATEST;
 
-	return SHADER_COLOR_UNLIT + lighting + pixelLit;// + specular;
-}
-
-void std3D_AddListVertices(std3D_DrawCall* pDrawCall, rdPrimitiveType_t type, std3D_DrawCallList* pList, rdVertex* paVertices, int numVertices)
-{
-	int firstIndex = pList->drawCallIndexCount;
-	int firstVertex = pList->drawCallVertexCount;
-
-	// copy the vertices
-	if(pList->bPosOnly)
-	{
-		for (int i = 0; i < numVertices; ++i)
-		{
-			pList->drawCallPosVertices[firstVertex + i].x = paVertices[i].x;
-			pList->drawCallPosVertices[firstVertex + i].y = paVertices[i].y;
-			pList->drawCallPosVertices[firstVertex + i].z = paVertices[i].z;
-			//pList->drawCallPosVertices[firstVertex + i].norm10a2 = paVertices->norm10a2;
-		}
-	}
-	else
-	{
-		memcpy(&pList->drawCallVertices[firstVertex], paVertices, sizeof(rdVertex) * numVertices);
-	}
-	pList->drawCallVertexCount += numVertices;
-
-	// generate indices
-	if (numVertices <= 3)
-	{
-		// single triangle fast path
-		pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + 0;
-		pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + 1;
-		pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + 2;
-	}
-	else if (type == RD_PRIMITIVE_TRIANGLES)
-	{
-		// generate triangle indices directly
-		int tris = numVertices / 3;
-		for (int i = 0; i < tris; ++i)
-		{
-			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i * 3 + 0;
-			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i * 3 + 1;
-			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i * 3 + 2;
-		}
-	}
-	else if (type == RD_PRIMITIVE_TRIANGLE_FAN)
-	{
-		// build indices from a single corner vertex
-		int verts = numVertices - 2;
-		for (int i = 0; i < verts; i++)
-		{
-			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + 0;
-			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i + 1;
-			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i + 2;
-		}
-	}
-	else if (type == RD_PRIMITIVE_POLYGON)
-	{
-		// build indices through simple triangulation
-		int verts = numVertices - 2;
-		int i1 = 0;
-		int i2 = 1;
-		int i3 = numVertices - 1;
-		for (int i = 0; i < verts; ++i)
-		{
-			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i1;
-			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i2;
-			pList->drawCallIndices[pList->drawCallIndexCount++] = firstVertex + i3;
-			if ((i & 1) != 0)
-				i1 = i3--;
-			else
-				i1 = i2++;
-		}
-	}
-
-	pDrawCall->firstIndex = firstIndex;
-	pDrawCall->numIndices = pList->drawCallIndexCount - firstIndex;
-}
-
-void std3D_AddListDrawCall(rdPrimitiveType_t type, std3D_DrawCallList* pList, std3D_DrawCallState* pDrawCallState, int shaderID, rdVertex* paVertices, int numVertices)
-{
-	if (pList->drawCallCount + 1 > STD3D_MAX_DRAW_CALLS)
-		return; // todo: flush here?
-
-	if (pList->drawCallVertexCount + numVertices > STD3D_MAX_DRAW_CALL_VERTS)
-		return; // todo: flush here?
-
-	std3D_DrawCall* pDrawCall = &pList->drawCalls[pList->drawCallCount++];
-	pDrawCall->sortKey = std3D_GetSortKey(pDrawCallState);
-	pDrawCall->state = *pDrawCallState;
-	pDrawCall->shaderID = shaderID;
-
-	std3D_AddListVertices(pDrawCall, type, pList, paVertices, numVertices);
-}
-
-void std3D_AddZListDrawCall(rdPrimitiveType_t type, std3D_DrawCallList* pList, std3D_DrawCallState* pDrawCallState, rdVertex* paVertices, int numVertices)
-{
-	if (pList->drawCallCount + 1 > STD3D_MAX_DRAW_CALLS)
-		return; // todo: flush here?
-
-	if (pList->drawCallVertexCount + numVertices > STD3D_MAX_DRAW_CALL_VERTS)
-		return; // todo: flush here?
-
-	std3D_DrawCall* pDrawCall = &pList->drawCalls[pList->drawCallCount++];
-	pDrawCall->state = *pDrawCallState;
-	pDrawCall->shaderID = SHADER_DEPTH;//pDrawCallState->stateBits.alphaTest ? SHADER_DEPTH_ALPHATEST : SHADER_DEPTH;
-
-	pDrawCall->state.header.sortOrder = 0;
-
-	// z lists can ignore blending, fog, lighting and possibly textures
-	pDrawCall->state.stateBits.fogMode = 0;
-	pDrawCall->state.stateBits.blend = 0;
-	pDrawCall->state.stateBits.srdBlend = 1;
-	pDrawCall->state.stateBits.dstBlend = 0;
-	pDrawCall->state.stateBits.lightMode = 0;
-
-	memset(&pDrawCall->state.shaderState, 0, sizeof(std3D_ShaderState));
-	memset(&pDrawCall->state.fogState, 0, sizeof(std3D_FogState));
-	memset(&pDrawCall->state.lightingState, 0, sizeof(std3D_LightingState));
-	if(!pDrawCallState->stateBits.alphaTest)// && pDrawCallState->stateBits.texGen == RD_TEXGEN_NONE) // non-alpha test with no texgen doesn't require textures
-	{
-		pDrawCall->state.stateBits.geoMode = 2;
-		pDrawCall->state.stateBits.ditherMode = 0;
-		pDrawCall->state.stateBits.texMode = 0;
-		pDrawCall->state.stateBits.texGen = 0;
-		pDrawCall->state.stateBits.texFilter = 0;
-		pDrawCall->state.stateBits.alphaTest = 0;
-		pDrawCall->state.stateBits.chromaKey = 0;
-		memset(&pDrawCall->state.textureState, 0, sizeof(std3D_TextureState));
-		memset(&pDrawCall->state.materialState, 0, sizeof(std3D_MaterialState));
-	}
-	
-	pDrawCall->sortKey = std3D_GetSortKey(&pDrawCall->state);
-
-	std3D_AddListVertices(pDrawCall, type, pList, paVertices, numVertices);
-}
-
-void std3D_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallState, rdVertex* paVertices, int numVertices)
-{
-	if (Main_bHeadless)
-		return;
-
-	int alphaTest = pDrawCallState->stateBits.alphaTest & 1;
-	int blending = pDrawCallState->stateBits.blend & 1;
-	int lighting = pDrawCallState->stateBits.lightMode >= RD_LIGHTMODE_DIFFUSE;
-	//int specular = pDrawCallState->stateBits.lightMode == RD_LIGHTMODE_SPECULAR;
-	int  pixelLit = pDrawCallState->stateBits.lightMode > RD_LIGHTMODE_DIFFUSE;
-
-	int writesZ = std3D_HasDepthWrites(pDrawCallState);
-	int isWater = pDrawCallState->stateBits.texGen == RD_TEXGEN_WATER;
-
-	int listIndex;
-	int shaderID;
-
-	//if (blending && isWater)
-	//{
-	//	std3D_AddZListDrawCall(type, &drawCallLists[DRAW_LIST_Z_REFRACTION], pDrawCallState, paVertices, numVertices);
-	//	
-	//	// water surfaces are refractive and split the render into 2
-	//	// in order for this to work correctly, they MUST write Z so that the content above them clips correctly
-	//	if(pDrawCallState->stateBits.zMethod == RD_ZBUFFER_NOREAD_NOWRITE)
-	//		pDrawCallState->stateBits.zMethod = RD_ZBUFFER_NOREAD_WRITE;
-	//	else if (pDrawCallState->stateBits.zMethod == RD_ZBUFFER_READ_NOWRITE)
-	//		pDrawCallState->stateBits.zMethod = RD_ZBUFFER_READ_WRITE;
-	//
-	//	// since the surface will be refractive/read the refraction buffer for composite, we can disable actual alpha blending
-	//	pDrawCallState->stateBits.blend = 0;
-	//	pDrawCallState->stateBits.srdBlend = 1;
-	//	pDrawCallState->stateBits.dstBlend = 0;
-	//
-	//	// use simple lighting on the refractive surfaces for now
-	//	pDrawCallState->stateBits.lightMode = RD_LIGHTMODE_DIFFUSE;
-	//
-	//	shaderID = SHADER_COLOR_REFRACTION;
-	//	listIndex = DRAW_LIST_COLOR_REFRACTION;
-	//}
-	//else
-	if (pDrawCallState->rasterState.colorMask == 0) // no color write
-	{
-		pDrawCallState->stateBits.fogMode = 0;
-		pDrawCallState->stateBits.blend = 0;
-		pDrawCallState->stateBits.srdBlend = 1;
-		pDrawCallState->stateBits.dstBlend = 0;
-		pDrawCallState->stateBits.lightMode = 0;
-
-		memset(&pDrawCallState->fogState, 0, sizeof(std3D_FogState));
-		memset(&pDrawCallState->lightingState, 0, sizeof(std3D_LightingState));
-
-		shaderID = std3D_GetShaderID(pDrawCallState);
-		listIndex = (writesZ ? DRAW_LIST_COLOR_ZWRITE : DRAW_LIST_COLOR_ZREAD);
-		//if (alphaTest)
-		//	std3D_AddListDrawCall(type, &drawCallLists[listIndex], pDrawCallState, shaderID, paVertices, numVertices);
-		//else
-		//	std3D_AddZListDrawCall(type, &drawCallLists[listIndex], pDrawCallState, paVertices, numVertices);
-		//return;
-
-		//shaderID = SHADER_DEPTH;
-		//listIndex = writesZ ? DRAW_LIST_COLOR_ZWRITE : DRAW_LIST_COLOR_ZREAD;
-
-		// draw it at the end
-		pDrawCallState->header.sortOrder = 255;
-	}
-	else if (!blending && writesZ && !alphaTest && !pDrawCallState->rasterState.stencilMode) // add to z-prepass if applicable
-	{
-		std3D_AddZListDrawCall(type, &drawCallLists[DRAW_LIST_Z + alphaTest], pDrawCallState, paVertices, numVertices);
-
-		// the forward pass can now do a simple equal test with no writes
-		pDrawCallState->header.sortOrder            = 0; // render first
-		pDrawCallState->stateBits.zCompare          = RD_COMPARE_EQUAL;
-		pDrawCallState->stateBits.zMethod           = RD_ZBUFFER_READ_NOWRITE;
-		pDrawCallState->stateBits.alphaTest         = 0;
-		pDrawCallState->stateBits.chromaKey         = 0;
-		pDrawCallState->textureState.alphaRef       = 0;
-		pDrawCallState->textureState.chromaKeyColor = 0;
-
-		shaderID  = SHADER_COLOR_UNLIT + lighting + pixelLit;// + specular;
-		listIndex = DRAW_LIST_COLOR_ZPREPASS;
-	}
-	else
-	{
-		shaderID = std3D_GetShaderID(pDrawCallState);
-		
-		//pDrawCallState->stateBits.blend = 0;
-		//pDrawCallState->stateBits.srdBlend = 1;
-		//pDrawCallState->stateBits.dstBlend = 0;
-
-		if (pDrawCallState->rasterState.stencilMode)
-			listIndex = DRAW_LIST_COLOR_STENCIL; // todo: handle blending?
-		else
-			listIndex = blending ? DRAW_LIST_COLOR_ALPHABLEND : (writesZ ? DRAW_LIST_COLOR_ZWRITE : DRAW_LIST_COLOR_ZREAD);
-	}
-
-	std3D_AddListDrawCall(type, &drawCallLists[listIndex], pDrawCallState, shaderID, paVertices, numVertices);
-}
-
-void std3D_ResetDrawCalls()
-{
-	for (int i = 0; i < DRAW_LIST_COUNT; ++i)
-	{
-		std3D_DrawCallList* pList = &drawCallLists[i];
-		pList->bSorted = 0;
-		pList->drawCallCount = 0;
-		pList->drawCallIndexCount = 0;
-		pList->drawCallVertexCount = 0;
-
-		std3D_DrawCall* drawCalls = pList->drawCalls;
-		std3D_DrawCall** drawCallPtrs = pList->drawCallPtrs;
-
-		for (int k = 0; k < STD3D_MAX_DRAW_CALLS; ++k)
-			drawCallPtrs[k] = &drawCalls[k];
-	}
+	return SHADER_COLOR;
 }
 
 void std3D_UpdateSharedUniforms()
@@ -5291,27 +4981,23 @@ void std3D_UpdateSharedUniforms()
 	// this one isn't really used so let's store the bias in it
 	sharedUniforms.mipDistances.w = (float)jkPlayer_mipBias;
 
+	// todo: move me
+	sharedUniforms.scale_bias[0] = (rdVector4){ 1.0f, 0.0f,0,0};
+	sharedUniforms.scale_bias[1] = (rdVector4){ 2.0f, 0.0f,0,0 };
+	sharedUniforms.scale_bias[2] = (rdVector4){ 4.0f, 0.0f,0,0 };
+	sharedUniforms.scale_bias[3] = (rdVector4){ 0.5f, 0.0f,0,0 };
+	sharedUniforms.scale_bias[4] = (rdVector4){ 0.25f, 0.0f,0,0 };
+	sharedUniforms.scale_bias[5] = (rdVector4){ 1.0f, -0.5f,0,0 };
+	sharedUniforms.scale_bias[6] = (rdVector4){ 2.0f, -1.0f,0,0 };
+
+	sharedUniforms.negInv[0] = (rdVector4){ 1.0f, 0.0f,0,0 };
+	sharedUniforms.negInv[1] = (rdVector4){-1.0f, 0.0f,0,0 };
+	sharedUniforms.negInv[2] = (rdVector4){-1.0f, 1.0f,0,0 };
+
 	glBindBuffer(GL_UNIFORM_BUFFER, shared_ubo);
 	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(std3D_SharedUniforms), &sharedUniforms);
 }
 
-int std3D_DrawCallCompareSortKey(std3D_DrawCall** a, std3D_DrawCall** b)
-{
-	if ((*a)->sortKey > (*b)->sortKey)
-		return 1;
-	if ((*a)->sortKey < (*b)->sortKey)
-		return -1;
-	return 0;
-}
-
-int std3D_DrawCallCompareDepth(std3D_DrawCall** a, std3D_DrawCall** b)
-{
-	if ((*a)->state.header.sortDistance > (*b)->state.header.sortDistance)
-		return 1;
-	if ((*a)->state.header.sortDistance < (*b)->state.header.sortDistance)
-		return -1;
-	return std3D_DrawCallCompareSortKey(a, b);
-}
 
 // todo: track state bits and only apply necessary changes
 void std3D_SetRasterState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
@@ -5417,25 +5103,27 @@ int std3D_SetBlendState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 		GL_ONE_MINUS_DST_COLOR, // RD_BLEND_INVDSTCOLOR
 		GL_SRC_ALPHA,           // RD_BLEND_SRCALPHA
 		GL_ONE_MINUS_SRC_ALPHA, // RD_BLEND_INVSRCALPHA
-		GL_DST_ALPHA,           // RD_BLEND_DSTALPHA
-		GL_ONE_MINUS_DST_ALPHA, // RD_BLEND_INVDSTALPHA
+		GL_SRC_COLOR,			// RD_BLEND_SRCCOLOR
+		GL_ONE_MINUS_SRC_COLOR,	// RD_BLEND_INVSRCCOLOR
+		//GL_DST_ALPHA,           // RD_BLEND_DSTALPHA
+		//GL_ONE_MINUS_DST_ALPHA, // RD_BLEND_INVDSTALPHA
 	};
 	glBlendFunc(glBlendForRdBlend[pState->stateBits.srdBlend], glBlendForRdBlend[pState->stateBits.dstBlend]);
 }
 
 void std3D_SetDepthStencilState(std3D_DrawCallState* pState)
 {
-	if (pState->stateBits.zMethod == RD_ZBUFFER_NOREAD_NOWRITE)
+	if (rdroid_curZBufferMethod == RD_ZBUFFER_NOREAD_NOWRITE)
 	{
 		glDisable(GL_DEPTH_TEST);
 		glDepthMask(GL_FALSE);
 	}
-	else if (pState->stateBits.zMethod == RD_ZBUFFER_READ_NOWRITE)
+	else if (rdroid_curZBufferMethod == RD_ZBUFFER_READ_NOWRITE)
 	{
 		glEnable(GL_DEPTH_TEST);
 		glDepthMask(GL_FALSE);
 	}
-	else if (pState->stateBits.zMethod == RD_ZBUFFER_NOREAD_WRITE)
+	else if (rdroid_curZBufferMethod == RD_ZBUFFER_NOREAD_WRITE)
 	{
 		glDisable(GL_DEPTH_TEST);
 		glDepthMask(GL_TRUE);
@@ -5446,18 +5134,56 @@ void std3D_SetDepthStencilState(std3D_DrawCallState* pState)
 		glDepthMask(GL_TRUE);
 	}
 
-	static const GLuint gl_compares[] =
-	{
-		GL_ALWAYS,
-		GL_LESS,
-		GL_LEQUAL,
-		GL_GREATER,
-		GL_GEQUAL,
-		GL_EQUAL,
-		GL_NOTEQUAL,
-		GL_NEVER
-	};
-	glDepthFunc(gl_compares[pState->stateBits.zCompare]);
+	extern float rdroid_curZNear;
+	extern float rdroid_curZFar;
+	glDepthRange(rdroid_curZNear, rdroid_curZFar);
+
+	//static const GLuint gl_compares[] =
+	//{
+	//	GL_ALWAYS,
+	//	GL_LESS,
+	//	GL_LEQUAL,
+	//	GL_GREATER,
+	//	GL_GEQUAL,
+	//	GL_EQUAL,
+	//	GL_NOTEQUAL,
+	//	GL_NEVER
+	//};
+	glDepthFunc(GL_LEQUAL);//gl_compares[pState->stateBits.zCompare]);
+
+//	if (pState->stateBits.zMethod == RD_ZBUFFER_NOREAD_NOWRITE)
+//	{
+//		glDisable(GL_DEPTH_TEST);
+//		glDepthMask(GL_FALSE);
+//	}
+//	else if (pState->stateBits.zMethod == RD_ZBUFFER_READ_NOWRITE)
+//	{
+//		glEnable(GL_DEPTH_TEST);
+//		glDepthMask(GL_FALSE);
+//	}
+//	else if (pState->stateBits.zMethod == RD_ZBUFFER_NOREAD_WRITE)
+//	{
+//		glDisable(GL_DEPTH_TEST);
+//		glDepthMask(GL_TRUE);
+//	}
+//	else
+//	{
+//		glEnable(GL_DEPTH_TEST);
+//		glDepthMask(GL_TRUE);
+//	}
+//
+//	static const GLuint gl_compares[] =
+//	{
+//		GL_ALWAYS,
+//		GL_LESS,
+//		GL_LEQUAL,
+//		GL_GREATER,
+//		GL_GEQUAL,
+//		GL_EQUAL,
+//		GL_NOTEQUAL,
+//		GL_NEVER
+//	};
+//	glDepthFunc(gl_compares[pState->stateBits.zCompare]);
 }
 
 void std3D_SetTransformState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
@@ -5652,6 +5378,8 @@ void std3D_BindStage(std3D_worldStage* pStage)
 {
 	std3D_useProgram(pStage->program);
 
+	glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.fbo);
+
 	glBindVertexArray(pStage->vao[bufferIdx]);
 	glBindBuffer(GL_ARRAY_BUFFER, world_vbo_all[bufferIdx]);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_ibo_triangle[bufferIdx]);
@@ -5661,10 +5389,9 @@ void std3D_BindStage(std3D_worldStage* pStage)
 		TEX_SLOT_TEX1,
 		TEX_SLOT_TEX2,
 		TEX_SLOT_TEX3,
-		TEX_SLOT_REFRACTION,
 	};
 
-	glUniform1iv(pStage->uniform_textures, 5, texids);
+	glUniform1iv(pStage->uniform_textures, 4, texids);
 
 	glUniform1i(pStage->uniform_tex,                TEX_SLOT_DIFFUSE);
 	glUniform1i(pStage->uniform_worldPalette,       TEX_SLOT_WORLD_PAL);
@@ -5682,44 +5409,6 @@ void std3D_BindStage(std3D_worldStage* pStage)
 	glUniform1i(pStage->uniform_blackbody_tex,      TEX_SLOT_BLACKBODY);
 }
 
-typedef int(*std3D_SortFunc)(std3D_DrawCall*, std3D_DrawCall*);
-
-enum STD3D_DIRTYBIT
-{
-	STD3D_STATEBITS = 0x1,
-	STD3D_SHADER    = 0x2,
-	STD3D_TRANSFORM = 0x4,
-	STD3D_RASTER    = 0x8,
-	STD3D_TEXTURE   = 0x10,
-	STD3D_FOG       = 0x20,
-	STD3D_LIGHTING  = 0x40,
-	STD3D_SHADER_ID = 0x80
-};
-
-static uint16_t std3D_drawCallIndicesSorted[STD3D_MAX_DRAW_CALL_INDICES];
-
-uint16_t* std3D_SortDrawCallIndices(std3D_DrawCallList* pList)
-{
-	STD_BEGIN_PROFILER_LABEL();
-	int drawCallIndexCount = 0;
-	for (int i = 0; i < pList->drawCallCount; ++i)
-	{
-		memcpy(&std3D_drawCallIndicesSorted[drawCallIndexCount], &pList->drawCallIndices[pList->drawCallPtrs[i]->firstIndex], sizeof(uint16_t) * pList->drawCallPtrs[i]->numIndices);
-		drawCallIndexCount += pList->drawCallPtrs[i]->numIndices;
-	}
-	STD_END_PROFILER_LABEL();
-	return std3D_drawCallIndicesSorted;
-}
-
-void std3D_SortDrawCallList(std3D_DrawCallList* pList, std3D_SortFunc sortFunc)
-{
-	STD_BEGIN_PROFILER_LABEL();
-	//if(!pList->bSorted)
-		_qsort(pList->drawCallPtrs, pList->drawCallCount, sizeof(std3D_DrawCall*), (int(__cdecl*)(const void*, const void*))sortFunc);
-	pList->bSorted = 1;
-	STD_END_PROFILER_LABEL();
-}
-
 void std3D_BlitFrame()
 {
 	glDepthMask(GL_FALSE);
@@ -5731,154 +5420,76 @@ void std3D_BlitFrame()
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
 	glReadBuffer(GL_COLOR_ATTACHMENT0);
 
-	glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, refr.w, refr.h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+	glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, refr.w, refr.h, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.fbo);
+	glBindTexture(GL_TEXTURE_2D, refr.tex);
+	glGenerateMipmap(GL_TEXTURE_2D);
 }
 
-void std3D_FlushDrawCallList(std3D_DrawCallList* pList, std3D_SortFunc sortFunc, const char* debugName)
+void std3D_SendVerticesToHardware(void* vertices, uint32_t count, uint32_t stride)
 {
-	if (!pList->drawCallCount)
-		return;
+	glBufferSubData(GL_ARRAY_BUFFER, 0, count * stride, vertices);
+}
 
-	STD_BEGIN_PROFILER_LABEL();
-	std3D_pushDebugGroup(debugName);
+void std3D_SendIndicesToHardware(void* indices, uint32_t count, uint32_t stride)
+{
+	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, count * stride, indices);
+}
 
-	// sort draw calls to reduce state changes and maximize batching
-	uint16_t* indexArray;
-	if(sortFunc)
-	{
-		std3D_SortDrawCallList(pList, sortFunc);
-		
-		// batching needs to follow the draw order, but index array becomes disjointed after sorting
-		// build a sorted list of indices to ensure sequential access during batching
-		indexArray = std3D_SortDrawCallIndices(pList);
-	}
-	else
-	{
-		indexArray = pList->drawCallIndices;
-	}
-	
-	std3D_DrawCall* pDrawCall = pList->drawCallPtrs[0];
-	std3D_DrawCallState* pState = &pDrawCall->state;
-
-	std3D_DrawCallState lastState;
-	memcpy(&lastState, &pDrawCall->state, sizeof(std3D_DrawCallState));
-
-	int lastShader = pDrawCall->shaderID;
-	std3D_worldStage* pStage = &worldStages[pDrawCall->shaderID];
-
-	// increase the buffer counter for next upload
+void std3D_AdvanceFrame()
+{
+	std3D_ResetState();
 	bufferIdx = (bufferIdx + 1) % STD3D_STAGING_COUNT;
+}
 
-	std3D_BindStage(pStage);
+void std3D_SetState(std3D_DrawCallState* pState, uint32_t updateBits)
+{
+	uint32_t stage = std3D_GetShaderID(pState);
+	std3D_worldStage* pStage = &worldStages[stage]; // todo: fixme
 
-	if (pList->bPosOnly)
-		glBufferSubData(GL_ARRAY_BUFFER, 0, pList->drawCallVertexCount * sizeof(rdVertexBase), pList->drawCallPosVertices);
-	else
-		glBufferSubData(GL_ARRAY_BUFFER, 0, pList->drawCallVertexCount * sizeof(rdVertex), pList->drawCallVertices);
+	//if(updateBits & RD_CACHE_SHADER)
+	//if (updateBits & RD_CACHE_STATEBITS)
+		std3D_BindStage(pStage);
 
-	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, pList->drawCallIndexCount * sizeof(uint16_t), indexArray);
-	
 	int last_tex = pState->textureState.pTexture ? pState->textureState.pTexture->texture_id : blank_tex_white;
-	std3D_SetRasterState(pStage, pState);
-	std3D_SetFogState(pStage, pState);
-	std3D_SetBlendState(pStage, pState);
-	std3D_SetDepthStencilState(pState);
-	std3D_SetTextureState(pStage, pState);
-	std3D_SetMaterialState(pStage, pState);
-	std3D_SetLightingState(pStage, pState);	
-	std3D_SetTransformState(pStage, pState);
-	std3D_SetShaderState(pStage, pState);
+//	if ((updateBits & RD_CACHE_RASTER) || (updateBits & RD_CACHE_STATEBITS))
+		std3D_SetRasterState(pStage, pState);
+	
+//	if ((updateBits & RD_CACHE_FOG) || (updateBits & RD_CACHE_STATEBITS))
+		std3D_SetFogState(pStage, pState);
 
-	int batchIndices = 0;
-	int indexOffset = 0;
-	for (int j = 0; j < pList->drawCallCount; j++)
+//	if (updateBits & RD_CACHE_STATEBITS)
 	{
-		pDrawCall = pList->drawCallPtrs[j];
-		pState = &pDrawCall->state;
-
-		int texid = pState->textureState.pTexture ? pState->textureState.pTexture->texture_id : blank_tex_white;
-		
-		uint32_t dirtyBits = 0;
-		dirtyBits |= (lastShader != pDrawCall->shaderID) ? STD3D_SHADER : 0;
-		dirtyBits |= (last_tex != texid) ? STD3D_TEXTURE : 0;
-		dirtyBits |= (lastState.stateBits.data != pDrawCall->state.stateBits.data) ? STD3D_STATEBITS : 0; // todo: this probably triggers too many updates, make it more granular
-		dirtyBits |= (memcmp(&lastState.fogState, &pDrawCall->state.fogState, sizeof(std3D_FogState)) != 0) ? STD3D_FOG : 0;
-		dirtyBits |= (memcmp(&lastState.rasterState, &pDrawCall->state.rasterState, sizeof(std3D_RasterState)) != 0) ? STD3D_RASTER : 0;		
-		dirtyBits |= (memcmp(&lastState.textureState, &pDrawCall->state.textureState, sizeof(std3D_TextureState)) != 0) ? STD3D_TEXTURE : 0;
-		dirtyBits |= (memcmp(&lastState.materialState, &pDrawCall->state.materialState, sizeof(std3D_MaterialState)) != 0) ? STD3D_TEXTURE : 0;
-		dirtyBits |= (memcmp(&lastState.lightingState, &pDrawCall->state.lightingState, sizeof(std3D_LightingState)) != 0) ? STD3D_LIGHTING : 0;
-		dirtyBits |= (memcmp(&lastState.transformState, &pDrawCall->state.transformState, sizeof(std3D_TransformState)) != 0) ? STD3D_TRANSFORM : 0;
-		dirtyBits |= (memcmp(&lastState.shaderState, &pDrawCall->state.shaderState, sizeof(std3D_ShaderState)) != 0) ? STD3D_SHADER_ID : 0;
-
-		if (dirtyBits)
-		{
-			//glDrawArrays(std3D_PrimitiveForGeoMode(lastState.raster.geoMode), vertexOffset, batch_verts);
-			glDrawElements(std3D_PrimitiveForGeoMode(lastState.stateBits.geoMode + 1), batchIndices, GL_UNSIGNED_SHORT, (void*)(indexOffset * sizeof(uint16_t)));
-
-			if (lastShader != pDrawCall->shaderID)//dirtyBits & STD3D_SHADER)
-			{
-				pStage = &worldStages[pDrawCall->shaderID];
-				std3D_BindStage(pStage);
-			}
-
-			if((dirtyBits & STD3D_RASTER) || (dirtyBits & STD3D_STATEBITS))
-				std3D_SetRasterState(pStage, pState);
-
-			if ((dirtyBits & STD3D_FOG) || (dirtyBits & STD3D_STATEBITS))
-				std3D_SetFogState(pStage, pState);
-
-			if (dirtyBits & STD3D_STATEBITS)
-			{
-				std3D_SetBlendState(pStage, pState);
-				std3D_SetDepthStencilState(pState);
-			}
-
-			if ((dirtyBits & STD3D_TEXTURE) || (dirtyBits & STD3D_STATEBITS))
-			{
-				std3D_SetTextureState(pStage, pState);
-
-				// todo: material bits
-				std3D_SetMaterialState(pStage, pState);
-			}
-			
-			if ((dirtyBits & STD3D_LIGHTING) || (dirtyBits & STD3D_STATEBITS))
-				std3D_SetLightingState(pStage, pState);
-			
-			//if ((dirtyBits & STD3D_TRANSFORM)) // fixme: not working?
-				std3D_SetTransformState(pStage, pState);
-		
-			if ((dirtyBits & STD3D_SHADER_ID))
-				std3D_SetShaderState(pStage, pState);
-
-			last_tex = texid;
-			lastShader = pDrawCall->shaderID;
-			memcpy(&lastState, &pDrawCall->state, sizeof(std3D_DrawCallState));
-
-			indexOffset += batchIndices;
-			batchIndices = 0;
-		}
-
-		batchIndices += pDrawCall->numIndices;
+		std3D_SetBlendState(pStage, pState);
+		std3D_SetDepthStencilState(pState);
 	}
 
-	if (batchIndices)
-		glDrawElements(std3D_PrimitiveForGeoMode(pDrawCall->state.stateBits.geoMode + 1), batchIndices, GL_UNSIGNED_SHORT, (void*)(indexOffset * sizeof(uint16_t)));
+//	if ((updateBits & RD_CACHE_TEXTURE) || (updateBits & RD_CACHE_STATEBITS))
+	{
+		std3D_SetTextureState(pStage, pState);
+		std3D_SetMaterialState(pStage, pState);
+	}
 
-	glBindSampler(0, 0);
-	glBindSampler(TEX_SLOT_DIFFUSE, 0);
-	glBindSampler(TEX_SLOT_EMISSIVE, 0);
-	glBindSampler(TEX_SLOT_DISPLACEMENT, 0);
-	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_SHADER, defaultShaderUBO);
+//	if ((updateBits & RD_CACHE_LIGHTING) || (updateBits & RD_CACHE_STATEBITS))
+		std3D_SetLightingState(pStage, pState);
 
-	std3D_popDebugGroup();
-	STD_END_PROFILER_LABEL();
+//	if ((updateBits & RD_CACHE_TRANSFORM))
+		std3D_SetTransformState(pStage, pState);
+
+//	if ((updateBits & RD_CACHE_SHADER_ID))
+		std3D_SetShaderState(pStage, pState);
+}
+
+void std3D_DrawElements(rdGeoMode_t geoMode, uint32_t count, uint32_t offset, uint32_t stride)
+{
+	GLuint type = (stride == 2) ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
+	glDrawElements(std3D_PrimitiveForGeoMode(geoMode + 1), count, type, (void*)(offset * stride));
 }
 
 void std3D_DoSSAO()
 {
-	std3D_pushDebugGroup("SSAO");
+	std3D_PushDebugGroup("SSAO");
 
 	// downscale the depth buffer with lower precision
 	std3D_DrawSimpleTex(&std3D_texFboStage, &ssaoDepth, /*std3D_framebuffer.ztex*/deferred.tex, 0, 0, 1.0, 1.0, 1.0, 0, "Z Downscale");
@@ -5913,12 +5524,12 @@ void std3D_DoSSAO()
 	std3D_bindTexture(GL_TEXTURE_2D, 0, 1);
 	std3D_bindTexture(GL_TEXTURE_2D, 0, 2);
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 
 void std3D_DoDeferredLighting()
 {
-	std3D_pushDebugGroup("Deferred Lighting");
+	std3D_PushDebugGroup("Deferred Lighting");
 
 	// enable depth testing to prevent running on empty pixels
 	glEnable(GL_DEPTH_TEST);
@@ -5955,7 +5566,7 @@ void std3D_DoDeferredLighting()
 	std3D_bindTexture(GL_TEXTURE_2D, 0, 1);
 	std3D_bindTexture(GL_TEXTURE_2D, 0, 2);
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 
 void std3D_setupWorldTextures()
@@ -5980,121 +5591,11 @@ void std3D_setupWorldTextures()
 	std3D_bindTexture(    GL_TEXTURE_1D,       blackbody_texture,       TEX_SLOT_BLACKBODY);
 }
 
-void std3D_FlushRefractionZDrawCalls()
-{
-	std3D_pushDebugGroup("std3D_FlushRefractionZDrawCalls");
-
-	glBindFramebuffer(GL_FRAMEBUFFER, refrZ.fbo);
-
-	glEnable(GL_STENCIL_TEST);
-	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-	glStencilFunc(GL_ALWAYS, 0xFF, 0xFF);
-	glClearColor(0, 0, 0, 0);
-	glClear(GL_COLOR_BUFFER_BIT);// | GL_STENCIL_BUFFER_BIT);
-
-	//std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_Z], std3D_DrawCallCompareSortKey, "Z Prepass");
-	//std3D_FlushDrawCallList(pRenderPass, &pRenderPass->drawCallLists[DRAW_LIST_Z_ALPHATEST], std3D_DrawCallCompareSortKey, "Z Prepass Alphatest");
-	std3D_FlushDrawCallList(&drawCallLists[DRAW_LIST_Z_REFRACTION], std3D_DrawCallCompareSortKey, "Refraction Z");
-	
-	glDisable(GL_STENCIL_TEST);
-
-	std3D_popDebugGroup();
-}
-
-void std3D_FlushZDrawCalls()
-{
-	std3D_pushDebugGroup("std3D_FlushZDrawCalls");
-
-	glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.zfbo);
-	glDrawBuffer(GL_COLOR_ATTACHMENT0);
-
-	std3D_setupWorldTextures();
-
-	//glColorMask(0,0,0,0);
-
-	std3D_FlushDrawCallList(&drawCallLists[DRAW_LIST_Z], std3D_DrawCallCompareSortKey,           "Z Prepass");
-	//std3D_FlushDrawCallList(&drawCallLists[DRAW_LIST_Z_ALPHATEST], std3D_DrawCallCompareSortKey, "Z Prepass Alphatest");
-
-	//glColorMask(1,1,1,1);
-
-	std3D_popDebugGroup();
-}
-
-void std3D_FlushColorDrawCallsRefraction()
-{
-	std3D_pushDebugGroup("std3D_FlushColorDrawCallsRefraction");
-
-	std3D_setupWorldTextures();
-	std3D_bindTexture(GL_TEXTURE_2D, refrZ.tex, TEX_SLOT_CLIP);
-
-	glEnable(GL_STENCIL_TEST);
-	glStencilFunc(GL_EQUAL, 0xFF, 0xFF);
-	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-
-	glBindFramebuffer(GL_FRAMEBUFFER, refr.fbo);
-	GLenum bufs[] = { GL_COLOR_ATTACHMENT0 };//, GL_COLOR_ATTACHMENT1 };
-	glDrawBuffers(ARRAYSIZE(bufs), bufs);
-
-	std3D_FlushDrawCallList(&drawCallLists[DRAW_LIST_COLOR_ZPREPASS], std3D_DrawCallCompareSortKey,    "Color Z Prepass");
-	std3D_FlushDrawCallList(&drawCallLists[DRAW_LIST_COLOR_ZWRITE], std3D_DrawCallCompareSortKey, "Color Z Write");
-	std3D_FlushDrawCallList(&drawCallLists[DRAW_LIST_COLOR_ZREAD], std3D_DrawCallCompareDepth, "Color Z Read");
-	std3D_FlushDrawCallList(&drawCallLists[DRAW_LIST_COLOR_STENCIL], std3D_DrawCallCompareSortKey, "Color Stencil");
-	std3D_FlushDrawCallList(&drawCallLists[DRAW_LIST_COLOR_ALPHABLEND], std3D_DrawCallCompareDepth,  "Color Alphablend");
-	
-	glDisable(GL_STENCIL_TEST);
-
-	std3D_popDebugGroup();
-}
-
-void std3D_FlushColorDrawCalls()
-{
-	std3D_pushDebugGroup("std3D_FlushColorDrawCalls");
-	
-	std3D_setupWorldTextures();
-
-	glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.fbo);
-	GLenum bufs[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-	glDrawBuffers(ARRAYSIZE(bufs), bufs);
-
-	std3D_bindTexture(GL_TEXTURE_2D, ssao.tex, TEX_SLOT_AO);
-
-	std3D_FlushDrawCallList(&drawCallLists[DRAW_LIST_COLOR_ZPREPASS], std3D_DrawCallCompareSortKey,    "Color Z Prepass");
-	std3D_FlushDrawCallList(&drawCallLists[DRAW_LIST_COLOR_ZWRITE], std3D_DrawCallCompareSortKey, "Color Z Write");
-	std3D_FlushDrawCallList(&drawCallLists[DRAW_LIST_COLOR_ZREAD], std3D_DrawCallCompareDepth, "Color Z Read");
-	std3D_FlushDrawCallList(&drawCallLists[DRAW_LIST_COLOR_STENCIL], std3D_DrawCallCompareSortKey, "Color Stencil");
-
-	std3D_bindTexture(GL_TEXTURE_2D, blank_tex_white, TEX_SLOT_AO);
-
-	std3D_FlushDrawCallList(&drawCallLists[DRAW_LIST_COLOR_ALPHABLEND],   std3D_DrawCallCompareDepth,  "Color Alphablend");
-
-	std3D_popDebugGroup();
-}
-
-void std3D_FlushRefractionDrawCalls()
-{
-	std3D_pushDebugGroup("std3D_FlushRefractionDrawCalls");
-
-	std3D_setupWorldTextures();
-
-	glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.fbo);
-	GLenum bufs[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-	glDrawBuffers(ARRAYSIZE(bufs), bufs);
-
-	std3D_FlushDrawCallList(&drawCallLists[DRAW_LIST_COLOR_REFRACTION], std3D_DrawCallCompareDepth, "Color Refraction");
-
-	std3D_popDebugGroup();
-}
-
 void std3D_FlushDeferred()
 {
 	STD_BEGIN_PROFILER_LABEL();
-	std3D_pushDebugGroup("std3D_FlushDeferred");
-	
-	// linearize the depth buffer for readback
-	//int hasSSAO = pRenderPass->flags & RD_RENDERPASS_AMBIENT_OCCLUSION;
-	int hasRefraction = drawCallLists[DRAW_LIST_Z_REFRACTION].drawCallCount > 0;
+	std3D_PushDebugGroup("std3D_FlushDeferred");
 
-	if(hasRefraction)// || hasSSAO)
 		std3D_DoDeferredLighting();
 
 	//if (hasSSAO)
@@ -6105,7 +5606,7 @@ void std3D_FlushDeferred()
 	//if (!(pRenderPass->flags & RD_RENDERPASS_NO_CLUSTERING))
 		//std3D_DoDeferredLighting();
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 	STD_END_PROFILER_LABEL();
 }
 
@@ -6123,7 +5624,7 @@ void std3D_DoBloom()
 	const float blendLerp = 0.6f;
 	const float uvScale = 1.0f; // debug for the kernel radius
 
-	std3D_pushDebugGroup("Bloom");
+	std3D_PushDebugGroup("Bloom");
 
 	// downscale layers using a simple gaussian filter
 	std3D_DrawSimpleTex(&std3D_bloomStage, &bloomLayers[0], std3D_framebuffer.tex1, 0, 0, uvScale, 1.0, 1.0, 0, "Bloom Downscale");
@@ -6137,7 +5638,7 @@ void std3D_DoBloom()
 	for (int i = ARRAY_SIZE(bloomLayers) - 2; i >= 0; --i)
 		std3D_DrawSimpleTex(&std3D_bloomStage, &bloomLayers[i], bloomLayers[i + 1].tex, 0, 0, uvScale, blendLerp, 1.0, 0, "Bloom Upscale");
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 	
 	STD_END_PROFILER_LABEL();
 }
@@ -6146,12 +5647,15 @@ void std3D_FlushPostFX()
 {
 	STD_BEGIN_PROFILER_LABEL();
 
-	std3D_pushDebugGroup("std3D_FlushPostFX");
+	std3D_PushDebugGroup("std3D_FlushPostFX");
 
 	glBindFramebuffer(GL_FRAMEBUFFER, window.fbo);
 	//glClear(GL_COLOR_BUFFER_BIT);
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_BLEND);
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+	glViewport(0, 0, window.w, window.h);
 
 	//if (!jkGame_isDDraw && !jkGuiBuildMulti_bRendering)
 		//return;
@@ -6161,105 +5665,8 @@ void std3D_FlushPostFX()
 	glDisable(GL_BLEND);
 	std3D_DrawSimpleTex(&std3D_postfxStage, &window, std3D_framebuffer.tex0, bloomLayers[0].tex, 0, (rdCamera_pCurCamera->flags & 0x1) ? sithTime_curSeconds : -1.0, jkPlayer_enableDithering, jkPlayer_gamma, 0, "Final Output");
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 
-	STD_END_PROFILER_LABEL();
-}
-
-// todo: funneling everything through these draw lists is a massive pain
-// remove the render pass stuff and handle the ordering at a higher level with rdCache_Flush
-void std3D_FlushDrawCalls()
-{
-	if (Main_bHeadless) return;
-	if (!has_initted) return;
-
-	STD_BEGIN_PROFILER_LABEL();
-	std3D_pushDebugGroup("std3D_FlushDrawCalls");
-
-	glViewport(0, 0, std3D_framebuffer.w, std3D_framebuffer.h);
-	glEnable(GL_DEPTH_TEST);
-	glDepthMask(GL_TRUE);
-	glDepthFunc(GL_LESS);
-	glCullFace(GL_BACK);
-	glDisable(GL_STENCIL_TEST);
-	glDisable(GL_SCISSOR_TEST);
-
-	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_LIGHTS, light_ubo);
-	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_OCCLUDERS, occluder_ubo);
-	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_DECALS, decal_ubo);
-	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_SHARED, shared_ubo);
-	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_FOG, fog_ubo);
-	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_TEX, tex_ubo);
-	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_MATERIAL, material_ubo);
-	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_SHADER, defaultShaderUBO);
-	glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_SHADER_CONSTS, shaderConstsUbo);
-
-	std3D_pushDebugGroup("std3D_FlushDrawCalls");
-
-	std3D_UpdateSharedUniforms();
-
-	// fill the depth buffer with opaque draw calls
-	std3D_FlushZDrawCalls();
-
-	// do opaque-only deferred stuff
-	//if (pRenderPass->flags & RD_RENDERPASS_AMBIENT_OCCLUSION)
-		std3D_FlushDeferred();
-
-	// draw refraction passes
-	int hasRefraction = drawCallLists[DRAW_LIST_Z_REFRACTION].drawCallCount > 0;
-
-	if (hasRefraction)
-	{
-		//if (j == 0)
-		//{
-		//	glBindFramebuffer(GL_FRAMEBUFFER, refr.fbo);
-		//	glClear(GL_COLOR_BUFFER_BIT);
-		//}
-		//else
-		{
-			glDepthMask(GL_FALSE);
-			std3D_DrawSimpleTex(&std3D_texFboStage, &refr, std3D_framebuffer.tex0, 0, 0, 1.0, 1.0, 1.0, 0, "Refraction Blit");
-		}
-
-		// fill the refraction depth buffer, this includes refracted objects
-		std3D_FlushRefractionZDrawCalls();
-
-		// draw color with clipping against the water depth and stencil
-		std3D_FlushColorDrawCallsRefraction();
-
-		// generate the mip chain
-		//glActiveTexture(GL_TEXTURE0 + TEX_SLOT_REFRACTION);
-		//glBindTexture(GL_TEXTURE_2D, refr.tex);
-		//glGenerateMipmap(GL_TEXTURE_2D);
-
-		// draw refraction surfaces
-		std3D_FlushRefractionDrawCalls();
-	}
-		
-	// draw scene normally
-	// for refraction case, the depth buffer will clip out anything below the refraction surfaces
-	std3D_FlushColorDrawCalls();
-
-	std3D_popDebugGroup();
-
-	std3D_ResetDrawCalls();
-
-	glBindVertexArray(vao);
-
-	glBindTexture(GL_TEXTURE_2D, worldpal_texture);
-	glEnable(GL_BLEND);
-	glEnable(GL_DEPTH_TEST);
-	glDepthMask(GL_TRUE);
-	glDisable(GL_STENCIL_TEST);
-	glDisable(GL_SCISSOR_TEST);
-	glCullFace(GL_FRONT);
-	glBindSampler(0, 0);
-	glBindSampler(TEX_SLOT_DIFFUSE, 0);
-	glBindSampler(TEX_SLOT_EMISSIVE, 0);
-	glBindSampler(TEX_SLOT_DISPLACEMENT, 0);
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
-	std3D_popDebugGroup();
 	STD_END_PROFILER_LABEL();
 }
 
@@ -6433,7 +5840,7 @@ int std3D_UploadDecalTexture(rdRectf* out, stdVBuffer* vbuf, rdDDrawSurface* pTe
 		std3D_decalAtlasNode* node = std3D_InsertDecal(&decalRootNode, &rect, pTexture);
 		if (node)
 		{
-			std3D_pushDebugGroup("std3D_InsertDecalTexture");
+			std3D_PushDebugGroup("std3D_InsertDecalTexture");
 
 			glBindFramebuffer(GL_FRAMEBUFFER, decalAtlasFBO.fbo);
 			glDrawBuffer(GL_COLOR_ATTACHMENT0);
@@ -6461,7 +5868,7 @@ int std3D_UploadDecalTexture(rdRectf* out, stdVBuffer* vbuf, rdDDrawSurface* pTe
 
 			stdHashTable_SetKeyVal(decalHashTable, node->name, node);
 	
-			std3D_popDebugGroup();
+			std3D_PopDebugGroup();
 			
 			out->x = (float)rect.x / DECAL_ATLAS_SIZE;
 			out->y = (float)rect.y / DECAL_ATLAS_SIZE;

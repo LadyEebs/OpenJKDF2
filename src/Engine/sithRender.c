@@ -90,6 +90,7 @@ uint32_t sithRender_numStaticLights = 0;
 rdShader* sithRender_defaultShader = NULL;
 rdShader* sithRender_jkgmShader = NULL;
 rdShader* sithRender_waterShader = NULL;
+rdShader* sithRender_scopeShader = NULL;
 #endif
 
 #ifdef RGB_THING_LIGHTS
@@ -499,6 +500,7 @@ int sithRender_Open()
 	sithRender_defaultShader = sithShader_LoadEntry("default.asm");
 	sithRender_jkgmShader = sithShader_LoadEntry("jkgm.asm");
 	sithRender_waterShader = sithShader_LoadEntry("water.asm");
+	sithRender_scopeShader = sithShader_LoadEntry("scope.asm");
 #endif
 
     sithRender_lightingIRMode = 0; 
@@ -552,6 +554,7 @@ void sithRender_Close()
 	sithRender_defaultShader = 0;
 	sithRender_jkgmShader = 0;
 	sithRender_waterShader = 0;
+	sithRender_scopeShader = 0;
 #endif
 
     sithRenderSky_Close();
@@ -895,6 +898,7 @@ void sithRender_Draw()
 #ifdef RENDER_DROID2
 	sithRender_numStaticLights = 0;
 
+	rdDepthRange(0.005f, 1.0f);
 	rdSetGlowIntensity(0.4f);
 	rdSetOverbright(1.5f);
 
@@ -1031,7 +1035,9 @@ void sithRender_Draw()
 	{
 		rdSetZBufferMethod(RD_ZBUFFER_READ_NOWRITE);
 		rdSetSortingMethod(2);
-		//rdSetBlendEnabled(RD_BLEND_MODE_NONE);
+		rdSetBlendEnabled(RD_TRUE);
+		rdSetBlendMode(RD_BLEND_SRCALPHA, RD_BLEND_INVSRCALPHA);
+
 		for (sithThing* iter = sithRender_alphaDrawThing; iter; )
 		{
 			// call the alpha callback for renderweapon
@@ -1601,6 +1607,7 @@ void sithRender_DrawSurface(sithSurface* surface)
 	{
 		alpha = 90.0f / 255.0f;
 		rdSetBlendEnabled(RD_TRUE);
+		rdSetBlendMode(RD_BLEND_SRCALPHA, RD_BLEND_INVSRCALPHA);
 		rdSetZBufferMethod(RD_ZBUFFER_READ_NOWRITE);
 	}
 	else
@@ -1662,6 +1669,7 @@ void sithRender_DrawSurface(sithSurface* surface)
 	rdAmbientFlags(sithRender_aoFlags);
 	
 	rdSetShader(0);
+	rdSetBlendEnabled(RD_FALSE);
 
 	rdTexGen(RD_TEXGEN_NONE);
 	rdTexGenParams(0, 0, 0, 0);
@@ -1724,8 +1732,8 @@ void sithRender_RenderLevelGeometry()
 		//	sithRender_SetCameraFog();
 		//}
 
-		rdScissorMode(RD_SCISSOR_ENABLED);
-		rdScissorf(pSector->clipFrustum->x, pSector->clipFrustum->y, pSector->clipFrustum->width, pSector->clipFrustum->height);
+		//rdScissorMode(RD_SCISSOR_ENABLED);
+		//rdScissorf(pSector->clipFrustum->x, pSector->clipFrustum->y, pSector->clipFrustum->width, pSector->clipFrustum->height);
 
 		sithSurface* surface = pSector->surfaces;
 		for (int v75 = 0; v75 < pSector->numSurfaces; ++surface, v75++)
@@ -3368,8 +3376,8 @@ void sithRender_RenderAlphaSurfaces()
 		sithSurface* surface = sithRender_aSurfaces[i];
 		sithSector* sector = surface->parent_sector;
 
-		rdScissorMode(RD_SCISSOR_ENABLED);
-		rdScissorf(sector->clipFrustum->x, sector->clipFrustum->y, sector->clipFrustum->width, sector->clipFrustum->height);
+		//rdScissorMode(RD_SCISSOR_ENABLED);
+		//rdScissorf(sector->clipFrustum->x, sector->clipFrustum->y, sector->clipFrustum->width, sector->clipFrustum->height);
 
 		//if ((sector->flags & SITH_SECTOR_UNDERWATER) && !(sithCamera_currentCamera->sector->flags & SITH_SECTOR_UNDERWATER))
 		//{

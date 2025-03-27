@@ -1,6 +1,6 @@
 // uniforms and uniform buffers
 
-#include "defines.gli"
+import "defines.gli"
 
 #ifndef UNIFORMS_H
 #define UNIFORMS_H
@@ -37,6 +37,9 @@ layout(std140) uniform sharedBlock
 	vec2  clusterTileSizes;
 	vec2  clusterScaleBias;
 	vec2  pad1;
+
+	vec4 aScaleBias[8];
+	vec4 aNegInv[4];
 };
 
 // Fog state

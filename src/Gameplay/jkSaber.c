@@ -81,13 +81,14 @@ void jkSaber_InitializeSaberInfo(sithThing *thing, char *material_side_fname, ch
 	rdThing_FreeEntry(&saberinfo->glowSpriteThing);
 	rdSprite_FreeEntry(&saberinfo->glowSprite);
 
-	rdSprite_NewEntry(&saberinfo->glowSprite, "SaberGlow", 2, "saberglow.mat", base_rad * 2.0f * 1.5f, base_rad * 2.0f * 1.5f, 4, 0, 0, 0.0, &rdroid_zeroVector3);
+	rdSprite_NewEntry(&saberinfo->glowSprite, "SaberGlow", 2, /*"saberglow.mat"*/material_tip_fname, base_rad * 2.0f * 1.5f, base_rad * 2.0f * 1.5f, 4, 0, 0, 0.0, &rdroid_zeroVector3);
 	rdThing_NewEntry(&saberinfo->glowSpriteThing, thing);
 	rdThing_SetSprite3(&saberinfo->glowSpriteThing, &saberinfo->glowSprite);
 #ifdef VERTEX_COLORS
 	//saberinfo->glowSpriteThing.color.x = saberinfo->glowSpriteThing.color.y = saberinfo->glowSpriteThing.color.z = 0.3f;
-	rdMaterial_GetFillColor(&saberinfo->glowSpriteThing.color, saberinfo->polyline.edgeFace.material, &sithWorld_pCurrentWorld->colormaps[0], 0, -1);
+//	rdMaterial_GetFillColor(&saberinfo->glowSpriteThing.color, saberinfo->polyline.edgeFace.material, &sithWorld_pCurrentWorld->colormaps[0], 0, -1);
 	//// give the color some kick
+	rdVector_Set3(&saberinfo->glowSpriteThing.color, 1,1,1);
 	//saberinfo->glowSpriteThing.color.x *= saberinfo->glowSpriteThing.color.x;
 	//saberinfo->glowSpriteThing.color.y *= saberinfo->glowSpriteThing.color.y;
 	//saberinfo->glowSpriteThing.color.z *= saberinfo->glowSpriteThing.color.z;
@@ -98,6 +99,7 @@ void jkSaber_InitializeSaberInfo(sithThing *thing, char *material_side_fname, ch
 
 void jkSaber_PolylineRand(rdThing *thing)
 {
+#ifndef LIGHTSABER_GLOW
     rdPolyLine* line = thing->polyline;
     if ( line )
     {
@@ -105,6 +107,7 @@ void jkSaber_PolylineRand(rdThing *thing)
             line->edgeFace.clipIdk.y = 0.0;
         line->edgeFace.clipIdk.y += (_frand() - 0.8) * 80.0;
     }
+#endif
 }
 
 #ifdef LIGHTSABER_TRAILS
@@ -299,17 +302,17 @@ void jkSaber_DrawTrail(rdThing* pThing, jkSaberTrail* pSaberTrail, rdMatrix34* p
 
 #ifdef LIGHTSABER_GLOW
 // todo: input for different hands
-void jkSaber_DrawGlow()
+void jkSaber_DrawGlow(rdMatrix34* lookat)
 {
 	// glow test
 	rdVector3 basePos;
-	rdMatrix_TransformPoint34(&basePos, &rdroid_zeroVector3, &playerThings[playerThingIdx].povModel.hierarchyNodeMatrices[5]);
+	rdMatrix_TransformPoint34(&basePos, &rdroid_zeroVector3, lookat);
 
 	rdVector3 vertex;
 	rdVector_Set3(&vertex, 0.0f, playerThings[playerThingIdx].polyline.length, 0.0f);
 
 	rdVector3 tipPos;
-	rdMatrix_TransformPoint34(&tipPos, &vertex, &playerThings[playerThingIdx].povModel.hierarchyNodeMatrices[5]);
+	rdMatrix_TransformPoint34(&tipPos, &vertex, lookat);
 
 	float randOffset = playerThings[playerThingIdx].polyline.edgeFace.clipIdk.y / 80.0f;
 
@@ -329,6 +332,8 @@ void jkSaber_DrawGlow()
 
 		rad *= 0.99;
 	}
+
+	rdCache_Flush();
 }
 #endif
 
@@ -348,7 +353,7 @@ void jkSaber_Draw(rdMatrix34 *posRotMat)
         }
         jkSaber_PolylineRand(&playerThings[playerThingIdx].polylineThing);
 #ifdef LIGHTSABER_GLOW
-		jkSaber_DrawGlow();
+		jkSaber_DrawGlow(&playerThings[playerThingIdx].povModel.hierarchyNodeMatrices[5]);
 #endif
         rdThing_Draw(&playerThings[playerThingIdx].polylineThing, &playerThings[playerThingIdx].povModel.hierarchyNodeMatrices[5]); // aaaaa hardcoded K_Rhand
 #ifdef LIGHTSABER_TRAILS

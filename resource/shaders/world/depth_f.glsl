@@ -1,7 +1,7 @@
-#include "defines.gli"
-#include "uniforms.gli"
-#include "textures.gli"
-#include "math.gli"
+import "defines.gli"
+import "uniforms.gli"
+import "textures.gli"
+import "math.gli"
 
 in float f_depth;
 //in vec3 f_normal;

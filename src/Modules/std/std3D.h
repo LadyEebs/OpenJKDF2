@@ -17,8 +17,15 @@ extern int std3D_bReinitHudElements;
 // tmp
 void std3D_BlitFramebuffer(int x, int y, int width, int height, void* pixels);
 
-void std3D_ResetDrawCalls();
-void std3D_FlushDrawCalls();
+void std3D_SendVerticesToHardware(void* vertices, uint32_t count, uint32_t stride);
+void std3D_SendIndicesToHardware(void* indices, uint32_t count, uint32_t stride);
+void std3D_SetState(std3D_DrawCallState* pState, uint32_t updateBits);
+void std3D_DrawElements(rdGeoMode_t geoMode, uint32_t count, uint32_t offset, uint32_t stride);
+void std3D_PushDebugGroup(const char* name);
+void std3D_PopDebugGroup();
+void std3D_AdvanceFrame();
+
+void std3D_ResetState();
 
 // Added
 int std3D_HasAlpha();

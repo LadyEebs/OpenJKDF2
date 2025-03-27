@@ -20,6 +20,8 @@
 #include "SDL_atomic.h"
 #endif
 
+// todo: split XY and Z clusters so we can do XY | Z in the shader and reduce cluster build cost
+
 static int         rdroid_clustersDirty;								// clusters need rebuilding/refilling
 static int         rdroid_clusterFrustumFrame;							// current frame for clusters, any cluster not matching will have its bounds updated
 static int         rdroid_lastClusterFrustumFrame;						// last frame for clusters, will be updated to clusterFrustumFrame after building

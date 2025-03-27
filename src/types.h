@@ -696,6 +696,17 @@ typedef struct rdClipFrustum
 #endif
 } rdClipFrustum;
 
+enum RD_CACHE_DIRTYBIT
+{
+	RD_CACHE_STATEBITS = 0x1,
+	RD_CACHE_SHADER = 0x2,
+	RD_CACHE_TRANSFORM = 0x4,
+	RD_CACHE_RASTER = 0x8,
+	RD_CACHE_TEXTURE = 0x10,
+	RD_CACHE_FOG = 0x20,
+	RD_CACHE_LIGHTING = 0x40,
+	RD_CACHE_SHADER_ID = 0x80
+};
 
 typedef struct rdProcEntry
 {

@@ -1,6 +1,6 @@
 // cluster system
 
-#include "uniforms.gli"
+import "uniforms.gli"
 
 #ifndef CLUSTERING_H
 #define CLUSTERING_H

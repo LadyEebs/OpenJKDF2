@@ -144,7 +144,7 @@ static int8_t rdShader_ParseSysRegister(const char* name)
 {
 	static const char* keywords[] =
 	{
-		"sv:sec", "sv:xy", "sv:z", "sv:pos", "sv:uv", "sv:aspect", "mat:fill", "mat:albedo", "mat:glow", "mat::f0", "mat::roughness", "mat:displacement"
+		"sv:sec", "sv:xy", "sv:z", "sv:pos", "sv:uv", "sv:aspect", "tex:size", "mat:fill", "mat:albedo", "mat:glow", "mat::f0", "mat::roughness", "mat:displacement"
 	};
 
 	for (uint8_t i = 0; i < RD_SHADER_SYS_MAX; ++i)
@@ -206,7 +206,7 @@ static int rdShader_ExtractSwizzle(const char* expression, char* swizzle_out)
 	int mask = 0;
 
 	// Lookup table for swizzle characters to write masks
-	const int swizzle_map[] = { WRITE_RED, WRITE_GREEN, WRITE_BLUE, WRITE_ALPHA };
+	const int swizzle_map[] = { RD_WRITE_RED, RD_WRITE_GREEN, RD_WRITE_BLUE, RD_WRITE_ALPHA };
 	const char swizzle_chars[] = { 'x', 'y', 'z', 'w', 'r', 'g', 'b', 'a', '\0' };
 
 	int i;
@@ -235,17 +235,10 @@ static char* rdShader_ParseRegister(char* token, char* swizzle, rdShader_Registe
 	// extract register index or immediate value
 	if (reg->type == RD_SHADER_IMM16 || reg->type == RD_SHADER_IMM8)
 	{
-		reg->immediate = atof(token);
-		reg->swizzle = SWIZZLE_XYZW;
-		reg->mask = WRITE_RGBA;
-
-		union
-		{
-			int8_t s;
-			uint8_t u;
-		} pack;
-		pack.s = (int8_t)roundf(stdMath_Clamp(reg->immediate, -1.0f, 1.0f) * 127.0f);
-		reg->address = pack.u;
+		reg->immediate = fabs(atof(token));
+		reg->swizzle = RD_SWIZZLE_XYZW;
+		reg->mask = RD_WRITE_RGBA;
+		reg->address = (uint8_t)roundf(stdMath_Clamp(reg->immediate, 0.0f, 1.0f) * 255.0f);
 	}
 	else
 	{
@@ -261,8 +254,8 @@ static char* rdShader_ParseRegister(char* token, char* swizzle, rdShader_Registe
 		}
 		else
 		{
-			reg->swizzle = SWIZZLE_XYZW;
-			reg->mask = WRITE_RGBA;
+			reg->swizzle = RD_SWIZZLE_XYZW;
+			reg->mask = RD_WRITE_RGBA;
 		}
 	}
 
@@ -397,7 +390,7 @@ static void rdShader_ParseSourceOperandExpression(char* token, rdShader_SrcOpera
 // source operand layout
 //  |31         30|29          27|26       25|24       16|15    8|7   6|5   4|  3  |2    0|
 //  |  reduction  |  scale/bias  |  neg/inv  |  swizzle  |  addr | idx | fmt | abs | type |
-static uint32_t rdShader_AssembleSrc(
+uint32_t rdShader_AssembleSrc(
 	uint8_t idx,
 	uint8_t type,
 	uint8_t fmt,
@@ -426,7 +419,7 @@ static uint32_t rdShader_AssembleSrc(
 // operation + destination layout
 // |31         29|  28 |27          25|24       17|16     10|    9    |8      7|    6    |5       0|
 // | write mask  | abs |  multiplier  |  swizzle  |  index  |  negate | format | precise | op code |
-static uint32_t rdShader_AssembleOpAndDst(
+uint32_t rdShader_AssembleOpAndDst(
 	uint8_t opcode,
 	uint8_t fmt,
 	uint8_t addr,

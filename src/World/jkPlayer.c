@@ -1137,6 +1137,8 @@ void jkPlayer_DrawPov()
 	tex_h = tex_w * (float)Window_ySize / Window_xSize;
 	rdViewport(0, 0, tex_w, tex_h);
 
+	rdDepthRange(0.0f, 0.005f);
+
 	rdMatrixMode(RD_MATRIX_VIEW);
 	rdIdentity();
 	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
@@ -1155,6 +1157,9 @@ void jkPlayer_DrawPov()
 	rdMatrix44 proj;
 	rdGetMatrix(&proj, RD_MATRIX_PROJECTION);
 	rdCluster_Build(&proj, tex_w, tex_h);
+
+	extern void std3D_BlitFrame();
+	std3D_BlitFrame();
 #endif
 
     if ( playerThings[playerThingIdx].povModel.puppet )
@@ -1245,6 +1250,7 @@ void jkPlayer_DrawPov()
         // Force weapon to draw in front of scene
 	#ifdef RENDER_DROID2
 		//rdRenderPass("jkPlayer_DrawPov", 2, RD_RENDERPASS_CLEAR_DEPTH | (jkPlayer_enableSSAO ? RD_RENDERPASS_AMBIENT_OCCLUSION : 0));
+		//std3D_ClearZBuffer();
 		rdSetDecalMode(RD_DECALS_DISABLED);
 		//if (jkPlayer_enableShadows)
 		//	rdEnable(RD_SHADOWS);
@@ -1631,12 +1637,18 @@ void jkPlayer_renderSaberBlade(sithThing* thing)
 			if (thing->jkFlags & JKFLAG_SABERON)
 			{
 				jkSaber_PolylineRand(&playerInfo->polylineThing);
+			#ifdef LIGHTSABER_GLOW
+				jkSaber_DrawGlow(primaryMat);
+			#endif
 				rdThing_Draw(&playerInfo->polylineThing, primaryMat);
 			#ifdef LIGHTSABER_TRAILS
 				jkSaber_DrawTrail(&playerInfo->polylineThing, &playerInfo->saberTrail[0], primaryMat);
 			#endif
 				if (thing->jkFlags & JKFLAG_DUALSABERS)
 				{
+				#ifdef LIGHTSABER_GLOW
+					jkSaber_DrawGlow(secondaryMat);
+				#endif
 					rdThing_Draw(&playerInfo->polylineThing, secondaryMat);
 				#ifdef LIGHTSABER_TRAILS
 					jkSaber_DrawTrail(&playerInfo->polylineThing, &playerInfo->saberTrail[1], secondaryMat);
@@ -1650,12 +1662,18 @@ void jkPlayer_renderSaberBlade(sithThing* thing)
 		if (thing->jkFlags & JKFLAG_SABERON)
 		{
 			jkSaber_PolylineRand(&playerInfo->polylineThing);
+		#ifdef LIGHTSABER_GLOW
+			jkSaber_DrawGlow(primaryMat);
+		#endif
 			rdThing_Draw(&playerInfo->polylineThing, primaryMat);
 		#ifdef LIGHTSABER_TRAILS
 			jkSaber_DrawTrail(&playerInfo->polylineThing, &playerInfo->saberTrail[0], primaryMat);
 		#endif
 			if (thing->jkFlags & JKFLAG_DUALSABERS)
 			{
+#ifdef LIGHTSABER_GLOW
+				jkSaber_DrawGlow(secondaryMat);
+#endif
 				rdThing_Draw(&playerInfo->polylineThing, secondaryMat);
 			#ifdef LIGHTSABER_TRAILS
 				jkSaber_DrawTrail(&playerInfo->polylineThing, &playerInfo->saberTrail[1], secondaryMat);

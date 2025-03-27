@@ -77,6 +77,9 @@ static int               rdroid_vertexCacheNum = 0;
 static rdVertex          rdroid_vertexCache[64];
 static rdPrimitiveType_t rdroid_curPrimitiveType = RD_PRIMITIVE_NONE;
 
+float rdroid_curZNear = 0.0f;
+float rdroid_curZFar = 1.0f;
+
 void rdResetRasterState()
 {
 	rdroid_stateBits.geoMode = RD_GEOMODE_TEXTURED;
@@ -105,6 +108,8 @@ void rdResetDepthStencilState()
 {
 	rdroid_stateBits.zMethod = RD_ZBUFFER_READ_WRITE;
 	rdroid_stateBits.zCompare = RD_COMPARE_LESS_EQUAL;
+	rdroid_curZNear = 0.0f;
+	rdroid_curZFar = 1.0f;
 }
 
 void rdResetTextureState()
@@ -174,6 +179,7 @@ int rdStartup(HostServices *p_hs)
 
 void rdShutdown()
 {
+	rdCache_Shutdown();
     if (bRDroidStartup)
         bRDroidStartup = 0;
 }
@@ -417,6 +423,12 @@ void rdClearPostStatistics()
 
 
 #ifdef RENDER_DROID2
+
+void rdDepthRange(float znear, float zfar)
+{
+	rdroid_curZNear = znear;
+	rdroid_curZFar = zfar;
+}
 
 // Matrix state
 
@@ -662,7 +674,7 @@ void rdEndPrimitive()
 		memcpy(&state.lightingState,  &rdroid_lightingState,  sizeof(std3D_LightingState));
 		memcpy(&state.shaderState,    &rdroid_shaderState,    sizeof(std3D_ShaderState));
 
-		std3D_AddDrawCall(rdroid_curPrimitiveType, &state, rdroid_vertexCache, rdroid_vertexCacheNum);
+		rdCache_AddDrawCall(rdroid_curPrimitiveType, &state, rdroid_vertexCache, rdroid_vertexCacheNum);
 	}
 
 	rdroid_vertexCacheNum = 0;
@@ -781,6 +793,19 @@ void rdTexCoord4i(uint8_t i, float u, float v, float t, float w)
 	rdTexCoord2i(i, u, v);
 	rdroid_vertexTexCoordState[i].z = t;
 	rdroid_vertexTexCoordState[i].w = w;
+}
+
+// todo: move this to texstate or texgen or something (rdTexScale)
+void rdTexCoordScaled2i(uint8_t i, float u, float v, float w, float h)
+{
+	rdTexCoord2i(i, u, v);
+
+	rdroid_vertexTexCoordState[i].x -= floor(rdroid_vertexTexCoordState[i].x);
+	rdroid_vertexTexCoordState[i].y -= floor(rdroid_vertexTexCoordState[i].y);
+
+	rdroid_vertexTexCoordState[i].x = (rdroid_vertexTexCoordState[i].x - 0.5) * w + 0.5;
+	rdroid_vertexTexCoordState[i].y = (rdroid_vertexTexCoordState[i].y - 0.5) * h + 0.5;
+	rdroid_vertexTexCoordState[i].y = 1.0f - rdroid_vertexTexCoordState[i].y;
 }
 
 void rdNormal3f(float x, float y, float z)

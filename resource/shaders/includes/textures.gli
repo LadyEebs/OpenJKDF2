@@ -1,5 +1,7 @@
 // texture utilities
 
+import "fastmath.gli"
+
 #ifndef TEXTURES_H
 #define TEXTURES_H
 
@@ -69,25 +71,6 @@ vec4 tex_6x6(sampler2D s, vec2 uv)
 }
 #endif
 
-// standard texture sample
-vec4 load_tex(in sampler2D s, in vec2 tc, float lodbias)
-{
-	if (tex_mode == TEX_MODE_TEST)
-		return vec4(fillColor);
-	return texture(s, tc.xy, lodbias).rgba;
-}
-
-// standard texture sample with emissive multiplier
-vec4 load_tex_light(in sampler2D s, in vec2 tc, in float light, float lodbias)
-{
-	if (tex_mode == TEX_MODE_TEST)
-		return vec4(fillColor.rgb, 0.0);
-	return sat4(
-		texture(s, tc.xy, lodbias).rgba * vec4(emissiveFactor.rgb, 0.0)
-	);
-}
-
-
 vec2 steep_parallax(in sampler2D s, in vec2 uv, vec3 view_dir, float depth)
 {
 	const float min_layers = float(32.0);
@@ -140,7 +123,8 @@ mat3 construct_tbn(vec2 uv, vec3 pos, vec3 n)
     vec3 t = dp2perp * duv1.x + dp1perp * duv2.x;
     vec3 b = dp2perp * duv1.y + dp1perp * duv2.y;
 
-    float invmax = inversesqrt(max(dot(t, t), dot(b, b)));
+    //float invmax = inversesqrt(max(dot(t, t), dot(b, b)));
+	float invmax = fastRcpSqrtNR1(max(dot(t, t), dot(b, b)));
     return mat3(t * invmax, b * invmax, n);
 }
 

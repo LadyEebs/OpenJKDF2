@@ -220,6 +220,21 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 		rdSetBlendEnabled(RD_FALSE);
 	}
 
+	if (sprite->face.type & RD_FF_ADDITIVE)
+	{
+		rdSetBlendEnabled(RD_TRUE);
+		rdSetBlendMode(RD_BLEND_ONE, RD_BLEND_ONE);
+	}
+	else if (sprite->face.type & RD_FF_SCREEN)
+	{
+		rdSetBlendEnabled(RD_TRUE);
+		rdSetBlendMode(RD_BLEND_ONE, RD_BLEND_INVSRCCOLOR);
+	}
+	else
+	{
+		rdSetBlendMode(RD_BLEND_SRCALPHA, RD_BLEND_INVSRCALPHA);
+	}
+
 	rdSetZBufferMethod(RD_ZBUFFER_READ_NOWRITE);
 
 	extern int jkPlayer_enableTextureFilter;
@@ -248,11 +263,15 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	if (thing->spriteRot != 0.0)
 		stdMath_SinCos(thing->spriteRot, &s, &c);
 
+	if (sprite->face.type & RD_FF_VERTEX_COLORS)
+		rdColor4f(thing->color.x, thing->color.y, thing->color.z, 1.0f);
+	else
+		rdColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+
 	if (rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
 	{
 		for (int i = 0; i < sprite->face.numVertices; ++i)
 		{
-			rdColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 			if (sprite->vertexUVs)
 			{
 				rdVector2 uv = sprite->vertexUVs[i];
@@ -285,6 +304,8 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	rdLoadMatrix(&viewMatrix);
 	rdSetZBufferMethod(oldZ);
 	rdTexClampMode(0, 0);
+	rdSetBlendEnabled(RD_FALSE);
+	rdSetBlendMode(RD_BLEND_ONE, RD_BLEND_ZERO);
 
 	rdSetGlowIntensity(0.4f);
 

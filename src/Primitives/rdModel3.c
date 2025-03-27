@@ -1649,11 +1649,16 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 	extern int jkPlayer_bEnableJkgm;
 	extern rdShader* sithRender_jkgmShader;
 	extern rdShader* sithRender_defaultShader;
+	extern rdShader* sithRender_scopeShader;
 	if (jkPlayer_bEnableJkgm
 			 && face->material->textures
 			 && face->material->textures->has_jkgm_override)
 	{
 		rdSetShader(sithRender_jkgmShader);
+	}
+	else if(face->geometryMode == 5)
+	{
+		rdSetShader(sithRender_scopeShader);
 	}
 	else
 	{
@@ -1688,6 +1693,7 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 	{
 		alpha = 90.0f / 255.0f;
 		rdSetBlendEnabled(RD_TRUE);
+		rdSetBlendMode(RD_BLEND_SRCALPHA, RD_BLEND_INVSRCALPHA);
 		rdSetZBufferMethod(RD_ZBUFFER_READ_NOWRITE);
 	}
 	else
@@ -1700,6 +1706,10 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 		rdSetCullMode(RD_CULL_MODE_NONE);
 	else
 		rdSetCullMode(RD_CULL_MODE_BACK);
+
+	rdViewportRect viewport;
+	rdGetViewport(&viewport);
+	float aspect = viewport.height / viewport.width;
 
 	if (rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
 	{
@@ -1723,8 +1733,14 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 			if(face->vertexUVIdx && pCurMesh->vertexUVs)
 			{
 				int uvidx = face->vertexUVIdx[j];
-				rdVector2* uv = &pCurMesh->vertexUVs[uvidx];
-				rdTexCoord2i(RD_TEXCOORD0, uv->x, uv->y);
+				rdVector2 uv = pCurMesh->vertexUVs[uvidx];
+				rdTexCoord2i(RD_TEXCOORD0, uv.x, uv.y);
+
+				// scope uv
+				if (face->geometryMode == 5)
+				{
+					rdTexCoordScaled2i(RD_TEXCOORD1, uv.x, uv.y, aspect * 0.5, 0.5f);
+				}
 			}
 
 			rdNormal3v(lightingMode == RD_LIGHTMODE_DIFFUSE ? &face->normal.x : &pCurMesh->vertexNormals[posidx].x);
@@ -1732,6 +1748,8 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 		}
 		rdEndPrimitive();
 	}
+	rdSetBlendEnabled(RD_FALSE);
+
 	return 1;
 #else
     rdProcEntry *procEntry;

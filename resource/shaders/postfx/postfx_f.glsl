@@ -1,8 +1,9 @@
-#include "math.gli"
-#include "framebuffer.gli"
+import "math.gli"
+import "framebuffer.gli"
 
 uniform sampler2D tex;
 uniform sampler2D tex2;
+uniform sampler2D tex3;
 uniform vec2 iResolution;
 uniform float param1;
 uniform float param2;
@@ -151,7 +152,6 @@ void main(void)
 	//sampled_color += -0.12487566 * texture(tex, uv + vec2(0.0,2.907)*invPixelSize);    
 
 	//sampled_color.rgb = ycocg2rgb(sampled_color.yxz);
-
 
 	float vignetteStrength = 15.0; // todo: expose
 	float vignettePower = 0.2; // todo: expose

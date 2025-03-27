@@ -3,8 +3,8 @@
 // all instruction related decoding and branching is uniform/wave invariant (a.k.a scalar ops on AMD)
 // everything reflecting that intent is prefixed with an s_
 
-#include "defines.gli"
-#include "uniforms.gli"
+import "defines.gli"
+import "uniforms.gli"
 
 #ifndef ISA_H
 #define ISA_H
@@ -38,7 +38,8 @@
 #define OP_SQRT		23	// square root
 #define OP_SUB		24	// subtract
 #define OP_TEX		25	// texture
-#define OP_TEXDUDV	26	// texture with offset
+#define OP_TEXLOD   26  // texture lod
+#define OP_TEXDUDV	27	// texture with offset
 
 // source types
 #define REG_TYPE_GPR	0	// register
@@ -90,13 +91,15 @@
 #define SHADER_SYS_POS  3
 #define SHADER_SYS_UV   4
 #define SHADER_SYS_AR   5
+// info registers
+#define SHADER_SYS_TEXSIZE 6
 // material registers
-#define SHADER_SYS_MAT_FILL         6
-#define SHADER_SYS_MAT_ALBEDO       7
-#define SHADER_SYS_MAT_EMISSIVE     8
-#define SHADER_SYS_MAT_SPECULAR     9
-#define SHADER_SYS_MAT_ROUGHNESS    10
-#define SHADER_SYS_MAT_DISPLACEMENT 11
+#define SHADER_SYS_MAT_FILL         7
+#define SHADER_SYS_MAT_ALBEDO       8
+#define SHADER_SYS_MAT_EMISSIVE     9
+#define SHADER_SYS_MAT_SPECULAR     10
+#define SHADER_SYS_MAT_ROUGHNESS    11
+#define SHADER_SYS_MAT_DISPLACEMENT 12
 
 struct vm_dst
 {
@@ -106,8 +109,8 @@ struct vm_dst
 	uint dest;
 	uint swizzle;
 	uint multiplier;
-	uint absolute;
-	uint negate;
+	bool absolute;
+	bool negate;
 };
 
 struct vm_src
@@ -116,7 +119,7 @@ struct vm_src
 	uint addr;
 	uint type;
 	uint fmt;
-	uint absolute;
+	bool absolute;
 	uint swizzle;
 	uint scale_bias;
 	uint neg_inv;
@@ -126,8 +129,8 @@ struct vm_src
 struct vm_instr
 {
 	uint   opcode;
-	uint   prec;
-	uint   sat;
+	bool   prec;
+	bool   sat;
 	uint   imm;
 	vm_dst dst;
 	vm_src src0;
@@ -150,24 +153,24 @@ void s_decode_opcode(out uint s_opcode, uint s_ir)
 	s_opcode = (s_ir & 0x1F);
 }
 
-void s_decode_precision(out uint s_precision, uint s_ir)
+void s_decode_precision(out bool s_precision, uint s_ir)
 {
-	s_precision = (s_ir >> 5) & 0x1;
+	s_precision = bool((s_ir >> 5) & 0x1);
 }
 
-void s_decode_sat(out uint s_sat, uint s_ir)
+void s_decode_sat(out bool s_sat, uint s_ir)
 {
-	s_sat = (s_ir >>  9) &  0x1;
+	s_sat = bool((s_ir >>  9) &  0x1);
 }
 
 void s_decode_dst_operand(out vm_dst s_dst, uint s_ir)
 {
 	s_dst.fmt        = (s_ir >>  6) &  0x3;
-	s_dst.negate     = (s_ir >>  8) &  0x1;
+	s_dst.negate     = bool((s_ir >>  8) &  0x1);
 	s_dst.addr       = (s_ir >> 10) & 0x3F;
 	s_dst.swizzle    = (s_ir >> 16) & 0xFF;
 	s_dst.multiplier = (s_ir >> 24) &  0x7;
-	s_dst.absolute   = (s_ir >> 27) &  0x1;
+	s_dst.absolute   = bool((s_ir >> 27) &  0x1);
 	s_dst.mask       = (s_ir >> 28) &  0xF;
 	s_dst.mask       = s_expand_mask(s_dst.mask);
 }
@@ -175,7 +178,7 @@ void s_decode_dst_operand(out vm_dst s_dst, uint s_ir)
 void s_decode_src_operand(out vm_src s_src, uint s_ir)
 {
 	s_src.type       = (s_ir      ) &  0x7;
-	s_src.absolute   = (s_ir >>  3) &  0x1;
+	s_src.absolute   = bool((s_ir >>  3) &  0x1);
 	s_src.fmt        = (s_ir >>  4) &  0x3;
 	s_src.idx        = (s_ir >>  6) &  0x3;
 	s_src.addr       = (s_ir >>  8) & 0xFF;

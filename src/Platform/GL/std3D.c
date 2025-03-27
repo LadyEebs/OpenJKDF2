@@ -486,13 +486,13 @@ static GLuint std3D_getImageFormat(GLuint format)
 	return isInteger ? intTypeForChannels[numChannels] : typeForChannels[numChannels];
 }
 
-static void std3D_pushDebugGroup(const char* name)
+static void std3D_PushDebugGroup(const char* name)
 {
 	if(GLEW_KHR_debug)
 		glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, -1, name);
 }
 
-static void std3D_popDebugGroup()
+static void std3D_PopDebugGroup()
 {
 	if(GLEW_KHR_debug)
 		glPopDebugGroup();
@@ -978,7 +978,7 @@ void std3D_BlitDrawSurface(std3D_DrawSurface* src, rdRect* srcRect, std3D_DrawSu
 	if(!src || !dst || !srcRect || !dstRect)
 		return;
 
-	std3D_pushDebugGroup("std3D_BlitDrawSurface");
+	std3D_PushDebugGroup("std3D_BlitDrawSurface");
 		
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, src->fbo);
 	if(glGetError() == GL_INVALID_OPERATION)
@@ -1005,12 +1005,12 @@ void std3D_BlitDrawSurface(std3D_DrawSurface* src, rdRect* srcRect, std3D_DrawSu
 	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 
 void std3D_ClearDrawSurface(std3D_DrawSurface* surface, int fillColor, rdRect* rect)
 {
-	std3D_pushDebugGroup("std3D_ClearDrawSurface");
+	std3D_PushDebugGroup("std3D_ClearDrawSurface");
 
 	std3DIntermediateFbo* pFb = (std3DIntermediateFbo*)surface;
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, pFb->fbo);
@@ -1026,7 +1026,7 @@ void std3D_ClearDrawSurface(std3D_DrawSurface* surface, int fillColor, rdRect* r
 
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 #endif
 
@@ -1964,7 +1964,7 @@ void std3D_DrawMenu()
 {
     if (Main_bHeadless) return;
 
-	std3D_pushDebugGroup("std3D_DrawMenu");
+	std3D_PushDebugGroup("std3D_DrawMenu");
 
     //printf("Draw menu\n");
     std3D_DrawSceneFbo();
@@ -2282,7 +2282,7 @@ void std3D_DrawMenu()
 
     last_flags = 0;
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 
 void std3D_DrawMapOverlay()
@@ -2917,7 +2917,7 @@ void std3D_DrawSimpleTex(std3DSimpleTexStage* pStage, std3DIntermediateFbo* pFbo
 
 void std3D_DrawSceneFbo()
 {
-	std3D_pushDebugGroup("std3D_DrawSceneFbo");
+	std3D_PushDebugGroup("std3D_DrawSceneFbo");
 
     //printf("Draw scene FBO\n");
     glEnable(GL_BLEND);
@@ -2984,17 +2984,17 @@ void std3D_DrawSceneFbo()
     float rad_scale = (float)std3D_pFb->w / 640.0;
     if (!draw_ssao)
     {
-		std3D_pushDebugGroup("PostFX Blit");
+		std3D_PushDebugGroup("PostFX Blit");
 
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         std3D_DrawSimpleTex(&std3D_texFboStage, &std3D_pFb->postfx, std3D_pFb->tex0, 0, 0, 1.0, 1.0, 1.0, 0);
         //std3D_DrawSimpleTex(&std3D_texFboStage, &std3D_pFb->postfx, std3D_pFb->tex1, 0, 0, 0.0, 1.0, 1.0, 0); // test emission output
 
-		std3D_popDebugGroup();
+		std3D_PopDebugGroup();
     }
     else
     {
-		std3D_pushDebugGroup("SSAO");
+		std3D_PushDebugGroup("SSAO");
 
 		glActiveTexture(GL_TEXTURE0 + 3);
 		glBindTexture(GL_TEXTURE_2D, std3D_pFb->tex4);
@@ -3015,7 +3015,7 @@ void std3D_DrawSceneFbo()
         glBlendFunc(GL_SRC_ALPHA, GL_SRC_ALPHA);
         std3D_DrawSimpleTex(&std3D_ssaoMixStage, &std3D_pFb->postfx, std3D_pFb->ssaoBlur2.tex, std3D_pFb->tex0, 0, 0.0, 0.0, 1.0, 0);
 
-		std3D_popDebugGroup();
+		std3D_PopDebugGroup();
     }
 
     glBlendFunc(GL_SRC_ALPHA, GL_SRC_ALPHA);
@@ -3033,7 +3033,7 @@ void std3D_DrawSceneFbo()
 			bloom_intensity = 3.0f;
 		#endif
 
-		std3D_pushDebugGroup("Bloom");
+		std3D_PushDebugGroup("Bloom");
 
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		// downscale
@@ -3067,7 +3067,7 @@ void std3D_DrawSceneFbo()
 		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_COLOR);
 		std3D_DrawSimpleTex(&std3D_texFboStage, &std3D_pFb->postfx, std3D_pFb->blur1.tex, 0, 0, 1.0f, bloom_intensity, 1.5, 0);
 
-		std3D_popDebugGroup();
+		std3D_PopDebugGroup();
 
 	#else
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -3102,7 +3102,7 @@ void std3D_DrawSceneFbo()
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	std3D_popDebugGroup();
+	std3D_PopDebugGroup();
 }
 
 void std3D_DoTex(rdDDrawSurface* tex, rdTri* tri, int tris_left)

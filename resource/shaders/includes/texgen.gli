@@ -1,6 +1,6 @@
 // texcoord utilities
 
-#include "uniforms.gli"
+import "uniforms.gli"
 
 #ifndef TEXGEN_H
 #define TEXGEN_H
