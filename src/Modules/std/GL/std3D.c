@@ -5128,12 +5128,12 @@ int std3D_SetBlendState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 	if (pState->stateBits.blend == 0)
 	{
 		glDisable(GL_BLEND);
-		std3D_bindTexture(GL_TEXTURE_2D, blank_tex, TEX_SLOT_REFRACTION);
+		//std3D_bindTexture(GL_TEXTURE_2D, blank_tex, TEX_SLOT_REFRACTION);
 	}
 	else
 	{
 		glEnable(GL_BLEND);
-		std3D_bindTexture(GL_TEXTURE_2D, refr.tex, TEX_SLOT_REFRACTION);
+		//std3D_bindTexture(GL_TEXTURE_2D, refr.tex, TEX_SLOT_REFRACTION);
 	}
 
 
