@@ -287,6 +287,9 @@ static void rdShader_ParseDestinationOperand(char* token, rdShader_DestOperand* 
 		++token;
 	}
 
+	if (rdShader_pCurrentAssembler->shader->regcount < op->reg.address)
+		rdShader_pCurrentAssembler->shader->regcount = op->reg.address;
+
 	if (swizzle)
 		*swizzle = '.';
 
@@ -332,6 +335,12 @@ static char* rdShader_ParseSourceRegister(char* token, rdShader_Register* reg)
 				reg->type = rdShader_ParseSrcRegisterType(token[0]);
 				++token;
 			}
+		}
+
+		if (reg->type == RD_SHADER_GPR)
+		{
+			if (rdShader_pCurrentAssembler->shader->regcount < reg->address)
+				rdShader_pCurrentAssembler->shader->regcount = reg->address;
 		}
 
 		if (swizzle)
@@ -857,8 +866,13 @@ int rdShader_LoadEntry(char* fpath, rdShader* shader)
 			break;
 	}
 
+	if (shader->regcount >= 8)
+	//todo error
+		goto cleanup;
+
 	std3D_UploadShader(shader);
 
+cleanup:
 	rdShader_Alias* alias = assembler.firstAlias;
 	while (alias)
 	{

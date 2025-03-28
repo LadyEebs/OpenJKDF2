@@ -569,6 +569,7 @@ typedef struct rdShader
 	int               id;
 	int               shaderid;
 	int               hasReadback;
+	uint8_t           regcount;
 	char              name[32];
 	rdShaderConstants constants;
 	rdShaderByteCode  byteCode;
