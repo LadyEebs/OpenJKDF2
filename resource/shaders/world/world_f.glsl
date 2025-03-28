@@ -325,7 +325,7 @@ void main(void)
 
 	uvec2 crd = uvec2(floor(gl_FragCoord.xy));
 	float dither = dither_value_float(crd);// texelFetch(dithertex, ivec2(gl_FragCoord.xy) & ivec2(3), 0).r;
-	float scale = 1.0 / float((1 << int(6)) - 1);
+	float scale = 1.0 / float((1 << int(5)) - 1);
 	dither *= scale;
 
 #ifdef FOG
