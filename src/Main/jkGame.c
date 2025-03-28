@@ -171,10 +171,11 @@ int jkGame_Update()
 #endif
     rdAdvanceFrame();
 
-#ifdef RENDER_DROID2
-	// draw POV first to avoid overdraw
-	jkPlayer_DrawPov();
-#endif
+	// disabled for now, need saber to draw after
+//#ifdef RENDER_DROID2
+//	// draw POV first to avoid overdraw
+//	jkPlayer_DrawPov();
+//#endif
 
 #if !defined(SDL2_RENDER) && !defined(TARGET_TWL)
     if ( Video_modeStruct.b3DAccel )
@@ -193,9 +194,9 @@ int jkGame_Update()
     }
 #endif
 
-#ifndef RENDER_DROID2
+//#ifndef RENDER_DROID2
     jkPlayer_DrawPov();
-#endif
+//#endif
 
 #ifdef RENDER_DROID2
 	std3D_FlushPostFX();// std3D_FlushDrawCalls();
