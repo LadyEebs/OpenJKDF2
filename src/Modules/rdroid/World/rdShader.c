@@ -259,6 +259,12 @@ static char* rdShader_ParseRegister(char* token, char* swizzle, rdShader_Registe
 		}
 	}
 
+	if (reg->type == RD_SHADER_GPR && reg->address != 0xFF)
+	{
+		if (rdShader_pCurrentAssembler->shader->regcount < reg->address)
+			rdShader_pCurrentAssembler->shader->regcount = reg->address;
+	}
+
 	return token;
 }
 
@@ -286,9 +292,6 @@ static void rdShader_ParseDestinationOperand(char* token, rdShader_DestOperand* 
 			return; // todo: error
 		++token;
 	}
-
-	if (rdShader_pCurrentAssembler->shader->regcount < op->reg.address)
-		rdShader_pCurrentAssembler->shader->regcount = op->reg.address;
 
 	if (swizzle)
 		*swizzle = '.';
@@ -335,12 +338,6 @@ static char* rdShader_ParseSourceRegister(char* token, rdShader_Register* reg)
 				reg->type = rdShader_ParseSrcRegisterType(token[0]);
 				++token;
 			}
-		}
-
-		if (reg->type == RD_SHADER_GPR)
-		{
-			if (rdShader_pCurrentAssembler->shader->regcount < reg->address)
-				rdShader_pCurrentAssembler->shader->regcount = reg->address;
 		}
 
 		if (swizzle)
