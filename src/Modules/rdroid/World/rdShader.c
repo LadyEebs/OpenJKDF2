@@ -144,7 +144,7 @@ static int8_t rdShader_ParseSysRegister(const char* name)
 {
 	static const char* keywords[] =
 	{
-		"sv:sec", "sv:xy", "sv:z", "sv:pos", "sv:uv", "sv:aspect", "tex:size", "mat:fill", "mat:albedo", "mat:glow", "mat::f0", "mat::roughness", "mat:displacement"
+		"sv:sec", "sv:xy", "sv:z", "sv:pos", "sv:uv", "sv:aspect", "mat:fill", "mat:albedo", "mat:glow", "mat::f0", "mat::roughness", "mat:displacement"
 	};
 
 	for (uint8_t i = 0; i < RD_SHADER_SYS_MAX; ++i)

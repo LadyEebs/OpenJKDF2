@@ -8,7 +8,9 @@ import "math.gli"
 import "lighting.gli"
 import "decals.gli"
 import "occluders.gli"
+import "reg.gli"
 
+uniform sampler2D tex;
 uniform sampler2D tex2;
 uniform sampler2D tex3;
 uniform sampler2D tex4;
@@ -56,7 +58,7 @@ void main(void)
 	uint cluster = compute_cluster_index(gl_FragCoord.xy, viewPos.y);
 
 	light_input params;
-	params.pos       = packHalf4x16(vec4(viewPos.xyz, 0.0));
+	params.pos       = packVPOS(vec4(viewPos.xyz, 0.0));
 	params.normal    = encode_octahedron_uint(normal.xyz);
 	params.view      = encode_octahedron_uint(view);
 	params.reflected = encode_octahedron_uint(reflected.xyz);
@@ -79,7 +81,7 @@ void main(void)
 		#endif
 			while(bucket_bits != 0u)
 			{
-				uint bucket_bit_index = findLSB_unsafe(bucket_bits);
+				uint bucket_bit_index = findLSB(bucket_bits);
 				uint light_index = (bucket << 5u) + bucket_bit_index;
 				bucket_bits ^= (1u << bucket_bit_index);
 
@@ -155,7 +157,7 @@ void main(void)
 		#endif
 			while(bucket_bits != 0u)
 			{
-				uint bucket_bit_index = findLSB_unsafe(bucket_bits);
+				uint bucket_bit_index = findLSB(bucket_bits);
 				uint decal_index = (bucket << 5u) + bucket_bit_index;
 				bucket_bits ^= (1u << bucket_bit_index);
 			

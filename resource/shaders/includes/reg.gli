@@ -13,24 +13,31 @@ import "attr.gli"
 #ifndef REG_H
 #define REG_H
 
-#ifdef FRAGMENT_SHADER
 
-// todo: this should be permutations
-#ifdef REFRACTION
-#define REG_COUNT    6
-#else
-#define REG_COUNT    5//3
+#ifndef REG_COUNT
+#	define REG_COUNT 2
 #endif
 
 uint s_lodbias;
 
 // registers
-uint  vdir;          //    16:16 - tangent space view dir
-uint  r[REG_COUNT];  // flexible - temp registers (rgba8, rg16f, r32f)
-uint  v[COLOR_SETS]; //  8:8:8:8 - color registers (tone mapped)
+uint  vdir;				//    16:16 - tangent space view dir
+uint  r[REG_COUNT];		// flexible - temp registers (rgba8, rg16f, r32f)
+uint  v[COLOR_SETS];	//  8:8:8:8 - color registers (tone mapped)
 
-uvec2 vpos;		  // 16:16:16:16 - view space position + depth
-vec2 tr[UV_SETS]; //       32:32 - texture coordinate registers
+vec2 tr[UV_SETS];		//       32:32 - texture coordinate registers
+uvec2 vpos;				// 16:16:16:16 - view space position + depth
+
+uvec2 packVPOS(vec4 v)
+{
+	return uvec2( packHalf2x16(v.xy), packHalf2x16(v.zw) );
+}
+
+vec4 readVPOS()
+{
+	return vec4( unpackHalf2x16(vpos.x).xy, unpackHalf2x16(vpos.y).xy );
+}
+
 
 vec2 packTexcoordRegister(vec2 unpackedInput)
 {
@@ -58,16 +65,6 @@ vec4 unpack_vertex_reg(uint packedInput)
 vec4 read_color_reg(uint i)
 {
 	return unpack_vertex_reg(v[i]);
-}
-
-vec3 read_vpos()
-{
-	return unpackHalf4x16(vpos).xyz;
-}
-
-float read_z()
-{
-	return unpackHalf4x16(vpos).w;
 }
 
 uint swizzle_comp(uint s_swizzle, uint idx)
@@ -115,12 +112,12 @@ vec4 read_system_value(uint s_addr)
 	{
 	default:							return vec4(0.0);
 	case SHADER_SYS_TIME:				return vec4(timeSeconds);
+	case SHADER_SYS_Z:					return vec4(readVPOS().w);
+	case SHADER_SYS_POS:				return vec4(readVPOS().xyz, 0.0);
+#ifdef FRAGMENT_SHADER
 	case SHADER_SYS_XY:					return vec4(gl_FragCoord.xy, 0, 0);
-	case SHADER_SYS_Z:					return vec4(read_z());
-	case SHADER_SYS_POS:				return vec4(read_vpos(), 0.0);
 	case SHADER_SYS_UV:					return vec4(gl_FragCoord.xy / iResolution.xy, 0, 0);
 	case SHADER_SYS_AR:					return vec4(gl_FragCoord.y / gl_FragCoord.x, 1.0, 0, 0);
-	case SHADER_SYS_TEXSIZE:			return vec4(texsize.xy, 0, 0);
 		// material registers
 	case SHADER_SYS_MAT_FILL:			return fillColor;
 	case SHADER_SYS_MAT_ALBEDO:			return albedoFactor;
@@ -128,6 +125,7 @@ vec4 read_system_value(uint s_addr)
 	case SHADER_SYS_MAT_SPECULAR:		return specularFactor;
 	case SHADER_SYS_MAT_ROUGHNESS:		return vec4(roughnessFactor);
 	case SHADER_SYS_MAT_DISPLACEMENT:	return vec4(displacement_factor);
+#endif
 	}
 }
 
@@ -223,6 +221,5 @@ vec4 read_dest(vm_instr s_ir)
 	return decode_reg(r[s_ir.dst.addr], s_ir.dst.fmt);
 }
 
-#endif
 
 #endif

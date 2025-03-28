@@ -9,8 +9,6 @@ import "uniforms.gli"
 #ifndef ISA_H
 #define ISA_H
 
-#ifdef FRAGMENT_SHADER
-
 // op codes, must match rdShader_OpCodes
 #define OP_NOP		 0	// no op
 #define OP_ADD		 1	// addition
@@ -40,7 +38,7 @@ import "uniforms.gli"
 #define OP_SUB		25	// subtract
 #define OP_TEX		26	// texture
 #define OP_TEXLOD   27  // texture lod
-#define OP_TEXDUDV	28	// texture with offset
+#define OP_TEXINFO	28	// texture info (size, mips)
 
 // source types
 #define REG_TYPE_GPR	0	// register
@@ -92,15 +90,13 @@ import "uniforms.gli"
 #define SHADER_SYS_POS  3
 #define SHADER_SYS_UV   4
 #define SHADER_SYS_AR   5
-// info registers
-#define SHADER_SYS_TEXSIZE 6
 // material registers
-#define SHADER_SYS_MAT_FILL         7
-#define SHADER_SYS_MAT_ALBEDO       8
-#define SHADER_SYS_MAT_EMISSIVE     9
-#define SHADER_SYS_MAT_SPECULAR     10
-#define SHADER_SYS_MAT_ROUGHNESS    11
-#define SHADER_SYS_MAT_DISPLACEMENT 12
+#define SHADER_SYS_MAT_FILL         6
+#define SHADER_SYS_MAT_ALBEDO       7
+#define SHADER_SYS_MAT_EMISSIVE     8
+#define SHADER_SYS_MAT_SPECULAR     9
+#define SHADER_SYS_MAT_ROUGHNESS    10
+#define SHADER_SYS_MAT_DISPLACEMENT 11
 
 struct vm_dst
 {
@@ -201,7 +197,5 @@ void s_decode_instr(out vm_instr s_ir_out, uvec4 s_ir)
 	s_decode_src_operand(s_ir_out.src1,      s_ir.z);
 	s_decode_src_operand(s_ir_out.src2,      s_ir.w);
 }
-
-#endif
 
 #endif

@@ -1,11 +1,12 @@
 // cluster system
 
 import "uniforms.gli"
+import "textures.gli"
 
 #ifndef CLUSTERING_H
 #define CLUSTERING_H
 
-uniform usamplerBuffer clusterBuffer;
+layout(binding = TEX_SLOT_CLUSTER_BUFFER) uniform usamplerBuffer clusterBuffer;
 
 uint get_cluster_z_index(float screen_depth)
 {

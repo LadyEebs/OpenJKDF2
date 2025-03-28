@@ -3,6 +3,7 @@ import "clustering.gli"
 import "math.gli"
 import "lighting.gli"
 import "attr.gli"
+import "reg.gli"
 
 vec3 CalculateAmbientDiffuse(vec3 normal)
 {
@@ -57,13 +58,13 @@ vec3 CalculateAmbientSpecular(float roughness, vec3 normal, vec3 view, vec3 refl
 }
 
 
-float compute_mip_bias(float z_min)
+flex compute_mip_bias(float z_min)
 {
-	float mipmap_level = float(0.0);
-	mipmap_level        = z_min < mipDistances.x ? mipmap_level : float(1.0);
-	mipmap_level        = z_min < mipDistances.y ? mipmap_level : float(2.0);
-	mipmap_level        = z_min < mipDistances.z ? mipmap_level : float(3.0);
-	return mipmap_level + float(mipDistances.w);
+	flex mipmap_level = flex(0.0);
+	mipmap_level        = z_min < mipDistances.x ? mipmap_level : flex(1.0);
+	mipmap_level        = z_min < mipDistances.y ? mipmap_level : flex(2.0);
+	mipmap_level        = z_min < mipDistances.z ? mipmap_level : flex(3.0);
+	return mipmap_level + flex(mipDistances.w);
 }
 
 void main(void)
@@ -75,7 +76,7 @@ void main(void)
 	vec3 normal = normalMatrix * (v_normal.xyz * 2.0 - 1.0);
 	normal = normalize(normal);
 
-	f_lodbias = min(compute_mip_bias(viewPos.y), (numMips - 1));
+	f_lodbias = min(compute_mip_bias(viewPos.y), flex(numMips - 1));
 
     gl_Position = pos;
     vec4 color0 = vec4(clamp(v_color[0].bgra, vec4(0.0), vec4(1.0)));
@@ -121,7 +122,7 @@ void main(void)
 
 			uint cluster = compute_cluster_index(clamp(pos.xy / pos.w * 0.5 + 0.5, vec2(0.0), vec2(1.0)) * iResolution.xy, viewPos.y);
 			light_input params;
-			params.pos       = packHalf4x16(vec4(viewPos.xyz, pos.w));
+			params.pos       = packVPOS(vec4(viewPos.xyz, pos.w));
 			params.normal    = encode_octahedron_uint(normal.xyz);
 			params.view      = encode_octahedron_uint(view);
 			params.reflected = encode_octahedron_uint(reflect(-view, normal));
@@ -138,7 +139,7 @@ void main(void)
 				uint bucket_bits = uint(texelFetch(clusterBuffer, int(cluster * CLUSTER_BUCKETS_PER_CLUSTER + bucket)).x);
 				while(bucket_bits != 0u)
 				{
-					uint bucket_bit_index = findLSB_unsafe(bucket_bits);
+					uint bucket_bit_index = findLSB(bucket_bits);
 					uint light_index = (bucket << 5u) + bucket_bit_index;
 					bucket_bits ^= (1u << bucket_bit_index);
 	
@@ -159,7 +160,7 @@ void main(void)
 		}
 	}
 
-	f_color[0] = color0;
-	f_color[1] = color1;
-	f_normal.xyz = vec3(normal);
+	f_color[0] = flex4(color0);
+	f_color[1] = flex4(color1);
+	f_normal.xyz = flex3(normal);
 }

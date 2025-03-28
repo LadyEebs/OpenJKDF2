@@ -9,6 +9,7 @@ import "occluders.gli"
 import "textures.gli"
 import "texgen.gli"
 import "framebuffer.gli"
+import "reg.gli"
 import "vm.gli"
 
 float upsample_ssao(in vec2 texcoord, in float linearDepth)
@@ -45,7 +46,7 @@ float upsample_ssao(in vec2 texcoord, in float linearDepth)
 
 uint get_cluster()
 {
-	float viewDist = unpackHalf4x16(vpos).y;
+	float viewDist = readVPOS().y;
 	return compute_cluster_index(gl_FragCoord.xy, viewDist) * CLUSTER_BUCKETS_PER_CLUSTER;
 }
 
@@ -73,7 +74,7 @@ void calc_light()
 	v[1] = 0;
 
 	vec3 normal    = normalizeNear1(fetch_vtx_normal());
-	vec3 viewPos   = unpackHalf4x16(vpos).xyz;
+	vec3 viewPos   = readVPOS().xyz;
 	vec3 view      = normalize(-viewPos.xyz);
 	vec3 reflected = reflect(-view, normal);
 
@@ -92,7 +93,7 @@ void calc_light()
 	
 #if 0//ndef ALPHA_DISCARD
 
-	v[0] = pack_vertex_reg(fetch_vtx_color(0));
+	v[0] = pack_vertex_reg(vec4(fetch_vtx_color(0)));
 	v[1] = pack_vertex_reg(vec4(fetch_vtx_color(1).rgb, fog));
 
 	vec4 lighting = texelFetch(diffuseLightTex, ivec2(gl_FragCoord.xy), 0);
@@ -126,7 +127,7 @@ void calc_light()
 
 	if (lightMode < 2)
 	{	
-		v[0] = pack_vertex_reg( fetch_vtx_color(0) );
+		v[0] = pack_vertex_reg( vec4(fetch_vtx_color(0)) );
 		v[1] = pack_vertex_reg( vec4(fetch_vtx_color(1).rgb, fog) );
 	}
 	else
@@ -135,8 +136,8 @@ void calc_light()
 		v[1] = pack_vertex_reg(vec4(0.0, 0.0, 0.0, fog));
 
 		light_result result;
-		result.diffuse  = packF2x11_1x10(fetch_vtx_color(0).rgb);
-		result.specular = packF2x11_1x10(fetch_vtx_color(1).rgb);
+		result.diffuse  = packF2x11_1x10(vec3(fetch_vtx_color(0).rgb));
+		result.specular = packF2x11_1x10(vec3(fetch_vtx_color(1).rgb));
 
 		if (lightMode > 2)
 		{
@@ -146,7 +147,7 @@ void calc_light()
 			params.view      = encode_octahedron_uint(view);
 			params.reflected = encode_octahedron_uint(reflected.xyz);
 			params.spec_c    = calc_spec_c(roughness);
-			params.tint      = packUnorm4x8(fetch_vtx_color(0));
+			params.tint      = packUnorm4x8(vec4(fetch_vtx_color(0)));
 
 			uint cluster = get_cluster();
 
@@ -165,7 +166,7 @@ void calc_light()
 						uint s_bucket_bits = scalarize_buckets_bits(bucket_bits);
 						while (s_bucket_bits != 0u)
 						{
-							uint s_bucket_bit_index = findLSB_unsafe(s_bucket_bits);
+							uint s_bucket_bit_index = findLSB(s_bucket_bits);
 							uint s_light_index = (s_bucket << 5u) + s_bucket_bit_index;
 							s_bucket_bits ^= (1u << s_bucket_bit_index);
 
@@ -198,7 +199,7 @@ void calc_light()
 					uint s_bucket_bits = scalarize_buckets_bits(bucket_bits);
 					while (s_bucket_bits != 0u)
 					{
-						uint s_bucket_bit_index = findLSB_unsafe(s_bucket_bits);
+						uint s_bucket_bit_index = findLSB(s_bucket_bits);
 						uint s_occluder_index = (s_bucket << 5u) + s_bucket_bit_index;
 						s_bucket_bits ^= (1u << s_bucket_bit_index);
 				
@@ -223,7 +224,7 @@ void calc_light()
 			#ifndef ALPHA_DISCARD
 				if ((aoFlags & 0x2) == 0x2)
 				{
-					float linearDepth = unpackHalf4x16(vpos).w;
+					float linearDepth = readVPOS().w;
 					shadow *= upsample_ssao(gl_FragCoord.xy, linearDepth);
 				}
 			#endif
@@ -271,7 +272,7 @@ void calc_decals()
 			uint s_bucket_bits = scalarize_buckets_bits(bucket_bits);
 			while(s_bucket_bits != 0u)
 			{
-				uint s_bucket_bit_index = findLSB_unsafe(s_bucket_bits);
+				uint s_bucket_bit_index = findLSB(s_bucket_bits);
 				uint s_decal_index      = (s_bucket << 5u) + s_bucket_bit_index;
 				s_bucket_bits          ^= (1u << s_bucket_bit_index);
 
@@ -300,13 +301,15 @@ void main(void)
 	s_lodbias = uint( fetch_vtx_lodbias() );
 #endif
 
-	vec2 uv      = fetch_vtx_uv(0);
-	vec3 viewPos = fetch_vtx_pos();
-	mat3 tbn     = construct_tbn(uv, fetch_vtx_pos(), normalize(fetch_vtx_normal()));
-	vdir         = encode_octahedron_uint(normalize(-viewPos.xyz) * tbn);
+	vec2    uv      = fetch_vtx_uv(0);
+	vec3    viewPos = fetch_vtx_pos();
+	flex3   viewDir = flex3(normalize(-viewPos.xyz));
+	flex3   normal  = normalize(fetch_vtx_normal());
+	flex3x3 tbn     = construct_tbn(uv, viewPos, normal);
+	vdir            = encode_octahedron_uint(vec3(viewDir * tbn));
 
 	// pack interpolated vertex data to reduce register pressure
-	vpos  = packHalf4x16(fetch_vtx_coord());
+	vpos  = packVPOS(fetch_vtx_coord());
 
 	for (int i = 0; i < UV_SETS; ++i)
 		tr[i] = packTexcoordRegister(fetch_vtx_uv(i));
@@ -325,8 +328,7 @@ void main(void)
 
 	uvec2 crd = uvec2(floor(gl_FragCoord.xy));
 	float dither = dither_value_float(crd);// texelFetch(dithertex, ivec2(gl_FragCoord.xy) & ivec2(3), 0).r;
-	float scale = 1.0 / float((1 << int(5)) - 1);
-	dither *= scale;
+	dither *= ditherScale;
 
 #ifdef FOG
 	// apply fog to outputs

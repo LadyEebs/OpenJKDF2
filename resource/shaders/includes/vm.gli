@@ -146,13 +146,10 @@ void run_vm()
 				result = textureLod(textures[s_ir.src0.addr], s1.xy, s2.x);
 			break;
 
-		case OP_TEXDUDV:
-			if (tex_mode == TEX_MODE_TEST)
-				result = vec4(fillColor.xyz, 1.0);
-			else
-				result = texture(textures[s_ir.src0.addr], s1.xy + s2.xy, s_lodbias);
+		case OP_TEXINFO:
+			result = vec4(textureSize(textures[s_ir.src0.addr], int(s1.x)).xy, 1.0, textureQueryLevels(textures[s_ir.src0.addr]));
 			break;
-		
+
 		case OP_OPM:
 			if (tex_mode != TEX_MODE_TEST)
 			{

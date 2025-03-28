@@ -5,33 +5,6 @@ import "fastmath.gli"
 #ifndef MATH_H
 #define MATH_H
 
-// if we don't have native support for findLSB (necessary for the clustered bit scan), implement it
-#ifndef GL_ARB_gpu_shader5
-uint bitCount(uint n)
-{
-    n = ((0xaaaaaaaau & n) >>  1u) + (0x55555555u & n);
-    n = ((0xccccccccu & n) >>  2u) + (0x33333333u & n);
-    n = ((0xf0f0f0f0u & n) >>  4u) + (0x0f0f0f0fu & n);
-    n = ((0xff00ff00u & n) >>  8u) + (0x00ff00ffu & n);
-    n = ((0xffff0000u & n) >> 16u) + (0x0000ffffu & n);
-    return n;
-}
-
-int findLSB(uint x)
-{
-	return (x == 0u) ? -1 : int( bitCount(~x & (x - 1u)) );
-}
-#endif
-
-uint findLSB_unsafe(uint x) // same as above but doesn't account for 0 inputs
-{
-#ifndef GL_ARB_gpu_shader5
-	return bitCount(~x & (x - 1u));
-#else // use the intrinsic and cast
-	return uint(findLSB(x));
-#endif
-}
-
 // packing
 vec4 unpack_argb2101010(uint packedInput)
 {

@@ -75,7 +75,6 @@ typedef enum
 	RD_SHADER_UV,
 	RD_SHADER_AR,
 	RD_SHADER_POS,
-	RD_SHADER_TEXSIZE,
 
 	// material registers
 	RD_SHADER_MAT_FILL,

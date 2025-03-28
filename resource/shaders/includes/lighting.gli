@@ -7,6 +7,7 @@ import "clustering.gli"
 import "sg.gli"
 import "textures.gli"
 import "attr.gli"
+import "reg.gli"
 
 #ifndef LIGHTING_H
 #define LIGHTING_H
@@ -83,7 +84,7 @@ vec3 fresnel_approx(vec3 f0, float costh)
 
 void calc_point_light(inout light_result result, uint light_index, light_input params)
 {
-	vec3 viewPos = unpackHalf4x16(params.pos).xyz;
+	vec3 viewPos = 	vec4( unpackHalf2x16(params.pos.x).xy, unpackHalf2x16(params.pos.y).xy ).xyz;
 	vec3 lvec = lights[light_index].position.xyz - viewPos.xyz;
 	
 	float dotVector = dot(lvec, lvec);

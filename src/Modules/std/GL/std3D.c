@@ -68,6 +68,18 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #define TEX_SLOT_DIFFUSE_LIGHT  13
 #define TEX_SLOT_BLACKBODY      14
 
+#define U_MODEL_MATRIX 0
+#define U_PROJ_MATRIX  1
+#define U_VIEW_MATRIX  2
+#define U_LIGHT_MODE   3
+#define U_GEO_MODE     4
+#define U_BLEND_MODE   5
+#define U_FLAGS        6
+#define U_AMB_COLOR    7
+#define U_AMB_CENTER   8
+#define U_AMB_NUM_SG   9
+#define U_AMB_SGS     10
+
 #define UBO_SLOT_LIGHTS        0
 #define UBO_SLOT_OCCLUDERS     1
 #define UBO_SLOT_DECALS        2
@@ -140,8 +152,7 @@ typedef struct std3DFramebuffer
 {
 	int32_t w;
 	int32_t h;
-
-	int samples;
+	uint8_t samples;
 
 	//GLuint rbo;
 	GLuint zfbo;
@@ -150,6 +161,10 @@ typedef struct std3DFramebuffer
 	GLuint ztex;
 	GLuint tex0; // color
     GLuint tex1; // emissive
+
+	GLuint resolveFbo; // color resolved
+	GLuint resolve0; // color resolved
+	GLuint resolve1; // emissive resolve
 } std3DFramebuffer;
 
 std3DIntermediateFbo window;
@@ -197,7 +212,7 @@ typedef struct std3D_SharedUniforms
 	float     timeSeconds;
 	float     lightMult;
 	float     invlightMult;
-	uint32_t  pad;
+	float     ditherScale;
 
 	rdVector2 resolution;
 
@@ -328,38 +343,47 @@ static stdHashTable* decalHashTable = NULL;
 #define STD3D_STAGING_COUNT (4)
 
 // try not to add too many permutations
-typedef enum STD3D_SHADER_ID
+typedef enum STD3D_WORLD_STAGE_INDEX
 {
-	SHADER_COLOR,
-	SHADER_COLOR_ALPHATEST,
+	WORLD_STAGE_COLOR,
+	WORLD_STAGE_COLOR_ALPHATEST,
 
 	//SHADER_COLOR_REFRACTION,
 
-	SHADER_COUNT
-} STD3D_DRAW_LIST;
+	WORLD_STAGE_COUNT
+} STD3D_WORLD_STAGE_INDEX;
+
+typedef enum STD3D_WORLD_REG_POOL
+{
+	WORLD_REG_2, // 2 registers
+	WORLD_REG_4, // 4 registers
+	WORLD_REG_8, // 8 registers
+
+	WORLD_REG_COUNT
+} STD3D_WORLD_REG_POOL;
 
 typedef struct std3D_worldStage
 {
 	int bPosOnly;
 
 	GLuint program;
-	GLint attribute_coord3d, attribute_v_color, attribute_v_light, attribute_v_uv, attribute_v_norm;
-	GLint uniform_projection, uniform_modelMatrix, uniform_viewMatrix;
-	GLint uniform_ambient_color, uniform_ambient_sg, uniform_ambient_sg_count, uniform_ambient_center;
-	GLint uniform_geo_mode,  uniform_fillColor, uniform_textures, uniform_tex, uniform_texEmiss, uniform_displacement_map, uniform_texDecals, uniform_texz, uniform_texssao, uniform_texrefraction, uniform_texclip;
-	GLint uniform_worldPalette, uniform_worldPaletteLights, uniform_dithertex, uniform_diffuse_light, uniform_blackbody_tex;
-	GLint uniform_light_mode, uniform_ao_flags;
-	GLint uniform_shared, uniform_shader, uniform_shaderConsts, uniform_fog, uniform_tex_block, uniform_material, uniform_lightbuf, uniform_lights, uniform_occluders, uniform_decals;
-	GLint uniform_rightTop;
-	GLint uniform_rt;
-	GLint uniform_lt;
-	GLint uniform_rb;
-	GLint uniform_lb;
+	//GLint attribute_coord3d, attribute_v_color, attribute_v_light, attribute_v_uv, attribute_v_norm;
+	//GLint uniform_projection, uniform_modelMatrix, uniform_viewMatrix;
+	//GLint uniform_ambient_color, uniform_ambient_sg, uniform_ambient_sg_count, uniform_ambient_center;
+	//GLint uniform_geo_mode,  uniform_fillColor, uniform_textures, uniform_tex, uniform_texEmiss, uniform_displacement_map, uniform_texDecals, uniform_texz, uniform_texssao, uniform_texrefraction, uniform_texclip;
+	//GLint uniform_worldPalette, uniform_worldPaletteLights, uniform_dithertex, uniform_diffuse_light, uniform_blackbody_tex;
+	//GLint uniform_light_mode, uniform_ao_flags;
+	//GLint uniform_shared, uniform_shader, uniform_shaderConsts, uniform_fog, uniform_tex_block, uniform_material, uniform_lightbuf, uniform_lights, uniform_occluders, uniform_decals;
+	//GLint uniform_rightTop;
+	//GLint uniform_rt;
+	//GLint uniform_lt;
+	//GLint uniform_rb;
+	//GLint uniform_lb;
 
 	GLuint vao[STD3D_STAGING_COUNT];
 } std3D_worldStage;
 
-std3D_worldStage worldStages[SHADER_COUNT];
+std3D_worldStage worldStages[WORLD_STAGE_COUNT][WORLD_REG_COUNT];
 
 GLint programMenu_attribute_coord3d, programMenu_attribute_v_color, programMenu_attribute_v_uv, programMenu_attribute_v_norm;
 GLint programMenu_uniform_mvp, programMenu_uniform_tex, programMenu_uniform_displayPalette;
@@ -756,9 +780,6 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 
     glActiveTexture(GL_TEXTURE0);
 
-    glGenFramebuffers(1, &pFb->fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, pFb->fbo);
-
 #ifdef CHROMA_SUBSAMPLING
 	GLuint fboFormat = jkPlayer_enable32Bit ? GL_RG16_SNORM : GL_RG8_SNORM;
 	GLuint fboLayout = GL_RG;
@@ -771,26 +792,31 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 
     // Set up our framebuffer texture
 	// we never really use the alpha channel, so for 32bit we use deep color (rgb10a20, and for 16bit we use high color (rgb5a1, to avoid green shift)
-    glGenTextures(1, &pFb->tex0);
+	glGenTextures(1, &pFb->resolve0);
+	glBindTexture(GL_TEXTURE_2D, pFb->resolve0);
+	glTexImage2D(GL_TEXTURE_2D, 0, fboFormat, width, height, 0, fboLayout, GL_UNSIGNED_BYTE, NULL);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 	if(pFb->samples > 1)
 	{
+		glGenTextures(1, &pFb->tex0);
 		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pFb->tex0);
 		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, fboFormat, width, height, GL_TRUE);
+		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_BASE_LEVEL, 0);
 	}
 	else
 	{
-		glBindTexture(GL_TEXTURE_2D, pFb->tex0);
-		glTexImage2D(GL_TEXTURE_2D, 0, fboFormat, width, height, 0, fboLayout, GL_UNSIGNED_BYTE, NULL);
+		pFb->tex0 = pFb->resolve0;
 	}
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, pFb->samples > 1 ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D, pFb->tex0, 0);
-
+	
 	if(jkPlayer_enableBloom)
 	{
 		std3D_framebufferFlags |= 1;
@@ -798,31 +824,34 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 		GLuint emissiveFormat = jkPlayer_enable32Bit ? GL_RGB10_A2 : GL_RGB565;
 		GLuint emissiveLayout = jkPlayer_enable32Bit ? GL_RGBA : GL_RGB;
 
-		// Set up our emissive fb texture
-		glGenTextures(1, &pFb->tex1);
-		if (pFb->samples > 1)
-		{
-			glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pFb->tex1);
-			glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, emissiveFormat, width, height, GL_TRUE);
-		}
-		else
-		{
-			glBindTexture(GL_TEXTURE_2D, pFb->tex1);
-			glTexImage2D(GL_TEXTURE_2D, 0, emissiveFormat, width, height, 0, emissiveLayout, GL_UNSIGNED_BYTE, NULL);
-		}
-
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glGenTextures(1, &pFb->resolve1);
+		glBindTexture(GL_TEXTURE_2D, pFb->resolve1);
+		glTexImage2D(GL_TEXTURE_2D, 0, emissiveFormat, width, height, 0, emissiveLayout, GL_UNSIGNED_BYTE, NULL);
+		
+		// linear sampler for bloom downsample
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 1);
-		//glGenerateMipmap(GL_TEXTURE_2D);
-		//glGenerateMipmap(GL_TEXTURE_2D);
-    
-		// Attach fbTex to our currently bound framebuffer fb
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, pFb->samples > 1 ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D, pFb->tex1, 0);
-	}
+
+		// Set up our emissive fb texture
+		if (pFb->samples > 1)
+		{
+			glGenTextures(1, &pFb->tex1);
+			glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pFb->tex1);
+			glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, emissiveFormat, width, height, GL_TRUE);
+			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_BASE_LEVEL, 0);
+		}
+		else
+		{
+			pFb->tex1 = pFb->resolve1;
+		}
+    }
 	else
 	{
 		std3D_framebufferFlags &= ~1;
@@ -841,16 +870,35 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
 	}
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//_MIPMAP_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//_MIPMAP_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	//glGenerateMipmap(GL_TEXTURE_2D);
-	
-	//glTexImage2D(gl.TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, w, h, 0, GL_DEPTH_STENCIL,
-				// GL_UNSIGNED_INT_24_8, 0);
 
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, pFb->samples > 1 ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D, pFb->ztex, 0);
+	glGenFramebuffers(1, &pFb->resolveFbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, pFb->resolveFbo);
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pFb->resolve0, 0);
+	if (jkPlayer_enableBloom)
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, pFb->resolve1, 0);
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, pFb->ztex, 0);
+			
+	if (pFb->samples > 1)
+	{
+		glGenFramebuffers(1, &pFb->fbo);
+		glBindFramebuffer(GL_FRAMEBUFFER, pFb->fbo);
+
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, pFb->tex0, 0);
+		if (jkPlayer_enableBloom)
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D_MULTISAMPLE, pFb->tex1, 0);
+
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D_MULTISAMPLE, pFb->ztex, 0);
+	}
+	else
+	{
+		pFb->fbo = pFb->resolveFbo;
+	}
 
     // Set up our render buffer
    // glGenRenderbuffers(1, &pFb->rbo);
@@ -946,13 +994,20 @@ void std3D_generateExtraFramebuffers(int32_t width, int32_t height)
 
 void std3D_deleteFramebuffer(std3DFramebuffer* pFb)
 {
-    glDeleteFramebuffers(1, &pFb->fbo);
-    glDeleteTextures(1, &pFb->tex0);
-    glDeleteTextures(1, &pFb->tex1);
+    glDeleteFramebuffers(1, &pFb->resolveFbo);
+    glDeleteTextures(1, &pFb->resolve0);
+    glDeleteTextures(1, &pFb->resolve1);
     //glDeleteRenderbuffers(1, &pFb->rbo);
 	//glDeleteTextures(1, &pFb->ntex);
 	glDeleteTextures(1, &pFb->ztex);
 	glDeleteFramebuffers(1, &pFb->zfbo);
+
+	if (pFb->samples > 1)
+	{
+		glDeleteFramebuffers(1, &pFb->fbo);
+		glDeleteTextures(1, &pFb->tex0);
+		glDeleteTextures(1, &pFb->tex1);
+	}
 }
 
 void std3D_deleteExtraFramebuffers()
@@ -1414,15 +1469,15 @@ bool std3D_loadSimpleTexProgram(const char* fpath_base, std3DSimpleTexStage* pOu
 	pOut->uniform_occluders = glGetUniformBlockIndex(pOut->program, "occluderBlock");
 	pOut->uniform_decals = glGetUniformBlockIndex(pOut->program, "decalBlock");
 
-	glUniformBlockBinding(pOut->program, pOut->uniform_lights, UBO_SLOT_LIGHTS);
-	glUniformBlockBinding(pOut->program, pOut->uniform_occluders, UBO_SLOT_OCCLUDERS);
-	glUniformBlockBinding(pOut->program, pOut->uniform_decals, UBO_SLOT_DECALS);
-	glUniformBlockBinding(pOut->program, pOut->uniform_shared, UBO_SLOT_SHARED);
-	glUniformBlockBinding(pOut->program, pOut->uniform_fog, UBO_SLOT_FOG);
-	glUniformBlockBinding(pOut->program, pOut->uniform_tex_block, UBO_SLOT_TEX);
-	glUniformBlockBinding(pOut->program, pOut->uniform_material, UBO_SLOT_MATERIAL);
-	glUniformBlockBinding(pOut->program, pOut->uniform_shader, UBO_SLOT_SHADER);
-	glUniformBlockBinding(pOut->program, pOut->uniform_shaderConsts, UBO_SLOT_SHADER_CONSTS);
+	//glUniformBlockBinding(pOut->program, pOut->uniform_lights, UBO_SLOT_LIGHTS);
+	//glUniformBlockBinding(pOut->program, pOut->uniform_occluders, UBO_SLOT_OCCLUDERS);
+	//glUniformBlockBinding(pOut->program, pOut->uniform_decals, UBO_SLOT_DECALS);
+	//glUniformBlockBinding(pOut->program, pOut->uniform_shared, UBO_SLOT_SHARED);
+	//glUniformBlockBinding(pOut->program, pOut->uniform_fog, UBO_SLOT_FOG);
+	//glUniformBlockBinding(pOut->program, pOut->uniform_tex_block, UBO_SLOT_TEX);
+	//glUniformBlockBinding(pOut->program, pOut->uniform_material, UBO_SLOT_MATERIAL);
+	//glUniformBlockBinding(pOut->program, pOut->uniform_shader, UBO_SLOT_SHADER);
+	//glUniformBlockBinding(pOut->program, pOut->uniform_shaderConsts, UBO_SLOT_SHADER_CONSTS);
 
     return true;
 }
@@ -1431,54 +1486,54 @@ int std3D_loadWorldStage(std3D_worldStage* pStage, int isZPass, const char* defi
 {
 	if ((pStage->program = std3D_loadProgram(isZPass ? "shaders/world/depth" : "shaders/world/world", defines)) == 0) return 0;
 
-	pStage->attribute_coord3d = std3D_tryFindAttribute(pStage->program, "coord3d");
-	pStage->attribute_v_color = std3D_tryFindAttribute(pStage->program, "v_color");
-	pStage->attribute_v_light = std3D_tryFindAttribute(pStage->program, "v_light");
-	pStage->attribute_v_uv    = std3D_tryFindAttribute(pStage->program, "v_uv");
-	pStage->attribute_v_norm  = std3D_tryFindAttribute(pStage->program, "v_normal");
+//	pStage->attribute_coord3d = std3D_tryFindAttribute(pStage->program, "coord3d");
+//	pStage->attribute_v_color = std3D_tryFindAttribute(pStage->program, "v_color");
+//	pStage->attribute_v_light = std3D_tryFindAttribute(pStage->program, "v_light");
+//	pStage->attribute_v_uv    = std3D_tryFindAttribute(pStage->program, "v_uv");
+//	pStage->attribute_v_norm  = std3D_tryFindAttribute(pStage->program, "v_normal");
+//
+//	pStage->uniform_projection = std3D_tryFindUniform(pStage->program, "projMatrix");
+//	pStage->uniform_modelMatrix = std3D_tryFindUniform(pStage->program, "modelMatrix");
+//	pStage->uniform_viewMatrix = std3D_tryFindUniform(pStage->program, "viewMatrix");
+//	pStage->uniform_ambient_color = std3D_tryFindUniform(pStage->program, "ambientColor");
+//	pStage->uniform_ambient_sg = std3D_tryFindUniform(pStage->program, "ambientSG");
+//	pStage->uniform_ambient_sg_count = std3D_tryFindUniform(pStage->program, "ambientNumSG");
+//	pStage->uniform_ambient_center = std3D_tryFindUniform(pStage->program, "ambientCenter");
+//	pStage->uniform_fillColor = std3D_tryFindUniform(pStage->program, "fillColor");
+//	pStage->uniform_textures = std3D_tryFindUniform(pStage->program, "textures");
+//	pStage->uniform_tex = std3D_tryFindUniform(pStage->program, "tex");
+//	pStage->uniform_texEmiss = std3D_tryFindUniform(pStage->program, "texEmiss");
+//	pStage->uniform_worldPalette = std3D_tryFindUniform(pStage->program, "worldPalette");
+//	pStage->uniform_worldPaletteLights = std3D_tryFindUniform(pStage->program, "worldPaletteLights");
+//	pStage->uniform_displacement_map = std3D_tryFindUniform(pStage->program, "displacement_map");
+//	pStage->uniform_texDecals = std3D_tryFindUniform(pStage->program, "decalAtlas");
+//	pStage->uniform_texz = std3D_tryFindUniform(pStage->program, "ztex");
+//	pStage->uniform_texssao = std3D_tryFindUniform(pStage->program, "ssaotex");
+//	pStage->uniform_texrefraction = std3D_tryFindUniform(pStage->program, "refrtex");
+//	pStage->uniform_texclip = std3D_tryFindUniform(pStage->program, "cliptex");
+//	pStage->uniform_geo_mode = std3D_tryFindUniform(pStage->program, "geoMode");
+//	pStage->uniform_dithertex = std3D_tryFindUniform(pStage->program, "dithertex");
+//	pStage->uniform_diffuse_light = std3D_tryFindUniform(pStage->program, "diffuseLightTex");
+//	pStage->uniform_blackbody_tex = std3D_tryFindUniform(pStage->program, "blackbodyTex");
+//	pStage->uniform_light_mode = std3D_tryFindUniform(pStage->program, "lightMode");
+//	pStage->uniform_ao_flags = std3D_tryFindUniform(pStage->program, "aoFlags");
+//
+//	pStage->uniform_lightbuf = std3D_tryFindUniform(pStage->program, "clusterBuffer");
+	//pStage->uniform_shared = glGetUniformBlockIndex(pStage->program, "sharedBlock");
+	//pStage->uniform_shader = glGetUniformBlockIndex(pStage->program, "shaderBlock");
+	//pStage->uniform_shaderConsts = glGetUniformBlockIndex(pStage->program, "shaderConstantsBlock");
+	//pStage->uniform_fog = glGetUniformBlockIndex(pStage->program, "fogBlock");
+	//pStage->uniform_tex_block = glGetUniformBlockIndex(pStage->program, "textureBlock");
+	//pStage->uniform_material = glGetUniformBlockIndex(pStage->program, "materialBlock");
+	//pStage->uniform_lights = glGetUniformBlockIndex(pStage->program, "lightBlock");
+	//pStage->uniform_occluders = glGetUniformBlockIndex(pStage->program, "occluderBlock");
+	//pStage->uniform_decals = glGetUniformBlockIndex(pStage->program, "decalBlock");
 
-	pStage->uniform_projection = std3D_tryFindUniform(pStage->program, "projMatrix");
-	pStage->uniform_modelMatrix = std3D_tryFindUniform(pStage->program, "modelMatrix");
-	pStage->uniform_viewMatrix = std3D_tryFindUniform(pStage->program, "viewMatrix");
-	pStage->uniform_ambient_color = std3D_tryFindUniform(pStage->program, "ambientColor");
-	pStage->uniform_ambient_sg = std3D_tryFindUniform(pStage->program, "ambientSG");
-	pStage->uniform_ambient_sg_count = std3D_tryFindUniform(pStage->program, "ambientNumSG");
-	pStage->uniform_ambient_center = std3D_tryFindUniform(pStage->program, "ambientCenter");
-	pStage->uniform_fillColor = std3D_tryFindUniform(pStage->program, "fillColor");
-	pStage->uniform_textures = std3D_tryFindUniform(pStage->program, "textures");
-	pStage->uniform_tex = std3D_tryFindUniform(pStage->program, "tex");
-	pStage->uniform_texEmiss = std3D_tryFindUniform(pStage->program, "texEmiss");
-	pStage->uniform_worldPalette = std3D_tryFindUniform(pStage->program, "worldPalette");
-	pStage->uniform_worldPaletteLights = std3D_tryFindUniform(pStage->program, "worldPaletteLights");
-	pStage->uniform_displacement_map = std3D_tryFindUniform(pStage->program, "displacement_map");
-	pStage->uniform_texDecals = std3D_tryFindUniform(pStage->program, "decalAtlas");
-	pStage->uniform_texz = std3D_tryFindUniform(pStage->program, "ztex");
-	pStage->uniform_texssao = std3D_tryFindUniform(pStage->program, "ssaotex");
-	pStage->uniform_texrefraction = std3D_tryFindUniform(pStage->program, "refrtex");
-	pStage->uniform_texclip = std3D_tryFindUniform(pStage->program, "cliptex");
-	pStage->uniform_geo_mode = std3D_tryFindUniform(pStage->program, "geoMode");
-	pStage->uniform_dithertex = std3D_tryFindUniform(pStage->program, "dithertex");
-	pStage->uniform_diffuse_light = std3D_tryFindUniform(pStage->program, "diffuseLightTex");
-	pStage->uniform_blackbody_tex = std3D_tryFindUniform(pStage->program, "blackbodyTex");
-	pStage->uniform_light_mode = std3D_tryFindUniform(pStage->program, "lightMode");
-	pStage->uniform_ao_flags = std3D_tryFindUniform(pStage->program, "aoFlags");
-
-	pStage->uniform_lightbuf = std3D_tryFindUniform(pStage->program, "clusterBuffer");
-	pStage->uniform_shared = glGetUniformBlockIndex(pStage->program, "sharedBlock");
-	pStage->uniform_shader = glGetUniformBlockIndex(pStage->program, "shaderBlock");
-	pStage->uniform_shaderConsts = glGetUniformBlockIndex(pStage->program, "shaderConstantsBlock");
-	pStage->uniform_fog = glGetUniformBlockIndex(pStage->program, "fogBlock");
-	pStage->uniform_tex_block = glGetUniformBlockIndex(pStage->program, "textureBlock");
-	pStage->uniform_material = glGetUniformBlockIndex(pStage->program, "materialBlock");
-	pStage->uniform_lights = glGetUniformBlockIndex(pStage->program, "lightBlock");
-	pStage->uniform_occluders = glGetUniformBlockIndex(pStage->program, "occluderBlock");
-	pStage->uniform_decals = glGetUniformBlockIndex(pStage->program, "decalBlock");
-
-	pStage->uniform_rightTop = std3D_tryFindUniform(pStage->program, "rightTop");
-	pStage->uniform_rt = std3D_tryFindUniform(pStage->program, "cameraRT");
-	pStage->uniform_lt = std3D_tryFindUniform(pStage->program, "cameraLT");
-	pStage->uniform_rb = std3D_tryFindUniform(pStage->program, "cameraRB");
-	pStage->uniform_lb = std3D_tryFindUniform(pStage->program, "cameraLB");
+//	pStage->uniform_rightTop = std3D_tryFindUniform(pStage->program, "rightTop");
+//	pStage->uniform_rt = std3D_tryFindUniform(pStage->program, "cameraRT");
+//	pStage->uniform_lt = std3D_tryFindUniform(pStage->program, "cameraLT");
+//	pStage->uniform_rb = std3D_tryFindUniform(pStage->program, "cameraRB");
+//	pStage->uniform_lb = std3D_tryFindUniform(pStage->program, "cameraLB");
 
 	return 1;
 }
@@ -1593,15 +1648,15 @@ void std3D_setupUBOs()
 
 void std3D_setupLightingUBO(std3D_worldStage* pStage)
 {
-	glUniformBlockBinding(pStage->program, pStage->uniform_lights, UBO_SLOT_LIGHTS);
-	glUniformBlockBinding(pStage->program, pStage->uniform_occluders, UBO_SLOT_OCCLUDERS);
-	glUniformBlockBinding(pStage->program, pStage->uniform_decals, UBO_SLOT_DECALS);
-	glUniformBlockBinding(pStage->program, pStage->uniform_shared, UBO_SLOT_SHARED);
-	glUniformBlockBinding(pStage->program, pStage->uniform_fog, UBO_SLOT_FOG);
-	glUniformBlockBinding(pStage->program, pStage->uniform_tex_block, UBO_SLOT_TEX);
-	glUniformBlockBinding(pStage->program, pStage->uniform_material, UBO_SLOT_MATERIAL);
-	glUniformBlockBinding(pStage->program, pStage->uniform_shader, UBO_SLOT_SHADER);
-	glUniformBlockBinding(pStage->program, pStage->uniform_shaderConsts, UBO_SLOT_SHADER_CONSTS);
+	//glUniformBlockBinding(pStage->program, pStage->uniform_lights, UBO_SLOT_LIGHTS);
+	//glUniformBlockBinding(pStage->program, pStage->uniform_occluders, UBO_SLOT_OCCLUDERS);
+	//glUniformBlockBinding(pStage->program, pStage->uniform_decals, UBO_SLOT_DECALS);
+	//glUniformBlockBinding(pStage->program, pStage->uniform_shared, UBO_SLOT_SHARED);
+	//glUniformBlockBinding(pStage->program, pStage->uniform_fog, UBO_SLOT_FOG);
+	//glUniformBlockBinding(pStage->program, pStage->uniform_tex_block, UBO_SLOT_TEX);
+	//glUniformBlockBinding(pStage->program, pStage->uniform_material, UBO_SLOT_MATERIAL);
+	//glUniformBlockBinding(pStage->program, pStage->uniform_shader, UBO_SLOT_SHADER);
+	//glUniformBlockBinding(pStage->program, pStage->uniform_shaderConsts, UBO_SLOT_SHADER_CONSTS);
 }
 
 void std3D_setupDrawCallVAO(std3D_worldStage* pStage)
@@ -1618,14 +1673,14 @@ void std3D_setupDrawCallVAO(std3D_worldStage* pStage)
 		if (pStage->bPosOnly)
 		{
 			glVertexAttribPointer(
-				pStage->attribute_coord3d, // attribute
+				0,//pStage->attribute_coord3d, // attribute
 				3,                 // number of elements per vertex, here (x,y,z)
 				GL_FLOAT,          // the type of each element
 				GL_FALSE,          // normalize fixed-point data?
 				sizeof(rdVertexBase),                 // data stride
 				0                  // offset of first element
 			);
-			glEnableVertexAttribArray(pStage->attribute_coord3d);
+			glEnableVertexAttribArray(0);//pStage->attribute_coord3d);
 
 			//glVertexAttribPointer(
 			//	pStage->attribute_v_norm, // attribute
@@ -1640,49 +1695,49 @@ void std3D_setupDrawCallVAO(std3D_worldStage* pStage)
 		else
 		{
 			glVertexAttribPointer(
-				pStage->attribute_coord3d, // attribute
+				0,//pStage->attribute_coord3d, // attribute
 				3,                 // number of elements per vertex, here (x,y,z)
 				GL_FLOAT,          // the type of each element
 				GL_FALSE,          // normalize fixed-point data?
 				sizeof(rdVertex),                 // data stride
 				(GLvoid*)offsetof(rdVertex, x)                  // offset of first element
 			);
-			glEnableVertexAttribArray(pStage->attribute_coord3d);
+			glEnableVertexAttribArray(0);//pStage->attribute_coord3d);
 
 			glVertexAttribPointer(
-				pStage->attribute_v_norm, // attribute
+				1,//pStage->attribute_v_norm, // attribute
 				GL_BGRA,                 // number of elements per vertex, here (x,y,z)
 				GL_UNSIGNED_INT_2_10_10_10_REV,          // the type of each element
 				GL_TRUE,          // normalize fixed-point data?
 				sizeof(rdVertex), // data stride
 				(GLvoid*)offsetof(rdVertex, norm10a2) // offset of first element
 			);
-			glEnableVertexAttribArray(pStage->attribute_v_norm);
+			glEnableVertexAttribArray(1);//pStage->attribute_v_norm);
 
 			for (int i = 0; i < RD_NUM_COLORS; ++i)
 			{
 				glVertexAttribPointer(
-					pStage->attribute_v_color + i, // attribute
+					2+i,//pStage->attribute_v_color + i, // attribute
 					4,                 // number of elements per vertex, here (R,G,B,A)
 					GL_UNSIGNED_BYTE,  // the type of each element
 					GL_TRUE,          // normalize fixed-point data?
 					sizeof(rdVertex),                 // no extra data between each position
 					(GLvoid*)offsetof(rdVertex, colors[i]) // offset of first element
 				);
-				glEnableVertexAttribArray(pStage->attribute_v_color + i);
+				glEnableVertexAttribArray(2+i);//pStage->attribute_v_color + i);
 			}
 
 			for (int i = 0; i < RD_NUM_TEXCOORDS; ++i)
 			{
 				glVertexAttribPointer(
-					pStage->attribute_v_uv + i,    // attribute
+					4+i,//pStage->attribute_v_uv + i,    // attribute
 					4,                 // number of elements per vertex, here (U,V,R,Q)
 					GL_FLOAT,          // the type of each element
 					GL_FALSE,          // take our values as-is
 					sizeof(rdVertex),                 // no extra data between each position
 					(GLvoid*)offsetof(rdVertex, texcoords[i])                  // offset of first element
 				);
-				glEnableVertexAttribArray(pStage->attribute_v_uv + i);
+				glEnableVertexAttribArray(4+i);//pStage->attribute_v_uv + i);
 			}
 		}
 	}
@@ -1707,10 +1762,17 @@ int init_resources()
 
     if ((programMenu = std3D_loadProgram("shaders/menu", "")) == 0) return false;
 
-	//if (!std3D_loadWorldStage(&worldStages[SHADER_DEPTH], 1, "Z_PREPASS;WORLD")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR], 0, "WORLD")) return false;
-	if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_ALPHATEST], 0, "ALPHA_DISCARD;WORLD")) return false;
-	//if (!std3D_loadWorldStage(&worldStages[SHADER_COLOR_REFRACTION], 0, "ALPHA_DISCARD;ALPHA_BLEND;REFRACTION;WORLD")) return false;
+	for (int i = 0; i < WORLD_REG_COUNT; ++i)
+	{
+		char tmp[40];
+		sprintf_s(tmp, 40, "WORLD;REG_COUNT %d", 2 << i);
+
+		if (!std3D_loadWorldStage(&worldStages[WORLD_STAGE_COLOR][i], 0, tmp)) return false;
+
+		sprintf_s(tmp, 40, "ALPHA_DISCARD;WORLD;REG_COUNT %d", 2 << i);
+
+		if (!std3D_loadWorldStage(&worldStages[WORLD_STAGE_COLOR_ALPHATEST][i], 0, tmp)) return false;
+	}
 
     if (!std3D_loadSimpleTexProgram("shaders/ui", &std3D_uiProgram)) return false;
     if (!std3D_loadSimpleTexProgram("shaders/texfbo", &std3D_texFboStage)) return false;
@@ -1998,12 +2060,15 @@ int init_resources()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	std3D_setupUBOs();
-	for(int i = 0; i < SHADER_COUNT; ++i)
+	for (int i = 0; i < WORLD_STAGE_COUNT; ++i)
 	{
-		//worldStages[i].bPosOnly = i == SHADER_DEPTH;//(i <= SHADER_DEPTH_ALPHATEST);
+		for (int j = 0; j < WORLD_REG_COUNT; ++j)
+		{
+			//worldStages[i].bPosOnly = i == SHADER_DEPTH;//(i <= SHADER_DEPTH_ALPHATEST);
 
-		std3D_setupDrawCallVAO(&worldStages[i]);
-		std3D_setupLightingUBO(&worldStages[i]);
+			std3D_setupDrawCallVAO(&worldStages[i][j]);
+			std3D_setupLightingUBO(&worldStages[i][j]);
+		}
 	}
 
 	std3D_initDefaultShader();
@@ -2097,10 +2162,13 @@ void std3D_FreeResources()
 
     glDeleteBuffers(1, &menu_vbo_all);
 
-	for(int i = 0; i < SHADER_COUNT; ++i)
+	for (int i = 0; i < WORLD_STAGE_COUNT; ++i)
 	{
-		glDeleteProgram(worldStages[i].program);
-		glDeleteVertexArrays(3, worldStages[i].vao);
+		for (int j = 0; j < WORLD_REG_COUNT; ++j)
+		{
+			glDeleteProgram(worldStages[i][j].program);
+			glDeleteVertexArrays(3, worldStages[i][j].vao);
+		}
 	}
 	glDeleteBuffers(1, &tex_ubo);
 	glDeleteBuffers(1, &material_ubo);
@@ -4986,15 +5054,15 @@ GLuint std3D_PrimitiveForGeoMode(rdGeoMode_t geoMode)
 	}
 }
 
-int std3D_GetShaderID(std3D_DrawCallState* pState)
+int std3D_GetStageIndex(std3D_DrawCallState* pState)
 {
 	int alphaTest = pState->stateBits.alphaTest & 1;
 	int blending  = pState->stateBits.blend & 1;
 
 	if (alphaTest || blending)
-		return SHADER_COLOR_ALPHATEST;
+		return WORLD_STAGE_COLOR_ALPHATEST;
 
-	return SHADER_COLOR;
+	return WORLD_STAGE_COLOR;
 }
 
 void std3D_UpdateSharedUniforms()
@@ -5005,6 +5073,12 @@ void std3D_UpdateSharedUniforms()
 	extern float rdroid_overbright;
 	sharedUniforms.lightMult = 1.0f / rdroid_overbright;//jkGuiBuildMulti_bRendering ? 0.85 : (jkPlayer_enableBloom ? 0.9 : 0.85);
 	sharedUniforms.invlightMult = rdroid_overbright;
+
+	uint8_t bpp = std3D_framebufferFlags & 0x4 ? 10 : 5;
+	if (jkPlayer_enableDithering)
+		sharedUniforms.ditherScale = 1.0f / (float)((1 << bpp) - 1);
+	else
+		sharedUniforms.ditherScale = 0.0f;
 
 	rdVector_Set2(&sharedUniforms.resolution, std3D_framebuffer.w, std3D_framebuffer.h);
 
@@ -5089,7 +5163,8 @@ void std3D_SetRasterState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 	glFrontFace(GL_CCW);
 	glCullFace(pState->stateBits.cullMode == RD_CULL_MODE_BACK ? GL_BACK : GL_FRONT);
 
-	glUniform1i(pStage->uniform_geo_mode, pState->stateBits.geoMode + 1);
+	//glUniform1i(pStage->uniform_geo_mode, pState->stateBits.geoMode + 1);
+	glUniform1i(U_GEO_MODE, pState->stateBits.geoMode + 1);
 
 	//if(pState->stateBits.ditherMode > 0)
 	//	std3D_bindTexture(GL_TEXTURE_2D, dither_texture, TEX_SLOT_DITHER);
@@ -5241,11 +5316,17 @@ void std3D_SetTransformState(std3D_worldStage* pStage, std3D_DrawCallState* pSta
 	float T = znear * tanf(0.5 * fov);
 	float R = aspect * T;
 
-	glUniformMatrix4fv(pStage->uniform_projection, 1, GL_FALSE, (float*)renderPassProj);
-	glUniform2f(pStage->uniform_rightTop, R, T);
+	glUniformMatrix4fv(U_PROJ_MATRIX, 1, GL_FALSE, (float*)renderPassProj);
+	//glUniform2f(pStage->uniform_rightTop, R, T);
 
-	glUniformMatrix4fv(pStage->uniform_viewMatrix, 1, GL_FALSE, (float*)&pState->transformState.view);
-	glUniformMatrix4fv(pStage->uniform_modelMatrix, 1, GL_FALSE, (float*)&pState->transformState.modelView);
+	glUniformMatrix4fv(U_VIEW_MATRIX, 1, GL_FALSE, (float*)&pState->transformState.view);
+	glUniformMatrix4fv(U_MODEL_MATRIX, 1, GL_FALSE, (float*)&pState->transformState.modelView);
+
+//	glUniformMatrix4fv(pStage->uniform_projection, 1, GL_FALSE, (float*)renderPassProj);
+//	glUniform2f(pStage->uniform_rightTop, R, T);
+//
+//	glUniformMatrix4fv(pStage->uniform_viewMatrix, 1, GL_FALSE, (float*)&pState->transformState.view);
+//	glUniformMatrix4fv(pStage->uniform_modelMatrix, 1, GL_FALSE, (float*)&pState->transformState.modelView);
 }
 
 void std3D_SetTextureState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
@@ -5378,13 +5459,17 @@ void std3D_SetMaterialState(std3D_worldStage* pStage, std3D_DrawCallState* pStat
 
 void std3D_SetLightingState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 {
-	glUniform1i(pStage->uniform_light_mode, pState->stateBits.lightMode);
-	glUniform1i(pStage->uniform_ao_flags, pState->lightingState.ambientFlags);
+	glUniform1i(U_LIGHT_MODE, pState->stateBits.lightMode);
+	glUniform1i(U_FLAGS, pState->lightingState.ambientFlags);
+
+//	glUniform1i(pStage->uniform_light_mode, pState->stateBits.lightMode);
+//	glUniform1i(pStage->uniform_ao_flags, pState->lightingState.ambientFlags);
 
 	float r = ((pState->lightingState.ambientColor >> 20) & 0x3FF) / 255.0f;
 	float g = ((pState->lightingState.ambientColor >> 10) & 0x3FF) / 255.0f;
 	float b = ((pState->lightingState.ambientColor >>  0) & 0x3FF) / 255.0f;
-	glUniform3f(pStage->uniform_ambient_color, r, g, b);
+//	glUniform3f(pStage->uniform_ambient_color, r, g, b);
+	glUniform3f(U_AMB_COLOR, r, g, b);
 
 	rdVector4 sgs[RD_AMBIENT_LOBES];
 	for (int i = 0; i < RD_AMBIENT_LOBES; ++i)
@@ -5395,11 +5480,15 @@ void std3D_SetLightingState(std3D_worldStage* pStage, std3D_DrawCallState* pStat
 		float a = ((pState->lightingState.ambientLobes[i] >> 30) & 0x2);
 		rdVector_Set4(&sgs[i], r, g, b, a);
 	}
-	glUniform4fv(pStage->uniform_ambient_sg, RD_AMBIENT_LOBES, &sgs[0].x);
-	glUniform4fv(pStage->uniform_ambient_center, 1, &pState->lightingState.ambientCenter);
+	glUniform4fv(U_AMB_SGS, RD_AMBIENT_LOBES, &sgs[0].x);
+	glUniform4fv(U_AMB_CENTER, 1, &pState->lightingState.ambientCenter);
+	glUniform1ui(U_AMB_NUM_SG, RD_AMBIENT_LOBES);
+
+	//glUniform4fv(pStage->uniform_ambient_sg, RD_AMBIENT_LOBES, &sgs[0].x);
+	//glUniform4fv(pStage->uniform_ambient_center, 1, &pState->lightingState.ambientCenter);
 
 	//glUniform1uiv(pStage->uniform_ambient_sg, 8, &pState->lightingState.ambientLobes[0]);
-	glUniform1ui(pStage->uniform_ambient_sg_count, RD_AMBIENT_LOBES);
+	//glUniform1ui(pStage->uniform_ambient_sg_count, RD_AMBIENT_LOBES);
 }
 
 void std3D_SetShaderState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
@@ -5434,22 +5523,22 @@ void std3D_BindStage(std3D_worldStage* pStage)
 		TEX_SLOT_TEX3,
 	};
 
-	glUniform1iv(pStage->uniform_textures, 4, texids);
+	//glUniform1iv(pStage->uniform_textures, 4, texids);
 
-	glUniform1i(pStage->uniform_tex,                TEX_SLOT_DIFFUSE);
-	glUniform1i(pStage->uniform_worldPalette,       TEX_SLOT_WORLD_PAL);
-	glUniform1i(pStage->uniform_worldPaletteLights, TEX_SLOT_WORLD_LIGHT_PAL);
-	glUniform1i(pStage->uniform_texEmiss,           TEX_SLOT_EMISSIVE);
-	glUniform1i(pStage->uniform_displacement_map,   TEX_SLOT_DISPLACEMENT);
-	glUniform1i(pStage->uniform_lightbuf,           TEX_SLOT_CLUSTER_BUFFER);
-	glUniform1i(pStage->uniform_texDecals,          TEX_SLOT_DECAL_ATLAS);
-	glUniform1i(pStage->uniform_texz,               TEX_SLOT_DEPTH);
-	glUniform1i(pStage->uniform_texssao,            TEX_SLOT_AO);
-	glUniform1i(pStage->uniform_texrefraction,      TEX_SLOT_REFRACTION);
-	glUniform1i(pStage->uniform_texclip,            TEX_SLOT_CLIP);
-	glUniform1i(pStage->uniform_dithertex,          TEX_SLOT_DITHER);
-	glUniform1i(pStage->uniform_diffuse_light,      TEX_SLOT_DIFFUSE_LIGHT);
-	glUniform1i(pStage->uniform_blackbody_tex,      TEX_SLOT_BLACKBODY);
+	//glUniform1i(pStage->uniform_tex,                TEX_SLOT_DIFFUSE);
+	//glUniform1i(pStage->uniform_worldPalette,       TEX_SLOT_WORLD_PAL);
+	//glUniform1i(pStage->uniform_worldPaletteLights, TEX_SLOT_WORLD_LIGHT_PAL);
+	//glUniform1i(pStage->uniform_texEmiss,           TEX_SLOT_EMISSIVE);
+	//glUniform1i(pStage->uniform_displacement_map,   TEX_SLOT_DISPLACEMENT);
+	//glUniform1i(pStage->uniform_lightbuf,           TEX_SLOT_CLUSTER_BUFFER);
+	//glUniform1i(pStage->uniform_texDecals,          TEX_SLOT_DECAL_ATLAS);
+	//glUniform1i(pStage->uniform_texz,               TEX_SLOT_DEPTH);
+	//glUniform1i(pStage->uniform_texssao,            TEX_SLOT_AO);
+	//glUniform1i(pStage->uniform_texrefraction,      TEX_SLOT_REFRACTION);
+	//glUniform1i(pStage->uniform_texclip,            TEX_SLOT_CLIP);
+	//glUniform1i(pStage->uniform_dithertex,          TEX_SLOT_DITHER);
+	//glUniform1i(pStage->uniform_diffuse_light,      TEX_SLOT_DIFFUSE_LIGHT);
+	//glUniform1i(pStage->uniform_blackbody_tex,      TEX_SLOT_BLACKBODY);
 }
 
 void std3D_BlitFrame()
@@ -5488,8 +5577,12 @@ void std3D_AdvanceFrame()
 
 void std3D_SetState(std3D_DrawCallState* pState, uint32_t updateBits)
 {
-	uint32_t stage = std3D_GetShaderID(pState);
-	std3D_worldStage* pStage = &worldStages[stage]; // todo: fixme
+	uint32_t stage = std3D_GetStageIndex(pState);
+
+	uint32_t reg_index = pState->shaderState.shader ? pState->shaderState.shader->regcount : 2;
+	reg_index = (reg_index > 4) ? 2 : (reg_index > 2) ? 1 : 0;
+
+	std3D_worldStage* pStage = &worldStages[stage][reg_index]; // todo: fixme
 
 	//if(updateBits & RD_CACHE_SHADER)
 	//if (updateBits & RD_CACHE_STATEBITS)
@@ -5653,6 +5746,23 @@ void std3D_FlushDeferred()
 	STD_END_PROFILER_LABEL();
 }
 
+void std3D_ResolveMSAA()
+{
+	if (std3D_framebuffer.samples > 1)
+	{
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, std3D_framebuffer.resolveFbo);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, std3D_framebuffer.fbo);
+
+		const uint8_t attachments = (std3D_framebufferFlags & 0x1) ? 2 : 1;
+		for (uint8_t i = 0; i < attachments; ++i)
+		{
+			glDrawBuffer(GL_COLOR_ATTACHMENT0 + i);
+			glReadBuffer(GL_COLOR_ATTACHMENT0 + i);
+			glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, std3D_framebuffer.w, std3D_framebuffer.h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+		}
+	}
+}
+
 // writes directly to the final window framebuffer
 void std3D_DoBloom()
 {
@@ -5669,20 +5779,8 @@ void std3D_DoBloom()
 
 	std3D_PushDebugGroup("Bloom");
 
-	// resolve emissive
-	if(std3D_framebuffer.samples > 1)
-	{
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, std3D_framebuffer.fbo);
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, refr.fbo);
-
-		glDrawBuffer(GL_COLOR_ATTACHMENT0);
-		glReadBuffer(GL_COLOR_ATTACHMENT1);
-
-		glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, refr.w, refr.h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-	}
-
 	// downscale layers using a simple gaussian filter
-	std3D_DrawSimpleTex(&std3D_bloomStage, &bloomLayers[0], std3D_framebuffer.samples > 1 ? refr.tex : std3D_framebuffer.tex1, 0, 0, uvScale, 1.0, 1.0, 0, "Bloom Downscale");
+	std3D_DrawSimpleTex(&std3D_bloomStage, &bloomLayers[0], std3D_framebuffer.resolve1, 0, 0, uvScale, 1.0, 1.0, 0, "Bloom Downscale");
 	for (int i = 1; i < ARRAY_SIZE(bloomLayers); ++i)
 		std3D_DrawSimpleTex(&std3D_bloomStage, &bloomLayers[i], bloomLayers[i - 1].tex, 0, 0, uvScale, 1.0, 1.0, 0, "Bloom Downscale");
 
@@ -5723,22 +5821,12 @@ void std3D_FlushPostFX()
 //
 //	glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, window.w, window.h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
+	std3D_ResolveMSAA();
+
 	std3D_DoBloom();
 
-	// resolve color
-	if (std3D_framebuffer.samples > 1)
-	{
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, std3D_framebuffer.fbo);
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, refr.fbo);
-
-		glDrawBuffer(GL_COLOR_ATTACHMENT0);
-		glReadBuffer(GL_COLOR_ATTACHMENT0);
-
-		glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, refr.w, refr.h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-	}
-
 	glDisable(GL_BLEND);
-	std3D_DrawSimpleTex(&std3D_postfxStage, &window, std3D_framebuffer.samples > 1 ? refr.tex : std3D_framebuffer.tex0, bloomLayers[0].tex, 0, (rdCamera_pCurCamera->flags & 0x1) ? sithTime_curSeconds : -1.0, jkPlayer_enableDithering, jkPlayer_gamma, 0, "Final Output");
+	std3D_DrawSimpleTex(&std3D_postfxStage, &window, std3D_framebuffer.resolve0, bloomLayers[0].tex, 0, (rdCamera_pCurCamera->flags & 0x1) ? sithTime_curSeconds : -1.0, jkPlayer_enableDithering, jkPlayer_gamma, 0, "Final Output");
 
 	std3D_PopDebugGroup();
 

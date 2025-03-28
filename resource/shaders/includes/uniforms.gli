@@ -5,24 +5,48 @@ import "defines.gli"
 #ifndef UNIFORMS_H
 #define UNIFORMS_H
 
-// todo: move me
-uniform mat4 modelMatrix;
-uniform mat4 projMatrix;
-uniform mat4 viewMatrix;
+#define U_MODEL_MATRIX 0
+#define U_PROJ_MATRIX  1
+#define U_VIEW_MATRIX  2
 
-uniform int lightMode;
-uniform int geoMode;
-uniform int blend_mode;
+#define U_LIGHT_MODE   3
+#define U_GEO_MODE     4
+#define U_BLEND_MODE   5
+
+#define U_FLAGS        6
+#define U_AMB_COLOR    7
+#define U_AMB_CENTER   8
+#define U_AMB_NUM_SG   9
+#define U_AMB_SGS     10
+
+// todo: move me
+layout(location = U_MODEL_MATRIX) uniform mat4 modelMatrix;
+layout(location = U_PROJ_MATRIX) uniform mat4 projMatrix;
+layout(location = U_VIEW_MATRIX) uniform mat4 viewMatrix;
+
+layout(location = U_LIGHT_MODE) uniform int lightMode;
+layout(location = U_GEO_MODE) uniform int geoMode;
+layout(location = U_BLEND_MODE) uniform int blend_mode;
 //uniform int ditherMode;
 
-uniform int aoFlags;
-uniform vec3 ambientColor;
-uniform vec4 ambientSG[AMBIENT_LOBES];
-uniform vec4 ambientCenter;
-uniform uint ambientNumSG; // get around loop unrolling
+layout(location = U_FLAGS) uniform int aoFlags;
+layout(location = U_AMB_COLOR) uniform vec3 ambientColor;
+layout(location = U_AMB_CENTER) uniform vec4 ambientCenter;
+layout(location = U_AMB_NUM_SG) uniform uint ambientNumSG; // get around loop unrolling
+layout(location = U_AMB_SGS) uniform vec4 ambientSG[AMBIENT_LOBES];
+
+#define UBO_SLOT_LIGHTS        0
+#define UBO_SLOT_OCCLUDERS     1
+#define UBO_SLOT_DECALS        2
+#define UBO_SLOT_SHARED        3
+#define UBO_SLOT_FOG           4
+#define UBO_SLOT_TEX           5
+#define UBO_SLOT_MATERIAL      6
+#define UBO_SLOT_SHADER        7
+#define UBO_SLOT_SHADER_CONSTS 8
 
 // Shared uniforms across batch calls and render passes
-layout(std140) uniform sharedBlock
+layout(binding = UBO_SLOT_SHARED, std140) uniform sharedBlock
 {
 	vec4  ambientSGBasis[AMBIENT_LOBES];
 
@@ -31,7 +55,7 @@ layout(std140) uniform sharedBlock
 	float timeSeconds;
 	float light_mult;
 	float invlightMult;
-	float pad;
+	float ditherScale;
 	vec2  iResolution;
 
 	vec2  clusterTileSizes;
@@ -43,7 +67,7 @@ layout(std140) uniform sharedBlock
 };
 
 // Fog state
-layout(std140) uniform fogBlock
+layout(binding = UBO_SLOT_FOG, std140) uniform fogBlock
 {
 	vec4  fogColor;
 	int   fogEnabled;
@@ -55,7 +79,7 @@ layout(std140) uniform fogBlock
 
 // Texture state
 // todo: TMUs
-layout(std140) uniform textureBlock
+layout(binding = UBO_SLOT_TEX, std140) uniform textureBlock
 {
 	int   tex_mode;
 	int   uv_mode;
@@ -73,7 +97,7 @@ layout(std140) uniform textureBlock
 };
 
 // Material state
-layout(std140) uniform materialBlock
+layout(binding = UBO_SLOT_MATERIAL, std140) uniform materialBlock
 {	
 	vec4 fillColor;
 	vec4 albedoFactor;
@@ -109,7 +133,7 @@ struct light
 	float cosAngleY;
 };
 
-layout(std140) uniform lightBlock
+layout(binding = UBO_SLOT_LIGHTS, std140) uniform lightBlock
 {
 	uint firstLight;
 	uint numLights;
@@ -125,7 +149,7 @@ struct occluder
 	float pad0, pad1, pad2;
 };
 
-layout(std140) uniform occluderBlock
+layout(binding = UBO_SLOT_OCCLUDERS, std140) uniform occluderBlock
 {
 	uint firstOccluder;
 	uint numOccluders;
@@ -147,7 +171,7 @@ struct decal
 	float padding1;
 };
 
-layout(std140) uniform decalBlock
+layout(binding = UBO_SLOT_DECALS, std140) uniform decalBlock
 {
 	uint  firstDecal;
 	uint  numDecals;
@@ -156,7 +180,7 @@ layout(std140) uniform decalBlock
 };
 
 // Shader buffer
-layout(std140) uniform shaderBlock
+layout(binding = UBO_SLOT_SHADER, std140) uniform shaderBlock
 {	
 	float shaderVersion;
 	uint  shaderPadding0, shaderPadding1;
@@ -165,7 +189,7 @@ layout(std140) uniform shaderBlock
 };
 
 // Shader constants buffer
-layout(std140) uniform shaderConstantsBlock
+layout(binding = UBO_SLOT_SHADER_CONSTS, std140) uniform shaderConstantsBlock
 {
 	vec4 shaderConstants[8];
 };

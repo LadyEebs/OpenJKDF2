@@ -5,22 +5,37 @@ import "fastmath.gli"
 #ifndef TEXTURES_H
 #define TEXTURES_H
 
-// Textures
-uniform sampler2D textures[4];
+#define TEX_SLOT_TEX0			 0
+#define TEX_SLOT_TEX1			 1
+#define TEX_SLOT_TEX2			 2
+#define TEX_SLOT_TEX3			 3
+#define TEX_SLOT_REFRACTION      4
+#define TEX_SLOT_WORLD_PAL       5
+#define TEX_SLOT_WORLD_LIGHT_PAL 6
+#define TEX_SLOT_CLUSTER_BUFFER  7
+#define TEX_SLOT_DECAL_ATLAS     8
+#define TEX_SLOT_DEPTH           9
+#define TEX_SLOT_AO             10
+#define TEX_SLOT_CLIP           11
+#define TEX_SLOT_DITHER         12
+#define TEX_SLOT_DIFFUSE_LIGHT  13
+#define TEX_SLOT_BLACKBODY      14
 
-uniform sampler2D tex;
+// Textures
+layout(binding = TEX_SLOT_TEX0) uniform sampler2D textures[4];
+
 //uniform sampler2D texEmiss;
 //uniform sampler2D worldPalette;
 //uniform sampler2D worldPaletteLights;
 //uniform sampler2D displacement_map;
 
-uniform sampler2D ztex;
-uniform sampler2D ssaotex;
-uniform sampler2D refrtex;
+layout(binding = TEX_SLOT_DEPTH) uniform sampler2D ztex;
+layout(binding = TEX_SLOT_AO) uniform sampler2D ssaotex;
+layout(binding = TEX_SLOT_REFRACTION) uniform sampler2D refrtex;
 //uniform sampler2D cliptex;
 //uniform sampler2D dithertex;
-uniform sampler2D diffuseLightTex;
-uniform sampler1D blackbodyTex;
+//layout(binding = TEX_SLOT_DIFFUSE_LIGHT) uniform sampler2D diffuseLightTex;
+layout(binding = TEX_SLOT_BLACKBODY) uniform sampler1D blackbodyTex;
 
 uint dither_value(uvec2 xy)
 {
@@ -44,7 +59,7 @@ float dither_value_float(uvec2 xy)
 #if 0
 vec4 tex_6x6(sampler2D s, vec2 uv)
 {
-	float mip = texQueryLod(s, uv);
+	float mip = textureQueryLod(s, uv);
 	//mip += compute_mip_bias(f_coord.y);
 	mip = min(mip, float(numMips - 1));
 
@@ -73,33 +88,35 @@ vec4 tex_6x6(sampler2D s, vec2 uv)
 
 vec2 steep_parallax(in sampler2D s, in vec2 uv, vec3 view_dir, float depth)
 {
-	const float min_layers = float(32.0);
-    const float max_layers = float(128.0);
-    float num_layers = mix(max_layers, min_layers, abs(view_dir.z));
-	float inv_num_layers = float(1.0) / num_layers;
+	const flex min_layers = flex(32.0);
+    const flex max_layers = flex(128.0);
+    flex num_layers = mix(max_layers, min_layers, abs(flex(view_dir.z)));
+	flex inv_num_layers = flex(1.0) / num_layers;
 
-    float layer_depth = inv_num_layers;
-    float current_layer_depth = float(0.0);
+    flex layer_depth = inv_num_layers;
+    flex current_layer_depth = flex(0.0);
+
     vec2 shift_per_layer = (view_dir.xy / (-view_dir.z)) * depth;
 	vec2 d_tc = shift_per_layer * inv_num_layers;
 
     vec2 current_tc = uv.xy;
-    float current_sample = textureLod(s, current_tc, 0).r;
+    flex current_sample = flex(textureLod(s, current_tc, 0).r);
 
-    while(current_layer_depth < current_sample)
+    while (current_layer_depth < current_sample)
 	{
         current_tc -= d_tc;
-        current_sample = textureLod(s, current_tc, 0).r;
+        current_sample = flex(textureLod(s, current_tc, 0).r);
         current_layer_depth += layer_depth;
     }
 
     vec2 prev_tc = current_tc + d_tc;
 
-    float after_col_depth = current_sample - current_layer_depth;
-    float before_col_depth = float(textureLod(s, prev_tc, 0).r) - current_layer_depth + layer_depth;
+    flex after_col_depth = current_sample - current_layer_depth;
+    flex before_col_depth = flex(textureLod(s, prev_tc, 0).r) - current_layer_depth + layer_depth;
 
-    float a = after_col_depth / (after_col_depth - before_col_depth);
-    vec2 adj_tc = mix(current_tc, prev_tc, a);
+    flex a = after_col_depth / (after_col_depth - before_col_depth);
+
+    vec2 adj_tc = mix(current_tc, prev_tc, float(a));
 
     return adj_tc - uv;
 }
@@ -110,46 +127,24 @@ vec2 parallax(in sampler2D s, in vec2 uv, vec3 view_dir, float depth)
 	return view_dir.xy * height;// + uv.xy;
 }
 
-mat3 construct_tbn(vec2 uv, vec3 pos, vec3 n)
+flex3x3 construct_tbn(vec2 uv, vec3 pos, flex3 n)
 {
-    vec3 dp1  = dFdx(pos.xyz);
-    vec3 dp2  = dFdy(pos.xyz);
-    vec2 duv1 = dFdx(uv.xy);
-    vec2 duv2 = dFdy(uv.xy);
+    flex3 dp1  = flex3(dFdx(pos.xyz));
+    flex3 dp2  = flex3(dFdy(pos.xyz));
+    flex2 duv1 = flex2(dFdx(uv.xy));
+    flex2 duv2 = flex2(dFdy(uv.xy));
 
-    vec3 dp2perp = cross(dp2, n);
-    vec3 dp1perp = cross(n, dp1);
+    flex3 dp2perp = cross(dp2, n);
+    flex3 dp1perp = cross(n, dp1);
 
-    vec3 t = dp2perp * duv1.x + dp1perp * duv2.x;
-    vec3 b = dp2perp * duv1.y + dp1perp * duv2.y;
+    flex3 t = dp2perp * duv1.x + dp1perp * duv2.x;
+    flex3 b = dp2perp * duv1.y + dp1perp * duv2.y;
 
-    //float invmax = inversesqrt(max(dot(t, t), dot(b, b)));
-	float invmax = fastRcpSqrtNR1(max(dot(t, t), dot(b, b)));
-    return mat3(t * invmax, b * invmax, n);
+    flex invmax = inversesqrt(max(dot(t, t), dot(b, b)));
+	//float invmax = fastRcpSqrtNR1(max(dot(t, t), dot(b, b)));
+    return flex3x3(t * invmax, b * invmax, n);
 }
 
-float compute_mip_bias(float z_min)
-{
-	float mipmap_level = float(0.0);
-	mipmap_level           = z_min < mipDistances.x ? mipmap_level : float(1.0);
-	mipmap_level           = z_min < mipDistances.y ? mipmap_level : float(2.0);
-	mipmap_level           = z_min < mipDistances.z ? mipmap_level : float(3.0);
-
-	// dither the mip level
-	//if(ditherMode == 1)
-	//{
-	//	const mat4 bayerIndex = mat4(
-	//		vec4(00.0/16.0, 12.0/16.0, 03.0/16.0, 15.0/16.0),
-	//		vec4(08.0/16.0, 04.0/16.0, 11.0/16.0, 07.0/16.0),
-	//		vec4(02.0/16.0, 14.0/16.0, 01.0/16.0, 13.0/16.0),
-	//		vec4(10.0/16.0, 06.0/16.0, 09.0/16.0, 05.0/16.0)
-	//	);
-	//	ivec2 coord = ivec2(gl_FragCoord.xy);
-	//	mipmap_level += bayerIndex[coord.x & 3][coord.y & 3];
-	//}
-
-	return mipmap_level + float(mipDistances.w);
-}
 
 #if 0
 float sampleSobel(in sampler2D s, in vec2 uv)
@@ -292,7 +287,7 @@ vec4 tex_clut_light(sampler2D s, vec2 tc, float light, float lodbias)
 #if 0//def CAN_BILINEAR_FILTER
 void bilinear_paletted(vec2 uv, out vec4 color, out vec4 emissive)
 {
-	float mip = texQueryLod(tex, uv);
+	float mip = textureQueryLod(tex, uv);
 	//mip += compute_mip_bias(f_coord.y);
 	mip = min(mip, float(numMips - 1));
 
@@ -351,7 +346,7 @@ void bilinear_paletted(vec2 uv, out vec4 color, out vec4 emissive)
 
 vec4 tex_clut_bilinear(sampler2D s, vec2 uv, float lodbias)
 {
-	float mip = texQueryLod(s, uv);
+	float mip = textureQueryLod(s, uv);
 	mip += lodbias;
 	mip = min(mip, float(numMips - 1));
 
@@ -396,7 +391,7 @@ vec4 tex_clut_bilinear_light(sampler2D s, vec2 uv, float light, float lodbias)
 {
     light = clamp(light, 0.0, 1.0);
 
-	float mip = texQueryLod(s, uv);
+	float mip = textureQueryLod(s, uv);
 	mip += lodbias;
 	mip = min(mip, float(numMips - 1));
 

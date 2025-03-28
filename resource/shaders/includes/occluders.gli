@@ -5,6 +5,7 @@ import "uniforms.gli"
 import "math.gli"
 import "clustering.gli"
 import "sg.gli"
+import "reg.gli"
 
 #ifndef OCCLUDERS_H
 #define OCCLUDERS_H
@@ -13,7 +14,7 @@ void calc_shadow(inout float shadow, uint occluder_index, light_input params)
 {
 	occluder occ = occluders[occluder_index];
 
-	vec3 viewPos = unpackHalf4x16(params.pos).xyz;
+	vec3 viewPos = 	vec4( unpackHalf2x16(params.pos.x).xy, unpackHalf2x16(params.pos.y).xy ).xyz;
 	vec3 direction = vec3(occ.position.xyz - viewPos.xyz);
 
 	float dotVector = dot(direction, direction);
