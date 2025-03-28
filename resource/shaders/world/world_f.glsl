@@ -325,7 +325,7 @@ void main(void)
 
 	uvec2 crd = uvec2(floor(gl_FragCoord.xy));
 	float dither = dither_value_float(crd);// texelFetch(dithertex, ivec2(gl_FragCoord.xy) & ivec2(3), 0).r;
-	float scale = 1.0 / float((1 << int(8)) - 1);
+	float scale = 1.0 / float((1 << int(6)) - 1);
 	dither *= scale;
 
 #ifdef FOG
@@ -334,7 +334,7 @@ void main(void)
 	{
 		//vec4 fog_color = unpackUnorm4x8(fog);
 		float fog = unpackUnorm4x8(v[1]).w * fogColor.a;
-		outColor.rgb = mix(outColor.rgb, fogColor.rgb, fog);
+		outColor.rgb = mix(outColor.rgb, fogColor.rgb, sat1(fog+dither));
 		fragGlow.rgb = fragGlow.rgb * (1.0 - fog);
 	}
 #endif
