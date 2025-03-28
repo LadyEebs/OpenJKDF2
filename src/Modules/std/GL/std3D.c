@@ -1765,11 +1765,11 @@ int init_resources()
 	for (int i = 0; i < WORLD_REG_COUNT; ++i)
 	{
 		char tmp[40];
-		sprintf_s(tmp, 40, "WORLD;REG_COUNT %d", 2 << i);
+		sprintf_s(tmp, 40, "REG_COUNT %d", 2 << i);
 
 		if (!std3D_loadWorldStage(&worldStages[WORLD_STAGE_COLOR][i], 0, tmp)) return false;
 
-		sprintf_s(tmp, 40, "ALPHA_DISCARD;WORLD;REG_COUNT %d", 2 << i);
+		sprintf_s(tmp, 40, "ALPHA_DISCARD;REG_COUNT %d", 2 << i);
 
 		if (!std3D_loadWorldStage(&worldStages[WORLD_STAGE_COLOR_ALPHATEST][i], 0, tmp)) return false;
 	}
