@@ -9,7 +9,7 @@ import "reg.gli"
 #ifndef DECALS_H
 #define DECALS_H
 
-uniform sampler2D decalAtlas;
+layout(binding = TEX_SLOT_DECAL_ATLAS) uniform sampler2D decalAtlas;
 
 vec3 blackbody(float t)
 {
