@@ -1,11 +1,11 @@
 import "uniforms.gli"
 import "math.gli"
 
-in vec3 coord3d;
-//in vec4 v_normal;	// vertex normal
+layout(location = 0) in vec3 coord3d;
+//layout(location = 1) in vec4 v_normal;	// vertex normal
 
-out float f_depth;
-//out vec3 f_normal;
+layout(location = 0) out float f_depth;
+//layout(location = 1) out vec3 f_normal;
 
 void main(void)
 {

@@ -3,8 +3,8 @@ import "uniforms.gli"
 import "textures.gli"
 import "math.gli"
 
-in float f_depth;
-//in vec3 f_normal;
+layout(location = 0) in float f_depth;
+//layout(location = 1) in vec3 f_normal;
 
 //layout(location = 0) out vec4 fragNormalRoughness;
 layout(location = 0) out float fragDepth;

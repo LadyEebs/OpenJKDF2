@@ -1,24 +1,24 @@
 import "math.gli"
 import "framebuffer.gli"
 
-uniform sampler2D tex;
-uniform sampler2D tex2;
-uniform sampler2D tex3;
-uniform vec2 iResolution;
-uniform float param1;
-uniform float param2;
-uniform float param3;
+layout(binding = 0) uniform sampler2D tex;
+layout(binding = 1) uniform sampler2D tex2;
+layout(binding = 2) uniform sampler2D tex3;
 
-uniform vec3 colorEffects_tint;
-uniform vec3 colorEffects_filter;
-uniform vec3 colorEffects_add;
-uniform float colorEffects_fade;
+layout(location = 0) uniform vec2 iResolution;
+layout(location = 1) uniform float param1;
+layout(location = 2) uniform float param2;
+layout(location = 3) uniform float param3;
 
-in vec4 f_color;
-in vec2 f_uv;
-in vec3 f_coord;
-out vec4 fragColor;
+layout(location = 4) uniform vec3 colorEffects_tint;
+layout(location = 5) uniform vec3 colorEffects_filter;
+layout(location = 6) uniform vec3 colorEffects_add;
+layout(location = 7) uniform float colorEffects_fade;
 
+layout(location = 0) in vec4 f_color;
+layout(location = 1) in vec2 f_uv;
+
+layout(location = 0) out vec4 fragColor;
 
 vec3 PurkinjeShift(vec3 light, float intensity)
 {

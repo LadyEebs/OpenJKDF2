@@ -24,6 +24,8 @@ layout(location = U_MODEL_MATRIX) uniform mat4 modelMatrix;
 layout(location = U_PROJ_MATRIX) uniform mat4 projMatrix;
 layout(location = U_VIEW_MATRIX) uniform mat4 viewMatrix;
 
+#ifdef WORLD
+
 layout(location = U_LIGHT_MODE) uniform int lightMode;
 layout(location = U_GEO_MODE) uniform int geoMode;
 layout(location = U_BLEND_MODE) uniform int blend_mode;
@@ -34,6 +36,8 @@ layout(location = U_AMB_COLOR) uniform vec3 ambientColor;
 layout(location = U_AMB_CENTER) uniform vec4 ambientCenter;
 layout(location = U_AMB_NUM_SG) uniform uint ambientNumSG; // get around loop unrolling
 layout(location = U_AMB_SGS) uniform vec4 ambientSG[AMBIENT_LOBES];
+
+#endif
 
 #define UBO_SLOT_LIGHTS        0
 #define UBO_SLOT_OCCLUDERS     1

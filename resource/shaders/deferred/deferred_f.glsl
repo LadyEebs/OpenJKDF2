@@ -2,33 +2,38 @@
 // but the bandwidth overhead tends to make this slower overall
 
 import "defines.gli"
-import "uniforms.gli"
-import "clustering.gli"
 import "math.gli"
+import "uniforms.gli"
+
+#if 0
+import "clustering.gli"
 import "lighting.gli"
 import "decals.gli"
 import "occluders.gli"
 import "reg.gli"
+#endif
 
-uniform sampler2D tex;
-uniform sampler2D tex2;
-uniform sampler2D tex3;
-uniform sampler2D tex4;
-uniform float param1;
-uniform float param2;
-uniform float param3;
+
+layout(binding = 0) uniform sampler2D tex;
+layout(binding = 1) uniform sampler2D tex2;
+layout(binding = 2) uniform sampler2D tex3;
+layout(binding = 3) uniform sampler2D tex4;
+
+layout(location = 3) uniform float param1;
+layout(location = 4) uniform float param2;
+layout(location = 5) uniform float param3;
 
 //in vec2 f_uv;
 
-out vec4 fragOut;
+layout(location = 0) out vec4 fragOut;
 
 // interleaved chroma
-vec2 encode_result(vec3 color)
-{
-	vec3 YCoCg = rgb2ycocg_unorm(color.rgb);
-	ivec2 crd = ivec2(gl_FragCoord.xy);
-	return ((crd.x & 1) == (crd.y & 1)) ? YCoCg.rg : YCoCg.rb;
-}
+//vec2 encode_result(vec3 color)
+//{
+//	vec3 YCoCg = rgb2ycocg_unorm(color.rgb);
+//	ivec2 crd = ivec2(gl_FragCoord.xy);
+//	return ((crd.x & 1) == (crd.y & 1)) ? YCoCg.rg : YCoCg.rb;
+//}
 
 void main(void)
 {

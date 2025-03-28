@@ -1,5 +1,5 @@
-out vec4 f_color;
-out vec2 f_uv;
+layout(location = 0) out vec4 f_color;
+layout(location = 1) out vec2 f_uv;
 
 void main()
 {

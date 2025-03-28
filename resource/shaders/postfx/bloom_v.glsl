@@ -1,6 +1,4 @@
-uniform mat4 mvp;
-
-out vec2 f_uv;
+layout(location = 0) out vec2 f_uv;
 
 void main()
 {

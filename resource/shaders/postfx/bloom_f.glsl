@@ -1,12 +1,13 @@
-uniform flexSampler2D tex;
-uniform vec2 iResolution;
-uniform float param1;
-uniform float param2;
-uniform float param3;
+layout(binding = 0) uniform flexSampler2D tex;
 
-in vec2 f_uv;
+layout(location = 0) uniform vec2 iResolution;
+layout(location = 1) uniform float param1;
+layout(location = 2) uniform float param2;
+layout(location = 3) uniform float param3;
 
-out vec4 fragColor;
+layout(location = 0) in vec2 f_uv;
+
+layout(location = 0) out vec4 fragColor;
 
 void main(void)
 {
