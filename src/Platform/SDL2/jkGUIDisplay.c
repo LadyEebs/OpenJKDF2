@@ -301,7 +301,7 @@ continue_menu:
         jkPlayer_enableTextureFilter = jkGuiDisplay_aElements[15].selectedTextEntry;
         jkPlayer_enableOrigAspect = jkGuiDisplay_aElements[16].selectedTextEntry;
         jkPlayer_enableVsync = jkGuiDisplay_aElements[17].selectedTextEntry;
-		jkPlayer_enableDithering = jkGuiDisplay_aElements[28].selectedTextEntry;
+		jkPlayer_enableDithering = jkGuiDisplay_aElements[32].selectedTextEntry;
 
         char tmp[256];
         stdString_WcharToChar(tmp, render_level, 255);
