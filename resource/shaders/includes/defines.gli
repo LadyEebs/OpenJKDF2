@@ -18,7 +18,7 @@
 #ifdef REFRACTION
 	#define UV_SETS 4
 #else
-	#define UV_SETS 2
+	#define UV_SETS 4//2
 #endif
 #define COLOR_SETS 2
 

@@ -1158,6 +1158,7 @@ void jkPlayer_DrawPov()
 	rdGetMatrix(&proj, RD_MATRIX_PROJECTION);
 	rdCluster_Build(&proj, tex_w, tex_h);
 
+	// todo: this is currently returning the previous frame since pov is now drawn first
 	extern void std3D_BlitFrame();
 	std3D_BlitFrame();
 #endif
@@ -1497,7 +1498,7 @@ void jkPlayer_DrawPov()
         
         rdThing_Draw(&playerThings[playerThingIdx].povModel, &viewMat);
 
-        rdCache_Flush();
+        rdCache_Flush("jkPlayer_DrawPov:Model");
 
         // Added: we want the polyline to render in draw order so the spheres don't clip, 
         // but we want the POV model to be aware of the depths still.
@@ -1508,7 +1509,7 @@ void jkPlayer_DrawPov()
 			rdSetSortingMethod(2);
             jkSaber_Draw(&viewMat);
         }
-        rdCache_Flush(); // Added: force polyline to be underneath model
+        rdCache_Flush("jkPlayer_DrawPov:Saber"); // Added: force polyline to be underneath model
         rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
 #endif
 #ifdef SPHERE_AO

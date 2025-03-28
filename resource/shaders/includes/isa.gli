@@ -35,11 +35,12 @@ import "uniforms.gli"
 #define OP_POM      20  // steep parallax
 #define OP_POW		21	// power
 #define OP_RCP		22	// reciprocal
-#define OP_SQRT		23	// square root
-#define OP_SUB		24	// subtract
-#define OP_TEX		25	// texture
-#define OP_TEXLOD   26  // texture lod
-#define OP_TEXDUDV	27	// texture with offset
+#define OP_RSQ		23	// reciprocal square root
+#define OP_SQRT		24	// square root
+#define OP_SUB		25	// subtract
+#define OP_TEX		26	// texture
+#define OP_TEXLOD   27  // texture lod
+#define OP_TEXDUDV	28	// texture with offset
 
 // source types
 #define REG_TYPE_GPR	0	// register

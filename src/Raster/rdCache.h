@@ -28,15 +28,18 @@ void rdCache_FinishFrame();
 void rdCache_Reset();
 void rdCache_ClearFrameCounters();
 rdProcEntry *rdCache_GetProcEntry();
-void rdCache_Flush();
 int rdCache_SendFaceListToHardware();
 void rdCache_ResetRenderList();
 void rdCache_DrawRenderList();
 int rdCache_TriCompare(const void* a_, const void* b_);
 
 #ifdef RENDER_DROID2
+void rdCache_Flush(const char* label);
+
 void rdCache_AddDrawCall(rdPrimitiveType_t type, std3D_DrawCallState* pDrawCallState, rdVertex* paVertices, int numVertices);
 
+#else
+void rdCache_Flush();
 #endif
 
 int rdCache_ProcFaceCompareByDistance(rdProcEntry *a, rdProcEntry *b);

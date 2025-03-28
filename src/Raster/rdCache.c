@@ -174,10 +174,10 @@ void rdCache_AddListVertices(std3D_DrawCall* pDrawCall, rdPrimitiveType_t type, 
 void rdCache_AddListDrawCall(rdPrimitiveType_t type, rdCache_DrawCallList* pList, std3D_DrawCallState* pDrawCallState, int shaderID, rdVertex* paVertices, int numVertices)
 {
 	if (pList->drawCallCount + 1 > RD_CACHE_MAX_DRAW_CALLS)
-		rdCache_Flush();
+		rdCache_Flush("rdCache_AddListDrawCall");
 
 	if (pList->drawCallVertexCount + numVertices > RD_CACHE_MAX_DRAW_CALL_VERTS)
-		rdCache_Flush();
+		rdCache_Flush("rdCache_AddListDrawCall");
 
 	std3D_DrawCall* pDrawCall = &pList->drawCalls[pList->drawCallCount++];
 	pDrawCall->sortKey = rdCache_GetSortKey(pDrawCallState);
@@ -323,10 +323,10 @@ void rdCache_FlushDrawCallList(rdCache_DrawCallList* pList, const char* debugNam
 	STD_END_PROFILER_LABEL();
 }
 
-void rdCache_FlushDrawCalls()
+void rdCache_FlushDrawCalls(const char* label)
 {
 	STD_BEGIN_PROFILER_LABEL();
-	std3D_PushDebugGroup("rdCache_FlushDrawCalls");
+	std3D_PushDebugGroup(label);
 
 	rdCache_FlushDrawCallList(&rdCache_drawCalls, "Flush");
 
@@ -382,9 +382,9 @@ void rdCache_ClearFrameCounters()
 	rdCache_drawnFaces = 0;
 }
 
-void rdCache_Flush()
+void rdCache_Flush(const char* label)
 {
-	rdCache_FlushDrawCalls();
+	rdCache_FlushDrawCalls(label);
 	rdCache_drawnFaces += rdCache_numProcFaces;
 	rdCache_Reset();
 }

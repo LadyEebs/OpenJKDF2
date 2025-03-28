@@ -19,7 +19,7 @@ import "attr.gli"
 #ifdef REFRACTION
 #define REG_COUNT    6
 #else
-#define REG_COUNT    3
+#define REG_COUNT    5//3
 #endif
 
 uint s_lodbias;

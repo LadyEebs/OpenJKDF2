@@ -396,7 +396,7 @@ void rdAdvanceFrame()
 
 void rdFinishFrame()
 {
-  rdCache_Flush();
+  rdCache_Flush("rdFinishFrame");
   rdCache_FinishFrame();
   // rdPrimit3_ClearFrameCounters(); // MOTS added
   stdDisplay_ddraw_waitforvblank(); // MOTS removed

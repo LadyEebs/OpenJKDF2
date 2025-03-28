@@ -74,7 +74,7 @@ void jkGuiMap_DrawMapScreen(jkGuiElement *element, jkGuiMenu *menu, stdVBuffer *
         stdControl_ShowCursor(0);
 #ifdef SDL2_RENDER
         // rdFinishFrame calls stdDisplay_ddraw_waitforvblank which causes flickering on SDL2
-        rdCache_Flush();
+        rdCache_Flush("jkGuiMap_DrawMapScreen");
         rdCache_FinishFrame();
         //stdDisplay_ddraw_waitforvblank();
         rdCache_ClearFrameCounters();

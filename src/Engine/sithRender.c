@@ -653,7 +653,7 @@ void sithRender_SetCameraFog()
 
 void sithRender_DrawBackdrop()
 {
-	rdCache_Flush();
+	rdCache_Flush("sithRender_DrawBackdrop:Start");
 
 	rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
 
@@ -694,6 +694,8 @@ void sithRender_DrawBackdrop()
 	{
 		rdColormap_SetCurrent(backdropSector->colormap);
 
+		sithRender_UpdateLights(backdropSector, 0.0f, 0.0, 0);
+
 		sithSurface* surface = backdropSector->surfaces;
 		for (int v75 = 0; v75 < backdropSector->numSurfaces; ++surface, v75++)
 		{
@@ -725,8 +727,6 @@ void sithRender_DrawBackdrop()
 			sithRender_RenderThing(pThing);
 		}
 
-		sithRender_UpdateLights(backdropSector, 0.0f, 0.0, 0);
-
 		backdropSector = backdropSector->nextBackdropSector;
 	}
 
@@ -735,6 +735,8 @@ void sithRender_DrawBackdrop()
 
 	sithCamera_currentCamera->sector = origSector;
 	rdCamera_pCurCamera->view_matrix.scale = viewOriginal.scale;
+
+	rdCache_Flush("sithRender_DrawBackdrop:End");
 }
 
 void sithRender_ResetState()
@@ -1008,6 +1010,12 @@ void sithRender_Draw()
     if ( sithRender_numSectors2 )
         sithRender_RenderThings();
 
+	if (sithWorld_pCurrentWorld->backdropSector && sithRender_numSkyPortals > 0)
+	{
+		void sithRender_DrawStencils();
+		sithRender_DrawStencils();
+	}
+
 #ifdef DECAL_RENDERING
 	rdCache_FlushDecals();
 #endif
@@ -1058,7 +1066,7 @@ void sithRender_Draw()
 			i->nextDrawThing = NULL;
 		}
 	}
-	rdCache_Flush();
+	rdCache_Flush("sithRender_Draw:AlphaThings");
 
 #ifdef SDL2_RENDER
 	rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
@@ -1408,28 +1416,6 @@ void sithRender_Clip(sithSector *sector, rdClipFrustum *frustumArg, float a3)
 #ifdef RENDER_DROID2
 void sithRender_DrawSkyStencil(sithSurface* surface)
 {
-	rdSetShader(0);
-
-	rdSetGeoMode(RD_GEOMODE_SOLIDCOLOR);
-	rdSetLightMode(RD_LIGHTMODE_NOTLIT);
-	rdSetTexMode(RD_TEXTUREMODE_AFFINE);
-	rdTexFilterMode(RD_TEXFILTER_NEAREST);
-	rdTexGen(RD_TEXGEN_NONE);
-	rdTexGenParams(0, 0, 0, 0);
-	rdTexOffset(RD_TEXCOORD0, 0, 0);
-
-	rdColorMask(0,0,0,0); // no color writes
-	rdStencilMode(2);
-	rdStencilBit(1);
-
-	rdAmbientLight(0, 0, 0);
-	rdAmbientLightSH(NULL);
-
-	rdSetCullMode(RD_CULL_MODE_BACK);
-
-	rdSetBlendEnabled(RD_FALSE);
-	rdSetZBufferMethod(RD_ZBUFFER_READ_NOWRITE);
-
 	if (rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
 	{
 		for (int j = 0; j < surface->surfaceInfo.face.numVertices; j++)
@@ -1440,11 +1426,6 @@ void sithRender_DrawSkyStencil(sithSurface* surface)
 		}
 		rdEndPrimitive();
 	}
-
-	rdColorMask(1, 1, 1, 1); // no color writes
-	rdStencilMode(0);
-	rdStencilBit(0);
-	rdSetShader(0);
 }
 
 void sithRender_DrawSurface(sithSurface* surface)
@@ -1458,13 +1439,12 @@ void sithRender_DrawSurface(sithSurface* surface)
 		&& sithWorld_pCurrentWorld->backdropSector != surface->parent_sector
 	)
 	{
-		sithRender_DrawSkyStencil(surface);
 		return;
 	}
 
 	int isWater = 0;
-//	if (surface->adjoin && (surface->parent_sector->flags & SITH_SECTOR_UNDERWATER || surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER))
-//		isWater = 1;
+	if (surface->adjoin && (surface->parent_sector->flags & SITH_SECTOR_UNDERWATER || surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER))
+		isWater = 1;
 	//else if (!(surface->parent_sector->flags & SITH_SECTOR_UNDERWATER) && (surface->surfaceFlags & SITH_SURFACE_WATER || surface->surfaceFlags & SITH_SURFACE_PUDDLE || surface->surfaceFlags & SITH_SURFACE_VERYDEEPWATER))
 		//isWater = 1;
 
@@ -1481,7 +1461,7 @@ void sithRender_DrawSurface(sithSurface* surface)
 	else
 	{
 		rdSetShader(sithRender_defaultShader);
-	}		
+	}
 
 	int wallCel = surface->surfaceInfo.face.wallCel;
 	rdBindMaterial(surface->surfaceInfo.face.material, wallCel);
@@ -1619,15 +1599,25 @@ void sithRender_DrawSurface(sithSurface* surface)
 	if (isWater)
 		alpha = 1.0f;
 
+	float baseLight = surface->parent_sector->extraLight + surface->surfaceInfo.face.extraLight;
+
 	if (rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
 	{
 		for (int j = 0; j < surface->surfaceInfo.face.numVertices; j++)
 		{
 			int posidx = surface->surfaceInfo.face.vertexPosIdx[j];
 
-			if ((surface->surfaceFlags & SITH_SURFACE_1000000) == 0)
+			if (lightMode == RD_LIGHTMODE_FULLYLIT)
 			{
-				float intensity = surface->surfaceInfo.intensities[j];
+				rdColor4f(1.5f, 1.5f, 1.5f, alpha);
+			}
+			else if (lightMode == RD_LIGHTMODE_NOTLIT)
+			{
+				rdColor4f(baseLight, baseLight, baseLight, alpha);
+			}
+			else if ((surface->surfaceFlags & SITH_SURFACE_1000000) == 0)
+			{
+				float intensity = surface->surfaceInfo.intensities[j] + baseLight;
 				rdColor4f(intensity, intensity, intensity, alpha);
 			}
 			else
@@ -1635,7 +1625,7 @@ void sithRender_DrawSurface(sithSurface* surface)
 				float* red = (surface->surfaceInfo).intensities + surface->surfaceInfo.face.numVertices;
 				float* green = red + surface->surfaceInfo.face.numVertices;
 				float* blue = green + surface->surfaceInfo.face.numVertices;
-				rdColor4f(red[j], green[j], blue[j], alpha);
+				rdColor4f(red[j] + baseLight, green[j] + baseLight, blue[j] + baseLight, alpha);
 			}
 
 			if (surface->surfaceInfo.face.geometryMode >= RD_GEOMODE_TEXTURED && surface->surfaceInfo.face.vertexUVIdx)
@@ -1678,6 +1668,81 @@ void sithRender_DrawSurface(sithSurface* surface)
 #endif
 
 #ifdef RENDER_DROID2
+void sithRender_DrawStencils()
+{
+	rdSetShader(0);
+	rdSetGeoMode(RD_GEOMODE_SOLIDCOLOR);
+	rdSetLightMode(RD_LIGHTMODE_NOTLIT);
+	rdSetTexMode(RD_TEXTUREMODE_AFFINE);
+	rdTexFilterMode(RD_TEXFILTER_NEAREST);
+	rdTexGen(RD_TEXGEN_NONE);
+	rdTexGenParams(0, 0, 0, 0);
+	rdTexOffset(RD_TEXCOORD0, 0, 0);
+
+	rdColorMask(0, 0, 0, 0); // no color writes
+	rdStencilMode(2);
+	rdStencilBit(1);
+
+	rdAmbientLight(0, 0, 0);
+	rdAmbientLightSH(NULL);
+
+	rdSetCullMode(RD_CULL_MODE_BACK);
+
+	rdSetBlendEnabled(RD_FALSE);
+	rdSetZBufferMethod(RD_ZBUFFER_READ_NOWRITE);
+
+
+	rdClipFrustum* clipFrustum = rdCamera_pCurCamera->pClipFrustum;
+	for (int i = 0; i < sithRender_numSectors; ++i)
+	{
+		sithSector* pSector = sithRender_aSectors[i];
+		if (pSector->flags & SITH_SECTOR_BACKDROP)
+			continue;
+
+		sithSurface* surface = pSector->surfaces;
+		for (int v75 = 0; v75 < pSector->numSurfaces; ++surface, v75++)
+		{
+			// sky punches through to the backdrop if there is one
+			if (!((surface->surfaceFlags & (SITH_SURFACE_HORIZON_SKY | SITH_SURFACE_CEILING_SKY))
+				  && sithWorld_pCurrentWorld->backdropSector
+				  && sithWorld_pCurrentWorld->backdropSector != surface->parent_sector
+				  ))
+			{
+				continue;
+			}
+
+			if (!surface->surfaceInfo.face.geometryMode)
+				continue;
+
+			rdVector3* vertices_alloc = sithWorld_pCurrentWorld->vertices;
+			if ((sithCamera_currentCamera->vec3_1.z - vertices_alloc[*surface->surfaceInfo.face.vertexPosIdx].z) * surface->surfaceInfo.face.normal.z
+				+ (sithCamera_currentCamera->vec3_1.y - vertices_alloc[*surface->surfaceInfo.face.vertexPosIdx].y) * surface->surfaceInfo.face.normal.y
+				+ (sithCamera_currentCamera->vec3_1.x - vertices_alloc[*surface->surfaceInfo.face.vertexPosIdx].x) * surface->surfaceInfo.face.normal.x <= 0.0)
+				continue;
+
+			rdVector3 screenPos;
+			rdMatrix_TransformPoint34(&screenPos, &surface->center, &rdCamera_pCurCamera->view_matrix);
+			int clippingIdk = rdClip_SphereInFrustrum(pSector->clipFrustum, &screenPos, surface->radius);
+			if (clippingIdk == 2)
+				continue;
+
+			void sithRender_DrawSkyStencil(sithSurface * surface);
+			sithRender_DrawSkyStencil(surface);
+		}
+	}
+	rdCache_Flush("sithRender_DrawStencils");
+	rdCamera_pCurCamera->pClipFrustum = clipFrustum;
+
+	rdColorMask(1, 1, 1, 1);
+	rdStencilMode(0);
+	rdStencilBit(0);
+	rdSetShader(0);
+
+	rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
+	rdSetSortingMethod(0);
+}
+
+// todo: need to split this into before and after water
 void sithRender_RenderLevelGeometry()
 {
 	rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
@@ -1716,7 +1781,9 @@ void sithRender_RenderLevelGeometry()
 		//if ((pSector->flags & SITH_SECTOR_UNDERWATER) && !(sithCamera_currentCamera->sector->flags & SITH_SECTOR_UNDERWATER))
 		//{
 		//	rdVector4 fog = { pSector->tint.x, pSector->tint.y, pSector->tint.z, 1.0f };
-		//	
+		//
+		//	rdSetFogMode(RD_FOG_ENABLED);
+		//
 		//	rdVector3 halfFog;
 		//	halfFog.x = fog.x * 0.5f;
 		//	halfFog.y = fog.y * 0.5f;
@@ -1724,8 +1791,11 @@ void sithRender_RenderLevelGeometry()
 		//
 		//	fog.x = fog.x - (halfFog.z + halfFog.y);
 		//	fog.y = fog.y - (halfFog.x + halfFog.y);
-		//	fog.z = fog.z - (halfFog.x + halfFog.z);	
-		//	rdSetFog(1, &fog, 0.0f, 2.0f);
+		//	fog.z = fog.z - (halfFog.x + halfFog.z);
+		//
+		//	rdFogColorf(fog.x, fog.y, fog.z, fog.w);
+		//	rdFogRange(0.0f, 2.0f);
+		//	rdFogAnisotropy(0.35f);
 		//}
 		//else
 		//{
@@ -1738,6 +1808,14 @@ void sithRender_RenderLevelGeometry()
 		sithSurface* surface = pSector->surfaces;
 		for (int v75 = 0; v75 < pSector->numSurfaces; ++surface, v75++)
 		{
+			if ((surface->surfaceFlags & (SITH_SURFACE_HORIZON_SKY | SITH_SURFACE_CEILING_SKY))
+				&& sithWorld_pCurrentWorld->backdropSector
+				&& sithWorld_pCurrentWorld->backdropSector != surface->parent_sector
+				)
+			{
+				continue;
+			}
+
 			if (!surface->surfaceInfo.face.geometryMode)
 				continue;
 
@@ -1870,7 +1948,7 @@ void sithRender_RenderLevelGeometry()
 		++sithRender_sectorsDrawn;
 	}
 
-	rdCache_Flush();
+	rdCache_Flush("sithRender_RenderLevelGeometry");
 	rdCamera_pCurCamera->pClipFrustum = clipFrustum;
 
 	rdScissorMode(RD_SCISSOR_DISABLED);
@@ -3218,7 +3296,7 @@ void sithRender_RenderThings()
             }
         }
     }
-    rdCache_Flush();
+    rdCache_Flush("sithRender_RenderThings");
 
 	rdScissorMode(RD_SCISSOR_DISABLED);
 
@@ -3234,7 +3312,7 @@ void sithRender_RenderThings()
             ++sithRender_nongeoThingsDrawn;
         }
     }
-    rdCache_Flush();
+    rdCache_Flush("sithRender_RenderThings:LastDrawn");
 
     if (sithRender_008d1668) {
         rdSetCullFlags(1);
@@ -3365,11 +3443,14 @@ int sithRender_RenderThing(sithThing *pThing)
 
 void sithRender_RenderAlphaSurfaces()
 {
-	rdCache_Flush();
+	rdCache_Flush("sithRender_RenderAlphaSurfaces:Start");
 	//rdSetZBufferMethod(RD_ZBUFFER_READ_NOWRITE);
 	rdSetOcclusionMethod(0);
 	rdSetSortingMethod(2);
 	//rdSetBlendEnabled(RD_TRUE);
+
+	extern void std3D_BlitFrame();
+	std3D_BlitFrame();
 
 	for (int i = 0; i < sithRender_numSurfaces; i++)
 	{
@@ -3404,7 +3485,7 @@ void sithRender_RenderAlphaSurfaces()
 		sithRender_DrawSurface(surface);
 	}
 
-	rdCache_Flush();
+	rdCache_Flush("sithRender_RenderAlphaSurfaces:End");
 	rdSetBlendEnabled(RD_FALSE);
 	rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
 	rdScissorMode(RD_SCISSOR_DISABLED);
