@@ -159,12 +159,12 @@ GLuint load_shader_file(const char* filepath, GLenum type, const char* userDefin
     if (!shader_contents)
     {
     	char errtmp[256];
-        snprintf(errtmp, 256, "std3D: Failed to load shader file `%s`!\n", filepath);
+        snprintf(errtmp, 256, "std3D: Failed to load shader file `%s` [%s]!\n", filepath, userDefines);
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", errtmp, NULL);
         return -1;
     }
     
-    stdPlatform_Printf("std3D: Parse shader `%s`\n", filepath);
+    stdPlatform_Printf("std3D: Parse shader `%s` [%s]\n", filepath, userDefines);
     
     GLuint ret = create_shader(shader_contents, type, userDefines);
     free(shader_contents);
