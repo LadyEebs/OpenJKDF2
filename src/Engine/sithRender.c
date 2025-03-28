@@ -900,7 +900,7 @@ void sithRender_Draw()
 #ifdef RENDER_DROID2
 	sithRender_numStaticLights = 0;
 
-	rdDepthRange(0.005f, 1.0f);
+	rdDepthRange(0.05f, 1.0f);
 	rdSetGlowIntensity(0.4f);
 	rdSetOverbright(1.5f);
 
@@ -1664,6 +1664,9 @@ void sithRender_DrawSurface(sithSurface* surface)
 	rdTexGen(RD_TEXGEN_NONE);
 	rdTexGenParams(0, 0, 0, 0);
 	rdTexOffset(RD_TEXCOORD0, 0, 0);
+	rdTexOffset(RD_TEXCOORD1, 0, 0);
+	rdTexOffset(RD_TEXCOORD2, 0, 0);
+	rdTexOffset(RD_TEXCOORD3, 0, 0);
 }
 #endif
 

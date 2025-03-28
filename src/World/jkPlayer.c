@@ -1152,7 +1152,7 @@ void jkPlayer_DrawPov()
 	tex_h = tex_w * (float)Window_ySize / Window_xSize;
 	rdViewport(0, 0, tex_w, tex_h);
 
-	rdDepthRange(0.0f, 0.005f);
+	rdDepthRange(0.0f, 0.05f);
 
 	rdMatrixMode(RD_MATRIX_VIEW);
 	rdIdentity();
@@ -1173,7 +1173,7 @@ void jkPlayer_DrawPov()
 	rdGetMatrix(&proj, RD_MATRIX_PROJECTION);
 	rdCluster_Build(&proj, tex_w, tex_h);
 
-	// todo: this is currently returning the previous frame since pov is now drawn first
+	// when drawn first this is the prev frame or black..
 	extern void std3D_BlitFrame();
 	std3D_BlitFrame();
 #endif
