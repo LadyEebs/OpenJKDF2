@@ -162,18 +162,18 @@ void calc_light()
 					for (uint s_bucket  = s_first_bucket; s_bucket <= s_last_bucket; ++s_bucket)
 					{
 						uint bucket_bits = uint(texelFetch(clusterBuffer, int(cluster + s_bucket)).x);
-						bucket_bits = scalarize_buckets_bits(bucket_bits);
-						while (bucket_bits != 0u)
+						uint s_bucket_bits = scalarize_buckets_bits(bucket_bits);
+						while (s_bucket_bits != 0u)
 						{
-							uint bucket_bit_index = findLSB_unsafe(bucket_bits);
-							uint light_index = (s_bucket << 5u) + bucket_bit_index;
-							bucket_bits ^= (1u << bucket_bit_index);
+							uint s_bucket_bit_index = findLSB_unsafe(s_bucket_bits);
+							uint s_light_index = (s_bucket << 5u) + s_bucket_bit_index;
+							s_bucket_bits ^= (1u << s_bucket_bit_index);
 
-							if (light_index >= s_first_item && light_index <= s_last_item)
+							if (s_light_index >= s_first_item && s_light_index <= s_last_item)
 							{
-								calc_point_light(result, light_index, params);
+								calc_point_light(result, s_light_index, params);
 							}
-							else if (light_index > s_last_item)
+							else if (s_light_index > s_last_item)
 							{
 								s_bucket = CLUSTER_BUCKETS_PER_CLUSTER;
 								break;
@@ -195,21 +195,21 @@ void calc_light()
 				for (uint s_bucket  = s_first_bucket; s_bucket <= s_last_bucket; ++s_bucket)
 				{
 					uint bucket_bits = uint(texelFetch(clusterBuffer, int(cluster + s_bucket)).x);
-					bucket_bits = scalarize_buckets_bits(bucket_bits);
-					while (bucket_bits != 0u)
+					uint s_bucket_bits = scalarize_buckets_bits(bucket_bits);
+					while (s_bucket_bits != 0u)
 					{
-						uint bucket_bit_index = findLSB_unsafe(bucket_bits);
-						uint occluder_index = (s_bucket << 5u) + bucket_bit_index;
-						bucket_bits ^= (1u << bucket_bit_index);
+						uint s_bucket_bit_index = findLSB_unsafe(s_bucket_bits);
+						uint s_occluder_index = (s_bucket << 5u) + s_bucket_bit_index;
+						s_bucket_bits ^= (1u << s_bucket_bit_index);
 				
-						if (occluder_index >= s_first_item && occluder_index <= s_last_item)
+						if (s_occluder_index >= s_first_item && s_occluder_index <= s_last_item)
 						{
-							calc_shadow(shadow, occluder_index - s_first_item, params);
+							calc_shadow(shadow, s_occluder_index - s_first_item, params);
 
 							if (earlyShadowOut(shadow))
 								break;
 						}
-						else if (occluder_index > s_last_item)
+						else if (s_occluder_index > s_last_item)
 						{
 							s_bucket = CLUSTER_BUCKETS_PER_CLUSTER;
 							break;
@@ -268,18 +268,18 @@ void calc_decals()
 		for (uint s_bucket  = s_first_bucket; s_bucket <= s_last_bucket; ++s_bucket)
 		{
 			uint bucket_bits = uint(texelFetch(clusterBuffer, int(cluster + s_bucket)).x);
-			bucket_bits = scalarize_buckets_bits(bucket_bits);
-			while(bucket_bits != 0u)
+			uint s_bucket_bits = scalarize_buckets_bits(bucket_bits);
+			while(s_bucket_bits != 0u)
 			{
-				uint bucket_bit_index = findLSB_unsafe(bucket_bits);
-				uint decal_index      = (s_bucket << 5u) + bucket_bit_index;
-				bucket_bits          ^= (1u << bucket_bit_index);
+				uint s_bucket_bit_index = findLSB_unsafe(s_bucket_bits);
+				uint s_decal_index      = (s_bucket << 5u) + s_bucket_bit_index;
+				s_bucket_bits          ^= (1u << s_bucket_bit_index);
 
-				if (decal_index >= s_first_item && decal_index <= s_last_item)
+				if (s_decal_index >= s_first_item && s_decal_index <= s_last_item)
 				{
-					calc_decal(decal_index - s_first_item);
+					calc_decal(s_decal_index - s_first_item);
 				}
-				else if (decal_index > s_last_item)
+				else if (s_decal_index > s_last_item)
 				{
 					s_bucket = CLUSTER_BUCKETS_PER_CLUSTER;
 					break;

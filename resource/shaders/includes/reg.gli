@@ -25,12 +25,12 @@ import "attr.gli"
 uint s_lodbias;
 
 // registers
-uint  vdir;         //    16:16 - tangent space view dir
-uint  r[REG_COUNT]; // flexible - temp registers (rgba8, rg16f, r32f)
-uint  v[COLOR_SETS]; // 8:8:8:8 - color registers (tone mapped)
+uint  vdir;          //    16:16 - tangent space view dir
+uint  r[REG_COUNT];  // flexible - temp registers (rgba8, rg16f, r32f)
+uint  v[COLOR_SETS]; //  8:8:8:8 - color registers (tone mapped)
 
-uvec2 vpos;			   // 16:16:16:16 - view space position + depth
-vec2 tr[UV_SETS]; // 32:32 - texture coordinate registers
+uvec2 vpos;		  // 16:16:16:16 - view space position + depth
+vec2 tr[UV_SETS]; //       32:32 - texture coordinate registers
 
 vec2 packTexcoordRegister(vec2 unpackedInput)
 {
@@ -44,14 +44,14 @@ vec2 read_texcoord_reg(uint i)
 
 uint pack_vertex_reg(vec4 unpackedInput)
 {
-	//unpackedInput.rgb = fastExp2(-unpackedInput.rgb);
+	unpackedInput.rgb = fastExp2(-unpackedInput.rgb);
 	return packUnorm4x8(unpackedInput);
 }
 
 vec4 unpack_vertex_reg(uint packedInput)
 {
 	vec4 v = unpackUnorm4x8(packedInput);
-//	v.rgb = -fastLog2(v.rgb);
+	v.rgb = -fastLog2(v.rgb);
 	return v;
 }
 
