@@ -51,6 +51,17 @@ uint pack_argb2101010(vec4 unpackedInput)
 		 | (uint(unpackedInput.a) << 30u);
 }
 
+// mini float decoding
+float miniBitsToFloat(uint u8)
+{
+	uint exponent = (u8 >> 4) & 0x0F;
+	uint significand = u8 & 0x0F;
+	if (exponent == 0) return 0.0;
+
+	float value = 1.0 + float(significand) / 16.0;
+	return value * exp2(float(exponent) - 7.0);
+}
+
 // encoding
 uint encodeHemiUnitVector(vec3 v)
 {

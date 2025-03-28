@@ -238,7 +238,7 @@ static char* rdShader_ParseRegister(char* token, char* swizzle, rdShader_Registe
 		reg->immediate = fabs(atof(token));
 		reg->swizzle = RD_SWIZZLE_XYZW;
 		reg->mask = RD_WRITE_RGBA;
-		reg->address = (uint8_t)roundf(stdMath_Clamp(reg->immediate, 0.0f, 1.0f) * 255.0f);
+		reg->address = stdMath_FloatToMini8(reg->immediate);
 	}
 	else
 	{

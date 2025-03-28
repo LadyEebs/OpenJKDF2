@@ -1039,3 +1039,30 @@ uint32_t stdMath_PackHalf2x16(float x, float y)
 {
 	return ((uint32_t)stdMath_FloatToHalf(y) << 16) | stdMath_FloatToHalf(x);
 }
+
+uint8_t stdMath_FloatToMini8(float x)
+{
+	if (x <= 0.0f) return 0x00;
+	
+	int exponent;
+	float significand = frexpf(x, &exponent);  // significand in [0.5, 1.0)
+	significand *= 2.0f;  // Now in [1.0, 2.0)
+	exponent--;
+	
+	int biased_exp = exponent + 7;  // Bias = 7 for 4 exponent bits
+	if (biased_exp <= 0) return 0x00;
+	if (biased_exp >= 15) return 0xFF;
+
+	uint8_t significand_bits = (uint8_t)((significand - 1.0f) * 16.0f);
+	return (biased_exp << 4) | significand_bits;
+}
+
+float stdMath_Mini8ToFloat(uint8_t u8)
+{
+	uint8_t exponent = (u8 >> 4) & 0x0F;
+	uint8_t significand = u8 & 0x0F;
+	if (exponent == 0) return 0.0f;
+
+	float value = 1.0f + (float)significand / 16.0f;
+	return value * powf(2.0f, (float)(exponent - 7));
+}

@@ -112,10 +112,15 @@ int stdMath_NextPow2(uint32_t value);
 float stdMath_Sin(float angle);
 float stdMath_Cos(float angle);
 
+// signed 16 bit half precision float
 uint16_t stdMath_FloatToHalf(float val);
 float stdMath_HalfToFloat(uint16_t value);
 
 uint32_t stdMath_PackHalf2x16(float x, float y);
+
+// unsigned 8 bit mini float, 4 bits exponent and 4 bits significand
+uint8_t stdMath_FloatToMini8(float x);
+float stdMath_Mini8ToFloat(uint8_t x);
 
 extern const float aSinTable[4096];
 extern const float aTanTable[4096];

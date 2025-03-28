@@ -140,7 +140,7 @@ vec4 fetch_reg(vm_src s_operand, uint s_imm)
 	case REG_TYPE_CLR:	 return read_color_reg(s_operand.addr);
 	case REG_TYPE_CON:	 return shaderConstants[s_operand.addr];
 	case REG_TYPE_TEX:	 return read_texcoord_reg(s_operand.addr).xyxy;
-	case REG_TYPE_IMM8:	 return vec4(unpackUnorm4x8(s_operand.addr).x);
+	case REG_TYPE_IMM8:	 return vec4(miniBitsToFloat(s_operand.addr));
 	case REG_TYPE_IMM16: return vec4(unpackHalf2x16(s_imm >> (s_operand.idx << 4)).x);
 	case REG_TYPE_SYS:   return read_system_value(s_operand.addr);
 	}
