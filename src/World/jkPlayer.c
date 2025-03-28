@@ -56,6 +56,7 @@ int jkPlayer_enableSSAO = 0;
 int jkPlayer_fpslimit = 0;
 int jkPlayer_enableVsync = 0;
 int jkPlayer_enable32Bit = 1;
+int jkPlayer_multiSample = 1;
 float jkPlayer_ssaaMultiple = 1.0;
 float jkPlayer_gamma = 1.0;
 int jkPlayer_lodBias = 0;
@@ -228,7 +229,8 @@ void jkPlayer_StartupVars()
     sithCvar_RegisterBool("r_enableSSAO",               0,                          &jkPlayer_enableSSAO,               CVARFLAG_LOCAL);
     sithCvar_RegisterInt("r_fpslimit",                  0,                          &jkPlayer_fpslimit,                 CVARFLAG_LOCAL);
     sithCvar_RegisterBool("r_enableVsync",              0,                          &jkPlayer_enableVsync,              CVARFLAG_LOCAL);
-    sithCvar_RegisterFlex("r_ssaaMultiple",             1.0,                        &jkPlayer_ssaaMultiple,             CVARFLAG_LOCAL);
+    sithCvar_RegisterInt("r_msaa",                      1,                          &jkPlayer_multiSample,              CVARFLAG_LOCAL);
+	sithCvar_RegisterFlex("r_ssaaMultiple",             1.0,                        &jkPlayer_ssaaMultiple,             CVARFLAG_LOCAL);
     sithCvar_RegisterFlex("r_gamma",                    1.0,                        &jkPlayer_gamma,                    CVARFLAG_LOCAL);
     sithCvar_RegisterBool("r_bEnableJkgm",              1,                          &jkPlayer_bEnableJkgm,              CVARFLAG_LOCAL|CVARFLAG_READONLY);
     sithCvar_RegisterBool("r_bEnableTexturePrecache",   1,                          &jkPlayer_bEnableTexturePrecache,   CVARFLAG_LOCAL|CVARFLAG_READONLY);
@@ -301,6 +303,7 @@ void jkPlayer_ResetVars()
     jkPlayer_enableSSAO = 0;
     jkPlayer_fpslimit = 0;
     jkPlayer_enableVsync = 0;
+	jkPlayer_multiSample = 1;
     jkPlayer_ssaaMultiple = 1.0;
     jkPlayer_gamma = 1.0;
     jkPlayer_bEnableJkgm = 1;
@@ -704,6 +707,8 @@ void jkPlayer_WriteConf(wchar_t *name)
             }
         }
 #ifdef QOL_IMPROVEMENTS
+		jkPlayer_multiSample = stdMath_ClampInt(jkPlayer_multiSample, 1, 8);
+
 		stdJSON_SaveInt(ext_fpath, "povfov", jkPlayer_povFov);
         stdJSON_SaveInt(ext_fpath, "fov", jkPlayer_fov);
         stdJSON_SaveBool(ext_fpath, "fovisvertical", jkPlayer_fovIsVertical);
@@ -715,6 +720,7 @@ void jkPlayer_WriteConf(wchar_t *name)
         stdJSON_SaveInt(ext_fpath, "fpslimit", jkPlayer_fpslimit);
         stdJSON_SaveBool(ext_fpath, "enablevsync", jkPlayer_enableVsync);
         stdJSON_SaveBool(ext_fpath, "enablebloom", jkPlayer_enableBloom);
+		stdJSON_SaveInt(ext_fpath, "multisample", jkPlayer_multiSample);
         stdJSON_SaveFloat(ext_fpath, "ssaamultiple", jkPlayer_ssaaMultiple);
         stdJSON_SaveInt(ext_fpath, "enablessao", jkPlayer_enableSSAO);
         stdJSON_SaveFloat(ext_fpath, "gamma", jkPlayer_gamma);
@@ -834,6 +840,12 @@ void jkPlayer_ParseLegacyExt()
         if (_sscanf(stdConffile_aLine, "ssaamultiple %f", &jkPlayer_ssaaMultiple) != 1)
             jkPlayer_ssaaMultiple = 1.0;
     }
+
+	if (stdConffile_ReadLine())
+	{
+		if (_sscanf(stdConffile_aLine, "multisample %d", &jkPlayer_multiSample) != 1)
+			jkPlayer_multiSample = 1;
+	}
 
     if (stdConffile_ReadLine())
     {
@@ -965,7 +977,8 @@ int jkPlayer_ReadConf(wchar_t *name)
         jkPlayer_fpslimit = stdJSON_GetInt(ext_fpath, "fpslimit", jkPlayer_fpslimit);
         jkPlayer_enableVsync = stdJSON_GetBool(ext_fpath, "enablevsync", jkPlayer_enableVsync);
         jkPlayer_enableBloom = stdJSON_GetBool(ext_fpath, "enablebloom", jkPlayer_enableBloom);
-        jkPlayer_ssaaMultiple = stdJSON_GetFloat(ext_fpath, "ssaamultiple", jkPlayer_ssaaMultiple);
+		jkPlayer_multiSample = stdJSON_GetInt(ext_fpath, "multisample", jkPlayer_multiSample);
+		jkPlayer_ssaaMultiple = stdJSON_GetFloat(ext_fpath, "ssaamultiple", jkPlayer_ssaaMultiple);
         jkPlayer_enableSSAO = stdJSON_GetInt(ext_fpath, "enablessao", jkPlayer_enableSSAO);
         jkPlayer_gamma = stdJSON_GetFloat(ext_fpath, "gamma", jkPlayer_gamma);
 		jkPlayer_enable32Bit = stdJSON_GetInt(ext_fpath, "colordepth", jkPlayer_enable32Bit);
@@ -1002,6 +1015,8 @@ int jkPlayer_ReadConf(wchar_t *name)
 #ifdef FIXED_TIMESTEP_PHYS
         jkPlayer_bJankyPhysics = stdJSON_GetBool(ext_fpath, "bJankyPhysics", jkPlayer_bJankyPhysics);
 #endif
+
+		jkPlayer_multiSample = stdMath_ClampInt(jkPlayer_multiSample, 1, 8);
 
 #ifdef QOL_IMPROVEMENTS
         sithCvar_LoadLocals(ext_fpath_cvars);

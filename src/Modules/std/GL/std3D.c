@@ -141,6 +141,8 @@ typedef struct std3DFramebuffer
 	int32_t w;
 	int32_t h;
 
+	int samples;
+
 	//GLuint rbo;
 	GLuint zfbo;
     GLuint fbo;
@@ -764,28 +766,51 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 	GLuint fboFormat = jkPlayer_enable32Bit ? GL_RGB10_A2 : GL_RGB5_A1;
 	GLuint fboLayout = GL_RGBA;
 #endif
-    
+
+	pFb->samples = stdMath_ClampInt(jkPlayer_multiSample, 1, 8);
+
     // Set up our framebuffer texture
 	// we never really use the alpha channel, so for 32bit we use deep color (rgb10a20, and for 16bit we use high color (rgb5a1, to avoid green shift)
     glGenTextures(1, &pFb->tex0);
-    glBindTexture(GL_TEXTURE_2D, pFb->tex0);
-    glTexImage2D(GL_TEXTURE_2D, 0, fboFormat, width, height, 0, fboLayout, GL_UNSIGNED_BYTE, NULL);
+
+	if(pFb->samples > 1)
+	{
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pFb->tex0);
+		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, fboFormat, width, height, GL_TRUE);
+	}
+	else
+	{
+		glBindTexture(GL_TEXTURE_2D, pFb->tex0);
+		glTexImage2D(GL_TEXTURE_2D, 0, fboFormat, width, height, 0, fboLayout, GL_UNSIGNED_BYTE, NULL);
+	}
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    // Attach fbTex to our currently bound framebuffer fb
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pFb->tex0, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, pFb->samples > 1 ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D, pFb->tex0, 0);
 
 	if(jkPlayer_enableBloom)
 	{
 		std3D_framebufferFlags |= 1;
 
+		GLuint emissiveFormat = jkPlayer_enable32Bit ? GL_RGB10_A2 : GL_RGB565;
+		GLuint emissiveLayout = jkPlayer_enable32Bit ? GL_RGBA : GL_RGB;
+
 		// Set up our emissive fb texture
 		glGenTextures(1, &pFb->tex1);
-		glBindTexture(GL_TEXTURE_2D, pFb->tex1);
-		glTexImage2D(GL_TEXTURE_2D, 0, jkPlayer_enable32Bit ? GL_RGB10_A2 : GL_RGB565, width, height, 0, jkPlayer_enable32Bit? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE, NULL);
+		if (pFb->samples > 1)
+		{
+			glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pFb->tex1);
+			glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, emissiveFormat, width, height, GL_TRUE);
+		}
+		else
+		{
+			glBindTexture(GL_TEXTURE_2D, pFb->tex1);
+			glTexImage2D(GL_TEXTURE_2D, 0, emissiveFormat, width, height, 0, emissiveLayout, GL_UNSIGNED_BYTE, NULL);
+		}
+
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -796,7 +821,7 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 		//glGenerateMipmap(GL_TEXTURE_2D);
     
 		// Attach fbTex to our currently bound framebuffer fb
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, pFb->tex1, 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, pFb->samples > 1 ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D, pFb->tex1, 0);
 	}
 	else
 	{
@@ -805,8 +830,17 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 
 	// Set up our depth buffer texture
 	glGenTextures(1, &pFb->ztex);
-	glBindTexture(GL_TEXTURE_2D, pFb->ztex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+	if (pFb->samples > 1)
+	{
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pFb->ztex);
+		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, GL_DEPTH24_STENCIL8, width, height, GL_TRUE);
+	}
+	else
+	{
+		glBindTexture(GL_TEXTURE_2D, pFb->ztex);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+	}
+
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//_MIPMAP_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//_MIPMAP_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -816,7 +850,7 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 	//glTexImage2D(gl.TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, w, h, 0, GL_DEPTH_STENCIL,
 				// GL_UNSIGNED_INT_24_8, 0);
 
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, pFb->ztex, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, pFb->samples > 1 ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D, pFb->ztex, 0);
 
     // Set up our render buffer
    // glGenRenderbuffers(1, &pFb->rbo);
@@ -831,27 +865,27 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
         stdPlatform_Printf("std3D: ERROR, Framebuffer is incomplete!\n");
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	glGenFramebuffers(1, &pFb->zfbo);
-	glBindFramebuffer(GL_FRAMEBUFFER, pFb->zfbo);
-
-	// Attach fbTex to our currently bound framebuffer fb
-	//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pFb->ztex, 0);
-	
-	// Set up our normal texture
-	//glGenTextures(1, &pFb->ntex);
-	//glBindTexture(GL_TEXTURE_2D, pFb->ntex);
-	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//_MIPMAP_NEAREST);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//_MIPMAP_NEAREST);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pFb->ntex, 0);
-
-	//glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, pFb->rbo);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, pFb->ztex, 0);
-
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-		stdPlatform_Printf("std3D: ERROR, Framebuffer is incomplete!\n");
+	//glGenFramebuffers(1, &pFb->zfbo);
+	//glBindFramebuffer(GL_FRAMEBUFFER, pFb->zfbo);
+	//
+	//// Attach fbTex to our currently bound framebuffer fb
+	////glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pFb->ztex, 0);
+	//
+	//// Set up our normal texture
+	////glGenTextures(1, &pFb->ntex);
+	////glBindTexture(GL_TEXTURE_2D, pFb->ntex);
+	////glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	////glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);//_MIPMAP_NEAREST);
+	////glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);//_MIPMAP_NEAREST);
+	////glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	////glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	////glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pFb->ntex, 0);
+	//
+	////glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, pFb->rbo);
+	//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, pFb->ztex, 0);
+	//
+	//if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	//	stdPlatform_Printf("std3D: ERROR, Framebuffer is incomplete!\n");
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -888,7 +922,8 @@ void std3D_generateExtraFramebuffers(int32_t width, int32_t height)
 #ifdef CHROMA_SUBSAMPLING
 	GLuint refrFormat = GL_RG8_SNORM;
 #else
-	GLuint refrFormat = GL_RGB565;
+	//GLuint refrFormat = GL_RGB565;
+	GLuint refrFormat = jkPlayer_enable32Bit ? GL_RGB10_A2 : GL_RGB5_A1;
 #endif
 
 	std3D_generateIntermediateFbo(width, height, &refr, refrFormat, 1, 0, 1, std3D_framebuffer.ztex);
@@ -2123,7 +2158,8 @@ int std3D_StartScene()
     if (tex_w != std3D_framebuffer.w || tex_h != std3D_framebuffer.h 
         || (((std3D_framebufferFlags & 1) == 1) != jkPlayer_enableBloom)
 		|| (((std3D_framebufferFlags & 2) == 2) != jkPlayer_enableSSAO)
-		|| (((std3D_framebufferFlags & 4) == 4) != jkPlayer_enable32Bit))
+		|| (((std3D_framebufferFlags & 4) == 4) != jkPlayer_enable32Bit)
+		|| std3D_framebuffer.samples != jkPlayer_multiSample)
     {
 		std3D_deleteExtraFramebuffers();
         std3D_deleteFramebuffer(&std3D_framebuffer);
@@ -3656,7 +3692,7 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
     //glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, numMips-1);
+//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, numMips-1);
 
 	if (jkPlayer_enableTextureFilter && texture->is_16bit)
 	{
@@ -3809,7 +3845,7 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 
 		glTexImage2D(GL_TEXTURE_2D, 0, is_alpha_tex ? GL_RGB5_A1 : GL_RGB565, width, height, 0, is_alpha_tex ? GL_RGBA : GL_RGB, is_alpha_tex ? GL_UNSIGNED_SHORT_5_5_5_1 : GL_UNSIGNED_SHORT_5_6_5, image_data);
 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, numMips - 1);
+	//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, numMips - 1);
 		for (int mip = 1; mip < numMips; ++mip)
 		{
 			++vbufIter;
@@ -3979,7 +4015,7 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, image_data);
 
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, numMips - 1);
+		//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, numMips - 1);
 			for (int mip = 1; mip < numMips; ++mip)
 			{
 				++vbufIter;
@@ -5411,7 +5447,7 @@ void std3D_BindStage(std3D_worldStage* pStage)
 
 void std3D_BlitFrame()
 {
-	glDepthMask(GL_FALSE);
+	//glDepthMask(GL_FALSE);
 	//std3D_DrawSimpleTex(&std3D_texFboStage, &refr, std3D_framebuffer.tex0, 0, 0, 1.0, 1.0, 1.0, 0, "Frmebuffer Blit");
 
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, std3D_framebuffer.fbo);
@@ -5626,8 +5662,20 @@ void std3D_DoBloom()
 
 	std3D_PushDebugGroup("Bloom");
 
+	// resolve emissive
+	if(std3D_framebuffer.samples > 1)
+	{
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, std3D_framebuffer.fbo);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, refr.fbo);
+
+		glDrawBuffer(GL_COLOR_ATTACHMENT0);
+		glReadBuffer(GL_COLOR_ATTACHMENT1);
+
+		glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, refr.w, refr.h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+	}
+
 	// downscale layers using a simple gaussian filter
-	std3D_DrawSimpleTex(&std3D_bloomStage, &bloomLayers[0], std3D_framebuffer.tex1, 0, 0, uvScale, 1.0, 1.0, 0, "Bloom Downscale");
+	std3D_DrawSimpleTex(&std3D_bloomStage, &bloomLayers[0], std3D_framebuffer.samples > 1 ? refr.tex : std3D_framebuffer.tex1, 0, 0, uvScale, 1.0, 1.0, 0, "Bloom Downscale");
 	for (int i = 1; i < ARRAY_SIZE(bloomLayers); ++i)
 		std3D_DrawSimpleTex(&std3D_bloomStage, &bloomLayers[i], bloomLayers[i - 1].tex, 0, 0, uvScale, 1.0, 1.0, 0, "Bloom Downscale");
 
@@ -5660,10 +5708,30 @@ void std3D_FlushPostFX()
 	//if (!jkGame_isDDraw && !jkGuiBuildMulti_bRendering)
 		//return;
 
+//	glBindFramebuffer(GL_READ_FRAMEBUFFER, std3D_framebuffer.fbo);
+//	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, window.fbo);
+//
+//	glDrawBuffer(GL_COLOR_ATTACHMENT0);
+//	glReadBuffer(GL_COLOR_ATTACHMENT0);
+//
+//	glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, window.w, window.h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
 	std3D_DoBloom();
 
+	// resolve color
+	if (std3D_framebuffer.samples > 1)
+	{
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, std3D_framebuffer.fbo);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, refr.fbo);
+
+		glDrawBuffer(GL_COLOR_ATTACHMENT0);
+		glReadBuffer(GL_COLOR_ATTACHMENT0);
+
+		glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, refr.w, refr.h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+	}
+
 	glDisable(GL_BLEND);
-	std3D_DrawSimpleTex(&std3D_postfxStage, &window, std3D_framebuffer.tex0, bloomLayers[0].tex, 0, (rdCamera_pCurCamera->flags & 0x1) ? sithTime_curSeconds : -1.0, jkPlayer_enableDithering, jkPlayer_gamma, 0, "Final Output");
+	std3D_DrawSimpleTex(&std3D_postfxStage, &window, std3D_framebuffer.samples > 1 ? refr.tex : std3D_framebuffer.tex0, bloomLayers[0].tex, 0, (rdCamera_pCurCamera->flags & 0x1) ? sithTime_curSeconds : -1.0, jkPlayer_enableDithering, jkPlayer_gamma, 0, "Final Output");
 
 	std3D_PopDebugGroup();
 

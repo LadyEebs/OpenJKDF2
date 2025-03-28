@@ -12,6 +12,7 @@
 #include "World/jkPlayer.h"
 #include "Win95/Window.h"
 #include "Platform/std3D.h"
+#include "General/stdMath.h"
 
 #include "jk.h"
 
@@ -36,10 +37,12 @@ static wchar_t slider_val_text_2[5] = {0};
 static int slider_images[2] = {JKGUI_BM_SLIDER_BACK, JKGUI_BM_SLIDER_THUMB};
 
 static wchar_t colordepth_text[8];
+static wchar_t samples_text[3];
 
 void jkGuiDisplay_FovDraw(jkGuiElement *element, jkGuiMenu *menu, stdVBuffer *vbuf, int redraw);
 void jkGuiDisplay_FramelimitDraw(jkGuiElement *element, jkGuiMenu *menu, stdVBuffer *vbuf, int redraw);
 int jkGuiDisplay_ColorDepthArrowButtonClickHandler(jkGuiElement* pElement, jkGuiMenu* pMenu, int mouseX, int mouseY, BOOL a5);
+int jkGuiDisplay_SamplesArrowButtonClickHandler(jkGuiElement* pElement, jkGuiMenu* pMenu, int mouseX, int mouseY, BOOL a5);
 
 static jkGuiElement jkGuiDisplay_aElements[] = { 
     { ELEMENT_TEXT,        0,            0, NULL,                   3, {0, 410, 640, 20},   1, 0, NULL,                        0, 0, 0, {0}, 0},
@@ -57,13 +60,13 @@ static jkGuiElement jkGuiDisplay_aElements[] = {
     {ELEMENT_SLIDER,       0,            0, (const char*)(FOV_MAX - FOV_MIN),                    0, {10, 160, 320, 30}, 1, 0, "GUIEXT_FOV_HINT", jkGuiDisplay_FovDraw, 0, slider_images, {0}, 0},
     {ELEMENT_TEXT,         0,            0, slider_val_text,        3, {20, 190, 300, 30}, 1,  0, 0, 0, 0, 0, {0}, 0},
     {ELEMENT_CHECKBOX,     0,            0, "GUIEXT_FOV_VERTICAL",    0, {20, 210, 200, 40}, 1,  0, NULL, 0, 0, 0, {0}, 0},
-    {ELEMENT_CHECKBOX,     0,            0, "GUIEXT_EN_FULLSCREEN",    0, {400, 220, 200, 30}, 1,  0, NULL, 0, 0, 0, {0}, 0},
-    {ELEMENT_CHECKBOX,     0,            0, "GUIEXT_EN_HIDPI",    0, {400, 280, 200, 30}, 1,  0, NULL, 0, 0, 0, {0}, 0},
-    {ELEMENT_CHECKBOX,     0,            0, "GUIEXT_EN_TEXTURE_FILTERING",    0, {400, 310, 200, 30}, 1,  0, NULL, 0, 0, 0, {0}, 0},
+    {ELEMENT_CHECKBOX,     0,            0, "GUIEXT_EN_FULLSCREEN",    0, {400, 250, 200, 30}, 1,  0, NULL, 0, 0, 0, {0}, 0},
+    {ELEMENT_CHECKBOX,     0,            0, "GUIEXT_EN_HIDPI",    0, {400, 310, 200, 30}, 1,  0, NULL, 0, 0, 0, {0}, 0},
+    {ELEMENT_CHECKBOX,     0,            0, "GUIEXT_EN_TEXTURE_FILTERING",    0, {400, 340, 200, 30}, 1,  0, NULL, 0, 0, 0, {0}, 0},
     {ELEMENT_CHECKBOX,     0,            0, "GUIEXT_EN_SQUARE_ASPECT",    0, {20, 240, 300, 40}, 1,  0, NULL, 0, 0, 0, {0}, 0},
 
     // 17
-    {ELEMENT_CHECKBOX,     0,            0, "GUIEXT_EN_VSYNC",    0, {400, 250, 300, 30}, 1,  0, NULL, 0, 0, 0, {0}, 0},
+    {ELEMENT_CHECKBOX,     0,            0, "GUIEXT_EN_VSYNC",    0, {400, 280, 300, 30}, 1,  0, NULL, 0, 0, 0, {0}, 0},
 
     // 18
     { ELEMENT_TEXT,        0,            0, "GUIEXT_SSAA_MULT",            2, {20, 320, 140, 20},   1, 0, NULL,                        0, 0, 0, {0}, 0},
@@ -83,7 +86,14 @@ static jkGuiElement jkGuiDisplay_aElements[] = {
 	{ ELEMENT_PICBUTTON, 103,            0, NULL,                    33, { 510, 160, 24, 24 }, 1, 0, NULL, NULL, jkGuiDisplay_ColorDepthArrowButtonClickHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
 	{ ELEMENT_PICBUTTON, 104,            0, NULL,                    34, { 584, 160, 24, 24 }, 1, 0, NULL, NULL, jkGuiDisplay_ColorDepthArrowButtonClickHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
 
-	{ELEMENT_CHECKBOX,     0,            0, "GUIEXT_EN_DITHER",    0, {400, 190, 200, 30}, 1,  0, NULL, 0, 0, 0, {0}, 0},
+	// 28
+	{ ELEMENT_TEXT,        0,            0, "GUIEXT_EN_SAMPLES",  3,  { 400, 190, 100, 25}, 1,  0, 0, 0, 0, 0, {0}, 0},
+	{ ELEMENT_TEXT,        0,            0, NULL,                    3,  { 536, 190, 50, 30 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_PICBUTTON, 103,            0, NULL,                    33, { 510, 190, 24, 24 }, 1, 0, NULL, NULL, jkGuiDisplay_SamplesArrowButtonClickHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_PICBUTTON, 104,            0, NULL,                    34, { 584, 190, 24, 24 }, 1, 0, NULL, NULL, jkGuiDisplay_SamplesArrowButtonClickHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+
+	// 32
+	{ELEMENT_CHECKBOX,     0,            0, "GUIEXT_EN_DITHER",    0, {400, 220, 200, 30}, 1,  0, NULL, 0, 0, 0, {0}, 0},
 
     { ELEMENT_TEXTBUTTON,  GUI_ADVANCED, 2, "GUI_ADVANCED",               3, {220, 430, 200, 40}, 1, 0, NULL,                        0, 0, 0, {0}, 0},
 
@@ -147,7 +157,10 @@ void jkGuiDisplay_Startup()
 	jk_snwprintf(colordepth_text, 8u, jkPlayer_enable32Bit ? L"32-bit" : L"16-bit");
 	jkGuiDisplay_aElements[25].wstr = colordepth_text;
 
-    jk_snwprintf(render_level, 255, L"%.2f", jkPlayer_ssaaMultiple);
+	jk_snwprintf(samples_text, 3u, L"%dx", jkPlayer_multiSample);
+	jkGuiDisplay_aElements[29].wstr = samples_text;
+
+    jk_snwprintf(render_level, 255, L"%.3f", jkPlayer_ssaaMultiple);
     jk_snwprintf(gamma_level, 255, L"%.2f", jkPlayer_gamma);
     jk_snwprintf(hud_level, 255, L"%.2f", jkPlayer_hudScale);
 }
@@ -258,14 +271,17 @@ int jkGuiDisplay_Show()
     jkGuiDisplay_aElements[14].selectedTextEntry = Window_isHiDpi;
     jkGuiDisplay_aElements[15].selectedTextEntry = jkPlayer_enableTextureFilter;
     jkGuiDisplay_aElements[16].selectedTextEntry = jkPlayer_enableOrigAspect;
-	jkGuiDisplay_aElements[28].selectedTextEntry = jkPlayer_enableDithering;
+	jkGuiDisplay_aElements[32].selectedTextEntry = jkPlayer_enableDithering;
 
     jkGuiDisplay_aElements[17].selectedTextEntry = jkPlayer_enableVsync;
 
 	jk_snwprintf(colordepth_text, 8u, jkPlayer_enable32Bit ? L"32-bit" : L"16-bit");
 	jkGuiDisplay_aElements[25].wstr = colordepth_text;
 
-    jk_snwprintf(render_level, 255, L"%.2f", jkPlayer_ssaaMultiple);
+	jk_snwprintf(samples_text, 3u, L"%dx", jkPlayer_multiSample);
+	jkGuiDisplay_aElements[29].wstr = samples_text;
+
+    jk_snwprintf(render_level, 255, L"%.3f", jkPlayer_ssaaMultiple);
     jk_snwprintf(gamma_level, 255, L"%.2f", jkPlayer_gamma);
     jk_snwprintf(hud_level, 255, L"%.2f", jkPlayer_hudScale);
 
@@ -293,6 +309,9 @@ continue_menu:
         if(_sscanf(tmp, "%f", &jkPlayer_ssaaMultiple) != 1) {
             jkPlayer_ssaaMultiple = 1.0;
         }
+
+		jkPlayer_ssaaMultiple = stdMath_Clamp(jkPlayer_ssaaMultiple, 0.125f, 8.0f);
+		jk_snwprintf(render_level, 255, L"%.3f", jkPlayer_ssaaMultiple);
 
         stdString_WcharToChar(tmp, gamma_level, 255);
         if(_sscanf(tmp, "%f", &jkPlayer_gamma) != 1) {
@@ -323,22 +342,34 @@ int jkGuiDisplay_ColorDepthArrowButtonClickHandler(jkGuiElement* pElement, jkGui
 {
 	if (pElement->hoverId == 103)
 	{
-		int v4 = jkPlayer_enable32Bit - 1;
-		if (v4 < 0)
-			v4 = 1;
-		jkPlayer_enable32Bit = v4;
+		--jkPlayer_enable32Bit;
+		if (jkPlayer_enable32Bit < 0)
+			jkPlayer_enable32Bit = 1;
 	}
 	else if (pElement->hoverId == 104)
 	{
-		int v2 = jkPlayer_enable32Bit + 1;
-		if (v2 > 1)
-			v2 = 0;
-		jkPlayer_enable32Bit = v2;
+		++jkPlayer_enable32Bit;
+		if (jkPlayer_enable32Bit > 1)
+			jkPlayer_enable32Bit = 0;
 	}
 
 	jk_snwprintf(colordepth_text, 8u, jkPlayer_enable32Bit ? L"32-bit" : L"16-bit");
 	jkGuiDisplay_aElements[25].wstr = colordepth_text;
 	jkGuiRend_UpdateAndDrawClickable(&jkGuiDisplay_aElements[25], pMenu, 1);
+
+	return 0;
+}
+
+int jkGuiDisplay_SamplesArrowButtonClickHandler(jkGuiElement* pElement, jkGuiMenu* pMenu, int mouseX, int mouseY, BOOL a5)
+{
+	if (pElement->hoverId == 103)
+		jkPlayer_multiSample = stdMath_ClampInt(jkPlayer_multiSample >> 1, 1, 8);
+	else if (pElement->hoverId == 104)
+		jkPlayer_multiSample = stdMath_ClampInt(jkPlayer_multiSample << 1, 1, 8);
+
+	jk_snwprintf(samples_text, 3u, L"%dx", jkPlayer_multiSample);
+	jkGuiDisplay_aElements[29].wstr = samples_text;
+	jkGuiRend_UpdateAndDrawClickable(&jkGuiDisplay_aElements[29], pMenu, 1);
 
 	return 0;
 }

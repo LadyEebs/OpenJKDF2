@@ -237,6 +237,8 @@ continue_menu:
         char tmp[256];
         stdString_WcharToChar(tmp, render_level, 255);
 
+		jkPlayer_multiSample = 1;
+
         if(_sscanf(tmp, "%f", &jkPlayer_ssaaMultiple) != 1) {
             jkPlayer_ssaaMultiple = 1.0;
         }
