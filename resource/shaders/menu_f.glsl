@@ -20,5 +20,22 @@ void main(void)
         discard;
     sampled_color = vec4(palvald.r, palvald.g, palvald.b, transparency);
 
+	//sampled_color.rgb = log2(1.0001 - sampled_color.rgb) / -2.0;
+	float k = 4.0;
+	sampled_color.rgb = k * sampled_color.rgb / (k - sampled_color.rgb);
+
+	
+	//float vignetteStrength = 15.0; // todo: expose
+	//float vignettePower = 0.5; // todo: expose
+
+	//vec2 oneOverUV = 1.0 - f_uv.xy;
+	//float edge = f_uv.x * f_uv.y * oneOverUV.x * oneOverUV.y;
+	//edge = clamp(vignetteStrength * edge, 0.0, 1.0);
+	//sampled_color *= pow(edge, vignettePower) * 0.5 + 0.5;
+    
+	//vec2 uv = gl_FragCoord.xy / textureSize(tex, 0).xy;
+	//float l = clamp(dot(uv.xy*2.0-1.0, uv.xy*2.0-1.0), 0.0, 1.0);
+	//sampled_color.rgb *= pow(1.0 - l, 4.0);
+
     fragColor = sampled_color * vertex_color * blend;
 }
