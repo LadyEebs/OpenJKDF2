@@ -5368,9 +5368,9 @@ void std3D_SetMaterialState(std3D_worldStage* pStage, std3D_DrawCallState* pStat
 	//}
 
 	// todo: expose
-	float spec = 0.175;//0.02;//0.2209f; / we're working in srgb
+	float spec = 0.2209f;//0.02;//0.2209f; / we're working in srgb
 	rdVector_Set4(&tex.specular_factor, spec, spec, spec, spec);
-	tex.roughnessFactor = (pState->shaderState.shader && pState->shaderState.shader->hasReadback) ? stdMath_Sqrt(2.0f / 64.0f) : stdMath_Sqrt(2.0f / 24.0f);
+	tex.roughnessFactor = (pState->shaderState.shader && pState->shaderState.shader->hasReadback) ? stdMath_Sqrt(2.0f / 64.0f) : stdMath_Sqrt(2.0f / 32.0f);
 
 	glBindBuffer(GL_UNIFORM_BUFFER, material_ubo);
 	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(std3D_MaterialUniforms), &tex);
