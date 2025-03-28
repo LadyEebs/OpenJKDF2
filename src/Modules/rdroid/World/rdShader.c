@@ -762,8 +762,8 @@ static void rdShader_AssembleByteCode(rdShaderByteCode* byteCode, const char* co
 			char* ln = tmp;
 			if (ln && ln[0] != '#') // early skip pure comment lines
 			{
-				if (strnicmp(ln, "var", 3) == 0)
-					rdShader_ParseAlias(ln + 3);
+				if (strnicmp(ln, "alias", 5) == 0)
+					rdShader_ParseAlias(ln + 5);
 				else if (rdShader_ParseInstruction(tmp, &byteCode->instructions[byteCode->instructionCount]))
 					++byteCode->instructionCount;
 			}
