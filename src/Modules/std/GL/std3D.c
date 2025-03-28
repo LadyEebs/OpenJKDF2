@@ -5126,9 +5126,15 @@ void std3D_SetFogState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 int std3D_SetBlendState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 {
 	if (pState->stateBits.blend == 0)
+	{
 		glDisable(GL_BLEND);
+		std3D_bindTexture(GL_TEXTURE_2D, blank_tex, TEX_SLOT_REFRACTION);
+	}
 	else
+	{
 		glEnable(GL_BLEND);
+		std3D_bindTexture(GL_TEXTURE_2D, refr.tex, TEX_SLOT_REFRACTION);
+	}
 
 
 	static GLuint glBlendForRdBlend[] =
@@ -5149,17 +5155,17 @@ int std3D_SetBlendState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 
 void std3D_SetDepthStencilState(std3D_DrawCallState* pState)
 {
-	if (rdroid_curZBufferMethod == RD_ZBUFFER_NOREAD_NOWRITE)
+	if (pState->stateBits.zMethod == RD_ZBUFFER_NOREAD_NOWRITE)
 	{
 		glDisable(GL_DEPTH_TEST);
 		glDepthMask(GL_FALSE);
 	}
-	else if (rdroid_curZBufferMethod == RD_ZBUFFER_READ_NOWRITE)
+	else if (pState->stateBits.zMethod == RD_ZBUFFER_READ_NOWRITE)
 	{
 		glEnable(GL_DEPTH_TEST);
 		glDepthMask(GL_FALSE);
 	}
-	else if (rdroid_curZBufferMethod == RD_ZBUFFER_NOREAD_WRITE)
+	else if (pState->stateBits.zMethod == RD_ZBUFFER_NOREAD_WRITE)
 	{
 		glDisable(GL_DEPTH_TEST);
 		glDepthMask(GL_TRUE);
@@ -5170,22 +5176,23 @@ void std3D_SetDepthStencilState(std3D_DrawCallState* pState)
 		glDepthMask(GL_TRUE);
 	}
 
+	// todo: add to draw call state
 	extern float rdroid_curZNear;
 	extern float rdroid_curZFar;
 	glDepthRange(rdroid_curZNear, rdroid_curZFar);
 
-	//static const GLuint gl_compares[] =
-	//{
-	//	GL_ALWAYS,
-	//	GL_LESS,
-	//	GL_LEQUAL,
-	//	GL_GREATER,
-	//	GL_GEQUAL,
-	//	GL_EQUAL,
-	//	GL_NOTEQUAL,
-	//	GL_NEVER
-	//};
-	glDepthFunc(GL_LEQUAL);//gl_compares[pState->stateBits.zCompare]);
+	static const GLuint gl_compares[] =
+	{
+		GL_ALWAYS,
+		GL_LESS,
+		GL_LEQUAL,
+		GL_GREATER,
+		GL_GEQUAL,
+		GL_EQUAL,
+		GL_NOTEQUAL,
+		GL_NEVER
+	};
+	glDepthFunc(gl_compares[pState->stateBits.zCompare]);
 
 //	if (pState->stateBits.zMethod == RD_ZBUFFER_NOREAD_NOWRITE)
 //	{
@@ -5456,11 +5463,11 @@ void std3D_BlitFrame()
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
 	glReadBuffer(GL_COLOR_ATTACHMENT0);
 
-	glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, refr.w, refr.h, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+	glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, refr.w, refr.h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.fbo);
-	glBindTexture(GL_TEXTURE_2D, refr.tex);
-	glGenerateMipmap(GL_TEXTURE_2D);
+	//glBindTexture(GL_TEXTURE_2D, refr.tex);
+	//glGenerateMipmap(GL_TEXTURE_2D);
 }
 
 void std3D_SendVerticesToHardware(void* vertices, uint32_t count, uint32_t stride)
