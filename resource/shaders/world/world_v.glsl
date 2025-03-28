@@ -53,7 +53,7 @@ vec3 CalculateAmbientSpecular(float roughness, vec3 normal, vec3 view, vec3 refl
 
 		ambientSpec = (D * expo) * ambientColor + ambientSpec;
 	}
-	return sat3(ambientSpec);
+	return (ambientSpec);
 }
 
 
