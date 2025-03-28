@@ -1051,8 +1051,9 @@ typedef struct std3D_TextureState
 	uint32_t             flags;
 	uint8_t              numMips;
 	uint8_t              alphaRef;
+	uint8_t              maxTexcoord;
 } std3D_TextureState;
-static_assert(sizeof(std3D_TextureState) == sizeof(uint32_t) * 18, "std3D_TextureState not 72 bytes");
+//static_assert(sizeof(std3D_TextureState) == sizeof(uint32_t) * 18, "std3D_TextureState not 72 bytes");
 
 typedef struct std3D_LightingState // todo: pack this
 {

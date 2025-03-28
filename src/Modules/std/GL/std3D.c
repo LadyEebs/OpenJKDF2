@@ -383,7 +383,7 @@ typedef struct std3D_worldStage
 	GLuint vao[STD3D_STAGING_COUNT];
 } std3D_worldStage;
 
-std3D_worldStage worldStages[WORLD_STAGE_COUNT][WORLD_REG_COUNT];
+std3D_worldStage worldStages[WORLD_STAGE_COUNT][WORLD_REG_COUNT][RD_NUM_TEXCOORDS];
 
 GLint programMenu_attribute_coord3d, programMenu_attribute_v_color, programMenu_attribute_v_uv, programMenu_attribute_v_norm;
 GLint programMenu_uniform_mvp, programMenu_uniform_tex, programMenu_uniform_displayPalette;
@@ -1762,16 +1762,19 @@ int init_resources()
 
     if ((programMenu = std3D_loadProgram("shaders/menu", "")) == 0) return false;
 
-	for (int i = 0; i < WORLD_REG_COUNT; ++i)
+	for (int j = 0; j < RD_NUM_TEXCOORDS; ++j)
 	{
-		char tmp[40];
-		sprintf_s(tmp, 40, "REG_COUNT %d", 2 << i);
+		for (int i = 0; i < WORLD_REG_COUNT; ++i)
+		{
+			char tmp[64];
+			sprintf_s(tmp, 64, "REG_COUNT %d;UV_SETS %d", 2 << i, j + 1);
 
-		if (!std3D_loadWorldStage(&worldStages[WORLD_STAGE_COLOR][i], 0, tmp)) return false;
+			if (!std3D_loadWorldStage(&worldStages[WORLD_STAGE_COLOR][i][j], 0, tmp)) return false;
 
-		sprintf_s(tmp, 40, "ALPHA_DISCARD;REG_COUNT %d", 2 << i);
+			sprintf_s(tmp, 64, "ALPHA_DISCARD;REG_COUNT %d;UV_SETS %d", 2 << i, j + 1);
 
-		if (!std3D_loadWorldStage(&worldStages[WORLD_STAGE_COLOR_ALPHATEST][i], 0, tmp)) return false;
+			if (!std3D_loadWorldStage(&worldStages[WORLD_STAGE_COLOR_ALPHATEST][i][j], 0, tmp)) return false;
+		}
 	}
 
     if (!std3D_loadSimpleTexProgram("shaders/ui", &std3D_uiProgram)) return false;
@@ -2060,14 +2063,16 @@ int init_resources()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	std3D_setupUBOs();
-	for (int i = 0; i < WORLD_STAGE_COUNT; ++i)
+	for (int k = 0; k < RD_NUM_TEXCOORDS; ++k)
 	{
 		for (int j = 0; j < WORLD_REG_COUNT; ++j)
 		{
-			//worldStages[i].bPosOnly = i == SHADER_DEPTH;//(i <= SHADER_DEPTH_ALPHATEST);
-
-			std3D_setupDrawCallVAO(&worldStages[i][j]);
-			std3D_setupLightingUBO(&worldStages[i][j]);
+			for (int i = 0; i < WORLD_STAGE_COUNT; ++i)
+			{
+				//worldStages[i].bPosOnly = i == SHADER_DEPTH;//(i <= SHADER_DEPTH_ALPHATEST);
+				std3D_setupDrawCallVAO(&worldStages[i][j][k]);
+				std3D_setupLightingUBO(&worldStages[i][j][k]);
+			}
 		}
 	}
 
@@ -2162,12 +2167,15 @@ void std3D_FreeResources()
 
     glDeleteBuffers(1, &menu_vbo_all);
 
-	for (int i = 0; i < WORLD_STAGE_COUNT; ++i)
+	for (int k = 0; k < RD_NUM_TEXCOORDS; ++k)
 	{
-		for (int j = 0; j < WORLD_REG_COUNT; ++j)
+		for (int i = 0; i < WORLD_STAGE_COUNT; ++i)
 		{
-			glDeleteProgram(worldStages[i][j].program);
-			glDeleteVertexArrays(3, worldStages[i][j].vao);
+			for (int j = 0; j < WORLD_REG_COUNT; ++j)
+			{
+				glDeleteProgram(worldStages[i][j][k].program);
+				glDeleteVertexArrays(3, worldStages[i][j][k].vao);
+			}
 		}
 	}
 	glDeleteBuffers(1, &tex_ubo);
@@ -5582,38 +5590,40 @@ void std3D_SetState(std3D_DrawCallState* pState, uint32_t updateBits)
 	uint32_t reg_index = pState->shaderState.shader ? pState->shaderState.shader->regcount : 2;
 	reg_index = (reg_index > 4) ? 2 : (reg_index > 2) ? 1 : 0;
 
-	std3D_worldStage* pStage = &worldStages[stage][reg_index]; // todo: fixme
+	uint32_t uvindex = pState->textureState.maxTexcoord;
+
+	std3D_worldStage* pStage = &worldStages[stage][reg_index][uvindex]; // todo: fixme
 
 	//if(updateBits & RD_CACHE_SHADER)
 	//if (updateBits & RD_CACHE_STATEBITS)
 		std3D_BindStage(pStage);
 
 	int last_tex = pState->textureState.pTexture ? pState->textureState.pTexture->texture_id : blank_tex_white;
-//	if ((updateBits & RD_CACHE_RASTER) || (updateBits & RD_CACHE_STATEBITS))
+	if ((updateBits & RD_CACHE_RASTER) || (updateBits & RD_CACHE_STATEBITS))
 		std3D_SetRasterState(pStage, pState);
 	
-//	if ((updateBits & RD_CACHE_FOG) || (updateBits & RD_CACHE_STATEBITS))
+	if ((updateBits & RD_CACHE_FOG) || (updateBits & RD_CACHE_STATEBITS))
 		std3D_SetFogState(pStage, pState);
 
-//	if (updateBits & RD_CACHE_STATEBITS)
+	if (updateBits & RD_CACHE_STATEBITS)
 	{
 		std3D_SetBlendState(pStage, pState);
 		std3D_SetDepthStencilState(pState);
 	}
 
-//	if ((updateBits & RD_CACHE_TEXTURE) || (updateBits & RD_CACHE_STATEBITS))
+	if ((updateBits & RD_CACHE_TEXTURE) || (updateBits & RD_CACHE_STATEBITS))
 	{
 		std3D_SetTextureState(pStage, pState);
 		std3D_SetMaterialState(pStage, pState);
 	}
 
-//	if ((updateBits & RD_CACHE_LIGHTING) || (updateBits & RD_CACHE_STATEBITS))
+	if ((updateBits & RD_CACHE_LIGHTING) || (updateBits & RD_CACHE_STATEBITS))
 		std3D_SetLightingState(pStage, pState);
 
-//	if ((updateBits & RD_CACHE_TRANSFORM))
+	//if ((updateBits & RD_CACHE_TRANSFORM))
 		std3D_SetTransformState(pStage, pState);
 
-//	if ((updateBits & RD_CACHE_SHADER_ID))
+	if ((updateBits & RD_CACHE_SHADER_ID))
 		std3D_SetShaderState(pStage, pState);
 }
 

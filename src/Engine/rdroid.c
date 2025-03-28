@@ -654,6 +654,7 @@ int rdBeginPrimitive(rdPrimitiveType_t type)
 
 	rdroid_vertexCacheNum = 0;
 	rdroid_curPrimitiveType = type;
+	rdroid_textureState.maxTexcoord = 0;
 	return 1;
 }
 
@@ -750,6 +751,9 @@ void rdColor4v(const float* v)
 
 void rdTexCoord2f(uint8_t i, float u, float v)
 {
+	if(rdroid_textureState.maxTexcoord < i)
+		rdroid_textureState.maxTexcoord = i;
+
 	rdroid_vertexTexCoordState[i].x = u;
 	rdroid_vertexTexCoordState[i].y = v;
 	rdroid_vertexTexCoordState[i].z = 0;
@@ -758,6 +762,9 @@ void rdTexCoord2f(uint8_t i, float u, float v)
 
 void rdTexCoord2i(uint8_t i, float u, float v)
 {
+	if (rdroid_textureState.maxTexcoord < i)
+		rdroid_textureState.maxTexcoord = i;
+
 	if(rdroid_textureState.pTexture)
 	{
 		uint32_t out_width, out_height;

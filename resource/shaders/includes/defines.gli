@@ -15,11 +15,10 @@
 #define D3DBLEND_SRCALPHA        (5)
 #define D3DBLEND_INVSRCALPHA     (6)
 
-#ifdef REFRACTION
-	#define UV_SETS 4
-#else
-	#define UV_SETS 4//2
-#endif
 #define COLOR_SETS 2
+
+#ifndef UV_SETS
+#	define UV_SETS 4
+#endif
 
 #endif
