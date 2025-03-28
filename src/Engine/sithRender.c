@@ -638,7 +638,7 @@ void sithRender_SetCameraFog()
 		fog.z = fog.z - (halfFog.x + halfFog.z);		
 		
 		rdFogColorf(fog.x, fog.y, fog.z, fog.w);
-		rdFogRange(0.0f, 2.0f);
+		rdFogRange(0.0f, 5.0f);
 		rdFogAnisotropy(0.35f);
 	}
 	else
@@ -1797,7 +1797,7 @@ void sithRender_RenderLevelGeometry()
 		//	fog.z = fog.z - (halfFog.x + halfFog.z);
 		//
 		//	rdFogColorf(fog.x, fog.y, fog.z, fog.w);
-		//	rdFogRange(0.0f, 2.0f);
+		//	rdFogRange(0.0f, 5.0f);
 		//	rdFogAnisotropy(0.35f);
 		//}
 		//else
@@ -2806,11 +2806,11 @@ void sithRender_UpdateLights(sithSector *sector, float prev, float dist, int dep
         }
 
 	#ifdef RENDER_DROID2
-		//for (int bucket = 0; bucket < sithWorld_pCurrentWorld->numLightBuckets; ++bucket)
-		//{
-		//	if(sector->lightBuckets)
-		//		sithWorld_pCurrentWorld->lightBuckets[bucket] |= sector->lightBuckets[bucket];
-		//}
+		for (int bucket = 0; bucket < sithWorld_pCurrentWorld->numLightBuckets; ++bucket)
+		{
+			if(sector->lightBuckets)
+				sithWorld_pCurrentWorld->lightBuckets[bucket] |= sector->lightBuckets[bucket];
+		}
 	#endif
     }
 
@@ -3349,7 +3349,9 @@ int sithRender_RenderThing(sithThing *pThing)
 	//if ((pThing->sector->flags & SITH_SECTOR_UNDERWATER) && !(sithCamera_currentCamera->sector->flags & SITH_SECTOR_UNDERWATER))
 	//{
 	//	rdVector4 fog = { pThing->sector->tint.x, pThing->sector->tint.y, pThing->sector->tint.z, 1.0f };
-	//	
+	//
+	//	rdSetFogMode(RD_FOG_ENABLED);
+	//
 	//	rdVector3 halfFog;
 	//	halfFog.x = fog.x * 0.5f;
 	//	halfFog.y = fog.y * 0.5f;
@@ -3359,7 +3361,9 @@ int sithRender_RenderThing(sithThing *pThing)
 	//	fog.y = fog.y - (halfFog.x + halfFog.y);
 	//	fog.z = fog.z - (halfFog.x + halfFog.z);
 	//
-	//	rdSetFog(1, &fog, 0.0f, 2.0f);
+	//	rdFogColorf(fog.x, fog.y, fog.z, fog.w);
+	//	rdFogRange(0.0f, 5.0f);
+	//	rdFogAnisotropy(0.35f);
 	//}
 	//else
 	//{
@@ -3467,6 +3471,8 @@ void sithRender_RenderAlphaSurfaces()
 		//{
 		//	rdVector4 fog = { sector->tint.x, sector->tint.y, sector->tint.z, 1.0f };
 		//
+		//	rdSetFogMode(RD_FOG_ENABLED);
+		//
 		//	rdVector3 halfFog;
 		//	halfFog.x = fog.x * 0.5f;
 		//	halfFog.y = fog.y * 0.5f;
@@ -3474,9 +3480,11 @@ void sithRender_RenderAlphaSurfaces()
 		//
 		//	fog.x = fog.x - (halfFog.z + halfFog.y);
 		//	fog.y = fog.y - (halfFog.x + halfFog.y);
-		//	fog.z = fog.z - (halfFog.x + halfFog.z);	
-		//	
-		//	rdSetFog(1, &fog, 0.0f, 2.0f);
+		//	fog.z = fog.z - (halfFog.x + halfFog.z);
+		//
+		//	rdFogColorf(fog.x, fog.y, fog.z, fog.w);
+		//	rdFogRange(0.0f, 5.0f);
+		//	rdFogAnisotropy(0.35f);
 		//}
 		//else
 		//{
