@@ -1739,7 +1739,7 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 				// scope uv
 				if (face->geometryMode == 5)
 				{
-					rdTexCoordScaled2i(RD_TEXCOORD1, uv.x, uv.y, aspect * 0.5, 0.5f);
+					rdTexCoordScaled2i(RD_TEXCOORD1, uv.x, uv.y, aspect * 0.75, 0.75f);
 				}
 			}
 
