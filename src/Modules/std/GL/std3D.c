@@ -970,12 +970,12 @@ void std3D_generateExtraFramebuffers(int32_t width, int32_t height)
 #ifdef CHROMA_SUBSAMPLING
 	GLuint refrFormat = GL_RG8_SNORM;
 #else
-	//GLuint refrFormat = GL_RGB565;
-	GLuint refrFormat = jkPlayer_enable32Bit ? GL_RGB10_A2 : GL_RGB5_A1;
+	GLuint refrFormat = GL_RGB565;
+	//GLuint refrFormat = jkPlayer_enable32Bit ? GL_RGB10_A2 : GL_RGB5_A1;
 #endif
 
-	std3D_generateIntermediateFbo(width, height, &refr, refrFormat, 1, 0, 1, std3D_framebuffer.ztex);
-	std3D_generateIntermediateFbo(width, height, &refrZ, GL_R32F, 0, 0, 1, std3D_framebuffer.ztex);
+	std3D_generateIntermediateFbo(width >> 1, height >> 1, &refr, refrFormat, 0, 1, 0, 0);// 1, 0, 1, std3D_framebuffer.ztex);
+	//std3D_generateIntermediateFbo(width, height, &refrZ, GL_R32F, 0, 0, 1, std3D_framebuffer.ztex);
 
 	std3D_mainFbo.fbo = std3D_framebuffer.fbo;
 	std3D_mainFbo.tex = std3D_framebuffer.tex1;
@@ -1020,6 +1020,23 @@ void std3D_deleteExtraFramebuffers()
 	std3D_deleteIntermediateFbo(&deferred);
 	std3D_deleteIntermediateFbo(&refr);
 	std3D_deleteIntermediateFbo(&refrZ);
+}
+
+void std3D_ResolveMSAA()
+{
+	if (std3D_framebuffer.samples > 1)
+	{
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, std3D_framebuffer.resolveFbo);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, std3D_framebuffer.fbo);
+
+		const uint8_t attachments = (std3D_framebufferFlags & 0x1) ? 2 : 1;
+		for (uint8_t i = 0; i < attachments; ++i)
+		{
+			glDrawBuffer(GL_COLOR_ATTACHMENT0 + i);
+			glReadBuffer(GL_COLOR_ATTACHMENT0 + i);
+			glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, std3D_framebuffer.w, std3D_framebuffer.h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+		}
+	}
 }
 
 #ifdef HW_VBUFFER
@@ -5554,13 +5571,15 @@ void std3D_BlitFrame()
 	//glDepthMask(GL_FALSE);
 	//std3D_DrawSimpleTex(&std3D_texFboStage, &refr, std3D_framebuffer.tex0, 0, 0, 1.0, 1.0, 1.0, 0, "Frmebuffer Blit");
 
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, std3D_framebuffer.fbo);
+	std3D_ResolveMSAA();
+
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, std3D_framebuffer.resolveFbo);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, refr.fbo);
 	
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
 	glReadBuffer(GL_COLOR_ATTACHMENT0);
 
-	glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, refr.w, refr.h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+	glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, refr.w, refr.h, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.fbo);
 	//glBindTexture(GL_TEXTURE_2D, refr.tex);
@@ -5756,22 +5775,6 @@ void std3D_FlushDeferred()
 	STD_END_PROFILER_LABEL();
 }
 
-void std3D_ResolveMSAA()
-{
-	if (std3D_framebuffer.samples > 1)
-	{
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, std3D_framebuffer.resolveFbo);
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, std3D_framebuffer.fbo);
-
-		const uint8_t attachments = (std3D_framebufferFlags & 0x1) ? 2 : 1;
-		for (uint8_t i = 0; i < attachments; ++i)
-		{
-			glDrawBuffer(GL_COLOR_ATTACHMENT0 + i);
-			glReadBuffer(GL_COLOR_ATTACHMENT0 + i);
-			glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, std3D_framebuffer.w, std3D_framebuffer.h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-		}
-	}
-}
 
 // writes directly to the final window framebuffer
 void std3D_DoBloom()
