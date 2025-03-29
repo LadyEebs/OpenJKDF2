@@ -14,17 +14,17 @@ void main(void)
 	vec2 PixSize = param1 / iResolution.xy;
     
 	// 6x6 downscale/upscale
-    flex4 s0 = textureLod(tex, f_uv.xy + vec2( 0.000000000, 0.000000000) * PixSize.xy, 0.0);
-	flex4 s1 = textureLod(tex, f_uv.xy + vec2( 0.604077935, 0.000000000) * PixSize.xy, 0.0);
-	flex4 s2 = textureLod(tex, f_uv.xy + vec2( 0.000000000, 0.604077935) * PixSize.xy, 0.0);
-	flex4 s3 = textureLod(tex, f_uv.xy + vec2(-0.604077935, 0.000000000) * PixSize.xy, 0.0);
-	flex4 s4 = textureLod(tex, f_uv.xy + vec2( 0.000000000,-0.604077935) * PixSize.xy, 0.0);		
-	flex4 s5 = textureLod(tex, f_uv.xy + vec2( 0.604077935, 0.604077935) * PixSize.xy, 0.0);
-	flex4 s6 = textureLod(tex, f_uv.xy + vec2(-0.604077935, 0.604077935) * PixSize.xy, 0.0);
-	flex4 s7 = textureLod(tex, f_uv.xy + vec2( 0.604077935,-0.604077935) * PixSize.xy, 0.0);
-	flex4 s8 = textureLod(tex, f_uv.xy + vec2(-0.604077935,-0.604077935) * PixSize.xy, 0.0);
+    flex3 s0 = textureLod(tex, vec2( 0.000000000, 0.000000000) * PixSize.xy + f_uv.xy, 0.0).xyz;
+	flex3 s1 = textureLod(tex, vec2( 0.604077935, 0.000000000) * PixSize.xy + f_uv.xy, 0.0).xyz;
+	flex3 s2 = textureLod(tex, vec2( 0.000000000, 0.604077935) * PixSize.xy + f_uv.xy, 0.0).xyz;
+	flex3 s3 = textureLod(tex, vec2(-0.604077935, 0.000000000) * PixSize.xy + f_uv.xy, 0.0).xyz;
+	flex3 s4 = textureLod(tex, vec2( 0.000000000,-0.604077935) * PixSize.xy + f_uv.xy, 0.0).xyz;		
+	flex3 s5 = textureLod(tex, vec2( 0.604077935, 0.604077935) * PixSize.xy + f_uv.xy, 0.0).xyz;
+	flex3 s6 = textureLod(tex, vec2(-0.604077935, 0.604077935) * PixSize.xy + f_uv.xy, 0.0).xyz;
+	flex3 s7 = textureLod(tex, vec2( 0.604077935,-0.604077935) * PixSize.xy + f_uv.xy, 0.0).xyz;
+	flex3 s8 = textureLod(tex, vec2(-0.604077935,-0.604077935) * PixSize.xy + f_uv.xy, 0.0).xyz;
 		
-	flex4 Color = s0 * flex(0.145904019);
+	flex3 Color = s0 * flex(0.145904019);
 	Color += flex(0.11803490998) * (s1 + s2 + s3 + s4);
 	Color += flex(0.09548908532) * (s5 + s6 + s7 + s8);
 
