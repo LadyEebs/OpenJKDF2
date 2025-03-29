@@ -123,7 +123,7 @@ void main(void)
 			uint cluster = compute_cluster_index(clamp(pos.xy / pos.w * 0.5 + 0.5, vec2(0.0), vec2(1.0)) * iResolution.xy, viewPos.y);
 			light_input params;
 			params.pos       = packVPOS(vec4(viewPos.xyz, pos.w));
-			params.normal    = encode_octahedron_uint(normal.xyz);
+			params.normal    = packSnorm4x8(vec4(normal.xyz, 0));
 			params.view      = encode_octahedron_uint(view);
 			params.reflected = encode_octahedron_uint(reflect(-view, normal));
 			params.spec_c    = calc_spec_c(a);

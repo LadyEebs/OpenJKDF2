@@ -25,7 +25,7 @@ struct light_result
 struct light_input
 {
 	uvec2 pos;		 // 16:16:16 view space pos
-	uint  normal;	 // 16:16 octahedral normal
+	uint  normal;	 // 8:8:8 signed (todo: this is faster than octa but there's wasted bits)
 	uint  view;		 // 16:16 octahedral view vector (ggx)
 	uint  reflected; // 16:16 octahedral reflection vector (phong)
 	uint  spec_c;    // 16:16 specular coeffs
@@ -124,7 +124,7 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	if (intensity <= float(0.0))
 		return;
 
-	vec3 normal = decode_octahedron_uint(params.normal);
+	vec3 normal = unpackSnorm4x8(params.normal).xyz;
 	float lightMagnitude = sat1( dot(normal.xyz, lvec) * intensity );
 	//float signedMagnitude = lightMagnitude;
 	//lightMagnitude = max(lightMagnitude, float(0.0)) * intensity;

@@ -331,14 +331,17 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 
 	// custom intrinsics
 	const char* intrinsics =
+		// min3 and max3 fallbacks
 		"#ifndef GL_AMD_shader_trinary_minmax\n"
 		"#define max3(x, y, z) max( (x), max( (y), (z) ) )\n"
 		"#define min3(x, y, z) min( (x), min( (y), (z) ) )\n"
 		"#endif\n"
+		// saturate helpers
 		"#define sat1(x) clamp((x), (0.0), (1.0))\n"
 		"#define sat2(x) clamp((x), vec2(0.0), vec2(1.0))\n"
 		"#define sat3(x) clamp((x), vec3(0.0), vec3(1.0))\n"
 		"#define sat4(x) clamp((x), vec4(0.0), vec4(1.0))\n"
+		// cubeFaceIndex
 		"#ifdef GL_AMD_gcn_shader\n"
 		"	float cubeFaceIndex(vec3 p)\n"
 		"	{\n"
@@ -357,6 +360,7 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 		"		return faceID;\n"
 		"	}\n"
 		"#endif\n"
+		// flex packing and unpacking
 		"#ifdef GL_EXT_shader_explicit_arithmetic_types_float16\n"
 		"uint packFlex2x16(flex2 v)\n"
 		"{\n"
@@ -376,6 +380,7 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 		"	return unpackHalf2x16(v);\n"
 		"}\n"
 		"#endif\n"
+		// r11_g11_b10f packing and unpacking
 		"uint packF2x11_1x10(vec3 rgb)\n"
 		"{\n"
 		"	uint r = (packHalf2x16(flex2(rgb.x)) << 17) & 0xFFE00000;\n"
@@ -389,7 +394,8 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 		"	float g = unpackHalf2x16((rgb >> 6) & 0x7FF0).x;\n"
 		"	float b = unpackHalf2x16((rgb << 5) & 0x7FE0).x;\n"
 		"	return vec3(r, g, b); \n"
-			"}\n"
+		"}\n"
+		// rgb10a2 packing and unpacking
 		"uint packUnorm4x10_2(vec4 unpackedInput)\n"
 		"{\n"
 		"	uvec4 v = uvec4(round( clamp(unpackedInput, vec4(0.0), vec4(1.0)) * vec4(vec3(1023), 3) ));\n"

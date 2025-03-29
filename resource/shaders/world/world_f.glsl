@@ -143,7 +143,7 @@ void calc_light()
 		{
 			light_input params;
 			params.pos       = vpos;
-			params.normal    = encode_octahedron_uint(normal.xyz);
+			params.normal    = packSnorm4x8(vec4(normal.xyz, 0));
 			params.view      = encode_octahedron_uint(view);
 			params.reflected = encode_octahedron_uint(reflected.xyz);
 			params.spec_c    = calc_spec_c(roughness);
