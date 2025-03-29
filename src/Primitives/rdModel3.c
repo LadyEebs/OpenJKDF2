@@ -1587,7 +1587,9 @@ void rdModel3_DrawMesh(rdMesh *meshIn, rdMatrix34 *mat)
         ++face;
     }
 
+#ifdef MOTION_BLUR
 	rdMatrix_Copy34(&pCurThing->paPrevMatrices[meshIn->mesh_num], mat);
+#endif
 
 #ifdef RENDER_DROID2
 	rdSortDistance(0);

@@ -2750,7 +2750,7 @@ typedef struct rdThing
 	rdVector3* paHierarchyNodeVelocities;
 	rdVector3* paHierarchyNodeAngularVelocities;
 #endif
-#ifdef RENDER_DROID2
+#ifdef MOTION_BLUR
 	rdMatrix34* paPrevMatrices;
 #endif
 } rdThing;

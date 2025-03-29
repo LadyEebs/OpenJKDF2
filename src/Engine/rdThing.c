@@ -109,7 +109,7 @@ void rdThing_FreeEntry(rdThing *thing)
 		}
 #endif
 
-#ifdef RENDER_DROID2
+#ifdef MOTION_BLUR
 		if (thing->paPrevMatrices)
 		{
 			rdroid_pHS->free(thing->paPrevMatrices);
@@ -177,7 +177,7 @@ int rdThing_SetModel3(rdThing *thing, rdModel3 *model)
 	_memset(thing->paHiearchyNodeMatrixOverrides, 0, sizeof(rdMatrix34*) * model->numHierarchyNodes);
 #endif
 
-#ifdef RENDER_DROID2
+#ifdef MOTION_BLUR
 	thing->paPrevMatrices = rdroid_pHS->alloc(sizeof(rdMatrix34) * model->geosets[0].numMeshes);
 #endif
 
