@@ -1079,8 +1079,10 @@ typedef struct std3D_TransformState
 	rdMatrix44     modelView;
 	rdMatrix44     view;
 	rdMatrix44     proj;
+#ifdef MOTION_BLUR
 	rdMatrix44     modelPrev;
 	rdMatrix44     viewPrev;
+#endif
 } std3D_TransformState;
 
 typedef struct std3D_RasterState

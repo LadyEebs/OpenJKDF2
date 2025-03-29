@@ -1155,12 +1155,12 @@ void jkPlayer_DrawPov()
 	rdDepthRange(0.0f, 0.05f);
 
 	rdMatrixMode(RD_MATRIX_VIEW);
-	rdIdentity();
 	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
 
+#ifdef MOTION_BLUR
 	rdMatrixMode(RD_MATRIX_VIEW_PREV);
-	rdIdentity();
 	rdLoadMatrix34(&rdCamera_pCurCamera->prev_view_matrix);
+#endif
 
 	rdMatrixMode(RD_MATRIX_PROJECTION);
 	rdIdentity();
@@ -1172,8 +1172,10 @@ void jkPlayer_DrawPov()
 	rdMatrixMode(RD_MATRIX_MODEL);
 	rdIdentity();
 
+#ifdef MOTION_BLUR
 	rdMatrixMode(RD_MATRIX_MODEL_PREV);
 	rdIdentity();
+#endif
 
 	// rebuild clusters for FP
 	rdMatrix44 proj;

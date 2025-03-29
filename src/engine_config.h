@@ -80,6 +80,8 @@
 #define FOG
 #endif
 
+//#define MOTION_BLUR
+
 #define RD_AMBIENT_LOBES 8
 
 #define RD_CACHE_MAX_DRAW_CALLS				16384

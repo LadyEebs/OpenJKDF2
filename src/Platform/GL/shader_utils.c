@@ -274,6 +274,9 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 #ifdef FOG
 	"#define FOG\n"
 #endif
+#ifdef MOTION_BLUR
+	"#define MOTION_BLUR\n"
+#endif
 	;
 
 	char userDefs[1024] = { '\0' };

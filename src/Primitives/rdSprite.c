@@ -145,18 +145,22 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	rdMatrix44 viewMatrix;
 	rdGetMatrix(&viewMatrix, RD_MATRIX_VIEW);
 
-	rdMatrix44 viewMatrixPrev;
-	rdGetMatrix(&viewMatrixPrev, RD_MATRIX_VIEW_PREV);
-
 	// vertices are already in view space
 	rdMatrixMode(RD_MATRIX_VIEW);
 	rdIdentity();
+
+	rdMatrixMode(RD_MATRIX_MODEL);
+	rdIdentity();
+
+#ifdef MOTION_BLUR
+	rdMatrix44 viewMatrixPrev;
+	rdGetMatrix(&viewMatrixPrev, RD_MATRIX_VIEW_PREV);
+
 	rdMatrixMode(RD_MATRIX_VIEW_PREV); // fixme
 	rdIdentity();
 	rdMatrixMode(RD_MATRIX_MODEL_PREV);
 	rdIdentity();
-	rdMatrixMode(RD_MATRIX_MODEL);
-	rdIdentity();
+#endif
 
 	rdGeoMode_t curGeometryMode_ = rdroid_curGeometryMode;
 	rdLightMode_t curLightingMode_ = rdroid_curLightingMode;
@@ -321,8 +325,10 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	rdTexOffseti(RD_TEXCOORD0, 0, 0);
 	rdMatrixMode(RD_MATRIX_VIEW);
 	rdLoadMatrix(&viewMatrix);
+#ifdef MOTION_BLUR
 	rdMatrixMode(RD_MATRIX_VIEW_PREV);
 	rdLoadMatrix(&viewMatrixPrev);
+#endif
 	rdSetZBufferMethod(oldZ);
 	rdTexClampMode(0, 0);
 	rdSetBlendEnabled(RD_FALSE);

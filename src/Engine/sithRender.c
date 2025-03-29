@@ -685,17 +685,18 @@ void sithRender_DrawBackdrop()
 	rdMatrix_InvertOrtho34(&rdCamera_pCurCamera->view_matrix, &backdropCamMat);
 
 	rdMatrixMode(RD_MATRIX_VIEW);
-	rdIdentity();
 	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
-
-	rdMatrixMode(RD_MATRIX_VIEW_PREV);
-	rdIdentity();
-	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
-
+	
 	rdMatrixMode(RD_MATRIX_MODEL);
 	rdIdentity();
+
+#ifdef MOTION_BLUR
+	rdMatrixMode(RD_MATRIX_VIEW_PREV);
+	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
+
 	rdMatrixMode(RD_MATRIX_MODEL_PREV);
 	rdIdentity();
+#endif
 
 	sithSector* backdropSector = sithWorld_pCurrentWorld->backdropSector;
 	while (backdropSector)
@@ -756,16 +757,16 @@ void sithRender_ResetState()
 	rdMatrixMode(RD_MATRIX_MODEL);
 	rdIdentity();
 
+	rdMatrixMode(RD_MATRIX_VIEW);
+	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
+
+#ifdef MOTION_BLUR
 	rdMatrixMode(RD_MATRIX_MODEL_PREV);
 	rdIdentity();
 
-	rdMatrixMode(RD_MATRIX_VIEW);
-	rdIdentity();
-	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
-
 	rdMatrixMode(RD_MATRIX_VIEW_PREV);
-	rdIdentity();
 	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
+#endif
 
 	rdSetCullFlags(1);
 }

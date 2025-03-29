@@ -334,9 +334,6 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 	rdMatrix44 viewMatrix;
 	rdGetMatrix(&viewMatrix, RD_MATRIX_VIEW);
 
-	rdMatrix44 viewMatrixPrev;
-	rdGetMatrix(&viewMatrixPrev, RD_MATRIX_VIEW_PREV);
-
 	// vertices are already in view space
 	rdMatrixMode(RD_MATRIX_VIEW);
 	rdIdentity();
@@ -344,11 +341,16 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 	rdMatrixMode(RD_MATRIX_MODEL);
 	rdIdentity();
 
+#ifdef MOTION_BLUR
+	rdMatrix44 viewMatrixPrev;
+	rdGetMatrix(&viewMatrixPrev, RD_MATRIX_VIEW_PREV);
+
 	rdMatrixMode(RD_MATRIX_MODEL_PREV);
 	rdIdentity();
 
 	rdMatrixMode(RD_MATRIX_VIEW_PREV); // fixme
 	rdIdentity();
+#endif
 
 	idxInfo->numVertices = face->numVertices;
 	idxInfo->vertexPosIdx = face->vertexPosIdx;
@@ -497,8 +499,10 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 	rdTexOffseti(RD_TEXCOORD0, 0, 0);
 	rdMatrixMode(RD_MATRIX_VIEW);
 	rdLoadMatrix(&viewMatrix);
+#ifdef MOTION_BLUR
 	rdMatrixMode(RD_MATRIX_VIEW_PREV);
 	rdLoadMatrix(&viewMatrixPrev);
+#endif
 }
 
 #else

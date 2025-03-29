@@ -344,12 +344,12 @@ void rdCamera_Update(rdMatrix34 *orthoProj)
 #ifdef RENDER_DROID2
 	rdMatrixMode(RD_MATRIX_VIEW);
 	rdIdentity();
-	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
 
+#ifdef MOTION_BLUR
 	// init to cur frame, only pov model will use this
 	rdMatrixMode(RD_MATRIX_VIEW_PREV);
-	rdIdentity();
 	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
+#endif
 #endif
 }
 

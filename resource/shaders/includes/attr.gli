@@ -29,8 +29,10 @@ layout(location = 0) VAPI  vec4 f_coord;
 layout(location = 1) VAPI flex3 f_normal;
 layout(location = 2) VAPI  flex f_lodbias;
 layout(location = 3) VAPI flex4 f_color[COLOR_SETS];
+#ifdef MOTION_BLUR
 layout(location = 5) VAPI  vec4 f_curTC;
 layout(location = 6) VAPI  vec4 f_prevTC;
+#endif
 layout(location = 7) VAPI  vec3 f_uv[UV_SETS];
 	
 #ifndef VERTEX_SHADER

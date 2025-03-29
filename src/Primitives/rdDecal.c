@@ -109,8 +109,10 @@ void rdDecal_Draw(rdThing* thing, rdMatrix34* matrix)
 	//rdMatrix_PreScale34(&mat, &size);
 
 	//rdMatrix_PostMultiply34(&mat, &rdCamera_pCurCamera->view_matrix);
+#ifdef MOTION_BLUR
 	rdMatrixMode(RD_MATRIX_MODEL_PREV);
 	rdLoadMatrix34(matrix);
+#endif
 	rdMatrixMode(RD_MATRIX_MODEL);
 	rdLoadMatrix34(matrix);
 

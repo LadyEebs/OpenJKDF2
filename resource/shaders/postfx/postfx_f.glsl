@@ -191,7 +191,7 @@ void main(void)
 
 
 
-#ifdef MOTION_BLUR
+#ifdef MOTION_BLUR_PASS
 
 void main(void)
 {

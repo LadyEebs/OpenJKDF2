@@ -82,9 +82,7 @@ void calc_light()
 #ifdef FOG
 	if(fogEnabled > 0)
 	{
-		float clipDepth = 0;//texelFetch(cliptex, ivec2(gl_FragCoord.xy), 0).r;
-	
-		float distToCam = max(0.0, viewPos.y - clipDepth) * fastRcpNR1(-view.y);
+		float distToCam = max(0.0, viewPos.y) * fastRcpNR1(-view.y);
 		fog = saturate((distToCam - fogStart) * fastRcpNR1(fogEnd - fogStart));
 	}
 #endif
@@ -333,9 +331,8 @@ void main(void)
 
 #ifdef FOG
 	// apply fog to outputs
-	//if(fogEnabled > 0)
+	if(fogEnabled > 0)
 	{
-		//vec4 fog_color = unpackUnorm4x8(fog);
 		float fog = unpackUnorm4x8(v[1]).w * fogColor.a;
 		outColor.rgb = mix(outColor.rgb, fogColor.rgb, saturate(fog + dither));
 		fragGlow.rgb = fragGlow.rgb * (1.0 - fog);
@@ -421,7 +418,7 @@ void main(void)
 	// note we subtract instead of add to avoid boosting blacks
 	fragGlow.rgb = saturate(fragGlow.rgb + -dither);
 
-
+#ifdef MOTION_BLUR
 	vec2 curTC  = f_curTC.xy / f_curTC.w;
 	vec2 prevTC = f_prevTC.xy / f_prevTC.w;
 
@@ -430,4 +427,5 @@ void main(void)
 
 	vec2 vel = (curTC.xy - prevTC.xy) * shutter;
 	fragVel = vec4(vel, fetch_vtx_depth(), 1);
+#endif
 }
