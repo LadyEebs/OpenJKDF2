@@ -222,6 +222,7 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 					"#extension GL_KHR_shader_subgroup_arithmetic	: enable\n"		// subgroupOr
 					"#extension GL_KHR_shader_subgroup_vote			: enable\n"		// subgroupAll
 					// EXT
+					"#extension GL_EXT_shader_explicit_arithmetic_types_int8	: enable\n"	// 8 bit int
 					"#extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable\n"	// 16 bit float
 					"#extension GL_EXT_shader_explicit_arithmetic_types_int16	: enable\n"	// 16 bit int
 					"#extension GL_EXT_shader_explicit_arithmetic_types_int64	: enable\n"	// 64 bit int
