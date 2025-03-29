@@ -784,8 +784,7 @@ void rdTexCoord2i(uint8_t i, float u, float v)
 		rdroid_vertexTexCoordState[i].x = (float)u / 32.0f;
 		rdroid_vertexTexCoordState[i].y = (float)v / 32.0f;
 	}
-	rdroid_vertexTexCoordState[i].z = 0;
-	rdroid_vertexTexCoordState[i].w = 1;
+	rdroid_vertexTexCoordState[i].z = 1;
 }
 
 void rdTexCoord2v(uint8_t i, const float* v)
