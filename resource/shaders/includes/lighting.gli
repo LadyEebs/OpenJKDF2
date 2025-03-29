@@ -159,7 +159,7 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	// Unity "Optimizing PBR"
 	// https://community.arm.com/cfs-file/__key/communityserver-blogs-components-weblogfiles/00-00-00-20-66/siggraph2015_2D00_mmg_2D00_renaldas_2D00_slides.pdf
 	// approximated microfacet GGX lobe, fresnel and visibility approximated with ldoth, spec color applied at the end
-	//vec3  view  = decode_octahedron_uint(params.view);
+	//vec3  view  = unpackSnorm4x8(params.view).xyz;
 	//vec3  h     = normalize(lvec + view);
 	//float ndoth = clamp(dot(h, normal), float(0.0), float(1.0));
 	//float ldoth = clamp(dot(h, lvec), float(0.0), float(1.0));
@@ -167,7 +167,7 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	//float d       = (ndoth * ndoth) * (coeffs.x - float(1.0)) + float(1.00001);
 	//      d       = coeffs.x / ((d * d) * max(float(0.1), ldoth * ldoth) * coeffs.y);
 
-	vec3 reflected = decode_octahedron_uint(params.reflected);
+	vec3 reflected = unpackSnorm4x8(params.reflected).xyz;
 
 	float rdotv = dot(reflected, lvec);
 	float     d = (rdotv * rdotv) * coeffs.y + 1.00001;
@@ -176,7 +176,7 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	// "Physically Based Shading on Mobile"
 	// https://www.unrealengine.com/en-US/blog/physically-based-shading-on-mobile
 	// approximated energy conserving phong lobe, fresnel and spec color must be applied at the end with env_brdf
-	vec3 reflected = decode_octahedron_uint(params.reflected);
+	vec3 reflected = unpackSnorm4x8(params.reflected).xyz;
 
 	float rdotv  = dot(reflected, lvec);
 	float d      = coeffs.x * fastExp2( coeffs.y * rdotv + (-coeffs.y) );

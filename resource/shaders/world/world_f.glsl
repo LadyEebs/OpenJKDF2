@@ -142,8 +142,8 @@ void calc_light()
 			light_input params;
 			params.pos       = vpos;
 			params.normal    = packSnorm4x8(vec4(normal.xyz, 0));
-			params.view      = encode_octahedron_uint(view);
-			params.reflected = encode_octahedron_uint(reflected.xyz);
+			params.view      = packSnorm4x8(vec4(view,0));
+			params.reflected = packSnorm4x8(vec4(reflected,0));
 			params.spec_c    = calc_spec_c(roughness);
 			params.tint      = packUnorm4x8(vec4(fetch_vtx_color(0)));
 
