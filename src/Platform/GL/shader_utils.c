@@ -207,6 +207,7 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 	extern int Window_GL4;
     version = Window_GL4 ? "#version 460\n" : "#version 330\n";
     extensions =	"#if __VERSION__ < 400\n"
+					// ARB
 					"#extension GL_ARB_shading_language_packing	: require\n"	// unpackUnorm4x8, core in 4.0
 					"#extension GL_ARB_texture_gather			: require\n"	// textureGather, core in 4.0
 					"#	extension GL_ARB_texture_query_lod		: require\n"	// textureQueryLod, core in 4.0
@@ -221,14 +222,12 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 					"#extension GL_KHR_shader_subgroup_arithmetic	: enable\n"		// subgroupOr
 					"#extension GL_KHR_shader_subgroup_vote			: enable\n"		// subgroupAll
 					// EXT
-					"#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require\n"	// 16 bit float
-					"#extension GL_EXT_shader_explicit_arithmetic_types_int16	: require\n"	// 16 bit int
-					"#extension GL_EXT_shader_explicit_arithmetic_types_int64	: require\n"	// 64 bit int
+					"#extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable\n"	// 16 bit float
+					"#extension GL_EXT_shader_explicit_arithmetic_types_int16	: enable\n"	// 16 bit int
+					"#extension GL_EXT_shader_explicit_arithmetic_types_int64	: enable\n"	// 64 bit int
 					// AMD
 					"#extension GL_AMD_shader_trinary_minmax		: enable\n"		// min3, max3
 					"#extension GL_AMD_gpu_shader_half_float_fetch	: enable\n"		// 16 bit samplers
-					//"#extension GL_AMD_gpu_shader_int16				: enable\n"		// 16 bit int
-					//"#extension GL_ARB_gpu_shader_int64				: enable\n"		// 64 bit int
 					//"#extension GL_KHR_shader_subgroup_shuffle			: enable\n"
 					//"#extension GL_KHR_shader_subgroup_shuffle_relative	: enable\n"
 					//"#extension GL_KHR_shader_subgroup_clustered			: enable\n"
