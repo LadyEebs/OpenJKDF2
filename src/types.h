@@ -957,7 +957,7 @@ typedef D3DVERTEX_orig D3DVERTEX;
 
 typedef struct rdTexVertex
 {
-	float u, v, r, q;
+	float u, v, w;
 } rdTexVertex;
 
 typedef struct rdVertex

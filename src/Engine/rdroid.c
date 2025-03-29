@@ -680,10 +680,10 @@ void rdEndPrimitive()
 
 	rdroid_vertexCacheNum = 0;
 	rdroid_vertexColorState = 0xFFFFFFFF;
-	rdVector_Set4(&rdroid_vertexTexCoordState[0], 0.0f, 0.0f, 0.0f, 1.0f);
-	rdVector_Set4(&rdroid_vertexTexCoordState[1], 0.0f, 0.0f, 0.0f, 1.0f);
-	rdVector_Set4(&rdroid_vertexTexCoordState[2], 0.0f, 0.0f, 0.0f, 1.0f);
-	rdVector_Set4(&rdroid_vertexTexCoordState[3], 0.0f, 0.0f, 0.0f, 1.0f);
+	rdVector_Set3(&rdroid_vertexTexCoordState[0], 0.0f, 0.0f, 1.0f);
+	rdVector_Set3(&rdroid_vertexTexCoordState[1], 0.0f, 0.0f, 1.0f);
+	rdVector_Set3(&rdroid_vertexTexCoordState[2], 0.0f, 0.0f, 1.0f);
+	rdVector_Set3(&rdroid_vertexTexCoordState[3], 0.0f, 0.0f, 1.0f);
 	rdVector_Set3(&rdroid_vertexNormalState, 0.0f, 0.0f, 1.0f);
 	rdroid_curPrimitiveType = RD_PRIMITIVE_NONE;
 }
@@ -709,8 +709,7 @@ void rdVertex3f(float x, float y, float z)
 	{
 		pVert->texcoords[i].u = rdroid_vertexTexCoordState[i].x;
 		pVert->texcoords[i].v = rdroid_vertexTexCoordState[i].y;
-		pVert->texcoords[i].r = rdroid_vertexTexCoordState[i].z;
-		pVert->texcoords[i].q = rdroid_vertexTexCoordState[i].w;
+		pVert->texcoords[i].w = rdroid_vertexTexCoordState[i].z;
 	}
 	pVert->colors[0] = rdroid_vertexColorState;
 }
@@ -756,8 +755,7 @@ void rdTexCoord2f(uint8_t i, float u, float v)
 
 	rdroid_vertexTexCoordState[i].x = u;
 	rdroid_vertexTexCoordState[i].y = v;
-	rdroid_vertexTexCoordState[i].z = 0;
-	rdroid_vertexTexCoordState[i].w = 1;
+	rdroid_vertexTexCoordState[i].z = 1;
 }
 
 void rdTexCoord2i(uint8_t i, float u, float v)
@@ -795,11 +793,10 @@ void rdTexCoord2v(uint8_t i, const float* v)
 	rdTexCoord2f(i, v[0], v[1]);
 }
 
-void rdTexCoord4i(uint8_t i, float u, float v, float t, float w)
+void rdTexCoord3i(uint8_t i, float u, float v, float w)
 {
 	rdTexCoord2i(i, u, v);
-	rdroid_vertexTexCoordState[i].z = t;
-	rdroid_vertexTexCoordState[i].w = w;
+	rdroid_vertexTexCoordState[i].z = w;
 }
 
 // todo: move this to texstate or texgen or something (rdTexScale)

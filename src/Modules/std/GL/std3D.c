@@ -1747,8 +1747,8 @@ void std3D_setupDrawCallVAO(std3D_worldStage* pStage)
 			for (int i = 0; i < RD_NUM_TEXCOORDS; ++i)
 			{
 				glVertexAttribPointer(
-					4+i,//pStage->attribute_v_uv + i,    // attribute
-					4,                 // number of elements per vertex, here (U,V,R,Q)
+					4+i,				//pStage->attribute_v_uv + i,    // attribute
+					3,                 // number of elements per vertex, here (U,V,W)
 					GL_FLOAT,          // the type of each element
 					GL_FALSE,          // take our values as-is
 					sizeof(rdVertex),                 // no extra data between each position
@@ -2099,14 +2099,12 @@ int init_resources()
     return true;
 }
 
-void std3D_ResetDrawCalls();
-
 int std3D_Startup()
 {
     if (std3D_bInitted) {
         return 1;
     }
-
+	
 #ifdef TARGET_CAN_JKGM
     jkgm_startup();
 #endif

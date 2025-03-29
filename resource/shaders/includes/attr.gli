@@ -15,7 +15,7 @@ import "defines.gli"
 	layout(location = 0) in  vec3 coord3d;		// vertex position
 	layout(location = 1) in flex3 v_normal;		// vertex normal
 	layout(location = 2) in flex4 v_color[2];	// up to 2 vertex colors
-	layout(location = 4) in  vec4 v_uv[4];		// up to 4 texcoords
+	layout(location = 4) in  vec3 v_uv[4];		// up to 4 texcoords
 
 	#define VAPI out
 
@@ -35,7 +35,7 @@ layout(location = 5) VAPI  vec3 f_uv[UV_SETS];
 
 	vec3  fetch_vtx_pos()			{ return             f_coord.xyz; }
 	vec3  fetch_vtx_dir()			{ return normalize(-f_coord.xyz); }
-	vec2  fetch_vtx_uv(uint i)		{ return  f_uv[i].xy / f_uv[i].z; }
+	vec2  fetch_vtx_uv(uint i)		{ return  f_uv[i].xy / f_uv[i].z; } // todo: move the proj to an op
 	flex3 fetch_vtx_normal()		{ return                f_normal; }
 	float fetch_vtx_depth()			{ return               f_coord.w; }
 	vec4  fetch_vtx_coord()			{ return                 f_coord; }

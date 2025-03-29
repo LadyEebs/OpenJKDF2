@@ -130,7 +130,7 @@ void rdVertex3f(float x, float y, float z);
 void rdColor4f(float r, float g, float b, float a);
 void rdTexCoord2f(uint8_t i, float u, float v); // normalized
 void rdTexCoord2i(uint8_t i, float u, float v); // unnormalized
-void rdTexCoord4i(uint8_t i, float u, float v, float t, float w); // unnormalized
+void rdTexCoord3i(uint8_t i, float u, float v, float w); // unnormalized
 void rdTexCoordScaled2i(uint8_t i, float u, float v, float w, float h); // kinda suckyyy...
 void rdNormal3f(float x, float y, float z);
 void rdVertex3v(const float* v);
