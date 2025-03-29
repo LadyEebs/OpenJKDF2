@@ -336,7 +336,7 @@ void main(void)
 	{
 		//vec4 fog_color = unpackUnorm4x8(fog);
 		float fog = unpackUnorm4x8(v[1]).w * fogColor.a;
-		outColor.rgb = mix(outColor.rgb, fogColor.rgb, sat1(fog+dither));
+		outColor.rgb = mix(outColor.rgb, fogColor.rgb, sat1(fog + dither));
 		fragGlow.rgb = fragGlow.rgb * (1.0 - fog);
 	}
 #endif

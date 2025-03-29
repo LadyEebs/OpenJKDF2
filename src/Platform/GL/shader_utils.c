@@ -207,27 +207,32 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 	extern int Window_GL4;
     version = Window_GL4 ? "#version 460\n" : "#version 330\n";
     extensions =	"#if __VERSION__ < 400\n"
-					"#extension GL_ARB_shading_language_packing		: require\n"	// unpackUnorm4x8, core in 4.0
-					"#extension GL_ARB_texture_gather				: require\n"	// textureGather, core in 4.0
-					"#	extension GL_ARB_texture_query_lod			: require\n"	// textureQueryLod, core in 4.0
+					"#extension GL_ARB_shading_language_packing	: require\n"	// unpackUnorm4x8, core in 4.0
+					"#extension GL_ARB_texture_gather			: require\n"	// textureGather, core in 4.0
+					"#	extension GL_ARB_texture_query_lod		: require\n"	// textureQueryLod, core in 4.0
 					"#endif\n"
 					"#if __VERSION__ < 430\n"
 					"#	extension GL_ARB_explicit_uniform_location	: require\n"	// layout(location=n), core in 4.3
 					"#	extension GL_ARB_texture_query_levels		: require\n"	// textureQueryLevels, core in 4.3
 					"#endif\n"
 					"#extension GL_ARB_gpu_shader5					: require\n"	// findLSB, required for sampler/ubo dynamic indexing
+					// KHR
 					"#extension GL_KHR_shader_subgroup_ballot		: enable\n"		// subgroupBroadcastFirst
 					"#extension GL_KHR_shader_subgroup_arithmetic	: enable\n"		// subgroupOr
 					"#extension GL_KHR_shader_subgroup_vote			: enable\n"		// subgroupAll
-					"#extension GL_AMD_gpu_shader_half_float		: enable\n"		// 16 bit float
+					// EXT
+					"#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require\n"	// 16 bit float
+					"#extension GL_EXT_shader_explicit_arithmetic_types_int16	: require\n"	// 16 bit int
+					"#extension GL_EXT_shader_explicit_arithmetic_types_int64	: require\n"	// 64 bit int
+					// AMD
+					"#extension GL_AMD_shader_trinary_minmax		: enable\n"		// min3, max3
 					"#extension GL_AMD_gpu_shader_half_float_fetch	: enable\n"		// 16 bit samplers
-					"#extension GL_AMD_gpu_shader_int16				: enable\n"		// 16 bit int
-					"#extension GL_ARB_gpu_shader_int64				: enable\n"		// 64 bit int
-					//"#extension GL_KHR_shader_subgroup_shuffle : enable\n"
-					//"#extension GL_KHR_shader_subgroup_shuffle_relative : enable\n"
-					//"#extension GL_KHR_shader_subgroup_clustered : enable\n"
-					//"#extension GL_KHR_shader_subgroup_quad : enable\n"
-					"#extension GL_AMD_shader_trinary_minmax : enable\n" // min3, max3
+					//"#extension GL_AMD_gpu_shader_int16				: enable\n"		// 16 bit int
+					//"#extension GL_ARB_gpu_shader_int64				: enable\n"		// 64 bit int
+					//"#extension GL_KHR_shader_subgroup_shuffle			: enable\n"
+					//"#extension GL_KHR_shader_subgroup_shuffle_relative	: enable\n"
+					//"#extension GL_KHR_shader_subgroup_clustered			: enable\n"
+					//"#extension GL_KHR_shader_subgroup_quad				: enable\n"
 					"#if __VERSION__ > 430\n"
 					"#	extension GL_AMD_gcn_shader : enable\n" // cubeFaceIndexAMD
 					"#endif\n"
@@ -304,7 +309,7 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 		"#endif                              \n"
 		// fp16, fallback to fp32 if not present
 		// tricky to use correctly, lots of conversions if not careful
-		"#ifdef GL_AMD_gpu_shader_half_float\n"
+		"#ifdef GL_EXT_shader_explicit_arithmetic_types_float16\n"
 		"#	define flex		float16_t\n"
 		"#	define flex2	f16vec2\n"
 		"#	define flex3	f16vec3\n"
@@ -352,7 +357,7 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 		"		return faceID;\n"
 		"	}\n"
 		"#endif\n"
-		"#ifdef GL_AMD_gpu_shader_half_float\n"
+		"#ifdef GL_EXT_shader_explicit_arithmetic_types_float16\n"
 		"uint packFlex2x16(flex2 v)\n"
 		"{\n"
 		"	return packFloat2x16(v);\n"
