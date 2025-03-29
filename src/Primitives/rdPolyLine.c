@@ -455,6 +455,19 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 
 	rdTexOffseti(RD_TEXCOORD0, face->clipIdk.x, face->clipIdk.y);
 
+	rdVector3 tint = { 1,1,1 };
+	if (thing->parentSithThing->sector != sithCamera_currentCamera->sector)
+		tint = thing->parentSithThing->sector->tint;
+
+	rdVector3 halfTint;
+	halfTint.x = tint.x * 0.5f;
+	halfTint.y = tint.y * 0.5f;
+	halfTint.z = tint.z * 0.5f;
+
+	tint.x -= (halfTint.z + halfTint.y);
+	tint.y -= (halfTint.x + halfTint.y);
+	tint.z -= (halfTint.x + halfTint.z);
+
 	if(rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
 	{
 		for(int i = 0; i < face->numVertices; ++i)

@@ -259,14 +259,27 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	rdSprite_inVerts[3].y = sprite->offset.y + vertex_out.y;
 	rdSprite_inVerts[3].z = sprite->offset.z + halfHeight + vertex_out.z;
 
+	rdVector3 tint = { 1,1,1 };
+	if (thing->parentSithThing->sector != sithCamera_currentCamera->sector)
+		tint = thing->parentSithThing->sector->tint;
+
+	rdVector3 halfTint;
+	halfTint.x = tint.x * 0.5f;
+	halfTint.y = tint.y * 0.5f;
+	halfTint.z = tint.z * 0.5f;
+
+	tint.x -= (halfTint.z + halfTint.y);
+	tint.y -= (halfTint.x + halfTint.y);
+	tint.z -= (halfTint.x + halfTint.z);
+
 	float s, c;
 	if (thing->spriteRot != 0.0)
 		stdMath_SinCos(thing->spriteRot, &s, &c);
 
 	if (sprite->face.type & RD_FF_VERTEX_COLORS)
-		rdColor4f(thing->color.x, thing->color.y, thing->color.z, 1.0f);
+		rdColor4f(thing->color.x * tint.x + thing->color.x, thing->color.y * tint.y + thing->color.y, thing->color.z * tint.z + thing->color.z, 1.0f);
 	else
-		rdColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+		rdColor4f(tint.x + 1.0f, tint.y + 1.0f, tint.z + 1.0f, 1.0f);
 
 	if (rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
 	{

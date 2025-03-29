@@ -1711,23 +1711,44 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 	rdGetViewport(&viewport);
 	float aspect = viewport.height / viewport.width;
 
+	rdVector3 tint = {1,1,1};
+	if (pCurThing->parentSithThing->sector != sithCamera_currentCamera->sector)
+		tint = pCurThing->parentSithThing->sector->tint;
+
+	rdVector3 halfTint;
+	halfTint.x = tint.x * 0.5f;
+	halfTint.y = tint.y * 0.5f;
+	halfTint.z = tint.z * 0.5f;
+
+	tint.x -= (halfTint.z + halfTint.y);
+	tint.y -= (halfTint.x + halfTint.y);
+	tint.z -= (halfTint.x + halfTint.z);
+
 	if (rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
 	{
 		for (int j = 0; j < face->numVertices; j++)
 		{
 			int posidx = face->vertexPosIdx[j];
 
-			if (rdGetVertexColorMode() == 0)
+			if (face->lightingMode == RD_LIGHTMODE_FULLYLIT)
+			{
+				rdColor4f(1.5f * tint.x + 1.5f, 1.5f * tint.y + 1.5f, 1.5f * tint.z + 1.5f, alpha);
+			}
+			else if (face->lightingMode == RD_LIGHTMODE_NOTLIT)
+			{
+				rdColor4f(tint.x + 1.0f, tint.y + 1.0f, tint.z + 1.0f, alpha);
+			}
+			else if (rdGetVertexColorMode() == 0)
 			{
 				float intensity = pCurMesh->vertices_i[posidx];
-				rdColor4f(intensity, intensity, intensity, alpha);
+				rdColor4f(intensity * tint.x + intensity, intensity * tint.y + intensity, intensity * tint.z + intensity, alpha);
 			}
 			else
 			{
-				float* red = pCurMesh->vertices_r;
-				float* green = pCurMesh->vertices_g;
-				float* blue = pCurMesh->vertices_b;
-				rdColor4f(red[posidx], green[posidx], blue[posidx], alpha);
+				float red = pCurMesh->vertices_r[posidx];
+				float green = pCurMesh->vertices_g[posidx];
+				float blue = pCurMesh->vertices_b[posidx];
+				rdColor4f(red * tint.x + red, green * tint.y + green, blue * tint.z + blue, alpha);
 			}
 
 			if(face->vertexUVIdx && pCurMesh->vertexUVs)

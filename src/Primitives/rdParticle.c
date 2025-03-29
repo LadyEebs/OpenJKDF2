@@ -366,6 +366,19 @@ int rdParticle_Draw(rdThing* thing, rdMatrix34* mat)
 	rdMatrix34 out;
 	rdMatrix_Multiply34(&out, &rdCamera_pCurCamera->view_matrix, mat);
 	rdMatrix_TransformPointLst34(&out, particle->vertices, &aParticleVertices[0], particle->numVertices);
+	
+	rdVector3 tint = { 1,1,1 };
+	if (thing->parentSithThing->sector != sithCamera_currentCamera->sector)
+		tint = thing->parentSithThing->sector->tint;
+
+	rdVector3 halfTint;
+	halfTint.x = tint.x * 0.5f;
+	halfTint.y = tint.y * 0.5f;
+	halfTint.z = tint.z * 0.5f;
+
+	tint.x -= (halfTint.z + halfTint.y);
+	tint.y -= (halfTint.x + halfTint.y);
+	tint.z -= (halfTint.x + halfTint.z);
 
 	for(int j = 0; j < particle->numVertices; ++j)
 	{
@@ -390,7 +403,7 @@ int rdParticle_Draw(rdThing* thing, rdMatrix34* mat)
 
 		if (rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
 		{
-			rdColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+			rdColor4f(tint.x + 1.0f, tint.y + 1.0f, tint.z + 1.0f, 1.0f);
 			rdVertex3f(left, depth, bottom);
 			rdVertex3f(right, depth, bottom);
 			rdVertex3f(right, depth, top);

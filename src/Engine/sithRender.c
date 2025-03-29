@@ -1599,7 +1599,24 @@ void sithRender_DrawSurface(sithSurface* surface)
 	if (isWater)
 		alpha = 1.0f;
 
-	float baseLight = surface->parent_sector->extraLight + surface->surfaceInfo.face.extraLight;
+	rdVector3 tint = { 1,1,1 };
+	if (isWater)
+	{
+		tint = (rdVector3){ surface->adjoin->sector->tint.x, surface->adjoin->sector->tint.y, surface->adjoin->sector->tint.z };
+	}
+	else if (surface->parent_sector != sithCamera_currentCamera->sector)
+	{
+		tint = surface->parent_sector->tint;
+	}
+
+	rdVector3 halfTint;
+	halfTint.x = tint.x * 0.5f;
+	halfTint.y = tint.y * 0.5f;
+	halfTint.z = tint.z * 0.5f;
+
+	tint.x -= (halfTint.z + halfTint.y);
+	tint.y -= (halfTint.x + halfTint.y);
+	tint.z -= (halfTint.x + halfTint.z);
 
 	if (rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
 	{
@@ -1609,23 +1626,28 @@ void sithRender_DrawSurface(sithSurface* surface)
 
 			if (lightMode == RD_LIGHTMODE_FULLYLIT)
 			{
-				rdColor4f(1.5f, 1.5f, 1.5f, alpha);
+				rdColor4f(1.5f * tint.x + 1.5f, 1.5f * tint.y + 1.5f, 1.5f * tint.z + 1.5f, alpha);
 			}
 			else if (lightMode == RD_LIGHTMODE_NOTLIT)
 			{
-				rdColor4f(baseLight, baseLight, baseLight, alpha);
+				rdColor4f(tint.x + 1.0f, tint.y + 1.0f, tint.z + 1.0f, alpha);
 			}
 			else if ((surface->surfaceFlags & SITH_SURFACE_1000000) == 0)
 			{
-				float intensity = surface->surfaceInfo.intensities[j] + baseLight;
-				rdColor4f(intensity, intensity, intensity, alpha);
+				float intensity = surface->surfaceInfo.intensities[j];
+				rdColor4f(intensity* tint.x + intensity, intensity * tint.y + intensity, intensity * tint.z + intensity, alpha);
 			}
 			else
 			{
 				float* red = (surface->surfaceInfo).intensities + surface->surfaceInfo.face.numVertices;
 				float* green = red + surface->surfaceInfo.face.numVertices;
 				float* blue = green + surface->surfaceInfo.face.numVertices;
-				rdColor4f(red[j] + baseLight, green[j] + baseLight, blue[j] + baseLight, alpha);
+
+				float r = (red[j]);
+				float g = (green[j]);
+				float b = (blue[j]);
+
+				rdColor4f(r * tint.x + r, g * tint.y + g, b * tint.z + b, alpha);
 			}
 
 			if (surface->surfaceInfo.face.geometryMode >= RD_GEOMODE_TEXTURED && surface->surfaceInfo.face.vertexUVIdx)
