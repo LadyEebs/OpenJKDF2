@@ -331,6 +331,10 @@ int rdCamera_BuildClipFrustum(rdCamera *camera, rdClipFrustum *outClip, signed i
 
 void rdCamera_Update(rdMatrix34 *orthoProj)
 {
+#ifdef RENDER_DROID2
+	rdMatrix_Copy34(&rdCamera_pCurCamera->prev_view_matrix, &rdCamera_pCurCamera->view_matrix);
+#endif
+
     rdMatrix_InvertOrtho34(&rdCamera_pCurCamera->view_matrix, orthoProj);
     rdMatrix_Copy34(&rdCamera_camMatrix, orthoProj);
     rdMatrix_ExtractAngles34(&rdCamera_camMatrix, &rdCamera_camRotation);
@@ -339,6 +343,11 @@ void rdCamera_Update(rdMatrix34 *orthoProj)
 #endif
 #ifdef RENDER_DROID2
 	rdMatrixMode(RD_MATRIX_VIEW);
+	rdIdentity();
+	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
+
+	// init to cur frame, only pov model will use this
+	rdMatrixMode(RD_MATRIX_VIEW_PREV);
 	rdIdentity();
 	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
 #endif

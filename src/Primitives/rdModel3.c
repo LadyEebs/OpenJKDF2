@@ -1559,6 +1559,13 @@ void rdModel3_DrawMesh(rdMesh *meshIn, rdMatrix34 *mat)
 #ifdef RENDER_DROID2
 	rdMatrixMode(RD_MATRIX_MODEL);
 	rdLoadMatrix34(mat);
+
+	rdMatrixMode(RD_MATRIX_MODEL_PREV);
+	if(pCurThing)
+		rdLoadMatrix34(&pCurThing->paPrevMatrices[meshIn->mesh_num]);
+	else
+		rdLoadMatrix34(mat);
+
 	rdSortDistance(vertex_out.y);
 #endif
 
@@ -1583,9 +1590,14 @@ void rdModel3_DrawMesh(rdMesh *meshIn, rdMatrix34 *mat)
         ++face;
     }
 
+	rdMatrix_Copy34(&pCurThing->paPrevMatrices[meshIn->mesh_num], mat);
+
 #ifdef RENDER_DROID2
 	rdSortDistance(0);
 	rdMatrixMode(RD_MATRIX_MODEL);
+	rdIdentity();
+
+	rdMatrixMode(RD_MATRIX_MODEL_PREV);
 	rdIdentity();
 #endif
 

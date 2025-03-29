@@ -5,24 +5,28 @@ import "defines.gli"
 #ifndef UNIFORMS_H
 #define UNIFORMS_H
 
-#define U_MODEL_MATRIX 0
-#define U_PROJ_MATRIX  1
-#define U_VIEW_MATRIX  2
+#define U_MODEL_MATRIX		0
+#define U_PROJ_MATRIX		1
+#define U_VIEW_MATRIX		2
+#define U_MODEL_MATRIX_PREV 3
+#define U_MODEL_VIEW_PREV   4
 
-#define U_LIGHT_MODE   3
-#define U_GEO_MODE     4
-#define U_BLEND_MODE   5
+#define U_LIGHT_MODE   5
+#define U_GEO_MODE     6
+#define U_BLEND_MODE   7
 
-#define U_FLAGS        6
-#define U_AMB_COLOR    7
-#define U_AMB_CENTER   8
-#define U_AMB_NUM_SG   9
-#define U_AMB_SGS     10
+#define U_FLAGS        8
+#define U_AMB_COLOR    9
+#define U_AMB_CENTER  10
+#define U_AMB_NUM_SG  11
+#define U_AMB_SGS     12
 
 // todo: move me
 layout(location = U_MODEL_MATRIX) uniform mat4 modelMatrix;
 layout(location = U_PROJ_MATRIX) uniform mat4 projMatrix;
 layout(location = U_VIEW_MATRIX) uniform mat4 viewMatrix;
+layout(location = U_MODEL_MATRIX_PREV) uniform mat4 modelMatrixPrev;
+layout(location = U_MODEL_VIEW_PREV) uniform mat4 viewMatrixPrev;
 
 #ifdef WORLD
 
@@ -60,11 +64,13 @@ layout(binding = UBO_SLOT_SHARED, std140) uniform sharedBlock
 	float light_mult;
 	float invlightMult;
 	float ditherScale;
-	vec2  iResolution;
 
+	vec2  iResolution;
 	vec2  clusterTileSizes;
-	vec2  clusterScaleBias;
-	vec2  pad1;
+	
+	vec2  clusterScaleBias;	
+	float deltaTime;
+	float pad1;
 
 	vec4 aScaleBias[8];
 	vec4 aNegInv[4];

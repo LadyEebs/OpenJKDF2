@@ -226,6 +226,7 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 					"#extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable\n"	// 16 bit float
 					"#extension GL_EXT_shader_explicit_arithmetic_types_int16	: enable\n"	// 16 bit int
 					"#extension GL_EXT_shader_explicit_arithmetic_types_int64	: enable\n"	// 64 bit int
+					"#extension GL_EXT_shader_subgroup_extended_types_float16   : enable\n"
 					// AMD
 					"#extension GL_AMD_shader_trinary_minmax		: enable\n"		// min3, max3
 					"#extension GL_AMD_gpu_shader_half_float_fetch	: enable\n"		// 16 bit samplers

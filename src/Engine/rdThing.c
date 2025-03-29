@@ -108,6 +108,14 @@ void rdThing_FreeEntry(rdThing *thing)
 			thing->paHiearchyNodeMatrixOverrides = 0;
 		}
 #endif
+
+#ifdef RENDER_DROID2
+		if (thing->paPrevMatrices)
+		{
+			rdroid_pHS->free(thing->paPrevMatrices);
+			thing->paPrevMatrices = 0;
+		}
+#endif
     }
     if ( thing->puppet )
     {
@@ -167,6 +175,10 @@ int rdThing_SetModel3(rdThing *thing, rdModel3 *model)
 	if (!thing->paHiearchyNodeMatrixOverrides)
 		return 0;
 	_memset(thing->paHiearchyNodeMatrixOverrides, 0, sizeof(rdMatrix34*) * model->numHierarchyNodes);
+#endif
+
+#ifdef RENDER_DROID2
+	thing->paPrevMatrices = rdroid_pHS->alloc(sizeof(rdMatrix34) * model->geosets[0].numMeshes);
 #endif
 
     rdHierarchyNode* iter = model->hierarchyNodes;

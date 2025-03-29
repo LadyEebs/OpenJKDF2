@@ -602,6 +602,9 @@ typedef struct rdCamera
     int projectType;
     rdCanvas* canvas;
     rdMatrix34 view_matrix;
+#ifdef RENDER_DROID2
+	rdMatrix34 prev_view_matrix;
+#endif
     float fov;
     float fov_y;
     float screenAspectRatio;
@@ -1076,6 +1079,8 @@ typedef struct std3D_TransformState
 	rdMatrix44     modelView;
 	rdMatrix44     view;
 	rdMatrix44     proj;
+	rdMatrix44     modelPrev;
+	rdMatrix44     viewPrev;
 } std3D_TransformState;
 
 typedef struct std3D_RasterState
@@ -2743,7 +2748,9 @@ typedef struct rdThing
 	rdVector3* paHierarchyNodeVelocities;
 	rdVector3* paHierarchyNodeAngularVelocities;
 #endif
-
+#ifdef RENDER_DROID2
+	rdMatrix34* paPrevMatrices;
+#endif
 } rdThing;
 
 typedef struct rdPuppetTrack

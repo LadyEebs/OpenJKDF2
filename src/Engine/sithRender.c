@@ -661,9 +661,6 @@ void sithRender_DrawBackdrop()
 	rdStencilMode(1);
 	rdStencilBit(1);
 
-	rdMatrixMode(RD_MATRIX_VIEW);
-	rdIdentity();
-
 	rdMatrix34 viewOriginal = rdCamera_pCurCamera->view_matrix;
 	sithSector* origSector = sithCamera_currentCamera->sector;
 
@@ -678,15 +675,26 @@ void sithRender_DrawBackdrop()
 	if (!centerSector)
 		centerSector = sithWorld_pCurrentWorld->backdropSector;
 
+	if (!centerSector)
+		return;
+
 	sithCamera_currentCamera->sector = centerSector;
 
 	rdMatrix34 backdropCamMat = rdCamera_camMatrix;
 	backdropCamMat.scale = centerSector->center;
 	rdMatrix_InvertOrtho34(&rdCamera_pCurCamera->view_matrix, &backdropCamMat);
 
+	rdMatrixMode(RD_MATRIX_VIEW);
+	rdIdentity();
+	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
+
+	rdMatrixMode(RD_MATRIX_VIEW_PREV);
+	rdIdentity();
 	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
 
 	rdMatrixMode(RD_MATRIX_MODEL);
+	rdIdentity();
+	rdMatrixMode(RD_MATRIX_MODEL_PREV);
 	rdIdentity();
 
 	sithSector* backdropSector = sithWorld_pCurrentWorld->backdropSector;
@@ -748,7 +756,14 @@ void sithRender_ResetState()
 	rdMatrixMode(RD_MATRIX_MODEL);
 	rdIdentity();
 
+	rdMatrixMode(RD_MATRIX_MODEL_PREV);
+	rdIdentity();
+
 	rdMatrixMode(RD_MATRIX_VIEW);
+	rdIdentity();
+	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
+
+	rdMatrixMode(RD_MATRIX_VIEW_PREV);
 	rdIdentity();
 	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
 
@@ -950,6 +965,8 @@ void sithRender_Draw()
         sithRender_RenderDynamicLights();
 
 	sithRender_RenderOccludersAndDecals();
+
+	sithRender_ResetState();
 
 	// all cluster stuff should be ready now, build it
 	rdMatrix44 proj;

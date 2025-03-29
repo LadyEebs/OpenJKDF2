@@ -292,6 +292,7 @@ void calc_decals()
 
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 fragGlow;
+layout(location = 2) out vec4 fragVel;
 
 void main(void)
 {
@@ -419,4 +420,14 @@ void main(void)
 
 	// note we subtract instead of add to avoid boosting blacks
 	fragGlow.rgb = saturate(fragGlow.rgb + -dither);
+
+
+	vec2 curTC  = f_curTC.xy / f_curTC.w;
+	vec2 prevTC = f_prevTC.xy / f_prevTC.w;
+
+	float tick = 1.0 / deltaTime;
+	float shutter = tick / 150.0;
+
+	vec2 vel = (curTC.xy - prevTC.xy) * shutter;
+	fragVel = vec4(vel, fetch_vtx_depth(), 1);
 }

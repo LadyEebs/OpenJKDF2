@@ -1158,6 +1158,10 @@ void jkPlayer_DrawPov()
 	rdIdentity();
 	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
 
+	rdMatrixMode(RD_MATRIX_VIEW_PREV);
+	rdIdentity();
+	rdLoadMatrix34(&rdCamera_pCurCamera->prev_view_matrix);
+
 	rdMatrixMode(RD_MATRIX_PROJECTION);
 	rdIdentity();
 	
@@ -1166,6 +1170,9 @@ void jkPlayer_DrawPov()
 	rdPerspective(/*rdCamera_pCurCamera->fov*/fpfov, rdCamera_pCurCamera->screenAspectRatio, rdCamera_pCurCamera->pClipFrustum->field_0.y, rdCamera_pCurCamera->pClipFrustum->field_0.z);
 
 	rdMatrixMode(RD_MATRIX_MODEL);
+	rdIdentity();
+
+	rdMatrixMode(RD_MATRIX_MODEL_PREV);
 	rdIdentity();
 
 	// rebuild clusters for FP

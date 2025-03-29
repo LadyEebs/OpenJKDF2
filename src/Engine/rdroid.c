@@ -31,6 +31,8 @@ enum RD_DIRTYBIT
 	RD_DIRTYBIT_MODEL          = 0x1,
 	RD_DIRTYBIT_VIEW           = 0x2,
 	RD_DIRTYBIT_PROJECTION     = 0x4,
+	RD_DIRTYBIT_MODEL_PREV     = 0x8,
+	RD_DIRTYBIT_VIEW_PREV      = 0x10,
 
 	RD_DIRTYBIT_MODELVIEW      = RD_DIRTYBIT_MODEL | RD_DIRTYBIT_VIEW,
 	RD_DIRTYBIT_VIEWPROJECTION = RD_DIRTYBIT_VIEW | RD_DIRTYBIT_PROJECTION,
@@ -39,11 +41,13 @@ enum RD_DIRTYBIT
 };
 
 static rdDirtyBit rdroid_dirtyBits = RD_DIRTYBIT_ALL;
-static const rdDirtyBit rdroid_matrixBit[3] =
+static const rdDirtyBit rdroid_matrixBit[RD_MATRIX_TYPES] =
 {
 	RD_DIRTYBIT_MODEL,
 	RD_DIRTYBIT_VIEW,
-	RD_DIRTYBIT_PROJECTION
+	RD_DIRTYBIT_PROJECTION,
+	RD_DIRTYBIT_MODEL_PREV,
+	RD_DIRTYBIT_VIEW_PREV
 };
 
 // todo: completely remove this in favor of a light type
@@ -438,6 +442,13 @@ void rdUpdateDirtyState()
 	{
 		rdMatrix_Multiply44(&rdroid_transformState.modelView, &rdroid_matrices[RD_MATRIX_VIEW], &rdroid_matrices[RD_MATRIX_MODEL]);
 	}
+
+	if (rdroid_dirtyBits & RD_DIRTYBIT_MODEL_PREV)
+		rdroid_transformState.modelPrev = rdroid_matrices[RD_MATRIX_MODEL_PREV];
+
+	if (rdroid_dirtyBits & RD_DIRTYBIT_VIEW_PREV)
+		rdroid_transformState.viewPrev = rdroid_matrices[RD_MATRIX_VIEW_PREV];
+
 
 	if (rdroid_dirtyBits & RD_DIRTYBIT_VIEW)
 	{

@@ -19,9 +19,9 @@ layout(binding = 1) uniform sampler2D tex2;
 layout(binding = 2) uniform sampler2D tex3;
 layout(binding = 3) uniform sampler2D tex4;
 
-layout(location = 3) uniform float param1;
-layout(location = 4) uniform float param2;
-layout(location = 5) uniform float param3;
+layout(location = 5) uniform float param1;
+layout(location = 6) uniform float param2;
+layout(location = 7) uniform float param3;
 
 //in vec2 f_uv;
 

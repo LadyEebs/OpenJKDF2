@@ -163,4 +163,15 @@ void main(void)
 	f_color[0] = flex4(color0);
 	f_color[1] = flex4(color1);
 	f_normal.xyz = flex3(normal);
+
+	
+	f_curTC = pos;
+	f_curTC.xy = (pos.xy * vec2(1, -1) + pos.ww  ) * 0.5;
+
+
+	mat4 prevModelView = viewMatrixPrev * modelMatrixPrev;
+	vec4 prevPos = projMatrix * prevModelView * vec4(coord3d, 1.0);
+
+	f_prevTC = prevPos;
+	f_prevTC.xy = (prevPos.xy * vec2(1, -1) + prevPos.ww  ) * 0.5;
 }
