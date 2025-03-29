@@ -105,7 +105,7 @@ void main(void)
 		const vec2 invAmp    = amp.xy * -2.0 + 1.0;
 		const vec2 waveScale = amp.xy * invAmp;
 
-		float wave = sin(uv.yx * cycle.xy + param1);
+		vec2 wave = sin(uv.yx * cycle.xy + param1);
 		uv += wave * waveScale + amp.xy;
 	}
 
