@@ -100,7 +100,6 @@ void main(void)
 
 out vec4 fragColor;
 
-#define PI 3.14159265359
 #define AOradius 1.0
 #ifdef NEW_SSAO
 #define Samples 8.0

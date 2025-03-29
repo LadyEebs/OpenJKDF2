@@ -99,10 +99,14 @@ void main(void)
 	vec2 uv = f_uv;
 	if(param1 > 0.0)
 	{
-		float ar = iResolution.x / iResolution.y;
-		vec2 cycle = vec2(1.0, ar) * 3.141592 * 5.0;
-		vec2 amp = vec2(1.0, ar) * 0.5 / 300.0;
-		uv = uv.xy + (sin(uv.yx * cycle.xy + param1) * amp.xy) * (1.0 - amp.xy * 2.0) + amp.xy;
+		const vec2 ar        = vec2(1.0, iResolution.x / iResolution.y);
+		const vec2 cycle     = ar * M_PI * 5.0;
+		const vec2 amp       = ar * 0.5 / 300.0;
+		const vec2 invAmp    = amp.xy * -2.0 + 1.0;
+		const vec2 waveScale = amp.xy * invAmp;
+
+		float wave = sin(uv.yx * cycle.xy + param1);
+		uv += wave * waveScale + amp.xy;
 	}
 
 	flex3 sampled_color = textureLod(tex, uv, 0).xyz;

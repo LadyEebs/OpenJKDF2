@@ -19,7 +19,7 @@ SG DistributionTermSG(vec3 direction, float roughness)
     distribution.Axis = direction;
     float m2 = max(roughness * roughness, 1e-4);
     distribution.Sharpness = 2.0 / m2;
-    distribution.Amplitude = vec3(1.0 / (3.141592 * m2));
+    distribution.Amplitude = vec3(1.0 / (M_PI * m2));
 
     return distribution;
 }
@@ -38,7 +38,7 @@ vec3 SGInnerProduct(SG x, SG y)
     float umLength = length(x.Sharpness * x.Axis + y.Sharpness * y.Axis);
     vec3 expo = exp(umLength - x.Sharpness - y.Sharpness) * x.Amplitude * y.Amplitude;
     float other = 1.0 - exp(-2.0 * umLength);
-    return (2.0 * 3.141592 * expo * other) / umLength;
+    return (2.0 * M_PI * expo * other) / umLength;
 }
 
 SG CosineLobeSG(vec3 direction)
@@ -60,12 +60,12 @@ vec3 SGIrradianceInnerProduct(SG lightingLobe, vec3 normal)
 vec3 SGIrradiancePunctual(SG lightingLobe, vec3 normal)
 {
     float cosineTerm = clamp(dot(lightingLobe.Axis, normal), 0.0, 1.0);
-    return cosineTerm * 2.0 * 3.141592 * (lightingLobe.Amplitude) / lightingLobe.Sharpness;
+    return cosineTerm * 2.0 * M_PI * (lightingLobe.Amplitude) / lightingLobe.Sharpness;
 }
 
 vec3 ApproximateSGIntegral(in SG sg)
 {
-    return 2 * 3.141592 * (sg.Amplitude / sg.Sharpness);
+    return 2 * M_PI * (sg.Amplitude / sg.Sharpness);
 }
 
 vec3 SGIrradianceFitted(in SG lightingLobe, in vec3 normal)

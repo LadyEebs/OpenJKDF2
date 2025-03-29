@@ -39,7 +39,7 @@ uint calc_spec_c(float a)
 #else
 	// phong
 	float rcp_a2 = 1.0 / (a * a);
-	vec2 coeffs = vec2(rcp_a2 / 3.141592, 0.72134752 * rcp_a2 + 0.39674113);
+	vec2 coeffs = vec2(rcp_a2 / M_PI, 0.72134752 * rcp_a2 + 0.39674113);
 #endif
 	return packHalf2x16(coeffs);
 }

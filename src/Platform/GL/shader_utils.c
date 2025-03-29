@@ -331,6 +331,7 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 
 	// custom intrinsics
 	const char* intrinsics =
+		"#define M_PI 3.14159265358979323846\n"
 		// min3 and max3 fallbacks
 		"#ifndef GL_AMD_shader_trinary_minmax\n"
 		"#define max3(x, y, z) max( (x), max( (y), (z) ) )\n"

@@ -378,7 +378,7 @@ vec3 transform44(mat4 m, vec3 a) // transform a vec3 with w = 1
 // misc
 float Schlick(float k, float costh)
 {
-    return (1.0 - k * k) / (4.0 * 3.141592 * pow(1.0 - k * costh, 2.0));
+    return (1.0 - k * k) / (4.0 * M_PI * pow(1.0 - k * costh, 2.0));
 }
 
 float simplePhase(vec3 viewDir, vec3 lightDir, float anisotropy)

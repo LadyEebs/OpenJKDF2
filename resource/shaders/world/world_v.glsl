@@ -30,7 +30,7 @@ vec3 CalculateAmbientSpecular(float roughness, vec3 normal, vec3 view, vec3 refl
 
 	float m = roughness * roughness;
 	float m2 = max(m * m, 1e-4);
-	float amplitude = 1.0 * fastRcpNR0(3.141592 * m2);
+	float amplitude = 1.0 * fastRcpNR0(M_PI * m2);
 	float sharpness = (2.0 * fastRcpNR0(m2)) * fastRcpNR0(4.0 * max(dot(normal, view), 0.1));
 	
 	for(int sg = 0; sg < AMBIENT_LOBES; ++sg)
@@ -43,7 +43,7 @@ vec3 CalculateAmbientSpecular(float roughness, vec3 normal, vec3 view, vec3 refl
 		float nDotL = clamp(dot(normal.xyz, reflected), 0.0, 1.0);
 	
 		// todo: can we roll this into something like the direct light approx?
-		float D = (2.0 * 3.141592) * nDotL * attenuation * fastRcpNR1(umLength);
+		float D = (2.0 * M_PI) * nDotL * attenuation * fastRcpNR1(umLength);
 		//float D = (2.0 * nDotL) * attenuation * fastRcpNR1(umLength);
 		
 		float expo = (exp(umLength - sharpness - ambientSGBasis[sg].w) * amplitude);

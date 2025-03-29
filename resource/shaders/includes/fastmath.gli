@@ -31,7 +31,7 @@ float atanFast(float x)
 
 float atan2Fast(float y, float x)
 {
-    return atanFast(y / x) + (y >= 0.0 ? 3.141592 : -3.141592) * (x < 0.0 ? 1.0 : 0.0);
+    return atanFast(y / x) + (y >= 0.0 ? M_PI : -M_PI) * (x < 0.0 ? 1.0 : 0.0);
 }
 
 float acosFast(float x) 
@@ -39,7 +39,7 @@ float acosFast(float x)
     x = abs(x); 
     float res = -0.156583 * x + 1.570796; 
     res *= sqrt(1.0 - x); 
-    return (x >= 0) ? res : 3.141592 - res; 
+    return (x >= 0) ? res : M_PI - res; 
 }
 
 const uint IEEEScale = 0x4B000000;
