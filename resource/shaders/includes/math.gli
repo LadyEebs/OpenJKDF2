@@ -56,7 +56,7 @@ uint encode_octahedron_uint(vec3 v)
 {
 	v /= abs(v.x) + abs(v.y) + abs(v.z);
 
-	float t = sat1(-v.z);
+	float t = saturate(-v.z);
 	return packHalf2x16(v.xy + vec2(v.x >= 0.0 ? t : -t, v.y >= 0.0 ? t : -t));
 }
 
@@ -65,7 +65,7 @@ vec3 decode_octahedron_uint(uint p)
 	vec2 v = unpackHalf2x16(p);
 
 	vec3  n = vec3(v.x, v.y, 1.0 - abs(v.x) - abs(v.y));
-    float t = sat1(-n.z);
+    float t = saturate(-n.z);
     n.xy   += vec2(n.x >= 0.0 ? -t : t, n.y >= 0.0 ? -t : t);
 
     return normalize(n);
@@ -136,7 +136,7 @@ vec4 unpackQuat(vec4 packedQuat)
 
     vec4 quat;
     quat.xyz = packedQuat.xyz * sqrt(2.0) - (inversesqrt(2.0));
-    quat.w = sqrt(1.0 - sat1(dot(quat.xyz, quat.xyz)));
+    quat.w = sqrt(1.0 - saturate(dot(quat.xyz, quat.xyz)));
 
     if (index == 0u) quat = quat.wxyz;
     if (index == 1u) quat = quat.xwyz;

@@ -32,7 +32,7 @@ float upsample_ssao(in vec2 texcoord, in float linearDepth)
 
 	// reject samples that have depth discontinuities
 	vec4 diff = abs(depths / linearDepth - 1.0) * 32.0;
-	vec4 weights = sat4(1.0 - diff);
+	vec4 weights = saturate(1.0 - diff);
 
 	// total weight
 	float totalWeight = weights.x + weights.y + weights.z + weights.w;
@@ -85,7 +85,7 @@ void calc_light()
 		float clipDepth = 0;//texelFetch(cliptex, ivec2(gl_FragCoord.xy), 0).r;
 	
 		float distToCam = max(0.0, viewPos.y - clipDepth) * fastRcpNR1(-view.y);
-		fog = sat1((distToCam - fogStart) * fastRcpNR1(fogEnd - fogStart));
+		fog = saturate((distToCam - fogStart) * fastRcpNR1(fogEnd - fogStart));
 	}
 #endif
 
@@ -336,14 +336,14 @@ void main(void)
 	{
 		//vec4 fog_color = unpackUnorm4x8(fog);
 		float fog = unpackUnorm4x8(v[1]).w * fogColor.a;
-		outColor.rgb = mix(outColor.rgb, fogColor.rgb, sat1(fog + dither));
+		outColor.rgb = mix(outColor.rgb, fogColor.rgb, saturate(fog + dither));
 		fragGlow.rgb = fragGlow.rgb * (1.0 - fog);
 	}
 #endif
 
 	// todo: make ditherMode a per-rt thing
 	// dither the output if needed
-	outColor.rgb = sat3(outColor.rgb * invlightMult + dither);
+	outColor.rgb = saturate(outColor.rgb * invlightMult + dither);
 
 #ifdef REFRACTION
 	//vec3 localViewDir = normalize(-coord.xyz);
@@ -366,11 +366,11 @@ void main(void)
 	float waterStart = fetch_vtx_pos().y * 128.0;
 	float waterEnd = refrDepth * 128.0;
 	float waterDepth = (waterEnd - waterStart);// / -localViewDir.y;			
-	vec3 refr = sampleFramebuffer(refrtex, sat2(refrUV)).rgb;
+	vec3 refr = sampleFramebuffer(refrtex, saturate(refrUV)).rgb;
 	
 	//if ((aoFlags & 0x4) != 0x4)
 	{
-		float waterFogAmount = sat1(waterDepth / (2.0));
+		float waterFogAmount = saturate(waterDepth / (2.0));
 
 		vec3 half_color = texgen_params.rgb * 0.5;
 		vec3 waterFogColor = texgen_params.rgb - (half_color.brr + half_color.ggb);
@@ -379,10 +379,10 @@ void main(void)
 			refr = mix(refr, waterFogColor, waterFogAmount);
 	}
 		
-	vec3 tint = texgen_params.rgb * sat1(waterDepth);
+	vec3 tint = texgen_params.rgb * saturate(waterDepth);
 	vec3 half_tint = tint.rgb * 0.5;
 	vec3 tint_delta = tint.rgb - (half_tint.brr + half_tint.ggb);
-	refr = sat3(tint_delta * refr + refr);
+	refr = saturate(tint_delta * refr + refr);
 
 	float texalpha = 90.0 / 255.0;
 
@@ -418,5 +418,5 @@ void main(void)
 	fragGlow.rgb *= emissiveFactor.w;
 
 	// note we subtract instead of add to avoid boosting blacks
-	fragGlow.rgb = sat3(fragGlow.rgb + -dither);
+	fragGlow.rgb = saturate(fragGlow.rgb + -dither);
 }

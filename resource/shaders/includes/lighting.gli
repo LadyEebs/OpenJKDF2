@@ -125,7 +125,7 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 		return;
 
 	vec3 normal = unpackSnorm4x8(params.normal).xyz;
-	float lightMagnitude = sat1( dot(normal.xyz, lvec) * intensity );
+	float lightMagnitude = saturate( dot(normal.xyz, lvec) * intensity );
 	//float signedMagnitude = lightMagnitude;
 	//lightMagnitude = max(lightMagnitude, float(0.0)) * intensity;
 

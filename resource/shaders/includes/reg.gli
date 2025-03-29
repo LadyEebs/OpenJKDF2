@@ -206,7 +206,7 @@ void write_reg(vm_instr s_ir, vec4 reg)
 
 	// modifiers
 	if (s_ir.dst.absolute)	reg = abs(reg);
-	if (s_ir.sat)			reg = sat4(reg);
+	if (s_ir.sat)			reg = saturate(reg);
 	if (s_ir.dst.negate)	reg = -reg;
 
 	// encode

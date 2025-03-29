@@ -75,9 +75,9 @@ void calc_decal(uint decal_index)
 	float edgeFactor = objectPosition.z * objectPosition.z;
 	edgeFactor      *= edgeFactor;
 	edgeFactor      *= edgeFactor;
-	edgeFactor       = sat1(1.0 - edgeFactor);
+	edgeFactor       = saturate(1.0 - edgeFactor);
 
-	vec4 color = sat4(unpackUnorm4x8(r[0]));
+	vec4 color = unpackUnorm4x8(r[0]);
 
 	if((dec.flags & 0x4u) == 0x4u) // additive
 	{
@@ -91,7 +91,7 @@ void calc_decal(uint decal_index)
 		//color.w *= 1.0 - decalColor.w;
 	}
 
-	r[0] = packUnorm4x8(sat4(color));
+	r[0] = packUnorm4x8(color);
 }
 
 
