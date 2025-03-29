@@ -1,9 +1,9 @@
 import "math.gli"
 import "framebuffer.gli"
 
-layout(binding = 0) uniform sampler2D tex;
-layout(binding = 1) uniform sampler2D tex2;
-layout(binding = 2) uniform sampler2D tex3;
+layout(binding = 0) uniform flexSampler2D tex;
+layout(binding = 1) uniform flexSampler2D tex2;
+layout(binding = 2) uniform flexSampler2D tex3;
 
 layout(location = 0) uniform vec2 iResolution;
 layout(location = 1) uniform float param1;
@@ -105,34 +105,34 @@ void main(void)
 		uv = uv.xy + (sin(uv.yx * cycle.xy + param1) * amp.xy) * (1.0 - amp.xy * 2.0) + amp.xy;
 	}
 
-	vec3 sampled_color = sampleFramebuffer(tex, uv);
+	flex3 sampled_color = textureLod(tex, uv, 0).xyz;
 
 	// when dithering, try to smooth it out with a classic voodoo style filter
 	if(param2 > 0.0)
 	{
 		vec2 sourceSize = textureSize(tex, 0).xy;
 		
-		vec3 pixel00 = sampled_color;
+		flex3 pixel00 = sampled_color;
 		
-		vec3 pixel01, pixel11, pixel10;	
+		flex3 pixel01, pixel11, pixel10;	
 		//if(param2 > 1.0) // 4x1
 		//{
-		//	pixel01 = sampleFramebuffer(tex, uv - vec2(1.0 / sourceSize.x, 0.0));
-		//	pixel11 = sampleFramebuffer(tex, uv + vec2(1.0 / sourceSize.x, 0.0));
-		//	pixel10 = sampleFramebuffer(tex, uv + vec2(2.0 / sourceSize.x, 0.0));
+		//	pixel01 = textureLod(tex, uv - vec2(1.0 / sourceSize.x, 0.0), 0).xyz;
+		//	pixel11 = textureLod(tex, uv + vec2(1.0 / sourceSize.x, 0.0), 0).xyz;
+		//	pixel10 = textureLod(tex, uv + vec2(2.0 / sourceSize.x, 0.0), 0).xyz;
 		//}
 		//else // 2x2
 		{
-			pixel01 = sampleFramebuffer(tex, uv + vec2(0.0,                -1.0 / sourceSize.y));
-			pixel11 = sampleFramebuffer(tex, uv + vec2(1.0 / sourceSize.x, -1.0 / sourceSize.y));
-			pixel10 = sampleFramebuffer(tex, uv + vec2(1.0 / sourceSize.x,  0.0));
+			pixel01 = textureLod(tex, uv + vec2(0.0,                -1.0 / sourceSize.y), 0).xyz;
+			pixel11 = textureLod(tex, uv + vec2(1.0 / sourceSize.x, -1.0 / sourceSize.y), 0).xyz;
+			pixel10 = textureLod(tex, uv + vec2(1.0 / sourceSize.x,  0.0), 0).xyz;
 		}	
 	
-		vec3 diff0 = clamp(pixel01 - pixel00, -32.0/255.0, 32.0/255.0);
-		vec3 diff1 = clamp(pixel11 - pixel00, -32.0/255.0, 32.0/255.0);
-		vec3 diff2 = clamp(pixel10 - pixel00, -32.0/255.0, 32.0/255.0);
+		flex3 diff0 = clamp(pixel01 - pixel00, flex3(-32.0/255.0), flex3(32.0/255.0));
+		flex3 diff1 = clamp(pixel11 - pixel00, flex3(-32.0/255.0), flex3(32.0/255.0));
+		flex3 diff2 = clamp(pixel10 - pixel00, flex3(-32.0/255.0), flex3(32.0/255.0));
 		
-		sampled_color = (pixel00 + (diff0 + diff1 + diff2) / 3.0);
+		sampled_color = (pixel00 + (diff0 + diff1 + diff2) / flex3(3.0));
 	}
 
 	//vec2 invPixelSize = 1.0 / iResolution.xy;
@@ -150,29 +150,28 @@ void main(void)
 
 	//sampled_color.rgb = ycocg2rgb(sampled_color.yxz);
 
-	float vignetteStrength = 15.0; // todo: expose
-	float vignettePower = 0.2; // todo: expose
+	flex vignetteStrength = flex(15.0); // todo: expose
+	flex vignettePower = flex(0.2); // todo: expose
 
-	vec2 oneOverUV = 1.0 - uv.xy;
-	float edge = uv.x * uv.y * oneOverUV.x * oneOverUV.y;
-	edge = clamp(vignetteStrength * edge, 0.0, 1.0);
-	sampled_color *= pow(edge, vignettePower) * 0.5 + 0.5;
+	flex2 oneOverUV = flex(1.0) - flex2(uv.xy);
+	flex edge = flex(uv.x) * flex(uv.y) * oneOverUV.x * oneOverUV.y;
+	edge = clamp(vignetteStrength * edge, flex(0.0), flex(1.0));
+	sampled_color *= pow(edge, vignettePower) * flex(0.5) + flex(0.5);
     
-	vec4 bloom = texture(tex2, uv.xy);
-	sampled_color.rgb = bloom.rgb + sampled_color.rgb * (1.0 - bloom.rgb);
+	flex3 bloom = textureLod(tex2, uv.xy, 0).xyz;
+	sampled_color.rgb = bloom.rgb + sampled_color.rgb * (flex3(1.0) - bloom.rgb);
 
 #ifdef RENDER_DROID2
-	sampled_color.rgb += colorEffects_add.rgb;
+	sampled_color.rgb += flex3(colorEffects_add.rgb);
 
 	vec3 half_tint = colorEffects_tint * 0.5;
-	vec3 tint_delta = colorEffects_tint - (half_tint.brr + half_tint.ggb);
-	sampled_color.rgb = clamp(tint_delta.rgb * sampled_color.rgb + sampled_color.rgb, vec3(0.0), vec3(1.0));
+	flex3 tint_delta = flex3( colorEffects_tint - (half_tint.brr + half_tint.ggb) );
+	sampled_color.rgb = clamp(tint_delta.rgb * sampled_color.rgb + sampled_color.rgb, flex3(0.0), flex3(1.0));
 
-	sampled_color.rgb *= colorEffects_fade;
-	sampled_color.rgb *= colorEffects_filter.rgb;
+	sampled_color.rgb *= flex(colorEffects_fade);
+	sampled_color.rgb *= flex3(colorEffects_filter.rgb);
 #endif
 
-    fragColor.rgb = sampled_color.rgb;
-    fragColor.rgb = pow(fragColor.rgb, vec3(1.0/param3));
+    fragColor.rgb = vec3(pow(sampled_color.rgb, flex3(1.0 / param3)));
 	fragColor.w = 1.0;
 }
