@@ -5,37 +5,36 @@ in vec4 f_color;
 in vec2 f_uv;
 out vec4 fragColor;
 
+vec4 sampleTex(sampler2D s, vec2 uv)
+{
+    vec4 sampled = textureLod(s, uv, 0);
+    vec4 palvald = textureLod(displayPalette, vec2(sampled.r, 0.5), 0);
+
+    float transparency = (sampled.r == 0.0) ? 0.0 : 1.0;
+    return vec4(palvald.r, palvald.g, palvald.b, transparency);
+}
+
 void main(void)
 {
-    vec4 sampled = texture(tex, f_uv);
-    vec4 sampled_color = vec4(0.0, 0.0, 0.0, 0.0);
+    vec4 sampled_color = sampleTex(tex, f_uv);
     vec4 vertex_color = f_color;
-    float index = sampled.r;
-    vec4 palval = texture(worldPalette, vec2(index, 0.5));
-    vec4 palvald = texture(displayPalette, vec2(index, 0.5));
-    vec4 blend = vec4(1.0, 1.0, 1.0, 1.0);
-
-    float transparency = 1.0;
-    if (index == 0.0)
+   
+    if (sampled_color.a < 0.5)
         discard;
-    sampled_color = vec4(palvald.r, palvald.g, palvald.b, transparency);
 
-	//sampled_color.rgb = log2(1.0001 - sampled_color.rgb) / -2.0;
+	// fake untonemap to give it some brightness
 	float k = 4.0;
 	sampled_color.rgb = k * sampled_color.rgb / (k - sampled_color.rgb);
-
 	
-	//float vignetteStrength = 15.0; // todo: expose
-	//float vignettePower = 0.5; // todo: expose
-
-	//vec2 oneOverUV = 1.0 - f_uv.xy;
-	//float edge = f_uv.x * f_uv.y * oneOverUV.x * oneOverUV.y;
-	//edge = clamp(vignetteStrength * edge, 0.0, 1.0);
-	//sampled_color *= pow(edge, vignettePower) * 0.5 + 0.5;
-    
-	//vec2 uv = gl_FragCoord.xy / textureSize(tex, 0).xy;
-	//float l = clamp(dot(uv.xy*2.0-1.0, uv.xy*2.0-1.0), 0.0, 1.0);
-	//sampled_color.rgb *= pow(1.0 - l, 4.0);
-
-    fragColor = sampled_color * vertex_color * blend;
+//	float vignetteStrength = 7.0;
+//	float vignettePower = 0.85;
+//
+//	vec2 menuUV = f_uv.xy * textureSize(tex, 0).xy / vec2(640.0, 480.0);
+//
+//	vec2 oneOverUV = 1.0 - menuUV.xy;
+//	float edge = menuUV.x * oneOverUV.x;// menuUV.x * menuUV.y * oneOverUV.x * oneOverUV.y;
+//	edge = clamp(vignetteStrength * edge, 0.0, 1.0);
+//	sampled_color *= pow(edge, vignettePower);
+ 
+    fragColor = sampled_color * vertex_color;
 }
