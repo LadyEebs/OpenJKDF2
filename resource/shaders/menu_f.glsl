@@ -23,7 +23,7 @@ void main(void)
         discard;
 
 	// fake untonemap to give it some brightness
-	float k = 4.0;
+	float k = 4.5;
 	sampled_color.rgb = k * sampled_color.rgb / (k - sampled_color.rgb);
 	
 //	float vignetteStrength = 7.0;
