@@ -110,29 +110,29 @@ void main(void)
 	// when dithering, try to smooth it out with a classic voodoo style filter
 	if(param2 > 0.0)
 	{
-		vec2 sourceSize = textureSize(tex, 0).xy;
+		vec2 pixsize = vec2(1.0) / textureSize(tex, 0).xy;
 		
 		flex3 pixel00 = sampled_color;
 		
 		flex3 pixel01, pixel11, pixel10;	
 		//if(param2 > 1.0) // 4x1
 		//{
-		//	pixel01 = textureLod(tex, uv - vec2(1.0 / sourceSize.x, 0.0), 0).xyz;
-		//	pixel11 = textureLod(tex, uv + vec2(1.0 / sourceSize.x, 0.0), 0).xyz;
-		//	pixel10 = textureLod(tex, uv + vec2(2.0 / sourceSize.x, 0.0), 0).xyz;
+		//	pixel01 = textureLod(tex, uv - vec2(pixsize.x, 0.0), 0).xyz;
+		//	pixel11 = textureLod(tex, uv + vec2(pixsize.x, 0.0), 0).xyz;
+		//	pixel10 = textureLod(tex, uv + vec2(pixsize.x, 0.0), 0).xyz;
 		//}
 		//else // 2x2
 		{
-			pixel01 = textureLod(tex, uv + vec2(0.0,                -1.0 / sourceSize.y), 0).xyz;
-			pixel11 = textureLod(tex, uv + vec2(1.0 / sourceSize.x, -1.0 / sourceSize.y), 0).xyz;
-			pixel10 = textureLod(tex, uv + vec2(1.0 / sourceSize.x,  0.0), 0).xyz;
+			pixel01 = textureLod(tex, uv + vec2(      0.0, -pixsize.y), 0).xyz;
+			pixel11 = textureLod(tex, uv + vec2(pixsize.x, -pixsize.y), 0).xyz;
+			pixel10 = textureLod(tex, uv + vec2(pixsize.x,        0.0), 0).xyz;
 		}	
 	
 		flex3 diff0 = clamp(pixel01 - pixel00, flex3(-32.0/255.0), flex3(32.0/255.0));
 		flex3 diff1 = clamp(pixel11 - pixel00, flex3(-32.0/255.0), flex3(32.0/255.0));
 		flex3 diff2 = clamp(pixel10 - pixel00, flex3(-32.0/255.0), flex3(32.0/255.0));
 		
-		sampled_color = (pixel00 + (diff0 + diff1 + diff2) / flex3(3.0));
+		sampled_color = (pixel00 + (diff0 + diff1 + diff2) * flex3(1.0 / 3.0));
 	}
 
 	//vec2 invPixelSize = 1.0 / iResolution.xy;
@@ -172,6 +172,6 @@ void main(void)
 	sampled_color.rgb *= flex3(colorEffects_filter.rgb);
 #endif
 
-    fragColor.rgb = vec3(pow(sampled_color.rgb, flex3(1.0 / param3)));
+    fragColor.rgb = vec3(pow(sampled_color.rgb, flex3(fastRcpNR0(param3))));
 	fragColor.w = 1.0;
 }
