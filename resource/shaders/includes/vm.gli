@@ -32,7 +32,7 @@ void run_vm()
 		vec4 s1 = read_src1(s_ir);
 		vec4 s2 = read_src2(s_ir);
 
-		vec4 result = read_dest(s_ir);
+		vec4 result;// = read_dest(s_ir);
 
 		switch(s_ir.opcode)
 		{			
@@ -78,10 +78,6 @@ void run_vm()
 
 		case OP_DP4:
 			result = vec4(dot( s0, s1 ));
-			break;
-
-		case OP_MAC:
-			result = s0 * s1 + result;
 			break;
 
 		case OP_MAD:
@@ -145,6 +141,13 @@ void run_vm()
 			else
 				result = textureLod(textures[s_ir.src0.addr], s1.xy, s2.x);
 			break;
+					
+		case OP_TEXADD:
+			if (tex_mode == TEX_MODE_TEST)
+				result = vec4(fillColor.xyz, 1.0);
+			else
+				result = texture(textures[s_ir.src0.addr], s1.xy + s2.xy, s_lodbias);
+			break;		
 
 		case OP_TEXINFO:
 			result = vec4(textureSize(textures[s_ir.src0.addr], int(s1.x)).xy, 1.0, textureQueryLevels(textures[s_ir.src0.addr]));
