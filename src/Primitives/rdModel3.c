@@ -2042,7 +2042,7 @@ void rdModel3_DrawOccluders(rdThing* pThing, rdMatrix34* pMat)
 	rdGeoset* geoset = &model3->geosets[0];//model3->numGeosets - 1];
 
 	if (pThing->frameTrue != rdroid_frameTrue)
-		rdPuppet_BuildJointMatrices(&pThing, pMat);
+		rdPuppet_BuildJointMatrices(pThing, pMat);
 
 	rdModel3_DrawMeshNodeOccluder(pThing, geoset, model3->hierarchyNodes);
 }
