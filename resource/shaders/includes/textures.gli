@@ -88,6 +88,9 @@ vec4 tex_6x6(sampler2D s, vec2 uv)
 
 vec2 steep_parallax(in sampler2D s, in vec2 uv, vec3 view_dir, float depth)
 {
+	if (abs(depth) < 1e-3)
+		return vec2(0.0);
+
 	const flex min_layers = flex(32.0);
     const flex max_layers = flex(128.0);
     flex num_layers = mix(max_layers, min_layers, abs(flex(view_dir.z)));
