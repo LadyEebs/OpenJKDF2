@@ -37,7 +37,7 @@ typedef struct
 	uint8_t swizzle;
 	uint8_t mask;
 	uint8_t abs;
-	uint8_t negate_or_invert;
+	uint8_t unary;
 	float   immediate;
 } rdShader_Register;
 
@@ -233,7 +233,7 @@ static int rdShader_ExtractSwizzle(const char* expression, char* swizzle_out)
 static char* rdShader_ParseRegister(char* token, char* swizzle, rdShader_Register* reg)
 {
 	// extract register index or immediate value
-	if (reg->type == RD_SHADER_IMM16 || reg->type == RD_SHADER_IMM8)
+	if (reg->type >= RD_SHADER_IMM8)
 	{
 		reg->immediate = fabs(atof(token));
 		reg->swizzle = RD_SWIZZLE_XYZW;
@@ -308,8 +308,10 @@ static char* rdShader_ParseSourceRegister(char* token, rdShader_Register* reg)
 	{
 		if (reg->idx >= 3)
 			reg->type = RD_SHADER_IMM8;
-		else
+		else if (reg->idx >= 2)
 			reg->type = RD_SHADER_IMM16;
+		else
+			reg->type = RD_SHADER_IMM32;
 	}
 	else
 	{
@@ -379,9 +381,11 @@ static void rdShader_ParseSourceOperandExpression(char* token, rdShader_SrcOpera
 			if (mult)
 				op->mult = mult;
 			else if (strnicmp(modifier, "negate", 6) == 0)
-				op->reg.negate_or_invert = RD_SHADER_NEGATE;
+				op->reg.unary = RD_SHADER_NEGATE;
 			else if (strnicmp(modifier, "invert", 6) == 0)
-				op->reg.negate_or_invert = RD_SHADER_INVERT;
+				op->reg.unary = RD_SHADER_INVERT;
+			else if (strnicmp(modifier, "rcp", 3) == 0)
+				op->reg.unary = RD_SHADER_RCP;
 			else
 				op->reg.fmt = rdShader_ParseFormat(modifier);
 
@@ -403,7 +407,7 @@ uint32_t rdShader_AssembleSrc(
 	uint8_t addr,
 	uint8_t abs,
 	uint8_t swizzle,
-	uint8_t negate_or_invert,
+	uint8_t unary,
 	uint8_t scale_bias,
 	uint8_t reduction
 )
@@ -415,7 +419,7 @@ uint32_t rdShader_AssembleSrc(
 	result |= (idx & 0x3) << 6;
 	result |= (addr & 0xFF) << 8;
 	result |= (swizzle & 0xFF) << 16;
-	result |= (negate_or_invert & 0x3) << 24;
+	result |= (unary & 0x3) << 24;
 	result |= (scale_bias & 0x7) << 26;
 	result |= (reduction & 0x7) << 29;
 
@@ -462,48 +466,49 @@ static int rdShader_AssembleInstruction(rdShaderInstr* result, rdShader_Instruct
 											   inst->dest.reg.mask,
 											   inst->precise,
 											   inst->dest.reg.abs,
-											   inst->dest.reg.negate_or_invert,
+											   inst->dest.reg.unary,
 											   inst->clamp);
-
 
 	// if we have 3 operands, then immediate values must be 8 bit
 	if (inst->srcCount >= 3)
 	{
-		if (inst->src[0].reg.type == RD_SHADER_IMM16)
-			inst->src[0].reg.type = RD_SHADER_IMM8;
-
-		if (inst->src[1].reg.type == RD_SHADER_IMM16)
-			inst->src[1].reg.type = RD_SHADER_IMM8;
+		if (inst->src[0].reg.type >= RD_SHADER_IMM8) inst->src[0].reg.type = RD_SHADER_IMM8;
+		if (inst->src[1].reg.type >= RD_SHADER_IMM8) inst->src[1].reg.type = RD_SHADER_IMM8;
+	}
+	else if (inst->srcCount >= 2) // same for 2 operands, must not exceed 16 bit
+	{
+		if (inst->src[0].reg.type >= RD_SHADER_IMM16) inst->src[0].reg.type = RD_SHADER_IMM16;
+		if (inst->src[1].reg.type >= RD_SHADER_IMM16) inst->src[1].reg.type = RD_SHADER_IMM16;
 	}
 
+	// store source operand 0
 	result->src0 = rdShader_AssembleSrc(0,
 										inst->src[0].reg.type,
 										inst->src[0].reg.fmt,
 										inst->src[0].reg.address,
 										inst->src[0].reg.abs,
 										inst->src[0].reg.swizzle,
-										inst->src[0].reg.negate_or_invert,
+										inst->src[0].reg.unary,
 										inst->src[0].mult,
 										inst->src[0].reduction);
 
-	result->src1 = rdShader_AssembleSrc(1,
-										inst->src[1].reg.type,
-										inst->src[1].reg.fmt,
-										inst->src[1].reg.address,
-										inst->src[1].reg.abs,
-										inst->src[1].reg.swizzle,
-										inst->src[1].reg.negate_or_invert,
-										inst->src[1].mult,
-										inst->src[1].reduction);
-
-	// for 2 operands or less we can encode floating point immediate values
-	if (inst->srcCount < 3)
+	// store source operand 1 if we need it
+	if (inst->srcCount > 1)
 	{
-		float imm0 = inst->src[0].reg.immediate;
-		float imm1 = inst->src[1].reg.immediate;
-		result->src2 = stdMath_PackHalf2x16(imm0, imm1);
+		result->src1 = rdShader_AssembleSrc(1,
+											inst->src[1].reg.type,
+											inst->src[1].reg.fmt,
+											inst->src[1].reg.address,
+											inst->src[1].reg.abs,
+											inst->src[1].reg.swizzle,
+											inst->src[1].reg.unary,
+											inst->src[1].mult,
+											inst->src[1].reduction);
 	}
-	else
+
+	// store source operand 2 if we need it
+	// if we don't, use it to store immediate values
+	if (inst->srcCount > 2)
 	{
 		result->src2 = rdShader_AssembleSrc(2,
 											inst->src[2].reg.type,
@@ -511,9 +516,20 @@ static int rdShader_AssembleInstruction(rdShaderInstr* result, rdShader_Instruct
 											inst->src[2].reg.address,
 											inst->src[2].reg.abs,
 											inst->src[2].reg.swizzle,
-											inst->src[2].reg.negate_or_invert,
+											inst->src[2].reg.unary,
 											inst->src[2].mult,
 											inst->src[2].reduction);
+	}
+	else if (inst->srcCount > 1)
+	{
+		float imm0 = inst->src[0].reg.immediate;
+		float imm1 = inst->src[1].reg.immediate;
+		result->src2 = stdMath_PackHalf2x16(imm0, imm1);
+	}
+	else
+	{
+		float imm0 = inst->src[0].reg.immediate;
+		result->src2 = stdMath_FloatBitsToUint(imm0);
 	}
 
 	return 1;
@@ -555,12 +571,17 @@ static void rdShader_ParseSourceOperandWithModifiers(char* token, rdShader_SrcOp
 {
 	if (token[0] == '-') // check for negate
 	{
-		op->reg.negate_or_invert = RD_SHADER_NEGATE;
+		op->reg.unary = RD_SHADER_NEGATE;
 		token++;
 	}
 	else if (strncmp(token, "1 - ", 4) == 0) // check for invert, todo: fix spaces
 	{
-		op->reg.negate_or_invert = RD_SHADER_INVERT;
+		op->reg.unary = RD_SHADER_INVERT;
+		token += 4;
+	}
+	else if (strncmp(token, "1 / ", 4) == 0)
+	{
+		op->reg.unary = RD_SHADER_RCP;
 		token += 4;
 	}
 
@@ -654,7 +675,7 @@ void rdShader_ParseInstructionModifiers(const char* modifierStart, rdShader_Inst
 		else if (strnicmp(token, "abs", 3) == 0)
 			inst->dest.reg.abs = 1;
 		else if (strnicmp(token, "negate", 6) == 0)
-			inst->dest.reg.negate_or_invert = RD_SHADER_NEGATE;
+			inst->dest.reg.unary = RD_SHADER_NEGATE;
 		else
 			inst->dest.reg.fmt = rdShader_ParseFormat(token);
 

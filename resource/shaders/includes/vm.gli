@@ -124,6 +124,15 @@ void run_vm()
 			result = s_ir.prec ? sqrt(s0) : fastSqrtNR0(s0);
 			break;
 
+		case OP_SIN:
+			result = s_ir.prec ? sin(s0) : fastSin(s0);
+			break;
+
+		case OP_COS:
+			result = s_ir.prec ? cos(s0) : fastCos(s0);
+			break;
+
+		// todo: remove this and just use tex
 		case OP_FBR:
 			result = vec4(textureLod(refrtex, fract(s0.xy), s1.x).xyz, 1.0);
 			break;

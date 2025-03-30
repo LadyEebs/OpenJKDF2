@@ -245,8 +245,6 @@ typedef struct std3D_SharedUniforms
 	float pad1;
 
 	rdVector4 scale_bias[8];
-
-	rdVector4 negInv[4];
 } std3D_SharedUniforms;
 std3D_SharedUniforms sharedUniforms;
 
@@ -5285,10 +5283,6 @@ void std3D_UpdateSharedUniforms()
 	sharedUniforms.scale_bias[4] = (rdVector4){ 0.25f, 0.0f,0,0 };
 	sharedUniforms.scale_bias[5] = (rdVector4){ 1.0f, -0.5f,0,0 };
 	sharedUniforms.scale_bias[6] = (rdVector4){ 2.0f, -1.0f,0,0 };
-
-	sharedUniforms.negInv[0] = (rdVector4){ 1.0f, 0.0f,0,0 };
-	sharedUniforms.negInv[1] = (rdVector4){-1.0f, 0.0f,0,0 };
-	sharedUniforms.negInv[2] = (rdVector4){-1.0f, 1.0f,0,0 };
 
 	glBindBuffer(GL_UNIFORM_BUFFER, shared_ubo);
 	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(std3D_SharedUniforms), &sharedUniforms);

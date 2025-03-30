@@ -133,14 +133,15 @@ vec4 fetch_reg(vm_src s_operand, uint s_imm)
 {
 	switch(s_operand.type)
 	{
-	default:			 return vec4(0.0);
-	case REG_TYPE_GPR:	 return decode_reg(r[s_operand.addr], s_operand.fmt);
-	case REG_TYPE_CLR:	 return read_color_reg(s_operand.addr);
-	case REG_TYPE_CON:	 return shaderConstants[s_operand.addr];
-	case REG_TYPE_TEX:	 return read_texcoord_reg(s_operand.addr).xyxy;
-	case REG_TYPE_IMM8:	 return vec4(miniBitsToFloat(s_operand.addr));
-	case REG_TYPE_IMM16: return vec4(unpackHalf2x16(s_imm >> (s_operand.idx << 4)).x);
-	case REG_TYPE_SYS:   return read_system_value(s_operand.addr);
+	default:				return vec4(0.0);
+	case REG_TYPE_GPR:		return decode_reg(r[s_operand.addr], s_operand.fmt);
+	case REG_TYPE_CLR:		return read_color_reg(s_operand.addr);
+	case REG_TYPE_CON:		return shaderConstants[s_operand.addr];
+	case REG_TYPE_TEX:		return read_texcoord_reg(s_operand.addr).xyxy;
+	case REG_TYPE_SYS:		return read_system_value(s_operand.addr);
+	case REG_TYPE_IMM8:		return vec4(miniBitsToFloat(s_operand.addr));
+	case REG_TYPE_IMM16:	return vec4(unpackHalf2x16(s_imm >> (s_operand.idx << 4)).x);
+	case REG_TYPE_IMM32:	return vec4(uintBitsToFloat(s_imm));
 	}
 }
 
@@ -158,6 +159,18 @@ vec4 apply_reduction(vec4 reg, uint s_reduction)
 	}
 }
 
+vec4 apply_unary(vec4 reg, uint s_unary)
+{
+	switch (s_unary)
+	{
+	default:
+	case SRC_UNARY_NONE:	return             reg;
+	case SRC_UNARY_NEG:		return            -reg;
+	case SRC_UNARY_INV:		return       1.0 - reg;
+	case SRC_UNARY_RCP:		return fastRcpNR0(reg);
+	}
+}
+
 vec4 read_src(vm_src s_operand, vm_instr s_ir)
 {
 	// fetch the relevant register or immediate value
@@ -172,8 +185,8 @@ vec4 read_src(vm_src s_operand, vm_instr s_ir)
 	// modifiers
 	if( s_operand.absolute)	reg = abs(reg);
 	
-	// branchless negate or invert
-	reg = reg * aNegInv[s_operand.neg_inv].x + aNegInv[s_operand.neg_inv].y;
+	// unary op
+	reg = apply_unary(reg, s_operand.unary);
 
 	return apply_reduction(reg, s_operand.reduction);
 }

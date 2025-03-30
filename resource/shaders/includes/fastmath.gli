@@ -5,6 +5,65 @@ import "defines.gli"
 #ifndef FASTMATH_H
 #define FASTMATH_H
 
+// 12 cycles (3 operations) vs 16 (native sin) on AMD
+// input must be -pi/2 to pi/2
+float fastSin(float x)
+{
+	float x2 = x * x;
+	return x * (-0.086584 * x2 + 0.848826);
+}
+
+vec2 fastSin(vec2 x)
+{
+	return vec2(fastSin(x.x), fastSin(x.y));
+}
+
+vec3 fastSin(vec3 x)
+{
+	return vec3(fastSin(x.x), fastSin(x.y), fastSin(x.z));
+}
+
+vec4 fastSin(vec4 x)
+{
+	return vec4(fastSin(x.x), fastSin(x.y), fastSin(x.z), fastSin(x.w));
+}
+
+float fastSinFull(float x)
+{
+	x = fract(x / M_2PI + 0.5);
+	return fastSin(x * M_2PI - M_PI);
+}
+
+// 12 cycles (3 operations) vs 16 (native sin) on AMD
+// input must be -pi/2 to pi/2
+float fastCos(float x)
+{
+    float x2 = x * x;
+    return x2 * (0.009f * x2 + -0.415f) + 1.0f;
+}
+
+vec2 fastCos(vec2 x)
+{
+	return vec2(fastCos(x.x), fastCos(x.y));
+}
+
+vec3 fastCos(vec3 x)
+{
+	return vec3(fastCos(x.x), fastCos(x.y), fastCos(x.z));
+}
+
+vec4 fastCos(vec4 x)
+{
+	return vec4(fastCos(x.x), fastCos(x.y), fastCos(x.z), fastCos(x.w));
+}
+
+float fastCosFull(float x)
+{
+    x = mod(x, M_2PI);
+    x = (x > M_PI) ? M_2PI - x : x;
+    return fastCos(M_2PI * 2.0 + -x);
+}
+
 // https://seblagarde.wordpress.com/2014/12/01/inverse-trigonometric-functions-gpu-optimization-for-amd-gcn-architecture/
 // max absolute error 1.3x10^-3
 // Eberly's odd polynomial degree 5 - respect bounds

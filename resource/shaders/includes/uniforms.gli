@@ -73,7 +73,6 @@ layout(binding = UBO_SLOT_SHARED, std140) uniform sharedBlock
 	float pad1;
 
 	vec4 aScaleBias[8];
-	vec4 aNegInv[4];
 };
 
 // Fog state

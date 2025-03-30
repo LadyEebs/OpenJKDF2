@@ -94,9 +94,10 @@ typedef enum
 	RD_SHADER_CLR,		// color
 	RD_SHADER_CON,		// constant
 	RD_SHADER_TEX,		// texcoord
+	RD_SHADER_SYS,		// system value
 	RD_SHADER_IMM8,		// 8 bit immediate value
 	RD_SHADER_IMM16,	// 16 bit immediate value
-	RD_SHADER_SYS,		// system value
+	RD_SHADER_IMM32,	// 32 bit immediate value
 
 	RD_SHADER_REG_TYPE_COUNT
 } rdShader_RegisterTypes;
@@ -106,10 +107,11 @@ typedef enum
 {
 	RD_SHADER_NEGATE = 1,	// negate: -x
 	RD_SHADER_INVERT,		// invert: 1 - x
+	RD_SHADER_RCP,			// rcp: 1 / x
 
-	NEG_INV_COUNT
-} rdShader_NegateInvertMode;
-static_assert(NEG_INV_COUNT <= 4, "NEG_INV_COUNT must not exceed 4.");
+	RD_SHADER_UNARY_COUNT
+} rdShader_UnaryModifiers;
+static_assert(RD_SHADER_UNARY_COUNT <= 4, "RD_SHADER_UNARY_COUNT must not exceed 4.");
 
 typedef enum
 {
