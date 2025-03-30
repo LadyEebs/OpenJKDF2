@@ -116,7 +116,7 @@ void run_vm()
 			result = s_ir.prec ? (1.0 / s0) : fastRcpNR0(s0);
 			break;
 
-		case OP_RSQ:
+		case OP_RSQRT:
 			result = s_ir.prec ? inversesqrt(s0) : fastRcpSqrtNR0(s0);
 			break;
 

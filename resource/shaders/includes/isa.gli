@@ -32,7 +32,7 @@ import "uniforms.gli"
 #define OP_POM		19	// steep parallax
 #define OP_POW		20	// power
 #define OP_RCP		21	// reciprocal
-#define OP_RSQ		22	// reciprocal square root
+#define OP_RSQRT	22	// reciprocal square root
 #define OP_SQRT		23	// square root
 #define OP_SUB		24	// subtract
 #define OP_TEX		25	// texture
