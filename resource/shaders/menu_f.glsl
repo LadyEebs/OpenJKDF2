@@ -23,7 +23,7 @@ void main(void)
         discard;
 
 	// fake untonemap to give it some brightness
-	float k = 6.0;
+	float k = 10.0;
 	//sampled_color.rgb = k * sampled_color.rgb / (k - sampled_color.rgb);
 	sampled_color.rgb = k * sampled_color.rgb / (k - max3(sampled_color.r, sampled_color.g, sampled_color.b));
 	
