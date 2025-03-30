@@ -184,14 +184,22 @@ typedef struct std3DFramebuffer
 std3DIntermediateFbo window;
 std3DIntermediateFbo std3D_mainFbo;
 
+enum
+{
+	FBO_BLOOM  = 0x1,
+	FBO_SSAO   = 0x2,
+	FBO_32_BIT = 0x4
+};
 int std3D_framebufferFlags = 0;
+
+#define NUM_BLOOM_LAYERS 4
 
 std3DIntermediateFbo deferred; // opaque lighting prepass
 std3DIntermediateFbo refr; // refraction tex
 std3DIntermediateFbo refrZ; // refraction z clipping tex
 std3DIntermediateFbo ssaoDepth;
 std3DIntermediateFbo ssao;
-std3DIntermediateFbo bloomLayers[4];
+std3DIntermediateFbo bloomLayers[NUM_BLOOM_LAYERS];
 
 GLint std3D_windowFbo = 0;
 std3DFramebuffer std3D_framebuffer;
@@ -779,6 +787,8 @@ void std3D_deleteIntermediateFbo(std3DIntermediateFbo* pFbo)
     glDeleteTextures(1, &pFbo->tex);
 	if(pFbo->rbo)
 		glDeleteRenderbuffers(1, &pFbo->rbo);
+
+	memset(pFbo, 0, sizeof(std3DIntermediateFbo));
 }
 
 void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* pFb)
@@ -790,9 +800,9 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
     pFb->h = height;
 
 	if (jkPlayer_enable32Bit)
-		std3D_framebufferFlags |= 4;
+		std3D_framebufferFlags |= FBO_32_BIT;
 	else
-		std3D_framebufferFlags &= ~4;
+		std3D_framebufferFlags &= ~FBO_32_BIT;
 
     glActiveTexture(GL_TEXTURE0);
 
@@ -835,7 +845,7 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 	
 	if(jkPlayer_enableBloom)
 	{
-		std3D_framebufferFlags |= 1;
+		std3D_framebufferFlags |= FBO_BLOOM;
 
 		GLuint emissiveFormat = jkPlayer_enable32Bit ? GL_RGB10_A2 : GL_RGB565;
 		GLuint emissiveLayout = jkPlayer_enable32Bit ? GL_RGBA : GL_RGB;
@@ -870,7 +880,7 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
     }
 	else
 	{
-		std3D_framebufferFlags &= ~1;
+		std3D_framebufferFlags &= ~FBO_BLOOM;
 	}
 
 #ifdef MOTION_BLUR
@@ -925,7 +935,7 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 	glBindFramebuffer(GL_FRAMEBUFFER, pFb->resolveFbo);
 
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pFb->resolve0, 0);
-	if (jkPlayer_enableBloom)
+	if (std3D_framebufferFlags & FBO_BLOOM)
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, pFb->resolve1, 0);
 
 #ifdef MOTION_BLUR
@@ -940,7 +950,7 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 		glBindFramebuffer(GL_FRAMEBUFFER, pFb->fbo);
 
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, pFb->tex0, 0);
-		if (jkPlayer_enableBloom)
+		if (std3D_framebufferFlags & FBO_BLOOM)
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D_MULTISAMPLE, pFb->tex1, 0);
 		
 #ifdef MOTION_BLUR
@@ -1002,22 +1012,22 @@ void std3D_generateExtraFramebuffers(int32_t width, int32_t height)
 
 		std3D_generateIntermediateFbo(width / 2, height / 2, &ssaoDepth, GL_R16F, 0, 0, 0, 0);
 		std3D_generateIntermediateFbo(width, height, &ssao, GL_R8, 0, 0, 1, std3D_framebuffer.ztex);
-		std3D_framebufferFlags |= 2;
+		std3D_framebufferFlags |= FBO_SSAO;
 	}
 	else
-		std3D_framebufferFlags &= ~2;
+		std3D_framebufferFlags &= ~FBO_SSAO;
 
-	if (jkPlayer_enableBloom)
+	if (std3D_framebufferFlags & FBO_BLOOM)
 	{
 		int bloom_w = width > 320 ? 640 : 320;
 		int bloom_h = bloom_w * ((float)height / width);
 
 		std3D_generateIntermediateFbo(bloom_w, bloom_h, &bloomLayers[0], GL_R11F_G11F_B10F, 0, 1, 0, 0);
-		for (int i = 1; i < ARRAY_SIZE(bloomLayers); ++i)
+		for (int i = 1; i < NUM_BLOOM_LAYERS; ++i)
 			std3D_generateIntermediateFbo(bloomLayers[i - 1].w / 2, bloomLayers[i - 1].h / 2, &bloomLayers[i], GL_R11F_G11F_B10F, 0, 1, 0, 0);
 	}
 
-	std3D_generateIntermediateFbo(width, height, &deferred, GL_R32F, 0, 0, 0, 0);
+	//std3D_generateIntermediateFbo(width, height, &deferred, GL_R32F, 0, 0, 0, 0);
 	//std3D_generateIntermediateFbo(width, height, &deferred, GL_RGBA8, 0, 0, 0);
 
 	// the refraction buffers use the same depth-stencil as the main scene
@@ -1032,8 +1042,8 @@ void std3D_generateExtraFramebuffers(int32_t width, int32_t height)
 	//std3D_generateIntermediateFbo(width, height, &refrZ, GL_R32F, 0, 0, 1, std3D_framebuffer.ztex);
 	std3D_generateIntermediateFbo(width, height, &refrZ, refrFormat, 0, 0, 0, 0);// 1, 0, 1, std3D_framebuffer.ztex);
 
-	std3D_mainFbo.fbo = std3D_framebuffer.fbo;
-	std3D_mainFbo.tex = std3D_framebuffer.tex1;
+	std3D_mainFbo.fbo = std3D_framebuffer.resolveFbo;
+	std3D_mainFbo.tex = std3D_framebuffer.resolve1;
 	//std3D_mainFbo.rbo = std3D_framebuffer.rbo;
 	std3D_mainFbo.w = std3D_framebuffer.w;
 	std3D_mainFbo.h = std3D_framebuffer.h;
@@ -1069,7 +1079,7 @@ void std3D_deleteExtraFramebuffers()
 {
 	std3D_deleteIntermediateFbo(&ssao);
 	std3D_deleteIntermediateFbo(&ssaoDepth);
-	for (int i = 0; i < ARRAY_SIZE(bloomLayers); ++i)
+	for (int i = 0; i < NUM_BLOOM_LAYERS; ++i)
 		std3D_deleteIntermediateFbo(&bloomLayers[i]);
 
 	std3D_deleteIntermediateFbo(&deferred);
@@ -1081,13 +1091,15 @@ void std3D_ResolveMSAA()
 {
 	if (std3D_framebuffer.samples > 1)
 	{
+		std3D_PushDebugGroup("std3D_ResolveMSAA");
+
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, std3D_framebuffer.resolveFbo);
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, std3D_framebuffer.fbo);
 
 #ifdef MOTION_BLUR
 		const uint8_t attachments = 3;
 #else
-		const uint8_t attachments = (std3D_framebufferFlags & 0x1) ? 2 : 1;
+		const uint8_t attachments = (std3D_framebufferFlags & FBO_BLOOM) ? 2 : 1;
 #endif
 		for (uint8_t i = 0; i < attachments; ++i)
 		{
@@ -1095,6 +1107,8 @@ void std3D_ResolveMSAA()
 			glReadBuffer(GL_COLOR_ATTACHMENT0 + i);
 			glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, std3D_framebuffer.w, std3D_framebuffer.h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 		}
+
+		std3D_PopDebugGroup();
 	}
 }
 
@@ -2309,9 +2323,9 @@ int std3D_StartScene()
 	tex_h = tex_w * (float)Window_ySize / Window_xSize;
 
     if (tex_w != std3D_framebuffer.w || tex_h != std3D_framebuffer.h 
-        || (((std3D_framebufferFlags & 1) == 1) != jkPlayer_enableBloom)
-		|| (((std3D_framebufferFlags & 2) == 2) != jkPlayer_enableSSAO)
-		|| (((std3D_framebufferFlags & 4) == 4) != jkPlayer_enable32Bit)
+        || ((std3D_framebufferFlags & FBO_BLOOM) != jkPlayer_enableBloom)
+		|| ((std3D_framebufferFlags & FBO_SSAO) != jkPlayer_enableSSAO)
+		|| ((std3D_framebufferFlags & FBO_32_BIT) != jkPlayer_enable32Bit)
 		|| std3D_framebuffer.samples != jkPlayer_multiSample)
     {
 		std3D_deleteExtraFramebuffers();
@@ -5638,6 +5652,8 @@ void std3D_BindStage(std3D_worldStage* pStage)
 
 void std3D_BlitFrame()
 {
+	std3D_PushDebugGroup("std3D_BlitFrame");
+
 	//glDepthMask(GL_FALSE);
 	//std3D_DrawSimpleTex(&std3D_texFboStage, &refr, std3D_framebuffer.tex0, 0, 0, 1.0, 1.0, 1.0, 0, "Frmebuffer Blit");
 
@@ -5654,6 +5670,7 @@ void std3D_BlitFrame()
 	glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.fbo);
 	//glBindTexture(GL_TEXTURE_2D, refr.tex);
 	//glGenerateMipmap(GL_TEXTURE_2D);
+	std3D_PopDebugGroup();
 }
 
 void std3D_SendVerticesToHardware(void* vertices, uint32_t count, uint32_t stride)
@@ -5849,7 +5866,7 @@ void std3D_FlushDeferred()
 // writes directly to the final window framebuffer
 void std3D_DoBloom()
 {
-	if (!jkPlayer_enableBloom)
+	if (!(std3D_framebufferFlags & FBO_BLOOM))
 		return;
 
 	STD_BEGIN_PROFILER_LABEL();
@@ -5860,18 +5877,19 @@ void std3D_DoBloom()
 	const float blendLerp = 0.6f;
 	const float uvScale = 1.0f; // debug for the kernel radius
 
-	std3D_PushDebugGroup("Bloom");
+	std3D_PushDebugGroup("std3D_DoBloom");
 
 	// downscale layers using a simple gaussian filter
 	std3D_DrawSimpleTex(&std3D_bloomStage, &bloomLayers[0], std3D_framebuffer.resolve1, 0, 0, uvScale, 1.0, 1.0, 0, "Bloom Downscale");
-	for (int i = 1; i < ARRAY_SIZE(bloomLayers); ++i)
+	for (int i = 1; i < NUM_BLOOM_LAYERS; ++i)
 		std3D_DrawSimpleTex(&std3D_bloomStage, &bloomLayers[i], bloomLayers[i - 1].tex, 0, 0, uvScale, 1.0, 1.0, 0, "Bloom Downscale");
 
 	// upscale layers and blend upward
 	glEnable(GL_BLEND);
 	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glBlendFunc(GL_ONE, GL_ONE);
-	for (int i = ARRAY_SIZE(bloomLayers) - 2; i >= 0; --i)
+
+	for (int i = NUM_BLOOM_LAYERS - 2; i >= 0; --i)
 		std3D_DrawSimpleTex(&std3D_bloomStage, &bloomLayers[i], bloomLayers[i + 1].tex, 0, 0, uvScale, blendLerp, 1.0, 0, "Bloom Upscale");
 
 	std3D_PopDebugGroup();
@@ -5915,7 +5933,7 @@ void std3D_FlushPostFX()
 	std3D_DrawSimpleTex(&std3D_motionblurStage, &refrZ, refr.tex, std3D_framebuffer.resolve2, 0, 0.5, 1.0, 1.0, 0, "Motion Blur 2nd");
 	std3D_DrawSimpleTex(&std3D_postfxStage, &window, refrZ.tex, bloomLayers[0].tex, 0, (rdCamera_pCurCamera->flags & 0x1) ? sithTime_curSeconds : -1.0, jkPlayer_enableDithering, jkPlayer_gamma, 0, "Final Output");
 #else
-	std3D_DrawSimpleTex(&std3D_postfxStage, &window, std3D_framebuffer.resolve0, bloomLayers[0].tex, 0, (rdCamera_pCurCamera->flags & 0x1) ? sithTime_curSeconds : -1.0, jkPlayer_enableDithering, jkPlayer_gamma, 0, "Final Output");
+	std3D_DrawSimpleTex(&std3D_postfxStage, &window, std3D_framebuffer.resolve0, (std3D_framebufferFlags & FBO_BLOOM) ? bloomLayers[0].tex : blank_tex, 0, (rdCamera_pCurCamera->flags & 0x1) ? sithTime_curSeconds : -1.0, jkPlayer_enableDithering, jkPlayer_gamma, 0, "Final Output");
 #endif
 
 
