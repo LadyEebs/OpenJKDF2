@@ -1066,3 +1066,14 @@ float stdMath_Mini8ToFloat(uint8_t u8)
 	float value = 1.0f + (float)significand / 16.0f;
 	return value * powf(2.0f, (float)(exponent - 7));
 }
+
+uint32_t stdMath_FloatBitsToUint(float x)
+{
+	union
+	{
+		float f;
+		uint32_t u;
+	} v;
+	v.f = x;
+	return v.u;
+}

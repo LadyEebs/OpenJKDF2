@@ -122,6 +122,8 @@ uint32_t stdMath_PackHalf2x16(float x, float y);
 uint8_t stdMath_FloatToMini8(float x);
 float stdMath_Mini8ToFloat(uint8_t x);
 
+uint32_t stdMath_FloatBitsToUint(float x);
+
 extern const float aSinTable[4096];
 extern const float aTanTable[4096];
 
