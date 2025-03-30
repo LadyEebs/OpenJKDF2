@@ -2175,6 +2175,43 @@ int init_resources()
     return true;
 }
 
+int std3D_IsExtensionSupported(const char* name)
+{
+	// checking GL directly for extensions doesn't always work
+	// ex. GL_EXT_shader_explicit_arithmetic_types may be supported but it doesn't get listed
+	// so instead we try to compile a dummy shader with ext : require to see if it will work or not
+
+	extern int Window_GL4;
+	const char* version = Window_GL4 ? "#version 460\n" : "#version 330\n";
+
+	char dummyCode[256];
+	if (Window_GL4)
+		sprintf_s(dummyCode, 256, "#extension %s : require\nvoid main() {}\n", name);
+	else
+		sprintf_s(dummyCode, 256, "#extension %s : require\nvoid main() {}\n", name);
+
+	const GLchar* sources[] = {
+		version,
+		dummyCode
+	};
+
+	GLuint res = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(res, 2, sources, NULL);
+
+	glCompileShader(res);
+
+	GLint compile_ok = GL_FALSE;
+	glGetShaderiv(res, GL_COMPILE_STATUS, &compile_ok);
+	if (compile_ok == GL_FALSE)
+	{
+		glDeleteShader(res);
+		return 0;
+	}
+
+	glDeleteShader(res);
+	return 1;
+}
+
 int std3D_Startup()
 {
     if (std3D_bInitted) {
@@ -2184,6 +2221,51 @@ int std3D_Startup()
 #ifdef TARGET_CAN_JKGM
     jkgm_startup();
 #endif
+
+	{
+		int major, minor;
+		SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &major);
+		SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &minor);
+		stdPlatform_Printf("OpenGL Version %d.%d\n", major, minor);
+
+		stdPlatform_Printf("Checking supported OpenGL extensions...\n");
+
+		static const char* extList[] =
+		{
+			"GL_ARB_shading_language_packing",
+			"GL_ARB_texture_gather",
+			"GL_ARB_texture_query_lod",
+			"GL_ARB_explicit_uniform_location",
+			"GL_ARB_texture_query_levels",
+			"GL_ARB_gpu_shader5",
+			"GL_KHR_shader_subgroup_ballot",
+			"GL_KHR_shader_subgroup_arithmetic",
+			"GL_KHR_shader_subgroup_vote",
+			"GL_EXT_shader_explicit_arithmetic_types_float16",
+			"GL_EXT_shader_explicit_arithmetic_types_int8",
+			"GL_EXT_shader_explicit_arithmetic_types_float16",
+			"GL_EXT_shader_explicit_arithmetic_types_int16",
+			"GL_EXT_shader_explicit_arithmetic_types_int64",
+			"GL_EXT_shader_subgroup_extended_types_float16",
+			"GL_AMD_shader_trinary_minmax",
+			"GL_AMD_gpu_shader_half_float_fetch",
+			"GL_AMD_gcn_shader"
+		};
+
+		for (int i = 0; i < ARRAY_SIZE(extList); ++i)
+		{
+			if(std3D_IsExtensionSupported(extList[i]))
+			{
+				stdPlatform_Printf("\tExtension %s supported\n", extList[i]);
+			}
+			else
+			{
+				stdPlatform_Printf("\tExtension %s not supported, using fallback\n", extList[i]);
+			}
+		}
+	}
+
+
 
     memset(&std3D_ui_colormap, 0, sizeof(std3D_ui_colormap));
     rdColormap_LoadEntry("misc\\cmp\\UIColormap.cmp", &std3D_ui_colormap);

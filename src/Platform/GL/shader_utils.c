@@ -164,7 +164,7 @@ GLuint load_shader_file(const char* filepath, GLenum type, const char* userDefin
         return -1;
     }
     
-    stdPlatform_Printf("std3D: Parse shader `%s` [%s]\n", filepath, userDefines);
+    stdPlatform_Printf("std3D: Loading shader `%s` [%s]\n", filepath, userDefines);
     
     GLuint ret = create_shader(shader_contents, type, userDefines);
     free(shader_contents);
@@ -206,11 +206,12 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 #if defined(WIN64_STANDALONE)
 	extern int Window_GL4;
     version = Window_GL4 ? "#version 460\n" : "#version 330\n";
+	// note: if this changes, make sure to update the list in std3D_Startup for logging purposes
     extensions =	"#if __VERSION__ < 400\n"
 					// ARB
-					"#extension GL_ARB_shading_language_packing	: require\n"	// unpackUnorm4x8, core in 4.0
-					"#extension GL_ARB_texture_gather			: require\n"	// textureGather, core in 4.0
-					"#	extension GL_ARB_texture_query_lod		: require\n"	// textureQueryLod, core in 4.0
+					"#	extension GL_ARB_shading_language_packing	: require\n"	// unpackUnorm4x8, core in 4.0
+					"#	extension GL_ARB_texture_gather				: require\n"	// textureGather, core in 4.0
+					"#	extension GL_ARB_texture_query_lod			: require\n"	// textureQueryLod, core in 4.0
 					"#endif\n"
 					"#if __VERSION__ < 430\n"
 					"#	extension GL_ARB_explicit_uniform_location	: require\n"	// layout(location=n), core in 4.3
