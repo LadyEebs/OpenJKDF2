@@ -351,3 +351,9 @@ wchar_t* stdString_SafeWStrCopy(wchar_t* pDst, const wchar_t* pSrc, uint32_t len
     pDst[lenDst - 1] = 0;
     return pDst;
 }
+
+int stdString_StartsWith(const char* str, const char* prefix)
+{
+	return strnicmp(str, prefix, strlen(prefix)) == 0;
+}
+

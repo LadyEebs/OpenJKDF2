@@ -23,11 +23,6 @@
 
 #include "Platform/Common/stdEmbeddedRes.h"
 
-#define MAX_NAME_LENGTH 32
-#define MAX_PATH_LENGTH 128
-#define MAX_LINE_LENGTH 2048
-#define MAX_SOURCE_LENGTH 16777216//65536 // todo: how big should this actually be?
-
 /**
  * Display compilation errors from the OpenGL shader compiler
  */
@@ -57,19 +52,19 @@ void print_log(GLuint object) {
 	free(log);
 }
 
-int starts_with(const char* str, const char* prefix)
+typedef struct 
 {
-	return strnicmp(str, prefix, strlen(prefix)) == 0;
-}
+	char  name[32];
+	char* source;
+} std3D_shaderImport;
+std3D_shaderImport std3D_loadedImports[32];
+int std3D_numLoadedImports = 0;
 
-const char loadedImports[64][128];
-int numLoadedImports = 0;
-
-int already_imported(const char* name)
+int std3D_Imported(const char* name)
 {
-	for (int i = 0; i < numLoadedImports; ++i)
+	for (int i = 0; i < std3D_numLoadedImports; ++i)
 	{
-		if(strnicmp(name, loadedImports[i], 128) == 0)
+		if (strnicmp(name, std3D_loadedImports[i].name, 32) == 0)
 			return 1;
 	}
 	return 0;
@@ -81,78 +76,69 @@ char* load_source(const char* filepath)
 	if(!shader_contents)
 		return NULL;
 
-	char* full_source_code = (char*)malloc(MAX_SOURCE_LENGTH);
-	if (!full_source_code)
+	// scan the shader line by line for imports
+	// we do it by line instead of at first sight of an import because it might be commented out
+	char* curLine = shader_contents;
+	while (curLine)
 	{
-		char errtmp[256];
-		snprintf(errtmp, 256, "std3D: Failed to preprocess shader file `%s`\n", filepath);
-		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", errtmp, NULL);
-		free(shader_contents);
-		return NULL;
-	}
-	full_source_code[0] = '\0'; // Start with an empty string
+		// grab the next line
+		char* nextLine = strchr(curLine, '\n');
+		if (nextLine)
+			*nextLine = '\0';
 
-	char line_buffer[MAX_LINE_LENGTH];
-	const char* current = shader_contents;
-
-	// Read the file line by line
-	while (*current)
-	{
-		// Extract the next line
-		char* next_newline = strchr(current, '\n');
-		size_t line_length = next_newline ? (size_t)(next_newline - current) : strlen(current);
-		if (line_length >= MAX_LINE_LENGTH)
+		// comments are not supported on the same line for simplicity
+		char* comment = strstr(curLine, "//");
+		if (!comment)
 		{
-			char errtmp[256];
-			snprintf(errtmp, 256, "std3D: Line too long in file  `%s`\n", filepath);
-			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", errtmp, NULL);
-			free(shader_contents);
-			free(full_source_code);
-			return NULL;
-		}
-
-		strncpy(line_buffer, current, line_length);
-		line_buffer[line_length] = '\0';
-		current += line_length + (next_newline ? 1 : 0);
-
-		// Process import directives
-		if (starts_with(line_buffer, "import "))
-		{
-			char included_file[MAX_NAME_LENGTH];
-			strncpy(included_file, line_buffer + 8, MAX_NAME_LENGTH - 1); // remove "import_
-			included_file[strlen(included_file) - 1] = '\0'; // Remove trailing "
-
-			if(!already_imported(included_file))
+			// check for an import
+			char* import = strstr(curLine, "import");
+			if (import)
 			{
-				strcpy_s(loadedImports[numLoadedImports++], 128, included_file);
-
-				// For simplicity all includes are in the same folder
-				char resolved_path[MAX_PATH_LENGTH];
-				snprintf(resolved_path, MAX_PATH_LENGTH, "shaders/includes/%s", included_file);
-
-				// Recursively load the included file
-				char* included_source = load_source(resolved_path);
-				if (included_source)
+				// extract the name
+				char included_file[32];
+				stdString_GetQuotedStringContents(import, included_file, 32);
+				if (!std3D_Imported(included_file))
 				{
-					// todo: instead of concatenating, it might be better to append the contents
-					// to a buffer of strings and let glShaderSource handle it
-					strcat(full_source_code, included_source);
-					free(included_source);
+					if (std3D_numLoadedImports >= 32)
+					{
+						char errtmp[256];
+						snprintf(errtmp, 256, "std3D: Too many imports in shader file `%s`\n", filepath);
+						SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", errtmp, NULL);
+						free(shader_contents);
+						return NULL;
+					}
+
+					// all imports are in the same folder for simplicity
+					char resolved_path[128];
+					snprintf(resolved_path, 128, "shaders/includes/%s", included_file);
+					char* source = load_source(resolved_path);
+					if (source)
+					{
+						std3D_shaderImport* include = &std3D_loadedImports[std3D_numLoadedImports++];
+						stdString_SafeStrCopy(include->name, included_file, 32);
+						include->source = source;
+					}
 				}
+
+				// wipe the entire line
+				char* cur = curLine;
+				while (cur != nextLine)
+					*(cur++) = ' ';
 			}
-			continue; // Skip adding #include lines to the source
 		}
 
-		// Add the line to the full source code
-		strcat(full_source_code, line_buffer);
-		strcat(full_source_code, "\n");
+		if (nextLine)
+			*nextLine = '\n';
+
+		curLine = nextLine ? (nextLine + 1) : NULL;
 	}
-	return full_source_code;
+
+	return shader_contents;
 }
 
 GLuint load_shader_file(const char* filepath, GLenum type, const char* userDefines)
 {
-	numLoadedImports = 0;
+	std3D_numLoadedImports = 0;
 
     char* shader_contents = load_source(filepath);// stdEmbeddedRes_Load(filepath, NULL);
 
@@ -169,6 +155,14 @@ GLuint load_shader_file(const char* filepath, GLenum type, const char* userDefin
     GLuint ret = create_shader(shader_contents, type, userDefines);
     free(shader_contents);
     
+	for (int i = 0; i < std3D_numLoadedImports; ++i)
+	{
+		free(std3D_loadedImports[i].source);
+		std3D_loadedImports[i].source = 0;
+	}
+
+	std3D_numLoadedImports = 0;
+
     return ret;
 }
 
@@ -254,7 +248,7 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
     defines = "#define CAN_BILINEAR_FILTER\n";
 #endif
 
-	const char* featureDefines = "\n"
+	static const char* featureDefines = "\n"
 #ifdef CLASSIC_EMISSIVE
 	"#define CLASSIC_EMISSIVE\n"
 #endif
@@ -298,8 +292,7 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 	}
 
 	// GLES2 precision specifiers
-	const char* precision;
-	precision =
+	static const char* precision =
 		"#ifdef GL_ES                        \n"
 		"#  ifdef GL_FRAGMENT_PRECISION_HIGH \n"
 		"     precision highp float;         \n"
@@ -335,7 +328,7 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 		;
 
 	// custom intrinsics
-	const char* intrinsics =
+	static const char* intrinsics =
 		"#define M_PI 3.14159265358979323846\n"
 		"#define M_2PI (M_PI * 2.0)\n"
 		"#define M_INV_2PI (1.0 / M_2PI)\n"
@@ -462,19 +455,28 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 	buff += sprintf(buff, "#define CLUSTER_GRID_TOTAL_SIZE %d\n", STD3D_CLUSTER_GRID_TOTAL_SIZE);
 	buff = "\0"; // just in case
 
-	const GLchar* sources[] = {
-		version,
-		type_name,
-		extensions,
-		defines,
-		featureDefines,
-		limits,
-		userDefs,
-		precision,
-		intrinsics,
-		source
-	};
-	glShaderSource(res, 10, sources, NULL);
+	uint32_t source_count = 0;
+	GLchar** sources = malloc(sizeof(GLchar*) * (std3D_numLoadedImports + 10));
+	if (!sources)
+	{
+		glDeleteShader(res);
+		return 0;
+	}
+	sources[source_count++] = version;
+	sources[source_count++] = type_name;
+	sources[source_count++] = extensions;
+	sources[source_count++] = defines;
+	sources[source_count++] = featureDefines;
+	sources[source_count++] = limits;
+	sources[source_count++] = userDefs;
+	sources[source_count++] = precision;
+	sources[source_count++] = intrinsics;
+
+	for (int i = 0; i < std3D_numLoadedImports; ++i)
+		sources[source_count++] = std3D_loadedImports[i].source;
+	sources[source_count++] = source;
+
+	glShaderSource(res, source_count, sources, NULL);
 	
 	glCompileShader(res);
 	GLint compile_ok = GL_FALSE;

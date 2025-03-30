@@ -40,6 +40,8 @@ wchar_t* stdString_SafeWStrCopy(wchar_t* pDst, const wchar_t* pSrc, uint32_t len
 
 char* stdString_GetEnclosedStringContents(char* in, char* out, int out_size, char first, char second);
 
+int stdString_StartsWith(const char* str, const char* prefix);
+
 #ifdef __cplusplus
 }
 #endif
