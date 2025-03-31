@@ -29,20 +29,19 @@ import "uniforms.gli"
 #define OP_MIX		16	// mix/interpolate
 #define OP_MOV		17	// move
 #define OP_MUL		18	// multiply
-#define OP_OPM		19	// offset parallax
-#define OP_POM		20	// steep parallax
-#define OP_POW		21	// power
-#define OP_RCP		22	// reciprocal
-#define OP_RSQRT	23	// reciprocal square root
-#define OP_SIN		24	// sine
-#define OP_SQRT		25	// square root
-#define OP_SUB		26	// subtract
-#define OP_TEX		27	// texture
-#define OP_TEXLOD	28	// texture lod
-#define OP_TEXADD	29	// texture + offset
-#define OP_TEXINFO	30	// texture info (size, mips)
+#define OP_POM		19	// parallax
+#define OP_POW		20	// power
+#define OP_RCP		21	// reciprocal
+#define OP_RSQRT	22	// reciprocal square root
+#define OP_SIN		23	// sine
+#define OP_SQRT		24	// square root
+#define OP_SUB		25	// subtract
+#define OP_TEX		26	// texture
+#define OP_TEXLOD	27	// texture lod
+#define OP_TEXADD	28	// texture + offset
+#define OP_TEXINFO	29	// texture info (size, mips)
 
-// source types
+// register types
 #define REG_TYPE_GPR	0	// register
 #define REG_TYPE_CLR	1	// color
 #define REG_TYPE_CON	2	// constant
@@ -52,6 +51,7 @@ import "uniforms.gli"
 #define REG_TYPE_IMM16	6	// 16 bit immediate value
 #define REG_TYPE_IMM32	7	// 32 bit immediate value
 
+// register formats
 #define REG_U8  0
 #define REG_S8  1
 #define REG_F16 2

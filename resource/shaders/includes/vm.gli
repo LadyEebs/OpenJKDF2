@@ -162,23 +162,18 @@ void run_vm()
 			result = vec4(textureSize(textures[s_ir.src0.addr], int(s1.x)).xy, 1.0, textureQueryLevels(textures[s_ir.src0.addr]));
 			break;
 
-		case OP_OPM:
+		case OP_POM:
 			if (tex_mode != TEX_MODE_TEST)
 			{
-				result.xy = parallax(
+				if (s_ir.prec)
+					result.xy = parallax(
 							textures[s_ir.src0.addr],
 							s1.xy,
 							decode_octahedron_uint(vdir),
 							s2.x
 						).xy;
-				result.zw = vec2(0.0);
-			}
-			break;
-
-		case OP_POM:
-			if (tex_mode != TEX_MODE_TEST)
-			{
-				result.xy = steep_parallax(
+				else
+					result.xy = steep_parallax(
 							textures[s_ir.src0.addr],
 							s1.xy,
 							decode_octahedron_uint(vdir),
