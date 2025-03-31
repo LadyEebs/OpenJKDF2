@@ -161,6 +161,8 @@ typedef struct std3DFramebuffer
 	int32_t w;
 	int32_t h;
 	uint8_t samples;
+	bool    downscale;
+	int     msaaMode;
 
 	//GLuint rbo;
 	GLuint zfbo;
@@ -179,6 +181,7 @@ typedef struct std3DFramebuffer
 #ifdef MOTION_BLUR
 	GLuint resolve2; // velocity resolve
 #endif
+	GLuint resolveZ;
 } std3DFramebuffer;
 
 std3DIntermediateFbo window;
@@ -416,6 +419,7 @@ std3DSimpleTexStage std3D_postfxStage;
 std3DSimpleTexStage std3D_bloomStage;
 std3DSimpleTexStage std3D_ssaoStage;
 std3DSimpleTexStage std3D_motionblurStage;
+std3DSimpleTexStage std3D_resolveStage;
 
 std3DSimpleTexStage std3D_decalAtlasStage;
 std3DIntermediateFbo decalAtlasFBO;
@@ -812,7 +816,31 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 	GLuint fboLayout = GL_RGBA;
 #endif
 
-	pFb->samples = stdMath_ClampInt(jkPlayer_multiSample, 1, 8);
+	pFb->msaaMode = stdMath_ClampInt(jkPlayer_multiSample, SAMPLE_MODE_MIN, SAMPLE_MODE_MAX);
+	if (!GL_ARB_sample_locations)
+		pFb->msaaMode = stdMath_ClampInt(jkPlayer_multiSample, SAMPLE_NONE, SAMPLE_MODE_MAX);
+
+	pFb->samples = abs(pFb->msaaMode) << 1;
+	pFb->downscale = pFb->msaaMode < SAMPLE_NONE;
+
+	int msaa_width = width;
+	int msaa_height = height;
+	if (pFb->downscale)
+	{
+		if (pFb->msaaMode == SAMPLE_2x1)
+		{
+			// 2:1 horizontal
+			// 1:1 vertical
+			msaa_width /= 2;
+		}
+		else if (pFb->msaaMode == SAMPLE_2x2)
+		{
+			// 2:1 horizontal
+			// 2:1 vertical
+			msaa_width /= 2;
+			msaa_height /= 2;
+		}
+	}
 
     // Set up our framebuffer texture
 	// we never really use the alpha channel, so for 32bit we use deep color (rgb10a20, and for 16bit we use high color (rgb5a1, to avoid green shift)
@@ -825,16 +853,14 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-	if(pFb->samples > 1)
+	if(pFb->samples != 1)
 	{
 		glGenTextures(1, &pFb->tex0);
 		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pFb->tex0);
-		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, fboFormat, width, height, GL_TRUE);
-		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, fboFormat, msaa_width, msaa_height, GL_TRUE);
+
 		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_BASE_LEVEL, 0);
 	}
 	else
 	{
@@ -851,7 +877,7 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 		glGenTextures(1, &pFb->resolve1);
 		glBindTexture(GL_TEXTURE_2D, pFb->resolve1);
 		glTexImage2D(GL_TEXTURE_2D, 0, emissiveFormat, width, height, 0, emissiveLayout, GL_UNSIGNED_BYTE, NULL);
-		
+
 		// linear sampler for bloom downsample
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -860,16 +886,14 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
 
 		// Set up our emissive fb texture
-		if (pFb->samples > 1)
+		if (pFb->samples != 1)
 		{
 			glGenTextures(1, &pFb->tex1);
 			glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pFb->tex1);
-			glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, emissiveFormat, width, height, GL_TRUE);
-			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, emissiveFormat, msaa_width, msaa_height, GL_TRUE);
+			
 			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_BASE_LEVEL, 0);
 		}
 		else
 		{
@@ -893,11 +917,11 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
 
-		if (pFb->samples > 1)
+		if (pFb->samples != 1)
 		{
 			glGenTextures(1, &pFb->tex2);
 			glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pFb->tex2);
-			glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, GL_RGBA16F, width, height, GL_TRUE);
+			glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, GL_RGBA16F, msaa_width, msaa_height, GL_TRUE);
 			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -912,50 +936,80 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 #endif
 
 	// Set up our depth buffer texture
-	glGenTextures(1, &pFb->ztex);
-	if (pFb->samples > 1)
-	{
-		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pFb->ztex);
-		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, GL_DEPTH24_STENCIL8, width, height, GL_TRUE);
-	}
-	else
-	{
-		glBindTexture(GL_TEXTURE_2D, pFb->ztex);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
-	}
-
+	glGenTextures(1, &pFb->resolveZ);
+	glBindTexture(GL_TEXTURE_2D, pFb->resolveZ);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+		
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
+	if (pFb->samples != 1)
+	{
+		glGenTextures(1, &pFb->ztex);
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pFb->ztex);
+		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, GL_DEPTH24_STENCIL8, msaa_width, msaa_height, GL_TRUE);
+		
+		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	}
+	else
+	{
+		pFb->ztex = pFb->resolveZ;
+	}
+
+
 	glGenFramebuffers(1, &pFb->resolveFbo);
 	glBindFramebuffer(GL_FRAMEBUFFER, pFb->resolveFbo);
-
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pFb->resolve0, 0);
+		
 	if (std3D_framebufferFlags & FBO_BLOOM)
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, pFb->resolve1, 0);
 
 #ifdef MOTION_BLUR
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, pFb->resolve2, 0);
 #endif
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, pFb->resolveZ, 0);
 
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, pFb->ztex, 0);
-			
-	if (pFb->samples > 1)
+	if (pFb->samples != 1)
 	{
-		glGenFramebuffers(1, &pFb->fbo);
+		glGenFramebuffers(1, &pFb->fbo);			
 		glBindFramebuffer(GL_FRAMEBUFFER, pFb->fbo);
-
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, pFb->tex0, 0);
+		
 		if (std3D_framebufferFlags & FBO_BLOOM)
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D_MULTISAMPLE, pFb->tex1, 0);
 		
 #ifdef MOTION_BLUR
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D_MULTISAMPLE, pFb->tex2, 0);
 #endif
-
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D_MULTISAMPLE, pFb->ztex, 0);
+
+		if (pFb->downscale)
+		{
+			glFramebufferParameteri(GL_FRAMEBUFFER, GL_FRAMEBUFFER_PROGRAMMABLE_SAMPLE_LOCATIONS_ARB, 1);
+			if (pFb->msaaMode == SAMPLE_2x1)
+			{
+				static const rdVector2 samples[2] =
+				{
+					{ 0.75f, 0.5f },
+					{ 0.25f, 0.5f }
+				};
+				glFramebufferSampleLocationsfvARB(pFb->fbo, 0, 2, samples);
+			}
+			else if (pFb->msaaMode == SAMPLE_2x2)
+			{
+				static const rdVector2 samples[4] =
+				{
+					{0.25f, 0.25f},
+					{0.75f, 0.25f},
+					{0.25f, 0.75f},
+					{0.75f, 0.75f},
+				};
+				glFramebufferSampleLocationsfvARB(pFb->fbo, 0, 4, samples);
+			}
+		}
 	}
 	else
 	{
@@ -1041,7 +1095,7 @@ void std3D_generateExtraFramebuffers(int32_t width, int32_t height)
 	std3D_generateIntermediateFbo(width, height, &refrZ, refrFormat, 0, 0, 0, 0);// 1, 0, 1, std3D_framebuffer.ztex);
 
 	std3D_mainFbo.fbo = std3D_framebuffer.resolveFbo;
-	std3D_mainFbo.tex = std3D_framebuffer.resolve1;
+	std3D_mainFbo.tex = std3D_framebuffer.resolve0;
 	//std3D_mainFbo.rbo = std3D_framebuffer.rbo;
 	std3D_mainFbo.w = std3D_framebuffer.w;
 	std3D_mainFbo.h = std3D_framebuffer.h;
@@ -1057,20 +1111,34 @@ void std3D_generateExtraFramebuffers(int32_t width, int32_t height)
 
 void std3D_deleteFramebuffer(std3DFramebuffer* pFb)
 {
+	if (pFb->fbo != pFb->resolveFbo)
+		glDeleteFramebuffers(1, &pFb->fbo);
+
+	if (pFb->tex0 != pFb->resolve0)
+		glDeleteTextures(1, &pFb->tex0);
+
+	if (pFb->tex1 != pFb->resolve1)
+		glDeleteTextures(1, &pFb->tex1);
+#ifdef MOTION_BLUR
+	if (pFb->tex2 != pFb->resolve2)
+		glDeleteTextures(1, &pFb->tex2);
+#endif
+
+	if (pFb->ztex != pFb->resolveZ)
+		glDeleteTextures(1, &pFb->ztex);
+
     glDeleteFramebuffers(1, &pFb->resolveFbo);
     glDeleteTextures(1, &pFb->resolve0);
     glDeleteTextures(1, &pFb->resolve1);
+#ifdef MOTION_BLUR
+	glDeleteTextures(1, &pFb->resolve2);
+#endif
     //glDeleteRenderbuffers(1, &pFb->rbo);
 	//glDeleteTextures(1, &pFb->ntex);
-	glDeleteTextures(1, &pFb->ztex);
+	glDeleteTextures(1, &pFb->resolveZ);
 	glDeleteFramebuffers(1, &pFb->zfbo);
 
-	if (pFb->samples > 1)
-	{
-		glDeleteFramebuffers(1, &pFb->fbo);
-		glDeleteTextures(1, &pFb->tex0);
-		glDeleteTextures(1, &pFb->tex1);
-	}
+	memset(pFb, 0, sizeof(std3DFramebuffer));
 }
 
 void std3D_deleteExtraFramebuffers()
@@ -1083,31 +1151,6 @@ void std3D_deleteExtraFramebuffers()
 	std3D_deleteIntermediateFbo(&deferred);
 	std3D_deleteIntermediateFbo(&refr);
 	std3D_deleteIntermediateFbo(&refrZ);
-}
-
-void std3D_ResolveMSAA()
-{
-	if (std3D_framebuffer.samples > 1)
-	{
-		std3D_PushDebugGroup("std3D_ResolveMSAA");
-
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, std3D_framebuffer.resolveFbo);
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, std3D_framebuffer.fbo);
-
-#ifdef MOTION_BLUR
-		const uint8_t attachments = 3;
-#else
-		const uint8_t attachments = (std3D_framebufferFlags & FBO_BLOOM) ? 2 : 1;
-#endif
-		for (uint8_t i = 0; i < attachments; ++i)
-		{
-			glDrawBuffer(GL_COLOR_ATTACHMENT0 + i);
-			glReadBuffer(GL_COLOR_ATTACHMENT0 + i);
-			glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, std3D_framebuffer.w, std3D_framebuffer.h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-		}
-
-		std3D_PopDebugGroup();
-	}
 }
 
 #ifdef HW_VBUFFER
@@ -1872,6 +1915,7 @@ int init_resources()
 #ifdef MOTION_BLUR
 	if (!std3D_loadSimpleTexProgram("shaders/postfx/postfx", "MOTION_BLUR_PASS", &std3D_motionblurStage)) return false;	
 #endif
+	if (!std3D_loadSimpleTexProgram("shaders/postfx/postfx", "RESOLVE", &std3D_resolveStage)) return false;
 	if (!std3D_loadSimpleTexProgram("shaders/postfx/bloom", "", &std3D_bloomStage)) return false;
 	if (!std3D_loadSimpleTexProgram("shaders/ssao", "", &std3D_ssaoStage)) return false;
 	if (!std3D_loadSimpleTexProgram("shaders/decal_insert", "", &std3D_decalAtlasStage)) return false;
@@ -2393,9 +2437,9 @@ int std3D_StartScene()
     
     std3D_swapFramebuffers();
     
-    double supersample_level = jkPlayer_ssaaMultiple; // Can also be set lower
-    int32_t tex_w = (int32_t)((double)Window_xSize * supersample_level);
-    int32_t tex_h = (int32_t)((double)Window_ySize * supersample_level);
+    float supersample_level = stdMath_Clamp(jkPlayer_ssaaMultiple, 0.125f, 8.0f); // Can also be set lower
+    int32_t tex_w = (int32_t)((float)Window_xSize * supersample_level);
+    int32_t tex_h = (int32_t)((float)Window_ySize * supersample_level);
 	tex_w = (tex_w < 320 ? 320 : tex_w);
 	tex_h = tex_w * (float)Window_ySize / Window_xSize;
 
@@ -2403,7 +2447,7 @@ int std3D_StartScene()
         || ((std3D_framebufferFlags & FBO_BLOOM) != jkPlayer_enableBloom)
 		|| ((std3D_framebufferFlags & FBO_SSAO) != jkPlayer_enableSSAO)
 		|| ((std3D_framebufferFlags & FBO_32_BIT) != jkPlayer_enable32Bit)
-		|| std3D_framebuffer.samples != jkPlayer_multiSample)
+		|| std3D_framebuffer.msaaMode != jkPlayer_multiSample)
     {
 		std3D_deleteExtraFramebuffers();
         std3D_deleteFramebuffer(&std3D_framebuffer);
@@ -2723,6 +2767,73 @@ static rdDDrawSurface* test_idk = NULL;
 void std3D_DrawSimpleTex(std3DSimpleTexStage* pStage, std3DIntermediateFbo* pFbo, GLuint texId, GLuint texId2, GLuint texId3, float param1, float param2, float param3, int gen_mips, const char* debugName);
 void std3D_DrawMapOverlay();
 void std3D_DrawUIRenderList();
+
+void std3D_ResolveMSAA()
+{
+	if (std3D_framebuffer.samples != 1)
+	{
+		std3D_PushDebugGroup("std3D_ResolveMSAA");
+
+
+		if (std3D_framebuffer.downscale)
+		{
+			//std3D_DrawSimpleTex(&std3D_resolveStage, &std3D_mainFbo, std3D_framebuffer.tex0, std3D_framebuffer.tex1, 0, 0.0, 0.0, 0.0, 0, "MSAA Resolve");
+		
+			glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.resolveFbo);
+			glDepthFunc(GL_ALWAYS);
+			glDisable(GL_CULL_FACE);
+			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+			std3D_useProgram(std3D_resolveStage.program);
+
+			GLenum bufs[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1
+#ifdef MOTION_BLUR
+	, GL_COLOR_ATTACHMENT2
+#endif
+			};
+			glDrawBuffers(ARRAYSIZE(bufs), bufs);
+
+			glBindVertexArray(vao);
+
+			glActiveTexture(GL_TEXTURE0 + 0);
+			glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, std3D_framebuffer.tex0);
+
+			glActiveTexture(GL_TEXTURE0 + 1);
+			glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, std3D_framebuffer.tex1 ? std3D_framebuffer.tex1 : blank_tex);
+
+			glUniform1i(std3D_resolveStage.uniform_tex, 0);
+			glUniform1i(std3D_resolveStage.uniform_tex2, 1);
+
+			glUniform1i(std3D_resolveStage.uniform_param1, (std3D_framebuffer.msaaMode == SAMPLE_2x1) ?    0 :    2);
+			glUniform1f(std3D_resolveStage.uniform_param2, (std3D_framebuffer.msaaMode == SAMPLE_2x1) ? 1.0f : 0.5f);
+
+			glDrawArrays(GL_TRIANGLES, 0, 3);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		}
+		else
+		{
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, std3D_framebuffer.resolveFbo);
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, std3D_framebuffer.fbo);
+
+#ifdef MOTION_BLUR
+			const uint8_t attachments = 3;
+#else
+			const uint8_t attachments = (std3D_framebufferFlags & FBO_BLOOM) ? 2 : 1;
+#endif
+			for (uint8_t i = 0; i < attachments; ++i)
+			{
+				glDrawBuffer(GL_COLOR_ATTACHMENT0 + i);
+				glReadBuffer(GL_COLOR_ATTACHMENT0 + i);
+				glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, std3D_framebuffer.w, std3D_framebuffer.h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+			}
+
+			glDrawBuffer(GL_DEPTH_STENCIL_ATTACHMENT);
+			glReadBuffer(GL_DEPTH_STENCIL_ATTACHMENT);
+			glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, std3D_framebuffer.w, std3D_framebuffer.h, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+		}
+		std3D_PopDebugGroup();
+	}
+}
 
 void std3D_DrawMenu()
 {
@@ -5271,6 +5382,8 @@ void std3D_UpdateSharedUniforms()
 
 	// this one isn't really used so let's store the bias in it
 	sharedUniforms.mipDistances.w = (float)jkPlayer_mipBias;
+	if (std3D_framebuffer.samples == SAMPLE_2x2 && std3D_framebuffer.downscale)
+		sharedUniforms.mipDistances.w -= 2.0; // bias
 
 	// todo: move me
 	sharedUniforms.scale_bias[0] = (rdVector4){ 1.0f, 0.0f,0,0};
@@ -5318,7 +5431,28 @@ void std3D_SetRasterState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 	GLboolean a = (pState->rasterState.colorMask & 0xFF000000) != 0;
 	glColorMask(r, g, b, a);
 
-	glViewport(pRasterState->viewport.x, pRasterState->viewport.y, pRasterState->viewport.width, pRasterState->viewport.height);
+	rdViewportRect rect = pRasterState->viewport;
+	if (std3D_framebuffer.downscale)
+	{
+		if (std3D_framebuffer.samples == 2)
+		{
+			// 2:1 horizontal
+			// 1:1 vertical
+			rect.x /= 2;
+			rect.width /= 2;
+		}
+		else if (std3D_framebuffer.samples == 4)
+		{
+			// 2:1 horizontal
+			// 2:1 vertical
+			rect.x /= 2;
+			rect.width /= 2;
+			rect.y /= 2;
+			rect.height /= 2;
+		}
+	}
+
+	glViewport(rect.x, rect.y, rect.width, rect.height);
 	if(pState->stateBits.scissorMode == RD_SCISSOR_ENABLED)
 		glEnable(GL_SCISSOR_TEST);
 	else
@@ -5823,7 +5957,6 @@ void std3D_DoSSAO()
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_GREATER);
 	glDepthMask(GL_FALSE);
-	glDisable(GL_CULL_FACE);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, ssao.fbo);
 
@@ -5896,24 +6029,24 @@ void std3D_DoDeferredLighting()
 
 void std3D_setupWorldTextures()
 {
-	std3D_bindTexture(    GL_TEXTURE_2D,         blank_tex_white,         TEX_SLOT_TEX0);
-	std3D_bindTexture(    GL_TEXTURE_2D,         blank_tex_white,         TEX_SLOT_TEX1);
-	std3D_bindTexture(    GL_TEXTURE_2D,         blank_tex_white,         TEX_SLOT_TEX2);
-	std3D_bindTexture(    GL_TEXTURE_2D,         blank_tex_white,         TEX_SLOT_TEX3);
+	std3D_bindTexture(GL_TEXTURE_2D, blank_tex_white, TEX_SLOT_TEX0);
+	std3D_bindTexture(GL_TEXTURE_2D, blank_tex_white, TEX_SLOT_TEX1);
+	std3D_bindTexture(GL_TEXTURE_2D, blank_tex_white, TEX_SLOT_TEX2);
+	std3D_bindTexture(GL_TEXTURE_2D, blank_tex_white, TEX_SLOT_TEX3);
 		
-	//std3D_bindTexture(    GL_TEXTURE_2D,         blank_tex_white,         TEX_SLOT_DIFFUSE);
-	//std3D_bindTexture(    GL_TEXTURE_2D,               blank_tex,        TEX_SLOT_EMISSIVE);
-	//std3D_bindTexture(    GL_TEXTURE_2D,               blank_tex,    TEX_SLOT_DISPLACEMENT);
-	std3D_bindTexture(    GL_TEXTURE_2D,        worldpal_texture,       TEX_SLOT_WORLD_PAL);
-	std3D_bindTexture(    GL_TEXTURE_2D, worldpal_lights_texture, TEX_SLOT_WORLD_LIGHT_PAL);
-	std3D_bindTexture(GL_TEXTURE_BUFFER,             cluster_tbo,  TEX_SLOT_CLUSTER_BUFFER);
-	std3D_bindTexture(    GL_TEXTURE_2D,       decalAtlasFBO.tex,     TEX_SLOT_DECAL_ATLAS);
-	std3D_bindTexture(    GL_TEXTURE_2D,  /*std3D_framebuffer.ztex*/deferred.tex, TEX_SLOT_DEPTH);
-	std3D_bindTexture(    GL_TEXTURE_2D,         blank_tex_white,              TEX_SLOT_AO);
-	std3D_bindTexture(    GL_TEXTURE_2D,                refr.tex,      TEX_SLOT_REFRACTION);
-	std3D_bindTexture(    GL_TEXTURE_2D,               blank_tex,            TEX_SLOT_CLIP);
-	std3D_bindTexture(    GL_TEXTURE_2D,          dither_texture,          TEX_SLOT_DITHER);
-	std3D_bindTexture(    GL_TEXTURE_1D,       blackbody_texture,       TEX_SLOT_BLACKBODY);
+	//std3D_bindTexture(    GL_TEXTURE_2D,            blank_tex_white,         TEX_SLOT_DIFFUSE);
+	//std3D_bindTexture(    GL_TEXTURE_2D,                  blank_tex,        TEX_SLOT_EMISSIVE);
+	//std3D_bindTexture(    GL_TEXTURE_2D,                  blank_tex,    TEX_SLOT_DISPLACEMENT);
+	std3D_bindTexture(    GL_TEXTURE_2D,           worldpal_texture,       TEX_SLOT_WORLD_PAL);
+	std3D_bindTexture(    GL_TEXTURE_2D,    worldpal_lights_texture, TEX_SLOT_WORLD_LIGHT_PAL);
+	std3D_bindTexture(GL_TEXTURE_BUFFER,                cluster_tbo,  TEX_SLOT_CLUSTER_BUFFER);
+	std3D_bindTexture(    GL_TEXTURE_2D,          decalAtlasFBO.tex,     TEX_SLOT_DECAL_ATLAS);
+	std3D_bindTexture(    GL_TEXTURE_2D, std3D_framebuffer.resolveZ,           TEX_SLOT_DEPTH);
+	std3D_bindTexture(    GL_TEXTURE_2D,           blank_tex_white,               TEX_SLOT_AO);
+	std3D_bindTexture(    GL_TEXTURE_2D,                  refr.tex,       TEX_SLOT_REFRACTION);
+	std3D_bindTexture(    GL_TEXTURE_2D,                 blank_tex,             TEX_SLOT_CLIP);
+	std3D_bindTexture(    GL_TEXTURE_2D,            dither_texture,           TEX_SLOT_DITHER);
+	std3D_bindTexture(    GL_TEXTURE_1D,         blackbody_texture,        TEX_SLOT_BLACKBODY);
 }
 
 void std3D_FlushDeferred()
@@ -6073,6 +6206,17 @@ void std3D_SendClusterBitsToHardware(uint32_t* clusterBits, float znear, float z
 {
 	float sliceScalingFactor = (float)STD3D_CLUSTER_GRID_SIZE_Z / logf(zfar / znear);
 	float sliceBiasFactor = -((float)STD3D_CLUSTER_GRID_SIZE_Z * logf(znear) / logf(zfar / znear));
+
+	// adjust tile sizes for msaa upscaling
+	if (std3D_framebuffer.msaaMode == SAMPLE_2x1)
+	{
+		tileSizeX >>= 1;
+	}
+	else if (std3D_framebuffer.msaaMode == SAMPLE_2x2)
+	{
+		tileSizeX >>= 1;
+		tileSizeY >>= 1;
+	}
 
 	rdVector_Set2(&sharedUniforms.clusterTileSizes, (float)tileSizeX, (float)tileSizeY);
 	rdVector_Set2(&sharedUniforms.clusterScaleBias, sliceScalingFactor, sliceBiasFactor);

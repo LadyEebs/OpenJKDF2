@@ -6,9 +6,6 @@ layout(binding = 1) uniform flexSampler2D tex2;
 layout(binding = 2) uniform flexSampler2D tex3;
 
 layout(location = 0) uniform vec2 iResolution;
-layout(location = 1) uniform float param1;
-layout(location = 2) uniform float param2;
-layout(location = 3) uniform float param3;
 
 layout(location = 4) uniform vec3 colorEffects_tint;
 layout(location = 5) uniform vec3 colorEffects_filter;
@@ -20,7 +17,33 @@ layout(location = 1) in vec2 f_uv;
 
 layout(location = 0) out vec4 fragColor;
 
+#ifdef RESOLVE
+
+layout(location = 1) out vec4 fragGlow;
+
+layout(binding = 0) uniform sampler2DMS texMS;
+layout(binding = 1) uniform sampler2DMS tex2MS;
+
+layout(location = 1) uniform   int param1;
+layout(location = 2) uniform float param2;
+
+void main()
+{
+	ivec2 quadIdx = ivec2(gl_FragCoord.xy) & 1;
+	int sampleIdx = quadIdx.y * param1 + quadIdx.x;
+
+	ivec2 ltc = ivec2(gl_FragCoord.xy * vec2(0.5, param2));
+	fragColor = texelFetch( texMS, ltc, sampleIdx);
+	fragGlow  = texelFetch(tex2MS, ltc, sampleIdx);
+}
+
+#endif
+
 #ifdef COMPOSITE
+
+layout(location = 1) uniform float param1;
+layout(location = 2) uniform float param2;
+layout(location = 3) uniform float param3;
 
 vec3 PurkinjeShift(vec3 light, float intensity)
 {
@@ -172,7 +195,7 @@ void main(void)
 	flex3 bloom = textureLod(tex2, uv.xy, 0).xyz;
 	sampled_color.rgb = bloom.rgb + sampled_color.rgb * (flex3(1.0) - bloom.rgb);
 
-#ifdef RENDER_DROID2
+//#ifdef RENDER_DROID2
 	sampled_color.rgb += flex3(colorEffects_add.rgb);
 
 	vec3 half_tint = colorEffects_tint * 0.5;
@@ -181,7 +204,7 @@ void main(void)
 
 	sampled_color.rgb *= flex(colorEffects_fade);
 	sampled_color.rgb *= flex3(colorEffects_filter.rgb);
-#endif
+//#endif
 
     fragColor.rgb = vec3(pow(sampled_color.rgb, flex3(fastRcpNR0(param3))));
 	fragColor.w = 1.0;
@@ -192,6 +215,10 @@ void main(void)
 
 
 #ifdef MOTION_BLUR_PASS
+
+layout(location = 1) uniform float param1;
+layout(location = 2) uniform float param2;
+layout(location = 3) uniform float param3;
 
 void main(void)
 {

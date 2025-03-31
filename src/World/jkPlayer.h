@@ -149,6 +149,20 @@ int jkPlayer_SyncForcePowers(int rank,int bIsMulti); // MOTS added
 extern int jkPlayer_aMotsFpBins[74];
 
 #ifdef QOL_IMPROVEMENTS
+enum SAMPLE_MODE
+{
+	SAMPLE_MODE_MIN    = -3,
+
+	SAMPLE_2x2     = -2, // 2x2 coarse shading rate
+	SAMPLE_2x1     = -1, // 2x1 coarse shading rate
+	SAMPLE_NONE    =  0, // single sample, default/no MSAA
+	SAMPLE_2x_MSAA =  1, // standard 2x MSAA
+	SAMPLE_4x_MSAA =  2, // standard 4x MSAA
+	SAMPLE_8x_MSAA =  3, // standard 8x MSAA
+
+	SAMPLE_MODE_MAX
+};
+
 extern int jkPlayer_fov;
 extern int jkPlayer_fovIsVertical;
 extern int jkPlayer_enableTextureFilter;
