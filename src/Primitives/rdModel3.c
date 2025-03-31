@@ -1724,8 +1724,8 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 	float aspect = viewport.height / viewport.width;
 
 	rdVector3 tint = {1,1,1};
-	if (pCurThing->parentSithThing->sector != sithCamera_currentCamera->sector)
-		tint = pCurThing->parentSithThing->sector->tint;
+	//if (pCurThing->parentSithThing->sector != sithCamera_currentCamera->sector)
+		//tint = pCurThing->parentSithThing->sector->tint;
 
 	rdVector3 halfTint;
 	halfTint.x = tint.x * 0.5f;

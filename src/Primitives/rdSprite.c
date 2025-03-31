@@ -270,8 +270,8 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	rdSprite_inVerts[3].z = sprite->offset.z + halfHeight + vertex_out.z;
 
 	rdVector3 tint = { 1,1,1 };
-	if (thing->parentSithThing->sector != sithCamera_currentCamera->sector)
-		tint = thing->parentSithThing->sector->tint;
+	//if (thing->parentSithThing->sector != sithCamera_currentCamera->sector)
+		//tint = thing->parentSithThing->sector->tint;
 
 	rdVector3 halfTint;
 	halfTint.x = tint.x * 0.5f;

@@ -467,8 +467,8 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 	rdTexOffseti(RD_TEXCOORD0, face->clipIdk.x, face->clipIdk.y);
 
 	rdVector3 tint = { 1,1,1 };
-	if (thing->parentSithThing->sector != sithCamera_currentCamera->sector)
-		tint = thing->parentSithThing->sector->tint;
+	//if (thing->parentSithThing->sector != sithCamera_currentCamera->sector)
+		//tint = thing->parentSithThing->sector->tint;
 
 	rdVector3 halfTint;
 	halfTint.x = tint.x * 0.5f;

@@ -1620,11 +1620,11 @@ void sithRender_DrawSurface(sithSurface* surface)
 	rdVector3 tint = { 1,1,1 };
 	if (isWater)
 	{
-		tint = (rdVector3){ surface->adjoin->sector->tint.x, surface->adjoin->sector->tint.y, surface->adjoin->sector->tint.z };
+		//tint = (rdVector3){ surface->adjoin->sector->tint.x, surface->adjoin->sector->tint.y, surface->adjoin->sector->tint.z };
 	}
-	else if (surface->parent_sector != sithCamera_currentCamera->sector)
+	else ///if (surface->parent_sector != sithCamera_currentCamera->sector)
 	{
-		tint = surface->parent_sector->tint;
+		//tint = surface->parent_sector->tint;
 	}
 
 	rdVector3 halfTint;

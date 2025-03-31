@@ -379,8 +379,8 @@ int rdParticle_Draw(rdThing* thing, rdMatrix34* mat)
 	rdMatrix_TransformPointLst34(&out, particle->vertices, &aParticleVertices[0], particle->numVertices);
 	
 	rdVector3 tint = { 1,1,1 };
-	if (thing->parentSithThing->sector != sithCamera_currentCamera->sector)
-		tint = thing->parentSithThing->sector->tint;
+	//if (thing->parentSithThing->sector != sithCamera_currentCamera->sector)
+		//tint = thing->parentSithThing->sector->tint;
 
 	rdVector3 halfTint;
 	halfTint.x = tint.x * 0.5f;
