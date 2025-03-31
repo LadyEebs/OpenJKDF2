@@ -166,14 +166,14 @@ void run_vm()
 			if (tex_mode != TEX_MODE_TEST)
 			{
 				if (s_ir.prec)
-					result.xy = parallax(
+					result.xy = steep_parallax(
 							textures[s_ir.src0.addr],
 							s1.xy,
 							decode_octahedron_uint(vdir),
 							s2.x
 						).xy;
 				else
-					result.xy = steep_parallax(
+					result.xy = parallax(
 							textures[s_ir.src0.addr],
 							s1.xy,
 							decode_octahedron_uint(vdir),
