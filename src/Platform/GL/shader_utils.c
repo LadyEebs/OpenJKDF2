@@ -322,8 +322,10 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 		"#endif\n"
 		"#ifdef GL_AMD_gpu_shader_half_float_fetch\n"
 		"#	define flexSampler2D	f16sampler2D\n"
+		"#	define flexSampler2DMS	f16sampler2DMS\n"
 		"#else\n"
 		"#	define flexSampler2D	sampler2D\n"
+		"#	define flexSampler2DMS	sampler2DMS\n"
 		"#endif\n"
 		;
 

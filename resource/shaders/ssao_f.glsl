@@ -3,7 +3,7 @@ import "uniforms.gli"
 layout(binding = 0) uniform sampler2D tex;
 uniform flexSampler2D tex2;
 uniform flexSampler2D tex3;
-uniform sampler2D tex4;
+uniform flexSampler2D tex4;
 //uniform vec2 iResolution;
 //uniform float param1;
 uniform float param2;
@@ -12,6 +12,7 @@ uniform float param3;
 uniform int param1;
 
 layout(binding = 0) uniform sampler2DMS texMS;
+layout(binding = 4) uniform flexSampler2DMS tex4MS;
 
 in vec2 f_uv;
 
@@ -119,6 +120,11 @@ void main(void)
 
 	// give it some contrast
 	fragAO *= fragAO;
+
+	// use the alpha to attenuate SSAO because we're going to lazily slap it over the image
+	flex mask = texelFetch(tex4MS, ivec2(gl_FragCoord.xy), 0).a;
+
+	fragAO = (mask > flex(0.0)) ? fragAO : vec4(1.0);
 }
 
 #endif

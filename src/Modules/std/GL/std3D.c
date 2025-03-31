@@ -5968,6 +5968,7 @@ void std3D_DoSSAO()
 		std3D_bindTexture(std3D_framebuffer.samples != 1 ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D, std3D_framebuffer.ztex, 0);
 		std3D_bindTexture(GL_TEXTURE_2D, ssaoDepth.tex, 1);
 		std3D_bindTexture(GL_TEXTURE_2D, tiledrand_texture, 2);
+		std3D_bindTexture(std3D_framebuffer.samples != 1 ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D, std3D_framebuffer.tex0, 0);
 
 		glUniform1i(std3D_ssaoStage[0].uniform_tex,  0);
 		glUniform1i(std3D_ssaoStage[0].uniform_tex2, 1);
