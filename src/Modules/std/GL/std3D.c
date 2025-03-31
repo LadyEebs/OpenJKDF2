@@ -2269,6 +2269,7 @@ void std3D_CheckExtensions()
 		"GL_ARB_shading_language_packing",
 		"GL_ARB_texture_gather",
 		"GL_ARB_texture_query_lod",
+		"GL_ARB_shading_language_420pack",
 		"GL_ARB_explicit_uniform_location",
 		"GL_ARB_texture_query_levels",
 		"GL_ARB_gpu_shader5",

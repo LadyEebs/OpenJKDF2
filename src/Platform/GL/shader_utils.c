@@ -207,6 +207,9 @@ GLuint create_shader(const char* shader, GLenum type, const char* userDefines)
 					"#	extension GL_ARB_texture_gather				: require\n"	// textureGather, core in 4.0
 					"#	extension GL_ARB_texture_query_lod			: require\n"	// textureQueryLod, core in 4.0
 					"#endif\n"
+					"#if __VERSION__ < 420\n"
+					"#	extension GL_ARB_shading_language_420pack	: require\n"	// layout(binding=n), line continuation in macros '\'
+					"#endif\n"
 					"#if __VERSION__ < 430\n"
 					"#	extension GL_ARB_explicit_uniform_location	: require\n"	// layout(location=n), core in 4.3
 					"#	extension GL_ARB_texture_query_levels		: require\n"	// textureQueryLevels, core in 4.3
