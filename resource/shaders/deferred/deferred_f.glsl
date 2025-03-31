@@ -19,9 +19,13 @@ layout(binding = 1) uniform sampler2D tex2;
 layout(binding = 2) uniform sampler2D tex3;
 layout(binding = 3) uniform sampler2D tex4;
 
-layout(location = 5) uniform float param1;
-layout(location = 6) uniform float param2;
-layout(location = 7) uniform float param3;
+layout(binding = 0) uniform sampler2DMS texMS;
+
+//layout(location = 5) uniform float param1;
+//layout(location = 6) uniform float param2;
+//layout(location = 7) uniform float param3;
+
+layout(location = 5) uniform int param1;
 
 //in vec2 f_uv;
 
@@ -37,8 +41,23 @@ layout(location = 0) out vec4 fragOut;
 
 void main(void)
 {
-	float depth = texelFetch(tex, ivec2(gl_FragCoord.xy), 0).x;
-	fragOut = vec4(linearize_depth(depth)) / 128.0;
+	float depth = 100000.0;
+	if (param1 > 1)
+	{
+		for (int i = 0; i < param1; ++i)
+		{
+			float sampleDepth = texelFetch(texMS, ivec2(gl_FragCoord.xy), i).x;
+			depth = min(depth, sampleDepth);
+		}
+	}
+	else
+	{
+		depth = texelFetch(tex, ivec2(gl_FragCoord.xy), 0).x;
+	}
+	
+	depth = linearize_depth(depth) / 128.0;
+
+	fragOut = vec4(depth);
 
 #if 0
 	vec4 normalRoughness = texelFetch(tex2, ivec2(gl_FragCoord.xy), 0);

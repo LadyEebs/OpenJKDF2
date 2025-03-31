@@ -417,7 +417,7 @@ std3DSimpleTexStage std3D_texFboStage;
 std3DSimpleTexStage std3D_deferredStage;
 std3DSimpleTexStage std3D_postfxStage;
 std3DSimpleTexStage std3D_bloomStage;
-std3DSimpleTexStage std3D_ssaoStage;
+std3DSimpleTexStage std3D_ssaoStage[2];
 std3DSimpleTexStage std3D_motionblurStage;
 std3DSimpleTexStage std3D_resolveStage;
 
@@ -1063,7 +1063,7 @@ void std3D_generateExtraFramebuffers(int32_t width, int32_t height)
 		int ssao_h = ssao_w * ((float)height / width);
 
 		std3D_generateIntermediateFbo(width / 2, height / 2, &ssaoDepth, GL_R16F, 0, 0, 0, 0);
-		std3D_generateIntermediateFbo(width, height, &ssao, GL_R8, 0, 0, 1, std3D_framebuffer.ztex);
+		std3D_generateIntermediateFbo(width, height, &ssao, GL_R8, 0, 0, 0, 0);//1, std3D_framebuffer.resolveZ);
 		std3D_framebufferFlags |= FBO_SSAO;
 	}
 	else
@@ -1079,7 +1079,7 @@ void std3D_generateExtraFramebuffers(int32_t width, int32_t height)
 			std3D_generateIntermediateFbo(bloomLayers[i - 1].w / 2, bloomLayers[i - 1].h / 2, &bloomLayers[i], GL_R11F_G11F_B10F, 0, 1, 0, 0);
 	}
 
-	//std3D_generateIntermediateFbo(width, height, &deferred, GL_R32F, 0, 0, 0, 0);
+	std3D_generateIntermediateFbo(width, height, &deferred, GL_R32F, 0, 0, 0, 0);
 	//std3D_generateIntermediateFbo(width, height, &deferred, GL_RGBA8, 0, 0, 0);
 
 	// the refraction buffers use the same depth-stencil as the main scene
@@ -1917,7 +1917,8 @@ int init_resources()
 #endif
 	if (!std3D_loadSimpleTexProgram("shaders/postfx/postfx", "RESOLVE", &std3D_resolveStage)) return false;
 	if (!std3D_loadSimpleTexProgram("shaders/postfx/bloom", "", &std3D_bloomStage)) return false;
-	if (!std3D_loadSimpleTexProgram("shaders/ssao", "", &std3D_ssaoStage)) return false;
+	if (!std3D_loadSimpleTexProgram("shaders/ssao", "SAMPLING", &std3D_ssaoStage[0])) return false;
+	if (!std3D_loadSimpleTexProgram("shaders/ssao", "COMPOSITE", &std3D_ssaoStage[1])) return false;
 	if (!std3D_loadSimpleTexProgram("shaders/decal_insert", "", &std3D_decalAtlasStage)) return false;
 
 	std3D_generateIntermediateFbo(DECAL_ATLAS_SIZE, DECAL_ATLAS_SIZE, &decalAtlasFBO, GL_RGBA8, 0, 9, 0, 0);
@@ -5614,10 +5615,10 @@ void std3D_SetDepthStencilState(std3D_DrawCallState* pState)
 //	};
 //	glDepthFunc(gl_compares[pState->stateBits.zCompare]);
 }
-
+rdMatrix44* renderPassProj = NULL;
 void std3D_SetTransformState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 {
-	rdMatrix44* renderPassProj = &pState->transformState.proj;
+	renderPassProj = &pState->transformState.proj;
 
 	float fov = 2.0 * atanf(1.0 / renderPassProj->vC.y);
 	float aspect = renderPassProj->vC.y / renderPassProj->vA.x;
@@ -5946,38 +5947,74 @@ void std3D_DrawElements(rdGeoMode_t geoMode, uint32_t count, uint32_t offset, ui
 	glDrawElements(std3D_PrimitiveForGeoMode(geoMode + 1), count, type, (void*)(offset * stride));
 }
 
+// todo: get some half decent resampling/bilateral blurring going
 void std3D_DoSSAO()
 {
 	std3D_PushDebugGroup("SSAO");
 
-	// downscale the depth buffer with lower precision
-	std3D_DrawSimpleTex(&std3D_texFboStage, &ssaoDepth, /*std3D_framebuffer.ztex*/deferred.tex, 0, 0, 1.0, 1.0, 1.0, 0, "Z Downscale");
+	// downscale the depth buffer with lower precision and resolution for sampling
+	std3D_DrawSimpleTex(&std3D_texFboStage, &ssaoDepth, deferred.tex, 0, 0, 1.0, 1.0, 1.0, 0, "Z Downscale");
 
-	// enable depth testing to prevent running SSAO on empty pixels
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_GREATER);
+	glDisable(GL_DEPTH_TEST);
 	glDepthMask(GL_FALSE);
 
-	glBindFramebuffer(GL_FRAMEBUFFER, ssao.fbo);
+	// sampling
+	{
+		std3D_PushDebugGroup("Sampling");
 
-	glClearColor(1,1,1,1);
-	glClear(GL_COLOR_BUFFER_BIT);
+		glBindFramebuffer(GL_FRAMEBUFFER, ssao.fbo);
+		std3D_useProgram(std3D_ssaoStage[0].program);
 
-	std3D_useProgram(std3D_ssaoStage.program);
+		std3D_bindTexture(std3D_framebuffer.samples != 1 ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D, std3D_framebuffer.ztex, 0);
+		std3D_bindTexture(GL_TEXTURE_2D, ssaoDepth.tex, 1);
+		std3D_bindTexture(GL_TEXTURE_2D, tiledrand_texture, 2);
 
-	std3D_bindTexture(GL_TEXTURE_2D, /*std3D_framebuffer.ztex*/deferred.tex, 0);
-	std3D_bindTexture(GL_TEXTURE_2D, ssaoDepth.tex, 1);
-	std3D_bindTexture(GL_TEXTURE_2D, tiledrand_texture,        2);
+		glUniform1i(std3D_ssaoStage[0].uniform_tex,  0);
+		glUniform1i(std3D_ssaoStage[0].uniform_tex2, 1);
+		glUniform1i(std3D_ssaoStage[0].uniform_tex3, 2);
 
-	glUniform1i(std3D_ssaoStage.uniform_tex,  0);
-	glUniform1i(std3D_ssaoStage.uniform_tex2, 1);
-	glUniform1i(std3D_ssaoStage.uniform_tex3, 2);
+		glUniform1i(std3D_ssaoStage[0].uniform_param1, (int)std3D_framebuffer.samples);
 
-	glViewport(0, 0, ssao.w, ssao.h);
-	glUniform2f(std3D_ssaoStage.uniform_iResolution, ssao.iw, ssao.ih);
+		glUniformMatrix4fv(std3D_ssaoStage[0].uniform_proj, 1, GL_FALSE, (float*)renderPassProj);
+
+		glViewport(0, 0, ssao.w, ssao.h);
+		glUniform2f(std3D_ssaoStage[0].uniform_iResolution, ssao.iw, ssao.ih);
 	
-	glDrawArrays(GL_TRIANGLES, 0, 3);
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+
+		std3D_PopDebugGroup();
+	}
 	
+	// composite
+	{
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ZERO, GL_SRC_COLOR);
+
+		std3D_PushDebugGroup("Composite");
+
+		glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.fbo);
+		std3D_useProgram(std3D_ssaoStage[1].program);
+
+		std3D_bindTexture(std3D_framebuffer.samples != 1 ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D, std3D_framebuffer.ztex, 0);
+		std3D_bindTexture(GL_TEXTURE_2D, ssao.tex, 1);
+		std3D_bindTexture(GL_TEXTURE_2D, tiledrand_texture, 2);
+
+		glUniform1i(std3D_ssaoStage[1].uniform_tex, 0);
+		glUniform1i(std3D_ssaoStage[1].uniform_tex2, 1);
+		glUniform1i(std3D_ssaoStage[1].uniform_tex3, 2);
+
+		glUniform1i(std3D_ssaoStage[1].uniform_param1, (int)std3D_framebuffer.samples);
+
+		glUniformMatrix4fv(std3D_ssaoStage[1].uniform_proj, 1, GL_FALSE, (float*)renderPassProj);
+
+		glViewport(0, 0, ssao.w, ssao.h);
+		glUniform2f(std3D_ssaoStage[0].uniform_iResolution, ssao.iw, ssao.ih);
+
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+
+		std3D_PopDebugGroup();
+	}
+
 	std3D_bindTexture(GL_TEXTURE_2D, 0, 0);
 	std3D_bindTexture(GL_TEXTURE_2D, 0, 1);
 	std3D_bindTexture(GL_TEXTURE_2D, 0, 2);
@@ -5990,10 +6027,13 @@ void std3D_DoDeferredLighting()
 	std3D_PushDebugGroup("Deferred Lighting");
 
 	// enable depth testing to prevent running on empty pixels
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_GREATER);
+	//glEnable(GL_DEPTH_TEST);
+	//glDepthFunc(GL_GREATER);
+	//glDepthMask(GL_FALSE);
+	//glDisable(GL_CULL_FACE);
+
+	glDisable(GL_DEPTH_TEST);
 	glDepthMask(GL_FALSE);
-	glDisable(GL_CULL_FACE);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, deferred.fbo);
 
@@ -6002,8 +6042,8 @@ void std3D_DoDeferredLighting()
 
 	std3D_useProgram(std3D_deferredStage.program);
 
-	std3D_bindTexture(GL_TEXTURE_2D, std3D_framebuffer.ztex, 0);
-	std3D_bindTexture(GL_TEXTURE_2D, std3D_framebuffer.ntex, 1);
+	std3D_bindTexture(std3D_framebuffer.samples != 1 ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D, std3D_framebuffer.ztex, 0);
+	//std3D_bindTexture(GL_TEXTURE_2D, std3D_framebuffer.ntex, 1);
 	std3D_bindTexture(GL_TEXTURE_2D, tiledrand_texture, 2);
 
 	glUniform1i(std3D_deferredStage.uniform_tex, 0);
@@ -6015,8 +6055,10 @@ void std3D_DoDeferredLighting()
 	glViewport(0, 0, deferred.w, deferred.h);
 	glUniform2f(std3D_deferredStage.uniform_iResolution, deferred.iw, deferred.ih);
 
+	glUniform1i(std3D_deferredStage.uniform_param1, (int)std3D_framebuffer.samples);
+
 	//if (renderPassProj)
-	//	glUniformMatrix4fv(std3D_deferredStage.uniform_proj, 1, GL_FALSE, (float*)renderPassProj);
+		glUniformMatrix4fv(std3D_deferredStage.uniform_proj, 1, GL_FALSE, (float*)renderPassProj);
 
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 
@@ -6051,21 +6093,17 @@ void std3D_setupWorldTextures()
 
 void std3D_FlushDeferred()
 {
-	STD_BEGIN_PROFILER_LABEL();
-	std3D_PushDebugGroup("std3D_FlushDeferred");
+	if (std3D_framebufferFlags & FBO_SSAO)
+	{
+		STD_BEGIN_PROFILER_LABEL();
+		std3D_PushDebugGroup("std3D_FlushDeferred");
 
 		std3D_DoDeferredLighting();
+		std3D_DoSSAO();
 
-	//if (hasSSAO)
-	//	std3D_DoSSAO();
-
-	// deferred is a lot more expensive at 4k than cramming it all into 1 shader
-	//std3D_DrawSimpleTex(&std3D_deferredStage, &deferred, std3D_framebuffer.ztex, std3D_framebuffer.ntex, 0, 1.0f, 1.0f, 1.0f, 0, "Deferred Opaque");
-	//if (!(pRenderPass->flags & RD_RENDERPASS_NO_CLUSTERING))
-		//std3D_DoDeferredLighting();
-
-	std3D_PopDebugGroup();
-	STD_END_PROFILER_LABEL();
+		std3D_PopDebugGroup();
+		STD_END_PROFILER_LABEL();
+	}
 }
 
 
@@ -6127,6 +6165,8 @@ void std3D_FlushPostFX()
 //	glReadBuffer(GL_COLOR_ATTACHMENT0);
 //
 //	glBlitFramebuffer(0, 0, std3D_framebuffer.w, std3D_framebuffer.h, 0, 0, window.w, window.h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+//	std3D_FlushDeferred();
 
 	std3D_ResolveMSAA();
 

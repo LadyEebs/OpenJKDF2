@@ -1,85 +1,113 @@
-uniform sampler2D tex;
-uniform sampler2D tex2;
-uniform sampler2D tex3;
+import "uniforms.gli"
+
+layout(binding = 0) uniform sampler2D tex;
+uniform flexSampler2D tex2;
+uniform flexSampler2D tex3;
 uniform sampler2D tex4;
-uniform vec2 iResolution;
-uniform float param1;
+//uniform vec2 iResolution;
+//uniform float param1;
 uniform float param2;
 uniform float param3;
+
+uniform int param1;
+
+layout(binding = 0) uniform sampler2DMS texMS;
 
 in vec2 f_uv;
 
 #ifdef RENDER_DROID2
 
-out float fragAO;
+out vec4 fragAO;
+
+float depthFetch(ivec2 coord)
+{
+	float depth;
+	if (param1 > 1)
+		depth = texelFetch(texMS, coord, 0).x;
+	else
+		depth = texelFetch(tex, coord, 0).x;
+	return linearize_depth(depth);
+}
+
+#ifdef SAMPLING
+
+float depthFetchSingle(ivec2 coord)
+{
+	float depth;
+	if (param1 > 1)
+		depth = texelFetch(texMS, coord, gl_SampleID).x;
+	else
+		depth = texelFetch(tex, coord, 0).x;
+	return linearize_depth(depth);
+}
 
 // depth-only crytek style AO similar to ShaderX7
 // fastest approach I could get at full resolution and that will work with varying input matrices
 void main(void)
 {
-	const float secondPassScale =  0.5f; // scales the radius for the second pass to catch higher frequency details
-	const float radius          =  1.0f; // radius of the sampling kernel
-	const float minDist         =  5.0f; // radius shrinks below this distance to avoid extreme cache thrasing and visual artifacts
-	const float rangeScale      = 0.85f; // gives the range scale check a little headroom
-	const float depthTestScale  = 64.0f; // soft depth test factor
+	const flex secondPassScale =  flex(0.5); // scales the radius for the second pass to catch higher frequency details
+	const flex radius          =  flex(1.0); // radius of the sampling kernel
+	const flex minDist         =  flex(5.0); // radius shrinks below this distance to avoid extreme cache thrasing and visual artifacts
+	const flex rangeScale      = flex(0.85); // gives the range scale check a little headroom
+	const flex depthTestScale  = flex(64.0); // soft depth test factor
 
 	// unrolled kernel building
 	// hopefully constant folded by the compiler (faster than reading a constant buffer)
-	const float offsetStep  = 0.875f;
-	const float sampleScale = 0.025f;
+	const flex offsetStep  = flex(0.875);
+	const flex sampleScale = flex(0.025);
 
-	float offsetScale = 0.0;
-	vec3 sampleKernel[8] = vec3[8]
+	flex offsetScale = flex(0.0);
+	flex3 sampleKernel[8] = flex3[8]
 	(
-		normalize(vec3( 1, 1, 1)) * sampleScale * (offsetScale += offsetStep),
-		normalize(vec3(-1,-1,-1)) * sampleScale * (offsetScale += offsetStep),
-		normalize(vec3(-1,-1, 1)) * sampleScale * (offsetScale += offsetStep),
-		normalize(vec3(-1, 1,-1)) * sampleScale * (offsetScale += offsetStep),
-		normalize(vec3(-1, 1 ,1)) * sampleScale * (offsetScale += offsetStep),
-		normalize(vec3( 1,-1,-1)) * sampleScale * (offsetScale += offsetStep),
-		normalize(vec3( 1,-1, 1)) * sampleScale * (offsetScale += offsetStep),
-		normalize(vec3( 1, 1,-1)) * sampleScale * (offsetScale += offsetStep)
+		normalize(flex3( 1, 1, 1)) * sampleScale * (offsetScale += offsetStep),
+		normalize(flex3(-1,-1,-1)) * sampleScale * (offsetScale += offsetStep),
+		normalize(flex3(-1,-1, 1)) * sampleScale * (offsetScale += offsetStep),
+		normalize(flex3(-1, 1,-1)) * sampleScale * (offsetScale += offsetStep),
+		normalize(flex3(-1, 1 ,1)) * sampleScale * (offsetScale += offsetStep),
+		normalize(flex3( 1,-1,-1)) * sampleScale * (offsetScale += offsetStep),
+		normalize(flex3( 1,-1, 1)) * sampleScale * (offsetScale += offsetStep),
+		normalize(flex3( 1, 1,-1)) * sampleScale * (offsetScale += offsetStep)
 	);
 
 	// sample the depth and rotation textures
-	float depth = textureLod(tex, f_uv.xy, 0).x * 128.0; // todo: need to figure out how to not hardcode a far distance here...
-	vec3 rotSample = textureLod(tex3, gl_FragCoord.xy / 4, 0).rgb;
+	float depth = depthFetchSingle(ivec2(gl_FragCoord.xy));
+	flex3 rotSample = textureLod(tex3, gl_FragCoord.xy * 0.25, 0).xyz;
 
 	// shrink the radius closer to the camera
-	vec3 sampleRadius = vec3(radius) * clamp(depth / minDist, 0.0, 1.0);
+	flex3 sampleRadius = flex3(radius) * flex(saturate(depth / minDist));
 
 	// compute factors for the depth comparison, scaled by the distance
-	float range             = rangeScale / sampleRadius.z;     // range around the pixel considered valid
-	float depthTestSoftness = depthTestScale / sampleRadius.z; // softness of the depth test
+	flex range             = rangeScale / sampleRadius.z;     // range around the pixel considered valid
+	flex depthTestSoftness = depthTestScale / sampleRadius.z; // softness of the depth test
 
 	// kernel is constant in screen space per ShaderX7 recommendation
 	// ShaderX7 scales the Z by 2, not sure why but we do that here
-	sampleRadius.xyz *= vec3(vec2(1.0 / depth), 2.0);
+	sampleRadius.xyz *= flex3(flex2(rcp(depth)), 2.0);
 
 	// sample and accumulate
-	float ao = 0.0;
+	flex ao = flex(0.0);
 	for (int i = 0; i < 8; ++i)
 	{
 		// reflect the point around the random vector (instead of mul)
-		vec3 samplePos = reflect(sampleKernel[i], rotSample) * sampleRadius;
+		flex3 samplePos = reflect(sampleKernel[i], rotSample) * sampleRadius;
 
 		// sample 2 radii per sphere point to catch finer details
 		for (int j = 0; j < 2; ++j)
 		{
 			// get the depth of the sphere sample
-			float sampleDepth = textureLod(tex2, f_uv.xy + samplePos.xy, 0).x * 128.0 + samplePos.z;  
+			flex sampleDepth = textureLod(tex2, f_uv.xy + samplePos.xy, 0).x * flex(128.0) + samplePos.z;  
 		
 			// soft depth test instead of binary test
-			float diff      = depth - sampleDepth;
-			float depthTest = clamp(-diff * depthTestSoftness, 0.0, 1.0);
+			flex diff      = flex(depth) - sampleDepth;
+			flex depthTest = saturate(-diff * depthTestSoftness);
 			
 			// slightly different range check than in ShaderX7, better control of the falloff
-			float rangeDiff      = range * diff;
-			float rangeIsInvalid = clamp(abs(rangeDiff), 0.0, 1.0); // range around the sample
-			rangeIsInvalid      += clamp(rangeDiff, 0.0, 1.0);      // double the invalid range in front of the sample
+			flex rangeDiff      = range * diff;
+			flex rangeIsInvalid = saturate(abs(rangeDiff)); // range around the sample
+			rangeIsInvalid     += saturate(rangeDiff);      // double the invalid range in front of the sample
 			
 			// add up the contribution
-			ao += mix(depthTest, 0.5, rangeIsInvalid * 0.5);
+			ao += mix(depthTest, flex(0.5), rangeIsInvalid * flex(0.5));
 
 			// scale the sample for the next pass so we don't need to recompute it
 			samplePos.xyz *= secondPassScale;
@@ -87,12 +115,50 @@ void main(void)
 	}
 
 	// multiplied by 2 to account for mid-gray average of sphere samples
-	fragAO = ao * (2.0 / 16.0);
+	fragAO = vec4(ao * flex(2.0 / 16.0));
 
 	// give it some contrast
 	fragAO *= fragAO;
 }
 
+#endif
+
+#ifdef COMPOSITE
+
+// per-sample bilateral upscale
+void main()
+{
+	float depth = depthFetch(ivec2(gl_FragCoord.xy));
+
+	// 2x2 strided sampling, helps hide the dither pattern better
+	flex4 values;
+	values.x = texelFetch(tex2, ivec2(gl_FragCoord.xy + vec2(0, 0)), 0).x;
+	values.y = texelFetch(tex2, ivec2(gl_FragCoord.xy + vec2(2, 0)), 0).x;
+	values.z = texelFetch(tex2, ivec2(gl_FragCoord.xy + vec2(0, 2)), 0).x;
+	values.w = texelFetch(tex2, ivec2(gl_FragCoord.xy + vec2(2, 2)), 0).x;
+			
+	// seem to get better results with a 1.5 offset here, too lazy to figure out why
+	vec4 depths;
+	depths.x = depthFetch(ivec2(gl_FragCoord.xy + vec2(0.0, 0.0)));
+	depths.y = depthFetch(ivec2(gl_FragCoord.xy + vec2(1.5, 0.0)));
+	depths.z = depthFetch(ivec2(gl_FragCoord.xy + vec2(0.0, 1.5)));
+	depths.w = depthFetch(ivec2(gl_FragCoord.xy + vec2(1.5, 1.5)));
+
+	// reject samples that have depth discontinuities
+	vec4 diff = abs(depths / depth - 1.0) * 32.0;
+	vec4 weights = saturate(1.0 - diff);
+
+	// total weight
+	float totalWeight = weights.x + weights.y + weights.z + weights.w;
+
+	// average when weight is bad
+	if(totalWeight < 1e-4)
+		fragAO = vec4(float(values.x + values.y + values.z + values.w) * 0.25);
+	else
+		fragAO = vec4(dot(weights / totalWeight, vec4(values)));
+}
+
+#endif
 
 #else
 

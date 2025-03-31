@@ -220,11 +220,11 @@ void calc_light()
 				}
 			
 			#ifndef ALPHA_DISCARD
-				if ((aoFlags & 0x2) == 0x2)
-				{
-					float linearDepth = readVPOS().w;
-					shadow *= upsample_ssao(gl_FragCoord.xy, linearDepth);
-				}
+				//if ((aoFlags & 0x2) == 0x2)
+				//{
+				//	float linearDepth = readVPOS().w;
+				//	shadow *= upsample_ssao(gl_FragCoord.xy, linearDepth);
+				//}
 			#endif
 			
 				result.diffuse = packF2x11_1x10(unpackF2x11_1x10(result.diffuse) * shadow);
