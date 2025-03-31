@@ -22,16 +22,6 @@ struct light_result
 	uint specular;
 };
 
-struct light_input
-{
-	uvec2 pos;		 // 16:16:16 view space pos
-	uint  normal;	 // 8:8:8 signed (todo: this is faster than octa but there's wasted bits)
-	uint  view;		 // 16:16 octahedral view vector (ggx)
-	uint  reflected; // 16:16 octahedral reflection vector (phong)
-	uint  spec_c;    // 16:16 specular coeffs
-	uint  tint;      // tint rgba
-};
-
 uint calc_spec_c(float a)
 {
 #ifdef GGX	
@@ -184,6 +174,35 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 
 	result.specular = packF2x11_1x10((lightMagnitude * d) * lightColor.rgb + (unpackF2x11_1x10(result.specular)));
 	//result.specular = lightColor.rgb * vec3(lightMagnitude * d) + result.specular;
+}
+
+void calculate_lighting(inout light_result result, light_input params, uint cluster)
+{
+	uint s_first_item   = firstLight;
+	uint s_last_item    = s_first_item + numLights - 1u;
+	uint s_first_bucket = s_first_item >> 5u;
+	uint s_last_bucket  = min(s_last_item >> 5u, max(0u, CLUSTER_BUCKETS_PER_CLUSTER - 1u));
+	for (uint s_bucket  = s_first_bucket; s_bucket <= s_last_bucket; ++s_bucket)
+	{
+		uint bucket_bits = uint(texelFetch(clusterBuffer, int(cluster + s_bucket)).x);
+		uint s_bucket_bits = scalarize_buckets_bits(bucket_bits);
+		while (s_bucket_bits != 0u)
+		{
+			uint s_bucket_bit_index = findLSB(s_bucket_bits);
+			uint s_light_index = (s_bucket << 5u) + s_bucket_bit_index;
+			s_bucket_bits ^= (1u << s_bucket_bit_index);
+
+			if (s_light_index >= s_first_item && s_light_index <= s_last_item)
+			{
+				calc_point_light(result, s_light_index, params);
+			}
+			else if (s_light_index > s_last_item)
+			{
+				s_bucket = CLUSTER_BUCKETS_PER_CLUSTER;
+				break;
+			}
+		}
+	}
 }
 
 #endif

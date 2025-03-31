@@ -46,4 +46,52 @@ void calc_shadow(inout float shadow, uint occluder_index, light_input params)
 	shadow *= 1.0 - integralSolidAngle;
 }
 
+bool earlyShadowOut(float shadow)
+{
+#ifdef GL_KHR_shader_subgroup_vote
+	return subgroupAll(shadow < 1.0/255.0);
+#else
+	return (shadow < 1.0/255.0);
+#endif
+}
+
+float calculate_shadows(light_input params, uint cluster)
+{
+	float shadow = 1.0;
+
+	uint s_first_item   = firstOccluder;
+	uint s_last_item    = s_first_item + numOccluders - 1u;
+	uint s_first_bucket = s_first_item >> 5u;
+	uint s_last_bucket  = min(s_last_item >> 5u, max(0u, CLUSTER_BUCKETS_PER_CLUSTER - 1u));
+	for (uint s_bucket  = s_first_bucket; s_bucket <= s_last_bucket; ++s_bucket)
+	{
+		uint bucket_bits = uint(texelFetch(clusterBuffer, int(cluster + s_bucket)).x);
+		uint s_bucket_bits = scalarize_buckets_bits(bucket_bits);
+		while (s_bucket_bits != 0u)
+		{
+			uint s_bucket_bit_index = findLSB(s_bucket_bits);
+			uint s_occluder_index = (s_bucket << 5u) + s_bucket_bit_index;
+			s_bucket_bits ^= (1u << s_bucket_bit_index);
+				
+			if (s_occluder_index >= s_first_item && s_occluder_index <= s_last_item)
+			{
+				calc_shadow(shadow, s_occluder_index - s_first_item, params);
+
+				if (earlyShadowOut(shadow))
+					break;
+			}
+			else if (s_occluder_index > s_last_item)
+			{
+				s_bucket = CLUSTER_BUCKETS_PER_CLUSTER;
+				break;
+			}
+		}
+					
+		if (earlyShadowOut(shadow))
+			break;
+	}
+
+	return shadow;
+}
+
 #endif

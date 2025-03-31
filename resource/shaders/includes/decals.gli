@@ -94,5 +94,33 @@ void calc_decal(uint decal_index)
 	r[0] = packUnorm4x8(color);
 }
 
+void apply_decals(uint cluster)
+{
+	uint s_first_item   = firstDecal;
+	uint s_last_item    = s_first_item + numDecals - 1u;
+	uint s_first_bucket = s_first_item >> 5u;
+	uint s_last_bucket  = min(s_last_item >> 5u, max(0u, CLUSTER_BUCKETS_PER_CLUSTER - 1u));
+	for (uint s_bucket  = s_first_bucket; s_bucket <= s_last_bucket; ++s_bucket)
+	{
+		uint bucket_bits = uint(texelFetch(clusterBuffer, int(cluster + s_bucket)).x);
+		uint s_bucket_bits = scalarize_buckets_bits(bucket_bits);
+		while(s_bucket_bits != 0u)
+		{
+			uint s_bucket_bit_index = findLSB(s_bucket_bits);
+			uint s_decal_index      = (s_bucket << 5u) + s_bucket_bit_index;
+			s_bucket_bits          ^= (1u << s_bucket_bit_index);
+
+			if (s_decal_index >= s_first_item && s_decal_index <= s_last_item)
+			{
+				calc_decal(s_decal_index - s_first_item);
+			}
+			else if (s_decal_index > s_last_item)
+			{
+				s_bucket = CLUSTER_BUCKETS_PER_CLUSTER;
+				break;
+			}
+		}
+	}
+}
 
 #endif
