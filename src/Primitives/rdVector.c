@@ -620,6 +620,11 @@ int rdVector_IsZero3(rdVector3* v)
     return (v->x == 0.0 && v->y == 0.0 && v->z == 0.0);
 }
 
+int rdVector_IsNotZero3(rdVector3* v)
+{
+	return (v->x != 0.0 || v->y != 0.0 || v->z != 0.0);
+}
+
 float rdVector_NormalDot(const rdVector3* v1, const rdVector3* v2, const rdVector3* norm)
 {
     return rdMath_DistancePointToPlane(v1, norm, v2);
