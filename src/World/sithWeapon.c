@@ -1507,94 +1507,65 @@ sithThing* sithWeapon_ProjectileAutoAim(rdMatrix34 *out, sithThing *sender, rdMa
 // MOTS altered ??
 sithThing* sithWeapon_FireProjectile(sithThing *sender, sithThing *projectileTemplate, sithSound *fireSound, int mode, rdVector3 *fireOffset, rdVector3 *aimError, float scale, int16_t scaleFlags, float autoaimFov, float autoaimMaxDist, int extra)
 {
-    int thingtype; // eax
-    double v13; // st7
-    double v14; // st6
-    double v15; // st7
-    float v16; // esi
-    sithThing *v17; // eax
-    sithThing *result; // eax
-    rdVector3 v19; // [esp+10h] [ebp-6Ch] BYREF
-    rdMatrix34 v20; // [esp+1Ch] [ebp-60h] BYREF
-    rdMatrix34 out; // [esp+4Ch] [ebp-30h] BYREF
-    float a1a; // [esp+80h] [ebp+4h]
-    sithThing *a1b; // [esp+80h] [ebp+4h]
-    float a5a; // [esp+90h] [ebp+14h]
-
-    thingtype = sender->type;
-    _memcpy(&out, &sender->lookOrientation, sizeof(out));
-    if ( thingtype == SITH_THING_ACTOR || thingtype == SITH_THING_PLAYER )
-        rdMatrix_PreRotate34(&out, &sender->actorParams.eyePYR);
-    if ( fireOffset->x == 0.0 && fireOffset->y == 0.0 && fireOffset->z == 0.0 )
+	rdMatrix34 senderLookat;
+    rdMatrix_Copy34(&senderLookat, &sender->lookOrientation);
+   
+	if (sender->type == SITH_THING_ACTOR || sender->type == SITH_THING_PLAYER )
+		rdMatrix_PreRotate34(&senderLookat, &sender->actorParams.eyePYR);
+    
+	if ( fireOffset->x == 0.0 && fireOffset->y == 0.0 && fireOffset->z == 0.0 )
     {
         *fireOffset = sender->position;
     }
     else
     {
-        rdMatrix_TransformVector34Acc(fireOffset, &out);
-        v13 = sender->position.y + fireOffset->y;
-        v14 = sender->position.z + fireOffset->z;
-        fireOffset->x = fireOffset->x + sender->position.x;
-        fireOffset->y = v13;
-        fireOffset->z = v14;
+        rdMatrix_TransformVector34Acc(fireOffset, &senderLookat);
+        fireOffset->x = sender->position.x + fireOffset->x;
+        fireOffset->y = sender->position.y + fireOffset->y;
+        fireOffset->z = sender->position.z + fireOffset->z;
     }
 
-    if ( (sithWeapon_bAutoAim & 1) != 0 && (scaleFlags & 0x20) != 0 && (!sithNet_isMulti || (scaleFlags & 0x40) != 0) )
-        sithWeapon_ProjectileAutoAim(&v20, sender, &out, fireOffset, autoaimFov, autoaimMaxDist);
+	rdMatrix34 projectileLookat;
+	if ( (sithWeapon_bAutoAim & 1) != 0 && (scaleFlags & SITH_PROJECTILE_AUTOAIM) != 0 && (!sithNet_isMulti || (scaleFlags & SITH_PROJECTILE_AUTOAIM_MP) != 0) )
+        sithWeapon_ProjectileAutoAim(&projectileLookat, sender, &senderLookat, fireOffset, autoaimFov, autoaimMaxDist);
     else
+		rdMatrix_Copy34(&projectileLookat, &senderLookat);
 
-        _memcpy(&v20, &out, sizeof(v20));
     if ( aimError->x != 0.0 || aimError->y != 0.0 || aimError->z != 0.0 )
-        rdMatrix_PreRotate34(&v20, aimError);
-    v19 = v20.lvec;
-    if ( (scaleFlags & 0x10) == 0 )
+        rdMatrix_PreRotate34(&projectileLookat, aimError);
+
+	float fireRateDeltaTime = 0.0f;
+	if ( (scaleFlags & SITH_PROJECTILE_SCALE_UNK10) == 0 )
     {
         sithWeapon_LastFireTimeSecs = -1.0;
-LABEL_30:
-        v16 = 0.0;
-        goto LABEL_31;
     }
-    a1a = 1.0;
-    if ( sithWeapon_LastFireTimeSecs != -1.0 && sithWeapon_fireRate > 0.0 )
-        a1a = (sithTime_curSeconds - sithWeapon_LastFireTimeSecs) / sithWeapon_fireRate - 1.0;
-    sithWeapon_LastFireTimeSecs = sithTime_curSeconds;
-    if ( a1a <= 1.0 )
-        goto LABEL_30;
-    do
-    {
-        v15 = a1a - 1.0;
-        a1a = v15;
-        a5a = v15 * sithWeapon_fireRate;
-        v16 = a5a;
-        v17 = sithWeapon_FireProjectile_0(sender, projectileTemplate, &v19, fireOffset, 0, mode, scale, scaleFlags, a5a, extra);
-        if ( v17 && sithComm_multiplayerFlags )
-            sithDSSThing_SendFireProjectile(sender, projectileTemplate, &v19, fireOffset, 0, mode, scale, scaleFlags, a5a, v17->thing_id, -1, 255, extra);
-    }
-    while ( a1a > 1.0 );
-LABEL_31:
+	else
+	{
+		float fireRateTimeRatio = 1.0;
+		if ( sithWeapon_LastFireTimeSecs != -1.0 && sithWeapon_fireRate > 0.0 )
+			fireRateTimeRatio = (sithTime_curSeconds - sithWeapon_LastFireTimeSecs) / sithWeapon_fireRate - 1.0;
+		sithWeapon_LastFireTimeSecs = sithTime_curSeconds;
+
+		while (fireRateTimeRatio > 1.0)
+		{
+			fireRateTimeRatio -= 1.0;
+			fireRateDeltaTime = fireRateTimeRatio * sithWeapon_fireRate;
+			sithThing* result = sithWeapon_FireProjectile_0(sender, projectileTemplate, &projectileLookat.lvec, fireOffset, 0, mode, scale, scaleFlags, fireRateDeltaTime, extra);
+				
+			if (result && sithComm_multiplayerFlags )
+				sithDSSThing_SendFireProjectile(sender, projectileTemplate, &projectileLookat.lvec, fireOffset, 0, mode, scale, scaleFlags, fireRateDeltaTime, result->thing_id, -1, 255, extra);
+		}
+	}
+
     if ( fireSound )
         sithAIAwareness_AddEntry(sender->sector, &sender->position, 1, 4.0, sender);
-    result = sithWeapon_FireProjectile_0(sender, projectileTemplate, &v19, fireOffset, fireSound, mode, scale, scaleFlags, v16, extra);
-    a1b = result;
+	sithThing* result = sithWeapon_FireProjectile_0(sender, projectileTemplate, &projectileLookat.lvec, fireOffset, fireSound, mode, scale, scaleFlags, fireRateDeltaTime, extra);
     if ( result )
     {
         if ( sithComm_multiplayerFlags )
         {
-            sithDSSThing_SendFireProjectile(
-                sender,
-                projectileTemplate,
-                &v19,
-                fireOffset,
-                fireSound,
-                mode,
-                scale,
-                scaleFlags,
-                v16,
-                result->thing_id,
-                -1,
-                255,
-                extra);
-            result = a1b;
+            sithDSSThing_SendFireProjectile(sender, projectileTemplate, &projectileLookat.lvec, fireOffset, fireSound,
+                mode, scale, scaleFlags, fireRateDeltaTime, result->thing_id, -1, 255, extra);
         }
     }
     return result;

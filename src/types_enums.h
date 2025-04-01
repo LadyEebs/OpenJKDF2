@@ -197,6 +197,18 @@ enum SITH_WF_E
     SITH_WF_MOPHIA_BOMB = 0x800000, // Jones specific
 };
 
+typedef uint16_t sithProjectileFlags_t;
+enum SITH_PROJETILE_FLAGS
+{
+	SITH_PROJECTILE_SCALE_VEL    = 0x1,
+	SITH_PROJECTILE_SCALE_DAMAGE = 0x2,
+	SITH_PROJECTILE_SCALE_FORCE  = 0x4,
+	SITH_PROJECTILE_SCALE_RANGE  = 0x8,
+	SITH_PROJECTILE_SCALE_UNK10  = 0x10, // something to do with a time, fire rate and scaling for extra thing updates?
+	SITH_PROJECTILE_AUTOAIM      = 0x20,
+	SITH_PROJECTILE_AUTOAIM_MP   = 0x40
+};
+
 typedef int32_t sithGamesaveState_t;
 enum SITH_GS_E
 {
