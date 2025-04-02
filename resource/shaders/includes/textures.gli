@@ -22,16 +22,16 @@ import "fastmath.gli"
 #define TEX_SLOT_BLACKBODY      14
 
 // Textures
-layout(binding = TEX_SLOT_TEX0) uniform sampler2D textures[4];
+layout(binding = TEX_SLOT_TEX0) uniform sampler2D textures[5];
 
 //uniform sampler2D texEmiss;
 //uniform sampler2D worldPalette;
 //uniform sampler2D worldPaletteLights;
 //uniform sampler2D displacement_map;
 
+layout(binding = TEX_SLOT_REFRACTION) uniform sampler2D refrtex;
 layout(binding = TEX_SLOT_DEPTH) uniform sampler2D ztex;
 layout(binding = TEX_SLOT_AO) uniform sampler2D ssaotex;
-layout(binding = TEX_SLOT_REFRACTION) uniform sampler2D refrtex;
 //uniform sampler2D cliptex;
 //uniform sampler2D dithertex;
 //layout(binding = TEX_SLOT_DIFFUSE_LIGHT) uniform sampler2D diffuseLightTex;

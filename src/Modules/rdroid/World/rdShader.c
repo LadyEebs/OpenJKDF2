@@ -64,6 +64,14 @@ typedef struct
 	rdShader_SrcOperand  src[3];
 } rdShader_Instruction;
 
+// statically defined aliases (internal values)
+typedef struct rdShader_StaticAlias
+{
+	const char* name;
+	const char* reg;
+} rdShader_StaticAlias;
+
+// dynamically defined alises using the alias op
 typedef struct rdShader_Alias
 {
 	char                   name[16];
@@ -138,21 +146,6 @@ static uint8_t rdShader_ParseFormat(const char* token)
 	if (strnicmp(token, "fmt:half2", 9) == 0) return RD_SHADER_F16;
 	if (strnicmp(token, "fmt:float", 9) == 0) return RD_SHADER_F32;
 	return RD_SHADER_U8;
-}
-
-static int8_t rdShader_ParseSysRegister(const char* name)
-{
-	static const char* keywords[] =
-	{
-		"sv:sec", "sv:xy", "sv:z", "sv:pos", "sv:uv", "sv:aspect", "mat:fill", "mat:albedo", "mat:glow", "mat::f0", "mat::roughness", "mat:displacement"
-	};
-
-	for (uint8_t i = 0; i < RD_SHADER_SYS_MAX; ++i)
-	{
-		if (stricmp(name, keywords[i]) == 0)
-			return i;
-	}
-	return -1;
 }
 
 static uint8_t rdShader_ParseReduction(const char* name)
@@ -320,26 +313,15 @@ static char* rdShader_ParseSourceRegister(char* token, rdShader_Register* reg)
 
 		// check for an alias
 		char* alias = (char*)stdHashTable_GetKeyVal(rdShader_pCurrentAssembler->aliasHash, token);
-
-		// check for a system name
-		int8_t addr = rdShader_ParseSysRegister(alias ? alias : token);
-		if (addr >= 0)
+		if (alias)
 		{
-			reg->type = RD_SHADER_SYS;
-			reg->address = addr;
+			reg->type = rdShader_ParseSrcRegisterType(alias[0]);
+			reg->address = atoi(alias + 1);
 		}
 		else
 		{
-			if (alias)
-			{
-				reg->type = rdShader_ParseSrcRegisterType(alias[0]);
-				reg->address = atoi(alias + 1);
-			}
-			else
-			{
-				reg->type = rdShader_ParseSrcRegisterType(token[0]);
-				++token;
-			}
+			reg->type = rdShader_ParseSrcRegisterType(token[0]);
+			++token;
 		}
 
 		if (swizzle)
@@ -535,6 +517,21 @@ static int rdShader_AssembleInstruction(rdShaderInstr* result, rdShader_Instruct
 	return 1;
 }
 
+
+static void rdShader_AddAlias(const char* name, const char* reg)
+{
+	rdShader_Alias* alias = (rdShader_Alias*)malloc(sizeof(rdShader_Alias));
+	if (!alias)
+		return;
+
+	stdString_SafeStrCopy(alias->name, name, 16);
+	stdString_SafeStrCopy(alias->reg, reg, 16);
+
+	alias->next = rdShader_pCurrentAssembler->firstAlias;
+	rdShader_pCurrentAssembler->firstAlias = alias;
+	alias = stdHashTable_SetKeyVal(rdShader_pCurrentAssembler->aliasHash, alias->name, alias->reg);
+}
+
 static void rdShader_ParseAlias(char* name)
 {
 	char* comma = strchr(name, ',');
@@ -547,22 +544,10 @@ static void rdShader_ParseAlias(char* name)
 		char* alias = (char*)stdHashTable_GetKeyVal(rdShader_pCurrentAssembler->aliasHash, name);
 		if (!alias)
 		{
-			rdShader_Alias* alias = (rdShader_Alias*)malloc(sizeof(rdShader_Alias));
-			if (!alias)
-			{
-				// todo: error
-				return;
-			}
-			stdString_SafeStrCopy(alias->name, name, 16);
-
 			char* reg = comma + 1;
 			while (isspace(*reg))
 				reg++;
-			stdString_SafeStrCopy(alias->reg, reg, 16);
-
-			alias->next = rdShader_pCurrentAssembler->firstAlias;
-			rdShader_pCurrentAssembler->firstAlias = alias;
-			alias = stdHashTable_SetKeyVal(rdShader_pCurrentAssembler->aliasHash, alias->name, alias->reg);
+			rdShader_AddAlias(name, reg);
 		}
 	}
 }
@@ -714,7 +699,7 @@ int rdShader_ParseInstruction(char* line, rdShaderInstr* result)
 	// parse the opcode
 	inst.opcode = rdShader_ParseOpCode(token);
 
-	if (inst.opcode == RD_SHADER_OP_FBR)
+	if (inst.src[0].reg.type == RD_SHADER_TEX && inst.src[0].reg.address == 4)
 		rdShader_pCurrentAssembler->shader->hasReadback = 1;
 
 	// parse the destination operand
@@ -750,6 +735,50 @@ int rdShader_ParseInstruction(char* line, rdShaderInstr* result)
 	return rdShader_AssembleInstruction(result, &inst);
 }
 
+static void rdShader_InitAliasHash(rdShader_Assembler* assembler)
+{
+	assembler->aliasHash = stdHashTable_New(64);
+
+	// add default system aliases
+	static const rdShader_StaticAlias systemAliases[] =
+	{
+		{"sv:sec",    "s0"},
+		{"sv:xy",     "s1"},
+		{"sv:z",      "s2"},
+		{"sv:pos",    "s3"},
+		{"sv:uv",     "s4"},
+		{"sv:aspect", "s5"},
+	};
+	for (uint8_t i = 0; i < ARRAY_SIZE(systemAliases); ++i)
+		stdHashTable_SetKeyVal(assembler->aliasHash, systemAliases[i].name, systemAliases[i].reg);
+
+	// add default material aliases
+	static const rdShader_StaticAlias materialAliases[] =
+	{
+		{"mat:fill",         "s6"},
+		{"mat:albedo",       "s7"},
+		{"mat:glow",         "s8"},
+		{"mat::f0",          "s9"},
+		{"mat::roughness",   "s10"},
+		{"mat:displacement", "s11"}
+	};
+	for (uint8_t i = 0; i < ARRAY_SIZE(materialAliases); ++i)
+		stdHashTable_SetKeyVal(assembler->aliasHash, materialAliases[i].name, materialAliases[i].reg);
+
+	// special texture register ailiases
+	static const rdShader_StaticAlias texAliases[] =
+	{
+		{"tex0", "t0"},
+		{"tex1", "t1"},
+		{"tex2", "t2"},
+		{"tex3", "t3"},
+		{"fbo",  "t4"}
+	};
+
+	for (uint8_t i = 0; i < ARRAY_SIZE(texAliases); ++i)
+		stdHashTable_SetKeyVal(assembler->aliasHash, texAliases[i].name, texAliases[i].reg);
+}
+
 static void rdShader_AssembleByteCode(rdShaderByteCode* byteCode, const char* code)
 {
 	char tmp[512];
@@ -764,7 +793,6 @@ static void rdShader_AssembleByteCode(rdShaderByteCode* byteCode, const char* co
 
 	rdShader_Assembler assembler;
 	memset(&assembler, 0, sizeof(rdShader_Assembler));
-	assembler.aliasHash = stdHashTable_New(16);
 
 	rdShader_pCurrentAssembler = &assembler;
 
@@ -862,10 +890,11 @@ int rdShader_LoadEntry(char* fpath, rdShader* shader)
 
 	rdShader_Assembler assembler;
 	memset(&assembler, 0, sizeof(rdShader_Assembler));
-	assembler.aliasHash = stdHashTable_New(16);
 	assembler.shader = shader;
 
 	rdShader_pCurrentAssembler = &assembler;
+
+	rdShader_InitAliasHash(&assembler);
 
 	while (stdConffile_ReadLine())
 	{

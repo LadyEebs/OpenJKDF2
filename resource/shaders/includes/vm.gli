@@ -132,11 +132,6 @@ void run_vm()
 			result = s_ir.prec ? cos(s0) : fastCos(s0);
 			break;
 
-		// todo: remove this and just use tex
-		case OP_FBR:
-			result = vec4(textureLod(refrtex, fract(s0.xy), s1.x).xyz, 1.0);
-			break;
-
 		case OP_TEX:
 			if (tex_mode == TEX_MODE_TEST)
 				result = vec4(fillColor.xyz, 1.0);

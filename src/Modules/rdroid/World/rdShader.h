@@ -47,10 +47,11 @@ typedef enum
 	RD_SHADER_T1,
 	RD_SHADER_T2,
 	RD_SHADER_T3,
+	RD_SHADER_T4,
 
 	RD_SHADER_REG_T_COUNT
 } rdShader_TextureRegisters;
-static_assert(RD_SHADER_REG_T_COUNT <= 4, "RD_SHADER_REG_T_COUNT must not exceed 4.");
+static_assert(RD_SHADER_REG_T_COUNT <= 5, "RD_SHADER_REG_T_COUNT must not exceed 5.");
 
 typedef enum
 {
