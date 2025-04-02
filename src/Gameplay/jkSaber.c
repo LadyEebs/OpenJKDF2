@@ -967,9 +967,9 @@ void jkSaber_UpdateCollision(sithThing *player, int joint, int bSecondary)
     rdVector_Copy3(&player->actorParams.saberBladePos, &jointMat.scale);
     rdVector_MultAcc3(&player->actorParams.saberBladePos, &jointMat.lvec, playerInfo->polyline.length);
 
-    if ( player->jkFlags & JKFLAG_40 )
+    if ( player->jkFlags & JKFLAG_SABERDAMAGERESET)
     {
-        player->jkFlags &= ~JKFLAG_40;
+        player->jkFlags &= ~JKFLAG_SABERDAMAGERESET;
         playerInfo->saberCollideInfo.numDamagedThings = 0;
         playerInfo->saberCollideInfo.numDamagedSurfaces = 0;
     }

@@ -132,6 +132,22 @@ static const char* sithPuppet_jointNames[] =
 };
 #endif
 
+enum MARKERS
+{
+	MARKER_AI_FIRE              = 3,
+	MARKER_ENABLE_SABER_DAMAGE  = 4,
+	MARKER_DISABLE_SABER_DAMAGE = 5,
+	MARKER_SWIM_LEFT            = 6,
+	MARKER_TREAD_WATER          = 7,
+	MARKER_CORPSE_HIT           = 10,
+	MARKER_JUMP_LOW             = 11,
+	MARKER_JUMP_HIGH            = 12,
+	MARKER_SWIM_RIGHT           = 13,
+	MARKER_RESET_SABER_DAMAGE   = 14,
+	MARKER_AI_LEAP              = 15,
+	MARKER_AI_CHARGE            = 16
+};
+
 #ifdef PUPPET_PHYSICS
 int sithPuppet_activePuppets = 0;
 int sithPuppet_restingPuppets = 0;
@@ -701,25 +717,19 @@ void sithPuppet_sub_4E4A20(sithThing *thing, sithAnimclassEntry *animClass)
 }
 
 // MOTS altered
-void sithPuppet_DefaultCallback(sithThing *thing, int track, uint32_t a3)
+void sithPuppet_DefaultCallback(sithThing *thing, int track, uint32_t markerID)
 {
-    unsigned int v3; // esi
-    sithPuppet *sithPup; // eax
     uint32_t soundToPlay_base; // edi
-    sithThing *v8; // eax
     int v10; // eax
-    sithThing *v11; // esi
-    sithActor *v12; // eax
 
-    v3 = 0;
-    switch ( a3 )
+    uint32_t v3 = 0;
+    switch (markerID)
     {
         case 0u:
-            sithPup = thing->puppet;
-            if ( sithPup )
+            if (thing->puppet)
             {
-                if ( track == sithPup->currentTrack )
-                    sithPup->currentTrack = -1;
+                if ( track == thing->puppet->currentTrack )
+					thing->puppet->currentTrack = -1;
             }
             return;
         case 1u:
@@ -728,23 +738,28 @@ void sithPuppet_DefaultCallback(sithThing *thing, int track, uint32_t a3)
         case 9u:
             if ( thing->rdthing.puppet->tracks[track].playSpeed < 0.5 )
                 return;
+
             if ( (thing->thingflags & SITH_TF_DEAD) != 0 )
                 return;
+
             if ( thing->type == SITH_THING_CORPSE )
                 return;
 
             if ( !thing->attach_flags || !thing->soundclass )
                 return;
-            soundToPlay_base = a3 - 1;
-            if ( a3 - 1 > 1 )
-                soundToPlay_base = a3 - 6;
+            soundToPlay_base = markerID - 1;
+            if (markerID - 1 > 1 )
+                soundToPlay_base = markerID - 6;
             if ( !(thing->attach_flags & SITH_ATTACH_THINGSURFACE) )
             {
                 v10 = thing->attachedSurface->surfaceFlags;
                 if ( (v10 & (SITH_SURFACE_VERYDEEPWATER|SITH_SURFACE_EARTH|SITH_SURFACE_PUDDLE|SITH_SURFACE_WATER|SITH_SURFACE_METAL)) != 0 )
                 {
                     if ( (v10 & SITH_SURFACE_METAL) != 0 )
-                        goto LABEL_14;
+					{
+						sithSoundClass_PlayModeRandom(thing, (soundToPlay_base + SITH_SC_LWALKMETAL));
+						return;
+					}
                     if ( (v10 & SITH_SURFACE_WATER) != 0 )
                     {
                         sithSoundClass_PlayModeRandom(thing, (soundToPlay_base + SITH_SC_LWALKWATER));
@@ -762,7 +777,6 @@ void sithPuppet_DefaultCallback(sithThing *thing, int track, uint32_t a3)
             {
                 if ( (thing->attachedThing->thingflags & SITH_TF_METAL) != 0 )
                 {
-LABEL_14:
                     sithSoundClass_PlayModeRandom(thing, (soundToPlay_base + SITH_SC_LWALKMETAL));
                     return;
                 }
@@ -774,21 +788,20 @@ LABEL_14:
             }
             sithSoundClass_PlayModeRandom(thing, (soundToPlay_base + 4 * v3 + 6));
             return;
-        case 3u:
+        case MARKER_AI_FIRE:
             if ( thing->controlType == SITH_CT_AI )
             {
-                v12 = thing->actor;
-                if ( v12 )
-                    sithAI_FireWeapon(v12, 0.0, 0.0, 0.0, v12->field_264, v12->field_26C, v12->field_268);
+                if (thing->actor)
+                    sithAI_FireWeapon(thing->actor, 0.0, 0.0, 0.0, thing->actor->field_264, thing->actor->field_26C, thing->actor->field_268);
             }
             return;
-        case 4u:
+        case MARKER_ENABLE_SABER_DAMAGE:
             thing->jkFlags |= JKFLAG_SABERDAMAGE;
             return;
-        case 5u:
+        case MARKER_DISABLE_SABER_DAMAGE:
             thing->jkFlags &= ~JKFLAG_SABERDAMAGE;
             return;
-        case 6u:
+        case MARKER_SWIM_LEFT:
             if ( thing->rdthing.puppet->tracks[track].playSpeed >= 0.5 && thing->soundclass )
             {
                 if ( (thing->physicsParams.physflags & SITH_PF_WATERSURFACE) != 0 )
@@ -797,7 +810,7 @@ LABEL_14:
                     sithSoundClass_PlayModeRandom(thing, SITH_SC_LSWIMUNDER);
             }
             return;
-        case 7u:
+        case MARKER_TREAD_WATER:
             if ( thing->rdthing.puppet->tracks[track].playSpeed >= 0.5 && thing->soundclass )
             {
                 if ( (thing->physicsParams.physflags & SITH_PF_WATERSURFACE) != 0 )
@@ -806,32 +819,30 @@ LABEL_14:
                     sithSoundClass_PlayModeRandom(thing, SITH_SC_TREADUNDER);
             }
             return;
-        case 0xAu:
+        case MARKER_CORPSE_HIT:
             if ( thing->rdthing.puppet->tracks[track].playSpeed >= 0.5 && thing->attach_flags )
 			#ifdef PUPPET_PHYSICS
-				if (!thing->puppet->physics) // let the physics system handle this
+				if (thing->moveType != SITH_MT_PUPPET || !thing->puppet->physics) // let the physics system handle this
 			#endif
                 sithSoundClass_PlayModeRandom(thing, SITH_SC_CORPSEHIT);
             return;
-        case 0xBu:
-            v11 = thing;
+        case MARKER_JUMP_LOW:
             if ( thing->attach_flags )
             {
                 sithPlayerActions_JumpWithVel(thing, 1.0);
-                goto LABEL_50;
-            }
+				if (thing->controlType == SITH_CT_AI)
+					thing->actor->flags |= SITH_AF_CAN_ROTATE_HEAD;
+			}
             return;
-        case 0xCu:
-            v11 = thing;
+        case MARKER_JUMP_HIGH:
             if ( thing->attach_flags )
             {
                 sithPlayerActions_JumpWithVel(thing, 2.0);
-LABEL_50:
-                if ( v11->controlType == SITH_CT_AI )
-                    v11->actor->flags |= 1u;
+                if (thing->controlType == SITH_CT_AI )
+					thing->actor->flags |= SITH_AF_CAN_ROTATE_HEAD;
             }
             return;
-        case 0xDu:
+        case MARKER_SWIM_RIGHT:
             if ( thing->rdthing.puppet->tracks[track].playSpeed >= 0.5 && thing->soundclass )
             {
                 if ( (thing->physicsParams.physflags & SITH_PF_WATERSURFACE) != 0 )
@@ -840,25 +851,26 @@ LABEL_50:
                     sithSoundClass_PlayModeRandom(thing, SITH_SC_RSWIMUNDER);
             }
             return;
-        case 0xEu:
-            thing->jkFlags |= JKFLAG_40;
+        case MARKER_RESET_SABER_DAMAGE:
+            thing->jkFlags |= JKFLAG_SABERDAMAGERESET;
             return;
 
-        // MoTS added
-        case 0xF:
-            if (!Main_bMotsCompat) return;
+			// MoTS added
+        case MARKER_AI_LEAP:
+            if (!Main_bMotsCompat)
+				return;
 
-            if ((thing->controlType == SITH_CT_AI) && (v12 = thing->actor, v12 != (sithActor *)0x0)) {
-                sithAI_Leap(v12,0.0,0.0,0.0,v12->field_26C,v12->field_264,v12->field_268);
-                return;
-            }
+            if ((thing->controlType == SITH_CT_AI) && thing->actor)
+                sithAI_Leap(thing->actor, 0.0, 0.0, 0.0, thing->actor->field_26C, thing->actor->field_264, thing->actor->field_268);
+
             return;
-        case 0x10:
-            if (!Main_bMotsCompat) return;
+        case MARKER_AI_CHARGE:
+            if (!Main_bMotsCompat)
+				return;
 
-            if ((thing->controlType == SITH_CT_AI) && (v12 = thing->actor, v12 != (sithActor *)0x0)) {
-                sithAI_FUN_0053a520(v12,0.0,0.0,0.0,v12->field_26C,v12->field_264,v12->field_268);
-            }
+            if ((thing->controlType == SITH_CT_AI) && thing->actor)
+                sithAI_FUN_0053a520(thing->actor, 0.0, 0.0, 0.0, thing->actor->field_26C, thing->actor->field_264, thing->actor->field_268);
+
             return;
         default:
             return;
