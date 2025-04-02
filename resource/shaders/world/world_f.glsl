@@ -80,7 +80,7 @@ void calc_light()
 		//result.specular.rgb = sqrt(result.specular.rgb) * specularFactor.rgb;
 	
 		const vec3 specularScale = specularFactor.rgb;
-		const vec3 diffuseScale  = 1.0 - specularFactor.rgb;
+		const vec3 diffuseScale  = (1.0 - specularFactor.rgb) * albedoFactor.rgb;
 
 		vec3 diffuse  = unpackF2x11_1x10(result.diffuse);
 		vec3 specular = unpackF2x11_1x10(result.specular);
