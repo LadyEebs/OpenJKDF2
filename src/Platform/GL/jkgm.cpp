@@ -565,7 +565,8 @@ void jkgm_populate_shortcuts(stdVBuffer *vbuf, rdDDrawSurface *texture, rdMateri
     if ((!jkGuiBuildMulti_bRendering && jkPlayer_bEnableTexturePrecache) && jkgm_fastpath_disable && vbuf && texture) {
         // Causes some texture confusion when returning from jkGuiBuildMulti?
         //printf("PreInit %s %x %x %p %x\n", material->mat_fpath, texture->texture_id, texture->texture_loaded, vbuf, std3D_loadedTexturesAmt);
-        std3D_AddToTextureCache(&vbuf, 1, texture, is_alpha_tex, 0);
+        if(texture->is_16bit) // don't precache 8 bit textures since they rely on the level colormaps
+			std3D_AddToTextureCache(&vbuf, 1, texture, is_alpha_tex, 0);
         //printf("Init %s %x %x\n", material->mat_fpath, texture->texture_id, std3D_loadedTexturesAmt);
         return;
     }
@@ -598,7 +599,8 @@ void jkgm_populate_shortcuts(stdVBuffer *vbuf, rdDDrawSurface *texture, rdMateri
         if (!jkGuiBuildMulti_bRendering && jkPlayer_bEnableTexturePrecache) {
             // Causes some texture confusion when returning from jkGuiBuildMulti?
             //printf("PreInit %s %x %x %p%x \n", material->mat_fpath, texture->texture_id, texture->texture_loaded, vbuf, std3D_loadedTexturesAmt);
-            std3D_AddToTextureCache(&vbuf, 1, texture, is_alpha_tex, 0);
+			if (texture->is_16bit) // don't precache 8 bit textures since they rely on the level colormaps
+				std3D_AddToTextureCache(&vbuf, 1, texture, is_alpha_tex, 0);
             //printf("Init %s %x %x\n", material->mat_fpath, texture->texture_id, std3D_loadedTexturesAmt);
         }
         return;
@@ -615,7 +617,8 @@ void jkgm_populate_shortcuts(stdVBuffer *vbuf, rdDDrawSurface *texture, rdMateri
         //printf("PreInit %s %x %x %p %x\n", material->mat_fpath, texture->texture_id, texture->texture_loaded, vbuf, std3D_loadedTexturesAmt);
         if (!jkgm_std3D_AddToTextureCache(vbuf, texture, is_alpha_tex, 0, material, cel)) {
             //printf("PreInit2 %s %x %x %p %x\n", material->mat_fpath, texture->texture_id, texture->texture_loaded, vbuf, std3D_loadedTexturesAmt);
-            std3D_AddToTextureCache(&vbuf, 1, texture, is_alpha_tex, 0);
+			if (texture->is_16bit) // don't precache 8 bit textures since they rely on the level colormaps
+				std3D_AddToTextureCache(&vbuf, 1, texture, is_alpha_tex, 0);
         }
         //printf("Init %s %x %x\n", material->mat_fpath, texture->texture_id, std3D_loadedTexturesAmt);
     }
