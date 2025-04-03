@@ -2409,16 +2409,6 @@ void std3D_FreeResources()
     has_initted = false;
 }
 
-void std3D_useProgram(int program)
-{
-	static int last_program = -1;
-	if (program != last_program)
-	{
-		glUseProgram(program);
-		last_program = program;
-	}
-}
-
 int std3D_StartScene()
 {
     if (Main_bHeadless) return 1;
@@ -2566,6 +2556,8 @@ int std3D_EndScene()
         last_flags = 0;
         return 1;
     }
+
+	std3D_PopDebugGroup();
 
 	std3D_ResetState();
 
@@ -2785,7 +2777,7 @@ void std3D_ResolveMSAA()
 			glDepthFunc(GL_ALWAYS);
 			glDisable(GL_CULL_FACE);
 			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-			std3D_useProgram(std3D_resolveStage.program);
+			glUseProgram(std3D_resolveStage.program);
 
 			GLenum bufs[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1
 #ifdef MOTION_BLUR
@@ -2860,7 +2852,7 @@ void std3D_DrawMenu()
 	glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthFunc(GL_ALWAYS);
-	std3D_useProgram(programMenu);
+	glUseProgram(programMenu);
     
     float menu_w, menu_h, menu_u, menu_v, menu_x;
     menu_w = (double)Window_xSize;
@@ -3181,7 +3173,7 @@ void std3D_DrawMapOverlay()
     glCullFace(GL_FRONT);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthFunc(GL_ALWAYS);
-	std3D_useProgram(programMenu);
+	glUseProgram(programMenu);
     
     float menu_w = (double)Window_xSize;
     float menu_h = (double)Window_ySize;
@@ -3190,6 +3182,8 @@ void std3D_DrawMapOverlay()
     {
         return;
     }
+	
+	std3D_PushDebugGroup("std3D_DrawMapOverlay");
 
     menu_w = Video_menuBuffer.format.width;
     menu_h = Video_menuBuffer.format.height;
@@ -3270,6 +3264,8 @@ void std3D_DrawMapOverlay()
     glDrawElements(GL_TRIANGLES, tris_size / sizeof(GLushort), GL_UNSIGNED_SHORT, 0);
 
 	glBindVertexArray(vao);
+
+	std3D_PopDebugGroup();
 }
 
 void std3D_DrawUIBitmapRGBA(stdBitmap* pBmp, int mipIdx, float dstX, float dstY, rdRect* srcRect, float scaleX, float scaleY, int bAlphaOverwrite, uint8_t color_r, uint8_t color_g, uint8_t color_b, uint8_t color_a)
@@ -3550,7 +3546,7 @@ void std3D_DrawUIRenderList()
     glCullFace(GL_FRONT);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     glDepthFunc(GL_ALWAYS);
-	std3D_useProgram(std3D_uiProgram.program); // TODO: simpler shader
+	glUseProgram(std3D_uiProgram.program); // TODO: simpler shader
     
     last_ui_tex = 0;
     last_ui_flags = -1;
@@ -3734,7 +3730,7 @@ void std3D_DrawSimpleTex(std3DSimpleTexStage* pStage, std3DIntermediateFbo* pFbo
     glDepthFunc(GL_ALWAYS);
 	glDisable(GL_CULL_FACE);
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	std3D_useProgram(pStage->program);
+	glUseProgram(pStage->program);
     
 	glBindVertexArray(vao);
 
@@ -4140,6 +4136,7 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
     }
     else {
+		rdColor24* pal_master = sithWorld_pCurrentWorld && sithWorld_pCurrentWorld->colormaps ? (rdColor24*)sithWorld_pCurrentWorld->colormaps->colors : stdDisplay_gammaPalette;
 
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		
@@ -4174,7 +4171,6 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 				}
 				else
 				{
-					rdColor24* pal_master = sithWorld_pCurrentWorld ? (rdColor24*)sithWorld_pCurrentWorld->colormaps->colors : stdDisplay_gammaPalette;
 					color = pal_master[val];
 				}
 
@@ -4235,7 +4231,6 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 					}
 					else
 					{
-						rdColor24* pal_master = sithWorld_pCurrentWorld ? (rdColor24*)sithWorld_pCurrentWorld->colormaps->colors : stdDisplay_gammaPalette;
 						color = pal_master[val];
 					}
 
@@ -4338,7 +4333,6 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 					}
 					else
 					{
-						rdColor24* pal_master = sithWorld_pCurrentWorld ? (rdColor24*)sithWorld_pCurrentWorld->colormaps->colors : stdDisplay_gammaPalette;
 						color = pal_master[val];
 					}
 
@@ -4416,7 +4410,6 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 						}
 						else
 						{
-							rdColor24* pal_master = sithWorld_pCurrentWorld ? (rdColor24*)sithWorld_pCurrentWorld->colormaps->colors : stdDisplay_gammaPalette;
 							color = pal_master[val];
 						}
 
@@ -4511,7 +4504,6 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 					}
 					else
 					{
-						rdColor24* pal_master = sithWorld_pCurrentWorld ? (rdColor24*)sithWorld_pCurrentWorld->colormaps->colors : stdDisplay_gammaPalette;
 						color = pal_master[val];
 					}
 
@@ -4557,7 +4549,6 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 						}
 						else
 						{
-							rdColor24* pal_master = sithWorld_pCurrentWorld ? (rdColor24*)sithWorld_pCurrentWorld->colormaps->colors : stdDisplay_gammaPalette;
 							color = pal_master[val];
 						}
 
@@ -4583,7 +4574,8 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 		}
 	
 		// auto-generate an emissive texture from the light palette
-		uint8_t* light = sithWorld_pCurrentWorld ? (uint8_t*)sithWorld_pCurrentWorld->colormaps->lightlevel : NULL;
+		//uint8_t* light = sithWorld_pCurrentWorld ? (uint8_t*)sithWorld_pCurrentWorld->colormaps->lightlevel : NULL;
+		uint8_t* light = sithWorld_pCurrentWorld && sithWorld_pCurrentWorld->colormaps ? (uint8_t*)sithWorld_pCurrentWorld->colormaps->lightlevel : NULL;
 
 		if(light && !pal)
 		{
@@ -4661,7 +4653,7 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 						//val_rgba |= (index != (*vbufIter)->transparent_color) ? 0xFF000000 : 0x00000000;
 
 						uint8_t val = light[image_8bpp[index]];
-						rdColor24* pal_master = (rdColor24*)sithWorld_pCurrentWorld->colormaps->colors;//stdDisplay_gammaPalette;
+						rdColor24* pal_master = sithWorld_pCurrentWorld ? (rdColor24*)sithWorld_pCurrentWorld->colormaps->colors : stdDisplay_gammaPalette;
 						rdColor24 color = pal_master[val];
 
 						val_rgba |= (((uint32_t)color.r >> 3u) << 11);
@@ -5826,7 +5818,7 @@ void std3D_SetShaderState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 
 void std3D_BindStage(std3D_worldStage* pStage)
 {
-	std3D_useProgram(pStage->program);
+	glUseProgram(pStage->program);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.fbo);
 
@@ -5964,7 +5956,7 @@ void std3D_DoSSAO()
 		std3D_PushDebugGroup("Sampling");
 
 		glBindFramebuffer(GL_FRAMEBUFFER, ssao.fbo);
-		std3D_useProgram(std3D_ssaoStage[0].program);
+		glUseProgram(std3D_ssaoStage[0].program);
 
 		std3D_bindTexture(std3D_framebuffer.samples != 1 ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D, std3D_framebuffer.ztex, 0);
 		std3D_bindTexture(GL_TEXTURE_2D, ssaoDepth.tex, 1);
@@ -5995,7 +5987,7 @@ void std3D_DoSSAO()
 		std3D_PushDebugGroup("Composite");
 
 		glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.fbo);
-		std3D_useProgram(std3D_ssaoStage[1].program);
+		glUseProgram(std3D_ssaoStage[1].program);
 
 		std3D_bindTexture(std3D_framebuffer.samples != 1 ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D, std3D_framebuffer.ztex, 0);
 		std3D_bindTexture(GL_TEXTURE_2D, ssao.tex, 1);
@@ -6042,7 +6034,7 @@ void std3D_DoDeferredLighting()
 	//glClearColor(1, 1, 1, 1);
 	//glClear(GL_COLOR_BUFFER_BIT);
 
-	std3D_useProgram(std3D_deferredStage.program);
+	glUseProgram(std3D_deferredStage.program);
 
 	std3D_bindTexture(std3D_framebuffer.samples != 1 ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D, std3D_framebuffer.ztex, 0);
 	//std3D_bindTexture(GL_TEXTURE_2D, std3D_framebuffer.ntex, 1);
@@ -6380,7 +6372,7 @@ int std3D_UploadDecalTexture(rdRectf* out, stdVBuffer* vbuf, rdDDrawSurface* pTe
 			glDisable(GL_BLEND);
 			glDepthMask(GL_FALSE);
 			glDisable(GL_DEPTH_TEST);
-			std3D_useProgram(std3D_decalAtlasStage.program);
+			glUseProgram(std3D_decalAtlasStage.program);
 
 			glBindVertexArray(vao);
 
