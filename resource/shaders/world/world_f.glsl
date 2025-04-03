@@ -29,12 +29,12 @@ void calc_light()
 	vec3 view      = normalize(-viewPos.xyz);
 	vec3 reflected = reflect(-view, normal);
 
-	flex fog = fetch_vtx_color(1).w;
-	//if(fogEnabled > 0)
-	//{
-	//	float distToCam = max(0.0, viewPos.y) * fastRcpNR1(-view.y);
-	//	fog = saturate((distToCam - fogStart) * fastRcpNR1(fogEnd - fogStart));
-	//}
+	flex fog = flex(0.0);// fetch_vtx_color(1).w;
+	if(fogEnabled > 0)
+	{
+		float distToCam = max(0.0, viewPos.y) * fastRcpNR1(-view.y);
+		fog = flex(saturate((distToCam - fogStart) * fastRcpNR1(fogEnd - fogStart)));
+	}
 
 	if (lightMode < 2)
 	{	
