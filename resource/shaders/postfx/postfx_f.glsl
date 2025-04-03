@@ -15,14 +15,14 @@ layout(location = 7) uniform float colorEffects_fade;
 layout(location = 0) in vec4 f_color;
 layout(location = 1) in vec2 f_uv;
 
-layout(location = 0) out vec4 fragColor;
+layout(location = 0) out flex4 fragColor;
 
 #ifdef RESOLVE
 
-layout(location = 1) out vec4 fragGlow;
+layout(location = 1) out flex4 fragGlow;
 
-layout(binding = 0) uniform sampler2DMS texMS;
-layout(binding = 1) uniform sampler2DMS tex2MS;
+layout(binding = 0) uniform flexSampler2DMS texMS;
+layout(binding = 1) uniform flexSampler2DMS tex2MS;
 
 layout(location = 1) uniform   int param1;
 layout(location = 2) uniform float param2;
@@ -206,8 +206,8 @@ void main(void)
 	sampled_color.rgb *= flex3(colorEffects_filter.rgb);
 //#endif
 
-    fragColor.rgb = vec3(pow(sampled_color.rgb, flex3(fastRcpNR0(param3))));
-	fragColor.w = 1.0;
+    fragColor.rgb = (pow(sampled_color.rgb, flex3(fastRcpNR0(param3))));
+	fragColor.w = flex(1.0);
 }
 
 #endif
@@ -224,7 +224,7 @@ void main(void)
 {
 	// center color
 	flex4 color = textureLod(tex, f_uv.xy, 0);
-	fragColor = vec4(color);
+	fragColor = color;
 
 	// fetch the velocity and depth
 	flex3 vel = textureLod(tex2, f_uv.xy, 0).xyz;
@@ -323,7 +323,7 @@ void main(void)
 			fragColor.rgb = mix( color.rgb, acc.rgb, acc.w );
 	}
 
-	fragColor.w = float(acc.w);
+	fragColor.w = acc.w;
 }
 
 #endif

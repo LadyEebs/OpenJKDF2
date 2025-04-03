@@ -1,29 +1,31 @@
-uniform sampler2D tex;
-uniform sampler2D worldPalette;
-uniform sampler2D displayPalette;
-in vec4 f_color;
+uniform flexSampler2D tex;
+uniform flexSampler2D worldPalette;
+uniform flexSampler2D displayPalette;
+
+in flex4 f_color;
 in vec2 f_uv;
-out vec4 fragColor;
 
-vec4 sampleTex(sampler2D s, vec2 uv)
+out flex4 fragColor;
+
+flex4 sampleTex(flexSampler2D s, vec2 uv)
 {
-    vec4 sampled = textureLod(s, uv, 0);
-    vec4 palvald = textureLod(displayPalette, vec2(sampled.r, 0.5), 0);
+    flex4 sampled = textureLod(s, uv, 0);
+    flex4 palvald = textureLod(displayPalette, vec2(sampled.r, 0.5), 0);
 
-    float transparency = (sampled.r == 0.0) ? 0.0 : 1.0;
-    return vec4(palvald.r, palvald.g, palvald.b, transparency);
+    flex transparency = (sampled.r == 0.0) ? flex(0.0) : flex(1.0);
+    return flex4(palvald.r, palvald.g, palvald.b, transparency);
 }
 
 void main(void)
 {
-    vec4 sampled_color = sampleTex(tex, f_uv);
-    vec4 vertex_color = f_color;
+    flex4 sampled_color = sampleTex(tex, f_uv);
+    flex4 vertex_color = f_color;
    
-    if (sampled_color.a < 0.5)
+    if (sampled_color.a < flex(0.5))
         discard;
 
 	// fake untonemap to give it some brightness
-	float k = 10.0;
+	flex k = flex(10.0);
 	//sampled_color.rgb = k * sampled_color.rgb / (k - sampled_color.rgb);
 	sampled_color.rgb = k * sampled_color.rgb / (k - max3(sampled_color.r, sampled_color.g, sampled_color.b));
 	

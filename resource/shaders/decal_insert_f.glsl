@@ -1,5 +1,5 @@
-uniform sampler2D tex;
-uniform sampler2D tex2;
+uniform flexSampler2D tex;
+uniform flexSampler2D tex2;
 uniform vec2 iResolution;
 uniform float param1;
 uniform float param2;
@@ -7,12 +7,12 @@ uniform float param3;
 
 in vec2 f_uv;
 
-out vec4 fragColor;
+out flex4 fragColor;
 
 void main(void)
 {
-	vec4 sampled = texture(tex, f_uv);
-    vec4 sampled_color = vec4(1.0, 1.0, 1.0, 1.0);
+	flex4 sampled = texture(tex, f_uv);
+    flex4 sampled_color = flex4(1.0, 1.0, 1.0, 1.0);
 
 	//float index = sampled.r;
 	//if (param1 < 5)

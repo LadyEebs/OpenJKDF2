@@ -7,7 +7,7 @@ layout(location = 3) uniform float param3;
 
 layout(location = 0) in vec2 f_uv;
 
-layout(location = 0) out vec4 fragColor;
+layout(location = 0) out flex4 fragColor;
 
 void main(void)
 {
@@ -31,7 +31,7 @@ void main(void)
 	// simple kawase
 	//const vec2 s = vec2(-1,1);
 	//const vec2 a = vec2(0,2);
-	//vec4 Color = (texture(tex, f_uv + PixSize.xy * s.xx, 0.0) +
+	//flex4 Color = (texture(tex, f_uv + PixSize.xy * s.xx, 0.0) +
 	// 			  texture(tex, f_uv + PixSize.xy * s.yx, 0.0) +
 	// 			  texture(tex, f_uv + PixSize.xy * s.xy, 0.0) +
 	// 			  texture(tex, f_uv + PixSize.xy * s.yy, 0.0)) / 6.0 +
@@ -40,5 +40,5 @@ void main(void)
 	// 			  texture(tex, f_uv + PixSize.xy * a.yx, 0.0) +
 	// 			  texture(tex, f_uv - PixSize.xy * a.yx, 0.0)) / 12.0;
 	
-	fragColor = vec4(Color.rgb, param2);
+	fragColor = flex4(Color.rgb, param2);
 }
