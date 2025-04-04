@@ -299,9 +299,9 @@ static char* rdShader_ParseSourceRegister(char* token, rdShader_Register* reg)
 
 	if (isdigit(token[0])) // immediate value
 	{
-		if (reg->idx >= 3)
+		if (reg->idx >= 2)
 			reg->type = RD_SHADER_IMM8;
-		else if (reg->idx >= 2)
+		else if (reg->idx >= 1)
 			reg->type = RD_SHADER_IMM16;
 		else
 			reg->type = RD_SHADER_IMM32;
