@@ -90,7 +90,7 @@ rdShader_Assembler* rdShader_pCurrentAssembler = NULL;
 
 static uint8_t rdShader_ParseOpCode(const char* name)
 {
-	char* swizzle = strchr(name, '.');
+	char* swizzle = _strchr(name, '.');
 	if (swizzle)
 		*swizzle = '\0';
 
@@ -214,7 +214,7 @@ static int rdShader_ExtractSwizzle(const char* expression, char* swizzle_out)
 		}
 		swizzle_out[i - 1] = c;
 
-		int idx = strchr(swizzle_chars, c) - swizzle_chars;
+		int idx = _strchr(swizzle_chars, c) - swizzle_chars;
 		mask |= swizzle_map[idx & 3]; // set the appropriate mask
 	}
 
@@ -266,7 +266,7 @@ static void rdShader_ParseDestinationOperand(char* token, rdShader_DestOperand* 
 	op->reg.address = 0xFF;
 
 	// find the swizzle
-	char* swizzle = strchr(token, '.');
+	char* swizzle = _strchr(token, '.');
 
 	// if this isn't an immediate value, clear the swizzle
 	if (isalpha(token[0]) && swizzle)
@@ -295,7 +295,7 @@ static void rdShader_ParseDestinationOperand(char* token, rdShader_DestOperand* 
 static char* rdShader_ParseSourceRegister(char* token, rdShader_Register* reg)
 {
 	// find the swizzle
-	char* swizzle = strchr(token, '.');
+	char* swizzle = _strchr(token, '.');
 
 	if (isdigit(token[0])) // immediate value
 	{
@@ -350,7 +350,7 @@ static void rdShader_ParseSourceOperandExpression(char* token, rdShader_SrcOpera
 	while (isspace(*token)) // skip whitespace
 		token++;
 
-	char* modifiers = strchr(token, '[');
+	char* modifiers = _strchr(token, '[');
 	if (modifiers)
 	{
 		char tmp[128];
@@ -361,7 +361,7 @@ static void rdShader_ParseSourceOperandExpression(char* token, rdShader_SrcOpera
 		char* modifier = tmp;
 		while (*modifier)
 		{
-			char* next_comma = strchr(modifier, ' ');
+			char* next_comma = _strchr(modifier, ' ');
 			if (next_comma)
 				*next_comma = '\0';
 
@@ -545,7 +545,7 @@ static void rdShader_AddAlias(const char* name, const char* reg)
 
 static void rdShader_ParseAlias(char* name)
 {
-	char* comma = strchr(name, ',');
+	char* comma = _strchr(name, ',');
 	if (comma)
 	{
 		*comma = '\0';
