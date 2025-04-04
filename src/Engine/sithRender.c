@@ -768,6 +768,8 @@ void sithRender_ResetState()
 	rdLoadMatrix34(&rdCamera_pCurCamera->view_matrix);
 #endif
 
+	sithRender_SetCameraFog();
+
 	rdSetCullFlags(1);
 }
 
@@ -873,7 +875,6 @@ void sithRender_Draw()
 	STD_BEGIN_PROFILER_LABEL();
 
     sithPlayer_SetScreenTint(sithCamera_currentCamera->sector->tint.x, sithCamera_currentCamera->sector->tint.y, sithCamera_currentCamera->sector->tint.z);
-	sithRender_SetCameraFog();
 
 	sithCamera_currentCamera->rdCam.flags &= ~0x1;
 	if ( (sithCamera_currentCamera->sector->flags & 2) != 0 )

@@ -64,29 +64,31 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #define TEX_SLOT_DEPTH           9
 #define TEX_SLOT_AO             10
 #define TEX_SLOT_CLIP           11
-#define TEX_SLOT_DITHER         12
+#define TEX_SLOT_PHASE          12
 #define TEX_SLOT_DIFFUSE_LIGHT  13
 #define TEX_SLOT_BLACKBODY      14
 
+// todo: should be a UBO
 #define U_MODEL_MATRIX		0
 #define U_PROJ_MATRIX		1
 #define U_VIEW_MATRIX		2
+#define U_VIEW_MATRIX_INV   3
 
 #ifdef MOTION_BLUR
 
-#define U_MODEL_MATRIX_PREV 3
-#define U_MODEL_VIEW_PREV   4
+#define U_MODEL_MATRIX_PREV 4
+#define U_MODEL_VIEW_PREV   5
 
 #endif
 
-#define U_LIGHT_MODE		5
-#define U_GEO_MODE			6
-#define U_BLEND_MODE		7
-#define U_FLAGS				8
-#define U_AMB_COLOR			9
-#define U_AMB_CENTER		10
-#define U_AMB_NUM_SG		11
-#define U_AMB_SGS			12
+#define U_LIGHT_MODE		6
+#define U_GEO_MODE			7
+#define U_BLEND_MODE		8
+#define U_FLAGS				9
+#define U_AMB_COLOR			10
+#define U_AMB_CENTER		11
+#define U_AMB_NUM_SG		12
+#define U_AMB_SGS			13
 
 #define UBO_SLOT_LIGHTS        0
 #define UBO_SLOT_OCCLUDERS     1
@@ -245,7 +247,7 @@ typedef struct std3D_SharedUniforms
 	rdVector2 clusterScaleBias;
 
 	float deltaTime;
-	float pad1;
+	float ditherScaleAlways;
 
 	rdVector4 scale_bias[8];
 } std3D_SharedUniforms;
@@ -388,22 +390,7 @@ typedef enum STD3D_WORLD_REG_POOL
 
 typedef struct std3D_worldStage
 {
-	int bPosOnly;
-
 	GLuint program;
-	//GLint attribute_coord3d, attribute_v_color, attribute_v_light, attribute_v_uv, attribute_v_norm;
-	//GLint uniform_projection, uniform_modelMatrix, uniform_viewMatrix;
-	//GLint uniform_ambient_color, uniform_ambient_sg, uniform_ambient_sg_count, uniform_ambient_center;
-	//GLint uniform_geo_mode,  uniform_fillColor, uniform_textures, uniform_tex, uniform_texEmiss, uniform_displacement_map, uniform_texDecals, uniform_texz, uniform_texssao, uniform_texrefraction, uniform_texclip;
-	//GLint uniform_worldPalette, uniform_worldPaletteLights, uniform_dithertex, uniform_diffuse_light, uniform_blackbody_tex;
-	//GLint uniform_light_mode, uniform_ao_flags;
-	//GLint uniform_shared, uniform_shader, uniform_shaderConsts, uniform_fog, uniform_tex_block, uniform_material, uniform_lightbuf, uniform_lights, uniform_occluders, uniform_decals;
-	//GLint uniform_rightTop;
-	//GLint uniform_rt;
-	//GLint uniform_lt;
-	//GLint uniform_rb;
-	//GLint uniform_lb;
-
 	GLuint vao[STD3D_STAGING_COUNT];
 } std3D_worldStage;
 
@@ -436,8 +423,7 @@ void* displaypal_data = NULL;
 GLuint tiledrand_texture;
 rdVector3 tiledrand_data[4 * 4];
 
-GLuint dither_texture;
-uint8_t dither_data[4*4];
+uint16_t* phase_data = NULL;
 GLuint phase_texture;
 GLuint blackbody_texture;
 
@@ -1801,29 +1787,6 @@ void std3D_setupDrawCallVAO(std3D_worldStage* pStage)
 		glBindBuffer(GL_ARRAY_BUFFER, world_vbo_all[i]);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_ibo_triangle[i]);
 
-		if (pStage->bPosOnly)
-		{
-			glVertexAttribPointer(
-				0,//pStage->attribute_coord3d, // attribute
-				3,                 // number of elements per vertex, here (x,y,z)
-				GL_FLOAT,          // the type of each element
-				GL_FALSE,          // normalize fixed-point data?
-				sizeof(rdVertexBase),                 // data stride
-				0                  // offset of first element
-			);
-			glEnableVertexAttribArray(0);//pStage->attribute_coord3d);
-
-			//glVertexAttribPointer(
-			//	pStage->attribute_v_norm, // attribute
-			//	GL_BGRA,                 // number of elements per vertex, here (x,y,z)
-			//	GL_UNSIGNED_INT_2_10_10_10_REV,          // the type of each element
-			//	GL_TRUE,          // normalize fixed-point data?
-			//	sizeof(rdVertexBase), // data stride
-			//	(GLvoid*)offsetof(rdVertexBase, norm10a2) // offset of first element
-			//);
-			//glEnableVertexAttribArray(pStage->attribute_v_norm);
-		}
-		else
 		{
 			glVertexAttribPointer(
 				0,//pStage->attribute_coord3d, // attribute
@@ -2065,56 +2028,43 @@ int init_resources()
     
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, 4, 4, 0, GL_RGB, GL_FLOAT, tiledrand_data);
 
-	// Dither texture
-	const uint8_t DITHER_LUT[16] = {
-			0, 4, 1, 5,
-			6, 2, 7, 3,
-			1, 5, 0, 4,
-			7, 3, 6, 2
-	};
-	glGenTextures(1, &dither_texture);
-
-	glBindTexture(GL_TEXTURE_2D, dither_texture);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, 4, 4, 0, GL_RED, GL_UNSIGNED_BYTE, DITHER_LUT);
-
 	// phase texture
 	glGenTextures(1, &phase_texture);
 
 	glBindTexture(GL_TEXTURE_2D, phase_texture);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 
-//float phase[256 * 256];
-//for (int y = 0; y < 255; ++y)
-//for (int x = 0; x < 255; ++x)
-//{
-//	float k = (float)x / 255.0f;
-//	float costh = ((float)y / 255.0f) * 2.0f - 1.0f;
-//
-//	//phase[y * 255 + x] = (1.0 - k * k) / (4.0 * 3.141592 * powf(1.0 - k * costh, 2.0));
-//	//phase[y * 255 + x] = (1.0 - k * k) / (powf(1.0 - k * costh, 2.0));
-//
-//	float c = 1.0 - k * costh;
-//	float f = (1.0 - k * k) / (c * c);
-//	f /= (1.0 + f); // tone map it
-//
-//	phase[y * 255 + x] = f;
-//}
-//
-//glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, 256, 256, 0, GL_RED, GL_FLOAT, phase);
+	phase_data = jkgm_alloc_aligned(sizeof(uint16_t) * 256 * 256);
+	for (int y = 0; y < 256; ++y)
+	for (int x = 0; x < 256; ++x)
+	{
+		float u = (float)x / 256.0f;
+		float v = (float)y / 256.0f;
+
+		float g  = u * 2.0f - 1.0f;
+		float mu = v * 2.0f - 1.0f;
+	
+		// Henyey-Greensteinphase function
+		//float f = (1.0f - g * g) / (4.0f * M_PI * powf(1.0f + g * g - 2.0f * g * mu , 3.0f / 2.0f));
+
+		// Cornette-Shanks
+		const float k = 3.0 / (8.0 * M_PI);
+		float gg = g * g;
+		float num = (1.0 - gg) * (1.0 + mu * mu);
+		float den = 1.0 + gg - 2.0 * g * mu;
+		      den = (2.0 + gg) * sqrtf(den * den * den);
+		float f = k * num / den;
+
+		phase_data[y * 256 + x] = stdMath_FloatToHalf(4.0 * M_PI * f);
+	}
+	
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, 256, 256, 0, GL_RED, GL_HALF_FLOAT, phase_data);
 
 	// blackbody
 	glGenTextures(1, &blackbody_texture);
@@ -2205,7 +2155,6 @@ int init_resources()
 		{
 			for (int i = 0; i < WORLD_STAGE_COUNT; ++i)
 			{
-				//worldStages[i].bPosOnly = i == SHADER_DEPTH;//(i <= SHADER_DEPTH_ALPHATEST);
 				std3D_setupDrawCallVAO(&worldStages[i][j][k]);
 				std3D_setupLightingUBO(&worldStages[i][j][k]);
 			}
@@ -2351,6 +2300,8 @@ void std3D_FreeResources()
         jkgm_aligned_free(worldpal_lights_data);
     if (displaypal_data)
         jkgm_aligned_free(displaypal_data);
+	if (phase_data)
+		jkgm_aligned_free(phase_data);
 
 	glDeleteSamplers(4, linearSampler);
 	glDeleteSamplers(4, nearestSampler);
@@ -2372,7 +2323,6 @@ void std3D_FreeResources()
     loaded_colormap = NULL;
 
 	glDeleteTextures(1, &tiledrand_texture);
-	glDeleteTextures(1, &dither_texture);
 	glDeleteTextures(1, &phase_texture);
 	glDeleteTextures(1, &blackbody_texture);
 
@@ -5361,8 +5311,10 @@ void std3D_UpdateSharedUniforms()
 	sharedUniforms.invlightMult = rdroid_overbright;
 
 	uint8_t bpp = std3D_framebufferFlags & 0x4 ? 10 : 5;
+	sharedUniforms.ditherScaleAlways = 1.0f / (float)((1 << bpp) - 1);
+
 	if (jkPlayer_enableDithering)
-		sharedUniforms.ditherScale = 1.0f / (float)((1 << bpp) - 1);
+		sharedUniforms.ditherScale = sharedUniforms.ditherScaleAlways;
 	else
 		sharedUniforms.ditherScale = 0.0f;
 
@@ -5471,11 +5423,7 @@ void std3D_SetRasterState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 	//glUniform1i(pStage->uniform_geo_mode, pState->stateBits.geoMode + 1);
 	glUniform1i(U_GEO_MODE, pState->stateBits.geoMode + 1);
 
-	//if(pState->stateBits.ditherMode > 0)
-	//	std3D_bindTexture(GL_TEXTURE_2D, dither_texture, TEX_SLOT_DITHER);
-	//else
-	//	std3D_bindTexture(GL_TEXTURE_2D, blank_tex, TEX_SLOT_DITHER);
-	std3D_bindTexture(GL_TEXTURE_2D, phase_texture, TEX_SLOT_DITHER);	
+	std3D_bindTexture(GL_TEXTURE_2D, phase_texture, TEX_SLOT_PHASE);
 	std3D_bindTexture(GL_TEXTURE_1D, blackbody_texture, TEX_SLOT_BLACKBODY);
 
 	std3D_bindTexture(GL_TEXTURE_2D, deferred.tex, TEX_SLOT_DIFFUSE_LIGHT);
@@ -5487,7 +5435,7 @@ void std3D_SetFogState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 	fog.fogEnabled = pState->stateBits.fogMode;
 	fog.fogStartDepth = pState->fogState.startDepth;
 	fog.fogEndDepth = pState->fogState.endDepth;
-	fog.fogAnisotropy = pState->fogState.anisotropy;
+	fog.fogAnisotropy = pState->fogState.anisotropy * 0.5f + 0.5f;
 	fog.fogLightDir.x = pState->fogState.lightDir.x;
 	fog.fogLightDir.y = pState->fogState.lightDir.y;
 	fog.fogLightDir.z = pState->fogState.lightDir.z;
@@ -5626,6 +5574,11 @@ void std3D_SetTransformState(std3D_worldStage* pStage, std3D_DrawCallState* pSta
 
 	glUniformMatrix4fv(U_VIEW_MATRIX, 1, GL_FALSE, (float*)&pState->transformState.view);
 	glUniformMatrix4fv(U_MODEL_MATRIX, 1, GL_FALSE, (float*)&pState->transformState.modelView);
+	
+	// todo: move to rdroid?
+	rdMatrix44 viewMatrixInv;
+	rdMatrix_Invert44(&viewMatrixInv, &pState->transformState.view);
+	glUniformMatrix4fv(U_VIEW_MATRIX_INV, 1, GL_FALSE, (float*)&viewMatrixInv);
 
 #ifdef MOTION_BLUR
 	glUniformMatrix4fv(U_MODEL_MATRIX_PREV, 1, GL_FALSE, (float*)&pState->transformState.modelPrev);
@@ -6081,7 +6034,7 @@ void std3D_setupWorldTextures()
 	std3D_bindTexture(    GL_TEXTURE_2D,           blank_tex_white,               TEX_SLOT_AO);
 	std3D_bindTexture(    GL_TEXTURE_2D,                  refr.tex,       TEX_SLOT_REFRACTION);
 	std3D_bindTexture(    GL_TEXTURE_2D,                 blank_tex,             TEX_SLOT_CLIP);
-	std3D_bindTexture(    GL_TEXTURE_2D,            dither_texture,           TEX_SLOT_DITHER);
+	std3D_bindTexture(    GL_TEXTURE_2D,             phase_texture,            TEX_SLOT_PHASE);
 	std3D_bindTexture(    GL_TEXTURE_1D,         blackbody_texture,        TEX_SLOT_BLACKBODY);
 }
 

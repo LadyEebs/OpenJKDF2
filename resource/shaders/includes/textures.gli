@@ -17,7 +17,7 @@ import "fastmath.gli"
 #define TEX_SLOT_DEPTH           9
 #define TEX_SLOT_AO             10
 #define TEX_SLOT_CLIP           11
-#define TEX_SLOT_DITHER         12
+#define TEX_SLOT_PHASE          12
 #define TEX_SLOT_DIFFUSE_LIGHT  13
 #define TEX_SLOT_BLACKBODY      14
 
@@ -33,7 +33,7 @@ layout(binding = TEX_SLOT_REFRACTION) uniform sampler2D refrtex;
 layout(binding = TEX_SLOT_DEPTH) uniform sampler2D ztex;
 layout(binding = TEX_SLOT_AO) uniform sampler2D ssaotex;
 //uniform sampler2D cliptex;
-//uniform sampler2D dithertex;
+layout(binding = TEX_SLOT_PHASE) uniform sampler2D phaseTexture;
 //layout(binding = TEX_SLOT_DIFFUSE_LIGHT) uniform sampler2D diffuseLightTex;
 layout(binding = TEX_SLOT_BLACKBODY) uniform sampler1D blackbodyTex;
 

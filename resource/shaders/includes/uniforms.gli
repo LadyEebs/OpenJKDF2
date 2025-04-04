@@ -8,25 +8,30 @@ import "defines.gli"
 #define U_MODEL_MATRIX		0
 #define U_PROJ_MATRIX		1
 #define U_VIEW_MATRIX		2
-#define U_MODEL_MATRIX_PREV 3
-#define U_MODEL_VIEW_PREV   4
+#define U_VIEW_MATRIX_INV   3
+#define U_MODEL_MATRIX_PREV 4
+#define U_MODEL_VIEW_PREV   5
 
-#define U_LIGHT_MODE   5
-#define U_GEO_MODE     6
-#define U_BLEND_MODE   7
+#define U_LIGHT_MODE   6
+#define U_GEO_MODE     7
+#define U_BLEND_MODE   8
 
-#define U_FLAGS        8
-#define U_AMB_COLOR    9
-#define U_AMB_CENTER  10
-#define U_AMB_NUM_SG  11
-#define U_AMB_SGS     12
+#define U_FLAGS       9
+#define U_AMB_COLOR   10
+#define U_AMB_CENTER  11
+#define U_AMB_NUM_SG  12
+#define U_AMB_SGS     13
 
 // todo: move me
 layout(location = U_MODEL_MATRIX) uniform mat4 modelMatrix;
 layout(location = U_PROJ_MATRIX) uniform mat4 projMatrix;
 layout(location = U_VIEW_MATRIX) uniform mat4 viewMatrix;
+layout(location = U_VIEW_MATRIX_INV) uniform mat4 viewMatrixInv;
+
+#ifdef MOTION_BLUR
 layout(location = U_MODEL_MATRIX_PREV) uniform mat4 modelMatrixPrev;
 layout(location = U_MODEL_VIEW_PREV) uniform mat4 viewMatrixPrev;
+#endif
 
 #ifdef WORLD
 
@@ -70,7 +75,7 @@ layout(binding = UBO_SLOT_SHARED, std140) uniform sharedBlock
 	
 	vec2  clusterScaleBias;	
 	float deltaTime;
-	float pad1;
+	float ditherScaleAlways;
 
 	vec4 aScaleBias[8];
 };

@@ -21,9 +21,10 @@ import "attr.gli"
 uint s_lodbias;
 
 // registers
-uint  vdir;				//    16:16 - tangent space view dir
-uint  r[REG_COUNT];		// flexible - temp registers (rgba8, rg16f, r32f)
-uint  v[COLOR_SETS];	//  8:8:8:8 - color registers (tone mapped)
+uint  vnorm;            //    8:8:8:8 - view space normal + free 8 bits
+uint  vdir;				//      16:16 - tangent space view dir
+uint  r[REG_COUNT];		//   flexible - temp registers (rgba8, rg16f, r32f)
+uint  v[COLOR_SETS];	//    8:8:8:8 - color registers (tone mapped)
 
 vec2 tr[UV_SETS];		//       32:32 - texture coordinate registers
 uvec2 vpos;				// 16:16:16:16 - view space position + depth
@@ -114,6 +115,9 @@ vec4 read_system_value(uint s_addr)
 	case SHADER_SYS_TIME:				return vec4(timeSeconds);
 	case SHADER_SYS_Z:					return vec4(readVPOS().w);
 	case SHADER_SYS_POS:				return vec4(readVPOS().xyz, 0.0);
+	case SHADER_SYS_NORM:				return vec4(unpackSnorm4x8(vnorm).xyz, 0.0);
+	case SHADER_SYS_WPOS:				return vec4(transform44(viewMatrixInv, readVPOS().xyz), 1.0);
+	case SHADER_SYS_WNORM:				return vec4(mat3(viewMatrixInv) * unpackSnorm4x8(vnorm).xyz, 1.0);
 #ifdef FRAGMENT_SHADER
 	case SHADER_SYS_XY:					return vec4(gl_FragCoord.xy, 0, 0);
 	case SHADER_SYS_UV:					return vec4(gl_FragCoord.xy / iResolution.xy, 0, 0);

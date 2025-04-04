@@ -87,19 +87,22 @@ import "uniforms.gli"
 #define DST_MUL_D4 4
 
 // system register ids
-#define SHADER_SYS_TIME 0
-#define SHADER_SYS_XY   1
-#define SHADER_SYS_Z    2
-#define SHADER_SYS_POS  3
-#define SHADER_SYS_UV   4
-#define SHADER_SYS_AR   5
+#define SHADER_SYS_TIME  0
+#define SHADER_SYS_XY    1
+#define SHADER_SYS_Z     2
+#define SHADER_SYS_POS   3
+#define SHADER_SYS_NORM  4
+#define SHADER_SYS_WPOS  5
+#define SHADER_SYS_WNORM 6
+#define SHADER_SYS_UV    7
+#define SHADER_SYS_AR    8
 // material registers
-#define SHADER_SYS_MAT_FILL         6
-#define SHADER_SYS_MAT_ALBEDO       7
-#define SHADER_SYS_MAT_EMISSIVE     8
-#define SHADER_SYS_MAT_SPECULAR     9
-#define SHADER_SYS_MAT_ROUGHNESS    10
-#define SHADER_SYS_MAT_DISPLACEMENT 11
+#define SHADER_SYS_MAT_FILL         9
+#define SHADER_SYS_MAT_ALBEDO       10
+#define SHADER_SYS_MAT_EMISSIVE     11
+#define SHADER_SYS_MAT_SPECULAR     12
+#define SHADER_SYS_MAT_ROUGHNESS    13
+#define SHADER_SYS_MAT_DISPLACEMENT 14
 
 struct vm_dst
 {

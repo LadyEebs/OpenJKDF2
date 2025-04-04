@@ -24,7 +24,7 @@ void calc_light()
 	v[0] = 0;
 	v[1] = 0;
 
-	vec3 normal    = normalizeNear1(fetch_vtx_normal());
+	vec3 normal    = unpackSnorm4x8(vnorm).xyz;
 	vec3 viewPos   = readVPOS().xyz;
 	vec3 view      = normalize(-viewPos.xyz);
 	vec3 reflected = reflect(-view, normal);
@@ -55,7 +55,7 @@ void calc_light()
 		{
 			light_input params;
 			params.pos       = vpos;
-			params.normal    = packSnorm4x8(vec4(normal.xyz, 0));
+			params.normal    = vnorm;//packSnorm4x8(vec4(normal.xyz, 0));
 			params.view      = packSnorm4x8(vec4(view,0));
 			params.reflected = packSnorm4x8(vec4(reflected,0));
 			params.spec_c    = calc_spec_c(roughnessFactor);
@@ -117,6 +117,7 @@ void main(void)
 
 	// pack interpolated vertex data to reduce register pressure
 	vpos  = packVPOS(fetch_vtx_coord());
+	vnorm = packSnorm4x8(vec4(normal.xyz, 0.0));
 
 	for (int i = 0; i < UV_SETS; ++i)
 		tr[i] = packTexcoordRegister(fetch_vtx_uv(i));
@@ -133,19 +134,27 @@ void main(void)
 	// unpack color and do fog and whatever else
 	vec4 outColor = unpackUnorm4x8(r[0]); // unpack r0
 
-	float dither = dither_value_float(uvec2(gl_FragCoord.xy)) * ditherScale;
+	float dither = dither_value_float(uvec2(gl_FragCoord.xy));
 
 	// apply fog to outputs
 	if(fogEnabled > 0)
 	{
+		vec3 fog_color = fogColor.rgb;
+		if (fogLightDir.w > 0.0)
+		{
+			vec3  viewDir = normalize(-fetch_vtx_pos());
+			float viewDot = dot(fogLightDir.xyz, viewDir.xyz) * 0.5 + 0.5;
+			fog_color *= textureLod(phaseTexture, vec2(fogAnisotropy, viewDot), 0).r;
+		}
+
 		float fog = unpackUnorm4x8(v[1]).w * fogColor.a;
-		outColor.rgb = mix(outColor.rgb, fogColor.rgb, saturate(fog + dither));
+		outColor.rgb = mix(outColor.rgb, dither * ditherScaleAlways + fog_color.rgb, saturate(dither * ditherScaleAlways + fog));
 		fragGlow.rgb = fragGlow.rgb * (1.0 - fog);
 	}
 
 	// todo: make ditherMode a per-rt thing
 	// dither the output if needed
-	outColor.rgb = saturate(outColor.rgb * invlightMult + dither);
+	outColor.rgb = saturate(outColor.rgb * invlightMult + (dither * ditherScale));
 
 	fragColor = subsample(outColor);
 
@@ -162,7 +171,7 @@ void main(void)
 	fragGlow.rgb *= emissiveFactor.w;
 
 	// note we subtract instead of add to avoid boosting blacks
-	fragGlow.rgb = saturate(fragGlow.rgb + -dither);
+	fragGlow.rgb = saturate(-dither * ditherScale + fragGlow.rgb);
 
 #ifdef MOTION_BLUR
 	vec2 curTC  = f_curTC.xy / f_curTC.w;

@@ -746,8 +746,11 @@ static void rdShader_InitAliasHash(rdShader_Assembler* assembler)
 		{"sv:xy",     "s1"},
 		{"sv:z",      "s2"},
 		{"sv:pos",    "s3"},
-		{"sv:uv",     "s4"},
-		{"sv:aspect", "s5"},
+		{"sv:norm",   "s4"},
+		{"sv:wpos",   "s5"},
+		{"sv:wnorm",  "s6"},
+		{"sv:uv",     "s7"},
+		{"sv:aspect", "s8"},
 	};
 	for (uint8_t i = 0; i < ARRAY_SIZE(systemAliases); ++i)
 		stdHashTable_SetKeyVal(assembler->aliasHash, systemAliases[i].name, systemAliases[i].reg);
@@ -755,12 +758,12 @@ static void rdShader_InitAliasHash(rdShader_Assembler* assembler)
 	// add default material aliases
 	static const rdShader_StaticAlias materialAliases[] =
 	{
-		{"mat:fill",         "s6"},
-		{"mat:albedo",       "s7"},
-		{"mat:glow",         "s8"},
-		{"mat::f0",          "s9"},
-		{"mat::roughness",   "s10"},
-		{"mat:displacement", "s11"}
+		{"mat:fill",         "s9"},
+		{"mat:albedo",       "s10"},
+		{"mat:glow",         "s11"},
+		{"mat::f0",          "s12"},
+		{"mat::roughness",   "s13"},
+		{"mat:displacement", "s14"}
 	};
 	for (uint8_t i = 0; i < ARRAY_SIZE(materialAliases); ++i)
 		stdHashTable_SetKeyVal(assembler->aliasHash, materialAliases[i].name, materialAliases[i].reg);
