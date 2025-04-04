@@ -311,18 +311,29 @@ static char* rdShader_ParseSourceRegister(char* token, rdShader_Register* reg)
 		if (swizzle)
 			*swizzle = '\0'; // set to null so we can parse the name
 
+		// kill any trailing spaces that fuck with the alias key
+		char* trailingSpace = strchr(token, ' ');
+		if (trailingSpace)
+			*trailingSpace = '\0';
+
 		// check for an alias
 		char* alias = (char*)stdHashTable_GetKeyVal(rdShader_pCurrentAssembler->aliasHash, token);
 		if (alias)
 		{
 			reg->type = rdShader_ParseSrcRegisterType(alias[0]);
 			reg->address = atoi(alias + 1);
+			if (trailingSpace) // skip ahead
+				token = trailingSpace;
 		}
 		else
 		{
 			reg->type = rdShader_ParseSrcRegisterType(token[0]);
 			++token;
 		}
+
+		// restore
+		if (trailingSpace)
+			*trailingSpace = ' ';
 
 		if (swizzle)
 			*swizzle = '.';
