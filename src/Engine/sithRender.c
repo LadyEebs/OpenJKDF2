@@ -1530,9 +1530,10 @@ void sithRender_DrawSurface(sithSurface* surface)
 	}
 	else
 	{
-		float extra = stdMath_Clamp(surface->parent_sector->extraLight + surface->surfaceInfo.face.extraLight + sithRender_008d4098, 0.0, 1.0);
+		float extra = (surface->parent_sector->extraLight + sithRender_008d4098);//, 0.0, 1.0);
 		rdAmbientLight(extra, extra, extra);
 	}
+	rdExtraLight(surface->surfaceInfo.face.extraLight);
 	rdAmbientLightSH(NULL);
 	//rdAmbientLightSH(&surface->parent_sector->ambientSH);
 

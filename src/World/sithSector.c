@@ -366,7 +366,7 @@ void sithWorld_ComputeSectorRGBAmbient(sithSector* sector)
 			continue;
 
 
-		float el = stdMath_Clamp(surface->surfaceInfo.face.extraLight, 0.0f, 1.0f);
+		float el = stdMath_Clamp(surface->surfaceInfo.face.extraLight + sector->extraLight, 0.0f, 1.0f);
 		sflight += el;
 
 		rdVector3 negNormal;

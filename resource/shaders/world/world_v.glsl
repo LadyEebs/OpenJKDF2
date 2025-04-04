@@ -102,6 +102,9 @@ void main(void)
 	if (lightMode >= 2)
 		color0.xyz = max(color0.xyz, ambientColor.xyz);
 	
+	// extra light
+	color0 += ambientColor.a;
+
 	if (lightMode >= 2)
 		color0.xyz += CalculateAmbientDiffuse(normal);
 

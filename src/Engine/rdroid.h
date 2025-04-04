@@ -191,6 +191,7 @@ int rdAddLight(rdLight* pLight, rdVector3* pPosition);
 void rdAddOccluder(rdVector3* position, float radius);
 void rdAddDecal(rdDecal* decal, rdMatrix34* matrix, rdVector3* color, rdVector3* scale, float angleFade);
 
+void rdExtraLight(float extra);
 void rdAmbientFlags(uint32_t flags);
 void rdAmbientLight(float r, float g, float b);
 void rdAmbientLightSH(rdAmbient* amb);

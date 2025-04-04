@@ -5728,11 +5728,12 @@ void std3D_SetLightingState(std3D_worldStage* pStage, std3D_DrawCallState* pStat
 //	glUniform1i(pStage->uniform_light_mode, pState->stateBits.lightMode);
 //	glUniform1i(pStage->uniform_ao_flags, pState->lightingState.ambientFlags);
 
-	float r = ((pState->lightingState.ambientColor >> 20) & 0x3FF) / 255.0f;
-	float g = ((pState->lightingState.ambientColor >> 10) & 0x3FF) / 255.0f;
-	float b = ((pState->lightingState.ambientColor >>  0) & 0x3FF) / 255.0f;
+	float a = ((pState->lightingState.ambientColor >> 24) & 0xFF) / 255.0f;
+	float r = ((pState->lightingState.ambientColor >> 16) & 0xFF) / 255.0f;
+	float g = ((pState->lightingState.ambientColor >>  8) & 0xFF) / 255.0f;
+	float b = ((pState->lightingState.ambientColor >>  0) & 0xFF) / 255.0f;
 //	glUniform3f(pStage->uniform_ambient_color, r, g, b);
-	glUniform3f(U_AMB_COLOR, r, g, b);
+	glUniform4f(U_AMB_COLOR, r, g, b, a);
 
 	rdVector4 sgs[RD_AMBIENT_LOBES];
 	for (int i = 0; i < RD_AMBIENT_LOBES; ++i)

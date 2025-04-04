@@ -41,7 +41,7 @@ layout(location = U_BLEND_MODE) uniform int blend_mode;
 //uniform int ditherMode;
 
 layout(location = U_FLAGS) uniform int aoFlags;
-layout(location = U_AMB_COLOR) uniform vec3 ambientColor;
+layout(location = U_AMB_COLOR) uniform vec4 ambientColor;
 layout(location = U_AMB_CENTER) uniform vec4 ambientCenter;
 layout(location = U_AMB_NUM_SG) uniform uint ambientNumSG; // get around loop unrolling
 layout(location = U_AMB_SGS) uniform vec4 ambientSG[AMBIENT_LOBES];

@@ -1695,8 +1695,9 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 	else
 		ambientLight.x = ambientLight.y = ambientLight.z = 0.0;
 #endif
-	rdAmbientLight(ambientLight.x + face->extraLight, ambientLight.y + face->extraLight, ambientLight.z + face->extraLight);
+	rdAmbientLight(ambientLight.x, ambientLight.y, ambientLight.z);
 	rdAmbientLightSH(&rdCamera_pCurCamera->ambientSH);
+	rdExtraLight(face->extraLight);
 
 	int isIdentityMap = (rdColormap_pCurMap == rdColormap_pIdentityMap);
 

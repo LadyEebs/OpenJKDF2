@@ -1170,15 +1170,26 @@ void rdAmbientFlags(uint32_t flags)
 	rdroid_lightingState.ambientFlags = flags;
 }
 
+void rdExtraLight(float extra)
+{
+	float scale = 255.0f / rdroid_overbright;
+	extra *= scale;
+
+	uint32_t ie = stdMath_ClampInt(extra, 0, 255);
+
+	rdroid_lightingState.ambientColor &= 0x00FFFFFF;
+	rdroid_lightingState.ambientColor |= 0xFF000000 & RD_PACK_COLOR8(0, 0, 0, ie);
+}
+
 void rdAmbientLight(float r, float g, float b)
 {
-	float scale = 255.0f / rdroid_overbright; // still rgb8, but with 4x the dynamic range
+	float scale = 255.0f / rdroid_overbright;
 	r *= scale;
 	g *= scale;
 	b *= scale;
 
 	float m = fmax(r, fmax(g, b));
-	if (m > 1023.0)
+	if (m > 255.0)
 	{
 		float inv = 255.0f / m;
 		r *= inv;
@@ -1186,10 +1197,11 @@ void rdAmbientLight(float r, float g, float b)
 		g *= inv;
 	}
 
-	uint32_t ir = stdMath_ClampInt(r, 0, 1023);
-	uint32_t ig = stdMath_ClampInt(g, 0, 1023);
-	uint32_t ib = stdMath_ClampInt(b, 0, 1023);
-	rdroid_lightingState.ambientColor = RD_PACK_COLOR10(ir, ig, ib, 0);
+	uint32_t ir = stdMath_ClampInt(r, 0, 255);
+	uint32_t ig = stdMath_ClampInt(g, 0, 255);
+	uint32_t ib = stdMath_ClampInt(b, 0, 255);
+	rdroid_lightingState.ambientColor &= 0xFF000000;
+	rdroid_lightingState.ambientColor |= 0x00FFFFFF & RD_PACK_COLOR8(ir, ig, ib, 0);
 }
 
 void rdAmbientLightSH(rdAmbient* amb)
