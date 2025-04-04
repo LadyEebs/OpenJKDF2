@@ -1077,3 +1077,33 @@ uint32_t stdMath_FloatBitsToUint(float x)
 	v.f = x;
 	return v.u;
 }
+
+uint8_t stdMath_PackUnorm1x8(float f)
+{
+	return (uint8_t)(roundf(stdMath_Clamp(f, 0.0f, 1.0f) * 255.0f));
+}
+
+uint32_t stdMath_PackUnorm4x8(const rdVector4* unpackedInput)
+{
+	uint32_t result;
+	result  = (stdMath_PackUnorm1x8(unpackedInput->x) & 0xFF) <<  0;
+	result |= (stdMath_PackUnorm1x8(unpackedInput->y) & 0xFF) <<  8;
+	result |= (stdMath_PackUnorm1x8(unpackedInput->z) & 0xFF) << 16;
+	result |= (stdMath_PackUnorm1x8(unpackedInput->w) & 0xFF) << 24;
+	return result;
+}
+
+int8_t stdMath_PackSnorm1x8(float f)
+{
+	return (int8_t)(roundf(stdMath_Clamp(f, -1.0f, 1.0f) * 127.0f));
+}
+
+uint32_t stdMath_PackSnorm4x8(const rdVector4* unpackedInput)
+{
+	uint32_t result;
+	result  = (stdMath_PackSnorm1x8(unpackedInput->x) & 0xFF) <<  0;
+	result |= (stdMath_PackSnorm1x8(unpackedInput->y) & 0xFF) <<  8;
+	result |= (stdMath_PackSnorm1x8(unpackedInput->z) & 0xFF) << 16;
+	result |= (stdMath_PackSnorm1x8(unpackedInput->w) & 0xFF) << 24;
+	return result;
+}

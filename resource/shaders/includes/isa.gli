@@ -41,14 +41,14 @@ import "uniforms.gli"
 #define OP_TEXINFO	28	// texture info (size, mips)
 
 // register types
-#define REG_TYPE_GPR	0	// register
-#define REG_TYPE_CLR	1	// color
-#define REG_TYPE_CON	2	// constant
-#define REG_TYPE_TEX	3	// texcoord
-#define REG_TYPE_SYS	4	// system value
-#define REG_TYPE_IMM8	5	// 8 bit immediate value
-#define REG_TYPE_IMM16	6	// 16 bit immediate value
-#define REG_TYPE_IMM32	7	// 32 bit immediate value
+#define REG_TYPE_GPR     0	// register
+#define REG_TYPE_CLR     1	// color
+#define REG_TYPE_CON     2	// constant
+#define REG_TYPE_TEX     3	// texcoord
+#define REG_TYPE_IMM4x8  4	// 32 bit snorm8 value
+#define REG_TYPE_IMM8    5	// 8 bit immediate value
+#define REG_TYPE_IMM16   6	// 16 bit immediate value
+#define REG_TYPE_IMM32   7	// 32 bit immediate value
 
 // register formats
 #define REG_U8  0
@@ -86,23 +86,25 @@ import "uniforms.gli"
 #define DST_MUL_D2 3
 #define DST_MUL_D4 4
 
-// system register ids
-#define SHADER_SYS_TIME  0
-#define SHADER_SYS_XY    1
-#define SHADER_SYS_Z     2
-#define SHADER_SYS_POS   3
-#define SHADER_SYS_NORM  4
-#define SHADER_SYS_WPOS  5
-#define SHADER_SYS_WNORM 6
-#define SHADER_SYS_UV    7
-#define SHADER_SYS_AR    8
+// system constants
+#define SHADER_SYS_TIME  8
+#define SHADER_SYS_XY    9
+#define SHADER_SYS_Z     10
+#define SHADER_SYS_POS   11
+#define SHADER_SYS_VDIR  12
+#define SHADER_SYS_NORM  13
+#define SHADER_SYS_WPOS  14
+#define SHADER_SYS_WVDIR 15
+#define SHADER_SYS_WNORM 16
+#define SHADER_SYS_UV    17
+#define SHADER_SYS_AR    18
 // material registers
-#define SHADER_SYS_MAT_FILL         9
-#define SHADER_SYS_MAT_ALBEDO       10
-#define SHADER_SYS_MAT_EMISSIVE     11
-#define SHADER_SYS_MAT_SPECULAR     12
-#define SHADER_SYS_MAT_ROUGHNESS    13
-#define SHADER_SYS_MAT_DISPLACEMENT 14
+#define SHADER_SYS_MAT_FILL         32
+#define SHADER_SYS_MAT_ALBEDO       33
+#define SHADER_SYS_MAT_EMISSIVE     34
+#define SHADER_SYS_MAT_SPECULAR     35
+#define SHADER_SYS_MAT_ROUGHNESS    36
+#define SHADER_SYS_MAT_DISPLACEMENT 37
 
 struct vm_dst
 {
@@ -141,13 +143,27 @@ struct vm_instr
 	vm_src src2;
 };
 
-uint s_expand_mask(uint s_mask)
+uint s_expand_mask(uint s_mask, uint s_fmt)
 {
 	uint s_result;
-	s_result  = ((s_mask & 0x8) != 0) ? 0xFF000000u : 0x00000000u;
-    s_result |= ((s_mask & 0x4) != 0) ? 0x00FF0000u : 0x00000000u;
-    s_result |= ((s_mask & 0x2) != 0) ? 0x0000FF00u : 0x00000000u;
-    s_result |= ((s_mask & 0x1) != 0) ? 0x000000FFu : 0x00000000u;
+	if (s_fmt == REG_F32)
+	{
+		// yzw always masked (only x written since it's a float)
+		s_result = ((s_mask & 0x1) != 0) ? 0xFFFFFFFFu : 0x00000000u;
+	}
+	else if (s_fmt == REG_F16)
+	{
+		// zw always masked (only xy written since it's vec2)
+	    s_result  = ((s_mask & 0x2) != 0) ? 0xFFFF0000u : 0x00000000u;
+		s_result |= ((s_mask & 0x1) != 0) ? 0x0000FFFFu : 0x00000000u;
+	}
+	else
+	{
+		s_result  = ((s_mask & 0x8) != 0) ? 0xFF000000u : 0x00000000u;
+		s_result |= ((s_mask & 0x4) != 0) ? 0x00FF0000u : 0x00000000u;
+		s_result |= ((s_mask & 0x2) != 0) ? 0x0000FF00u : 0x00000000u;
+		s_result |= ((s_mask & 0x1) != 0) ? 0x000000FFu : 0x00000000u;
+	}
 	return s_result;
 }
 
@@ -175,7 +191,7 @@ void s_decode_dst_operand(out vm_dst s_dst, uint s_ir)
 	s_dst.multiplier = (s_ir >> 24) &  0x7;
 	s_dst.absolute   = bool((s_ir >> 27) &  0x1);
 	s_dst.mask       = (s_ir >> 28) &  0xF;
-	s_dst.mask       = s_expand_mask(s_dst.mask);
+	s_dst.mask       = s_expand_mask(s_dst.mask, s_dst.fmt);
 }
 
 void s_decode_src_operand(out vm_src s_src, uint s_ir)

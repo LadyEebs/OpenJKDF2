@@ -73,9 +73,13 @@ typedef enum
 	RD_SHADER_TIME = 0,
 	RD_SHADER_XY,
 	RD_SHADER_Z,
+	RD_SHADER_POS,
+	RD_SHADER_VDIR,
+	RD_SHADER_NORM,
+	RD_SHADER_WPOS,
+	RD_SHADER_WNORM,
 	RD_SHADER_UV,
 	RD_SHADER_AR,
-	RD_SHADER_POS,
 
 	// material registers
 	RD_SHADER_MAT_FILL,
@@ -95,11 +99,10 @@ typedef enum
 	RD_SHADER_CLR,		// color
 	RD_SHADER_CON,		// constant
 	RD_SHADER_TEX,		// texcoord
-	RD_SHADER_SYS,		// system value
+	RD_SHADER_IMM4x8,   // 32 bit snorm8 value
 	RD_SHADER_IMM8,		// 8 bit immediate value
 	RD_SHADER_IMM16,	// 16 bit immediate value
 	RD_SHADER_IMM32,	// 32 bit immediate value
-
 	RD_SHADER_REG_TYPE_COUNT
 } rdShader_RegisterTypes;
 static_assert(RD_SHADER_REG_TYPE_COUNT <= 8, "RD_SHADER_REG_TYPE_COUNT must not exceed 8.");

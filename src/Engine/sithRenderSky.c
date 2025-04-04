@@ -6,6 +6,9 @@
 #include "World/sithSector.h"
 #include "jk.h"
 
+rdVector3 sithSector_ceilingSkyNormal;
+float sithSector_ceilingDot;
+
 int sithRenderSky_Open(float horizontalPixelsPerRev, float horizontalDist, float ceilingSky)
 {
     sithSector_horizontalPixelsPerRev_idk = horizontalPixelsPerRev * 0.0027777778;
@@ -36,6 +39,19 @@ void sithRenderSky_Update()
     v0 = -(sithCamera_currentCamera->viewPYR.x * sithSector_horizontalPixelsPerRev_idk);
     sithSector_flt_8553B8 = -(sithCamera_currentCamera->viewPYR.y * sithSector_horizontalPixelsPerRev_idk);
     sithSector_flt_8553C4 = v0;
+
+
+#ifdef RENDER_DROID2
+	rdVector3 ceilingSkyView;
+	//rdMatrix_TransformPoint34(&ceilingSkyView, &sithSector_zMaxVec, &sithCamera_currentCamera->viewMat);
+	rdVector_Sub3(&ceilingSkyView, &sithSector_zMaxVec, &sithCamera_currentCamera->vec3_1);
+
+	sithSector_ceilingSkyNormal = (rdVector3){0,0,-1};
+	//static const rdVector3 ceilingNorm = {0,0,-1};
+	//rdMatrix_TransformVector34(&sithSector_ceilingSkyNormal, &ceilingNorm, &sithCamera_currentCamera->viewMat);
+
+	sithSector_ceilingDot = rdVector_Dot3(&ceilingSkyView, &sithSector_ceilingSkyNormal);
+#endif
 }
 
 void sithRenderSky_TransformHorizontal(rdProcEntry *a1, sithSurfaceInfo *a2, int num_vertices)

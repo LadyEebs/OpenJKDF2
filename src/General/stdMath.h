@@ -124,6 +124,12 @@ float stdMath_Mini8ToFloat(uint8_t x);
 
 uint32_t stdMath_FloatBitsToUint(float x);
 
+uint8_t stdMath_PackUnorm1x8(float f);
+uint32_t stdMath_PackUnorm4x8(const rdVector4* unpackedInput);
+
+int8_t stdMath_PackSnorm1x8(float f);
+uint32_t stdMath_PackSnorm4x8(const rdVector4* unpackedInput);
+
 extern const float aSinTable[4096];
 extern const float aTanTable[4096];
 

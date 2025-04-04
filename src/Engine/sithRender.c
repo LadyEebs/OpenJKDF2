@@ -88,6 +88,8 @@ rdAmbientFlags_t sithRender_aoFlags = 0;
 uint32_t sithRender_numStaticLights = 0;
 
 rdShader* sithRender_defaultShader = NULL;
+rdShader* sithRender_horizonSky = NULL;
+rdShader* sithRender_ceilingSky = NULL;
 rdShader* sithRender_jkgmShader = NULL;
 rdShader* sithRender_waterShader = NULL;
 rdShader* sithRender_scopeShader = NULL;
@@ -498,6 +500,8 @@ int sithRender_Open()
 
 #ifdef RENDER_DROID2
 	sithRender_defaultShader = sithShader_LoadEntry("default.asm");
+	sithRender_horizonSky = sithShader_LoadEntry("horizonsky.asm");
+	sithRender_ceilingSky = sithShader_LoadEntry("ceilingsky.asm");
 	sithRender_jkgmShader = sithShader_LoadEntry("jkgm.asm");
 	sithRender_waterShader = sithShader_LoadEntry("water.asm");
 	sithRender_scopeShader = sithShader_LoadEntry("scope.asm");
@@ -552,6 +556,8 @@ void sithRender_Close()
 
 #ifdef RENDER_DROID2
 	sithRender_defaultShader = 0;
+	sithRender_horizonSky = 0;
+	sithRender_ceilingSky = 0;
 	sithRender_jkgmShader = 0;
 	sithRender_waterShader = 0;
 	sithRender_scopeShader = 0;
@@ -1461,6 +1467,13 @@ void sithRender_DrawSurface(sithSurface* surface)
 		return;
 	}
 
+	float w = 1.0f, h = 1.0f;
+	if (surface->surfaceInfo.face.material->num_textures)
+	{
+		w = (float)(surface->surfaceInfo.face.material->textures[0].width_minus_1 + 1);
+		h = (float)(surface->surfaceInfo.face.material->textures[0].height_minus_1 + 1);
+	}
+
 	int isWater = 0;
 	if (surface->adjoin && (surface->parent_sector->flags & SITH_SECTOR_UNDERWATER || surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER))
 		isWater = 1;
@@ -1470,6 +1483,21 @@ void sithRender_DrawSurface(sithSurface* surface)
 	if (isWater)
 	{
 		rdSetShader(sithRender_waterShader);
+	}
+	else if (surface->surfaceFlags & SITH_SURFACE_HORIZON_SKY)
+	{
+		rdSetShader(sithRender_horizonSky);
+		rdSetShaderConstant4f(0, sithSector_flt_8553C0, sithSector_flt_8553C8, sithSector_flt_8553F4, 0);
+		rdSetShaderConstant4f(1, (sithWorld_pCurrentWorld->horizontalSkyOffs.x + sithSector_flt_8553B8) / w, (sithWorld_pCurrentWorld->horizontalSkyOffs.y + sithSector_flt_8553C4) / h, 0, 0);
+	}
+	else if (surface->surfaceFlags & SITH_SURFACE_CEILING_SKY)
+	{
+		extern rdVector3 sithSector_ceilingSkyNormal;
+		extern float sithSector_ceilingDot;
+
+		rdSetShader(sithRender_ceilingSky);
+		rdSetShaderConstant4f(0, sithSector_ceilingSkyNormal.x, sithSector_ceilingSkyNormal.y, sithSector_ceilingSkyNormal.z, sithSector_ceilingDot);
+		rdSetShaderConstant4f(1, sithWorld_pCurrentWorld->ceilingSkyOffs.x / w, sithWorld_pCurrentWorld->ceilingSkyOffs.y / h, 0, 0);
 	}
 	else if (jkPlayer_bEnableJkgm
 		&& surface->surfaceInfo.face.material->textures
@@ -1543,21 +1571,21 @@ void sithRender_DrawSurface(sithSurface* surface)
 	if (texMode >= sithRender_texMode)
 		texMode = sithRender_texMode;
 
-	if (surface->surfaceFlags & SITH_SURFACE_HORIZON_SKY)
-	{
-		texMode = texMode > RD_TEXTUREMODE_AFFINE ? RD_TEXTUREMODE_AFFINE : texMode;
-		rdTexGen(RD_TEXGEN_HORIZON);
-		rdTexGenParams(sithSector_flt_8553C0, sithSector_flt_8553C8, sithSector_flt_8553F4, 0);
-		rdTexOffset(RD_TEXCOORD0, sithWorld_pCurrentWorld->horizontalSkyOffs.x + sithSector_flt_8553B8, sithWorld_pCurrentWorld->horizontalSkyOffs.y + sithSector_flt_8553C4);
-	}
-	else if (surface->surfaceFlags & SITH_SURFACE_CEILING_SKY)
-	{
-		texMode = RD_TEXTUREMODE_PERSPECTIVE;
-		rdTexGen(RD_TEXGEN_CEILING);
-		rdTexGenParams(sithSector_zMaxVec.x, sithSector_zMaxVec.y, sithSector_zMaxVec.z, 0);
-		rdTexOffset(RD_TEXCOORD0, sithWorld_pCurrentWorld->ceilingSkyOffs.x, sithWorld_pCurrentWorld->ceilingSkyOffs.y);
-	}
-	else
+	//if (surface->surfaceFlags & SITH_SURFACE_HORIZON_SKY)
+	//{
+	//	texMode = texMode > RD_TEXTUREMODE_AFFINE ? RD_TEXTUREMODE_AFFINE : texMode;
+	//	rdTexGen(RD_TEXGEN_HORIZON);
+	//	rdTexGenParams(sithSector_flt_8553C0, sithSector_flt_8553C8, sithSector_flt_8553F4, 0);
+	//	rdTexOffset(RD_TEXCOORD0, sithWorld_pCurrentWorld->horizontalSkyOffs.x + sithSector_flt_8553B8, sithWorld_pCurrentWorld->horizontalSkyOffs.y + sithSector_flt_8553C4);
+	//}
+	//else if (surface->surfaceFlags & SITH_SURFACE_CEILING_SKY)
+	//{
+	//	texMode = RD_TEXTUREMODE_PERSPECTIVE;
+	//	rdTexGen(RD_TEXGEN_CEILING);
+	//	rdTexGenParams(sithSector_zMaxVec.x, sithSector_zMaxVec.y, sithSector_zMaxVec.z, 0);
+	//	rdTexOffset(RD_TEXCOORD0, sithWorld_pCurrentWorld->ceilingSkyOffs.x, sithWorld_pCurrentWorld->ceilingSkyOffs.y);
+	//}
+	//else
 	{
 		if (isWater)// if (surface->adjoin && (surface->parent_sector->flags & SITH_SECTOR_UNDERWATER || surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER))//if (surface->adjoin && surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER)
 		{

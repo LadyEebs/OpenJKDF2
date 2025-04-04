@@ -30,15 +30,15 @@ static const rdShader_OpCode rdShader_opcodeNames[] =
 
 typedef struct
 {
-	uint8_t idx;
-	uint8_t type;
-	uint8_t fmt;
-	uint8_t address;
-	uint8_t swizzle;
-	uint8_t mask;
-	uint8_t abs;
-	uint8_t unary;
-	float   immediate;
+	uint8_t   idx;
+	uint8_t   type;
+	uint8_t   fmt;
+	uint8_t   address;
+	uint8_t   swizzle;
+	uint8_t   mask;
+	uint8_t   abs;
+	uint8_t   unary;
+	rdVector4 immediate;
 } rdShader_Register;
 
 typedef struct
@@ -121,7 +121,6 @@ static uint8_t rdShader_ParseSrcRegisterType(char c)
 	case 't': return RD_SHADER_TEX;
 	case 'v': return RD_SHADER_CLR;
 	case 'c': return RD_SHADER_CON;
-	case 's': return RD_SHADER_SYS;
 	default:  return 0;
 	}
 }
@@ -228,14 +227,14 @@ static char* rdShader_ParseRegister(char* token, char* swizzle, rdShader_Registe
 	// extract register index or immediate value
 	if (reg->type >= RD_SHADER_IMM8)
 	{
-		reg->immediate = fabs(atof(token));
+		reg->immediate.x = fabs(atof(token));
 		reg->swizzle = RD_SWIZZLE_XYZW;
 		reg->mask = RD_WRITE_RGBA;
-		reg->address = stdMath_FloatToMini8(reg->immediate);
+		reg->address = stdMath_FloatToMini8(reg->immediate.x);
 	}
 	else
 	{
-		if (reg->type != RD_SHADER_SYS && reg->address == 0xFF)
+		if (reg->address == 0xFF)
 			reg->address = atoi(token);
 
 		// handle the swizzle mask
@@ -277,6 +276,7 @@ static void rdShader_ParseDestinationOperand(char* token, rdShader_DestOperand* 
 	{
 		op->reg.type = rdShader_ParseDstRegisterType(alias[0]);
 		op->reg.address = atoi(alias + 1);
+		token += strlen(token);
 	}
 	else
 	{
@@ -515,14 +515,35 @@ static int rdShader_AssembleInstruction(rdShaderInstr* result, rdShader_Instruct
 	}
 	else if (inst->srcCount > 1)
 	{
-		float imm0 = inst->src[0].reg.immediate;
-		float imm1 = inst->src[1].reg.immediate;
-		result->src2 = stdMath_PackHalf2x16(imm0, imm1);
+		// first operand takes up the entire immediate space
+		if (inst->src[0].reg.type == RD_SHADER_IMM4x8)
+		{
+			result->src2 = stdMath_PackSnorm4x8(&inst->src[0].reg.immediate);
+		}
+		// second operand takes up the entire immediate space
+		else if (inst->src[1].reg.type == RD_SHADER_IMM4x8)
+		{
+			result->src2 = stdMath_PackSnorm4x8(&inst->src[1].reg.immediate);
+		}
+		// otherwise they share the space, operand 0 in low bits, 1 in high bits
+		else
+		{
+			float imm0 = inst->src[0].reg.immediate.x;
+			float imm1 = inst->src[1].reg.immediate.x;
+			result->src2 = stdMath_PackHalf2x16(imm0, imm1);
+		}
 	}
 	else
 	{
-		float imm0 = inst->src[0].reg.immediate;
-		result->src2 = stdMath_FloatBitsToUint(imm0);
+		if (inst->src[0].reg.type == RD_SHADER_IMM4x8)
+		{
+			result->src2 = stdMath_PackSnorm4x8(&inst->src[0].reg.immediate);
+		}
+		else
+		{
+			float imm0 = inst->src[0].reg.immediate.x;
+			result->src2 = stdMath_FloatBitsToUint(imm0);
+		}
 	}
 
 	return 1;
@@ -684,19 +705,6 @@ int rdShader_ParseInstruction(char* line, rdShaderInstr* result)
 	rdShader_Instruction inst;
 	memset(&inst, 0, sizeof(rdShader_Instruction));
 
-	// kill any comments
-	char* commentPos = strchr(line, '#');
-	if (commentPos)
-	{
-		// if we're not the first character, trim spaces before the comment too
-		if (line != commentPos)
-		{
-			while (isspace(commentPos[-1]))
-				--commentPos;
-		}
-		*commentPos = '\0';
-	}
-
 	// copy the line to a buffer for manipulation
 	char buffer[512];
 	strncpy(buffer, line, sizeof(buffer));
@@ -732,7 +740,39 @@ int rdShader_ParseInstruction(char* line, rdShaderInstr* result)
 			++token;
 
 		inst.src[i].reg.idx = i;
-		rdShader_ParseSourceOperand(token, &inst.src[i]);
+
+		if (token[0] == '(') // vector declaration
+		{
+			if (i == 2)
+			{
+				// todo: error, 3 operand instructions don't support vector immediates
+				continue;
+			}
+			else if (i == 1)
+			{
+				if (inst.src[0].reg.type >= RD_SHADER_IMM8)
+				{
+					// todo: error, only 1 immediate value can be present in an instruction with a vector declaration
+					continue;
+				}
+			}
+			_sscanf(token, "(%f/%f/%f/%f)",
+					&inst.src[i].reg.immediate.x,
+					&inst.src[i].reg.immediate.y,
+					&inst.src[i].reg.immediate.z,
+					&inst.src[i].reg.immediate.w);
+			inst.src[i].reg.type = RD_SHADER_IMM4x8;
+			inst.src[i].reg.fmt = RD_SHADER_S8;
+			inst.src[i].reg.address = 0;
+			inst.src[i].reg.swizzle = RD_SWIZZLE_XYZW;
+			inst.src[i].reg.mask = RD_WRITE_RGBA;
+			inst.src[i].reg.abs = 0;
+			inst.src[i].reg.unary = 0;
+		}
+		else
+		{
+			rdShader_ParseSourceOperand(token, &inst.src[i]);
+		}
 	}
 
 	// anything else is a modifier for the instruction
@@ -753,15 +793,17 @@ static void rdShader_InitAliasHash(rdShader_Assembler* assembler)
 	// add default system aliases
 	static const rdShader_StaticAlias systemAliases[] =
 	{
-		{"sv:sec",    "s0"},
-		{"sv:xy",     "s1"},
-		{"sv:z",      "s2"},
-		{"sv:pos",    "s3"},
-		{"sv:norm",   "s4"},
-		{"sv:wpos",   "s5"},
-		{"sv:wnorm",  "s6"},
-		{"sv:uv",     "s7"},
-		{"sv:aspect", "s8"},
+		{"sv:sec",    "c8"},
+		{"sv:xy",     "c9"},
+		{"sv:z",      "c10"},
+		{"sv:pos",    "c11"},
+		{"sv:vdir",   "c12"},
+		{"sv:norm",   "c13"},
+		{"sv:wpos",   "c14"},
+		{"sv:wvdir",  "c15"},
+		{"sv:wnorm",  "c16"},
+		{"sv:uv",     "c17"},
+		{"sv:aspect", "c18"},
 	};
 	for (uint8_t i = 0; i < ARRAY_SIZE(systemAliases); ++i)
 		stdHashTable_SetKeyVal(assembler->aliasHash, systemAliases[i].name, systemAliases[i].reg);
@@ -769,12 +811,12 @@ static void rdShader_InitAliasHash(rdShader_Assembler* assembler)
 	// add default material aliases
 	static const rdShader_StaticAlias materialAliases[] =
 	{
-		{"mat:fill",         "s9"},
-		{"mat:albedo",       "s10"},
-		{"mat:glow",         "s11"},
-		{"mat::f0",          "s12"},
-		{"mat::roughness",   "s13"},
-		{"mat:displacement", "s14"}
+		{"mat:fill",         "c32"},
+		{"mat:albedo",       "c33"},
+		{"mat:glow",         "c34"},
+		{"mat:f0",           "c35"},
+		{"mat:roughness",    "c36"},
+		{"mat:displacement", "c37"}
 	};
 	for (uint8_t i = 0; i < ARRAY_SIZE(materialAliases); ++i)
 		stdHashTable_SetKeyVal(assembler->aliasHash, materialAliases[i].name, materialAliases[i].reg);
@@ -792,61 +834,6 @@ static void rdShader_InitAliasHash(rdShader_Assembler* assembler)
 	for (uint8_t i = 0; i < ARRAY_SIZE(texAliases); ++i)
 		stdHashTable_SetKeyVal(assembler->aliasHash, texAliases[i].name, texAliases[i].reg);
 }
-
-static void rdShader_AssembleByteCode(rdShaderByteCode* byteCode, const char* code)
-{
-	char tmp[512];
-
-	const char* firstLine = strchr(code, '\n');
-	if (!firstLine)
-		return;
-
-	stdString_SafeStrCopy(tmp, code, (firstLine - code) + 1);
-	if (!sscanf_s(tmp, "ps.%f", &byteCode->version))
-		return;
-
-	rdShader_Assembler assembler;
-	memset(&assembler, 0, sizeof(rdShader_Assembler));
-
-	rdShader_pCurrentAssembler = &assembler;
-
-	const char* curLine = firstLine + 1;
-	while (curLine)
-	{
-		const char* nextLine = strchr(curLine, '\n');
-		int curLineLen = nextLine ? (nextLine - curLine) : strlen(curLine);
-		if (curLineLen > 0)
-		{
-			stdString_SafeStrCopy(tmp, curLine, curLineLen + 1);
-
-			char* ln = tmp;
-			if (ln && ln[0] != '#') // early skip pure comment lines
-			{
-				if (strnicmp(ln, "alias", 5) == 0)
-					rdShader_ParseAlias(ln + 5);
-				else if (rdShader_ParseInstruction(tmp, &byteCode->instructions[byteCode->instructionCount]))
-					++byteCode->instructionCount;
-			}
-		}
-
-		if (byteCode->instructionCount >= ARRAY_SIZE(byteCode->instructions))
-			break;
-
-		curLine = nextLine ? (nextLine + 1) : NULL;
-	}
-
-	rdShader_Alias* alias = assembler.firstAlias;
-	while (alias)
-	{
-		rdShader_Alias* next = alias->next;
-		free(alias);
-		alias = next;
-	}
-
-	rdShader_pCurrentAssembler = NULL;
-	stdHashTable_Free(assembler.aliasHash);
-}
-
 
 rdShader* rdShader_New(char* fpath)
 {
@@ -915,7 +902,7 @@ int rdShader_LoadEntry(char* fpath, rdShader* shader)
 		//stdString_SafeStrCopy(tmp, curLine, curLineLen + 1);
 
 		char* ln = stdConffile_aLine;
-		if (ln && ln[0] != '#') // early skip pure comment lines
+		if (ln && *ln)
 		{
 			if (strnicmp(ln, "alias", 5) == 0)
 				rdShader_ParseAlias(ln + 5);

@@ -107,16 +107,21 @@ uint encode_reg(vec4 reg, uint s_fmt)
 	}
 }
 
-vec4 read_system_value(uint s_addr)
+vec4 read_constant(uint s_addr)
 {
+	if (s_addr < 8)
+		return shaderConstants[s_addr];
+
 	switch(s_addr)
 	{
 	default:							return vec4(0.0);
 	case SHADER_SYS_TIME:				return vec4(timeSeconds);
 	case SHADER_SYS_Z:					return vec4(readVPOS().w);
 	case SHADER_SYS_POS:				return vec4(readVPOS().xyz, 0.0);
+	case SHADER_SYS_VDIR:				return vec4(normalize(-readVPOS().xyz), 0.0);
 	case SHADER_SYS_NORM:				return vec4(unpackSnorm4x8(vnorm).xyz, 0.0);
 	case SHADER_SYS_WPOS:				return vec4(transform44(viewMatrixInv, readVPOS().xyz), 1.0);
+	case SHADER_SYS_WVDIR:				return vec4(mat3(viewMatrixInv) * normalize(-readVPOS().xyz), 0.0);
 	case SHADER_SYS_WNORM:				return vec4(mat3(viewMatrixInv) * unpackSnorm4x8(vnorm).xyz, 1.0);
 #ifdef FRAGMENT_SHADER
 	case SHADER_SYS_XY:					return vec4(gl_FragCoord.xy, 0, 0);
@@ -140,9 +145,9 @@ vec4 fetch_reg(vm_src s_operand, uint s_imm)
 	default:				return vec4(0.0);
 	case REG_TYPE_GPR:		return decode_reg(r[s_operand.addr], s_operand.fmt);
 	case REG_TYPE_CLR:		return read_color_reg(s_operand.addr);
-	case REG_TYPE_CON:		return shaderConstants[s_operand.addr];
+	case REG_TYPE_CON:		return read_constant(s_operand.addr);
 	case REG_TYPE_TEX:		return read_texcoord_reg(s_operand.addr).xyxy;
-	case REG_TYPE_SYS:		return read_system_value(s_operand.addr);
+	case REG_TYPE_IMM4x8:	return unpackSnorm4x8(s_imm);
 	case REG_TYPE_IMM8:		return vec4(miniBitsToFloat(s_operand.addr));
 	case REG_TYPE_IMM16:	return vec4(unpackHalf2x16(s_imm >> (s_operand.idx << 4)).x);
 	case REG_TYPE_IMM32:	return vec4(uintBitsToFloat(s_imm));
@@ -216,7 +221,7 @@ void write_reg(vm_instr s_ir, vec4 reg)
 	r[s_ir.dst.addr] &= ~s_ir.dst.mask;
 
 	// swizzle for the destination
-	reg = swizzle_reg(reg, s_ir.dst.swizzle);
+	//reg = swizzle_reg(reg, s_ir.dst.swizzle);
 
 	// branchless multiplier
 	reg *= aScaleBias[s_ir.dst.multiplier].x;

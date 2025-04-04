@@ -109,11 +109,11 @@ void run_vm()
 			break;
 
 		case OP_DIV:
-			result = s_ir.prec ? s0 / s1 : s0 * fastRcpNR0(s1);
+			result = s_ir.prec ? s0 * rcpSafe(s1) : s0 * fastRcpNR0(s1);
 			break;
 
 		case OP_RCP:
-			result = s_ir.prec ? (1.0 / s0) : fastRcpNR0(s0);
+			result = s_ir.prec ? rcpSafe(s0) : fastRcpNR0(s0);
 			break;
 
 		case OP_RSQRT:

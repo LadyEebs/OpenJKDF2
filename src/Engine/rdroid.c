@@ -155,6 +155,7 @@ void rdResetLightingState()
 void rdResetShaderState()
 {
 	rdroid_shaderState.shader = NULL;
+	memset(&rdroid_shaderState.constants, 0, sizeof(rdShaderConstants));
 }
 #endif
 
@@ -1105,10 +1106,22 @@ void rdColorMask(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 	rdroid_rasterState.colorMask |= a ? 0xFF000000 : 0x0;
 }
 
-// todo: actually get IDs from renderer..
 void rdSetShader(rdShader* shader)
 {
 	rdroid_shaderState.shader = shader;
+}
+
+void rdSetShaderConstant(uint8_t idx, const rdVector4* value)
+{
+	rdroid_shaderState.constants.constants[idx] = *value;
+}
+
+void rdSetShaderConstant4f(uint8_t idx, float x, float y, float z, float w)
+{
+	rdroid_shaderState.constants.constants[idx].x = x;
+	rdroid_shaderState.constants.constants[idx].y = y;
+	rdroid_shaderState.constants.constants[idx].z = z;
+	rdroid_shaderState.constants.constants[idx].w = w;
 }
 
 // Lighting

@@ -174,6 +174,8 @@ void rdColorMask(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 
 // shader
 void rdSetShader(rdShader* shader);
+void rdSetShaderConstant(uint8_t idx, const rdVector4* value);
+void rdSetShaderConstant4f(uint8_t idx, float x, float y, float z, float w);
 
 // texture
 int rdBindTexture(rdTexture* pTexture);

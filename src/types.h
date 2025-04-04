@@ -571,7 +571,8 @@ typedef struct rdShader
 	int               hasReadback;
 	uint8_t           regcount;
 	char              name[32];
-	rdShaderConstants constants;
+	uint8_t           overrideConstantBits;
+	rdShaderConstants overrideConstants;
 	rdShaderByteCode  byteCode;
 } rdShader;
 
@@ -1071,7 +1072,8 @@ typedef struct std3D_LightingState // todo: pack this
 
 typedef struct std3D_ShaderState
 {
-	rdShader* shader;
+	rdShaderConstants constants;
+	rdShader*         shader;
 } std3D_ShaderState;
 
 typedef struct std3D_TransformState

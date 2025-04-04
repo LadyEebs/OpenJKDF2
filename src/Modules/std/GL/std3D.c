@@ -5766,7 +5766,16 @@ void std3D_SetShaderState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 		glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SLOT_SHADER, pState->shaderState.shader->shaderid);
 	
 		glBindBuffer(GL_UNIFORM_BUFFER, shaderConstsUbo);
-		glBufferData(GL_UNIFORM_BUFFER, sizeof(rdShaderConstants), &pState->shaderState.shader->constants, GL_DYNAMIC_DRAW);
+		rdShaderConstants constants;
+		for (int i = 0; i < 8; ++i)
+		{
+			uint8_t bits = pState->shaderState.shader->overrideConstantBits;
+			if (bits & (1 << i))
+				constants.constants[i] = pState->shaderState.shader->overrideConstants.constants[i];
+			else
+				constants.constants[i] = pState->shaderState.constants.constants[i];
+		}
+		glBufferData(GL_UNIFORM_BUFFER, sizeof(rdShaderConstants), &constants, GL_DYNAMIC_DRAW);
 	}
 }
 
