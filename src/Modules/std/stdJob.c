@@ -249,6 +249,8 @@ void stdJob_Shutdown()
 	SDL_AtomicSet(&stdJob_jobSystem.quit, 1);
 
 	stdJob_Wait();
+	
+	// why is the following crashing and causing hangs???
 	//SDL_CondSignal(stdJob_jobSystem.wakeCondition); // Signal workers
 
 	//for (uint32_t i = 0; i < stdJob_jobSystem.numThreads; ++i)
