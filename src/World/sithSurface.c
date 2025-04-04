@@ -601,8 +601,11 @@ void sithSurface_Tick(float deltaSecs)
 
                         if ( ((v2 + bShowInvisibleThings) & 0xF) == 0 )
                         {
-                            v10->surfaceInfo.face.clipIdk.x = fmod(v10->surfaceInfo.face.clipIdk.x, 1024.0);
-                            v10->surfaceInfo.face.clipIdk.y = fmod(v10->surfaceInfo.face.clipIdk.y, 1024.0);
+							// typically this wraps at 1024, but since our shaders might do a little fudging on the UVs, it can cause popping
+						#ifndef RENDER_DROID2      
+							v10->surfaceInfo.face.clipIdk.x = fmod(v10->surfaceInfo.face.clipIdk.x, 1024.0);
+							v10->surfaceInfo.face.clipIdk.y = fmod(v10->surfaceInfo.face.clipIdk.y, 1024.0);
+						#endif
                         }
                     }
                 }
