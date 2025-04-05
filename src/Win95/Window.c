@@ -66,6 +66,23 @@ int Window_isHiDpi = 0;
 int Window_isFullscreen = 0;
 int Window_needsRecreate = 0;
 
+void Window_UpdateDefaultWindowSize()
+{
+	Window_xSize = WINDOW_DEFAULT_WIDTH;
+	Window_ySize = WINDOW_DEFAULT_HEIGHT;
+#ifdef SDL2_RENDER
+	SDL_DisplayMode mode;
+	SDL_GetDesktopDisplayMode(0, &mode);
+	if (mode.w >= 3840) // for 4k, make the default size bigger
+	{
+		Window_xSize = WINDOW_DEFAULT_WIDTH_4K;
+		Window_ySize = WINDOW_DEFAULT_HEIGHT_4K;
+	}
+#endif
+	Window_screenXSize = Window_xSize;
+	Window_screenYSize = Window_ySize;
+}
+
 void Window_SetHiDpi(int val)
 {
     if (Window_isHiDpi != val)
@@ -84,11 +101,9 @@ void Window_SetFullscreen(int val)
     {
         // Reset window when exiting fullscreen
         // TODO: Add settings for these sizes maybe?
-        if (Window_isFullscreen && !val) {
-            Window_xSize = WINDOW_DEFAULT_WIDTH;
-            Window_ySize = WINDOW_DEFAULT_HEIGHT;
-            Window_screenXSize = WINDOW_DEFAULT_WIDTH;
-            Window_screenYSize = WINDOW_DEFAULT_HEIGHT;
+        if (Window_isFullscreen && !val)
+		{
+			Window_UpdateDefaultWindowSize();
 #ifdef SDL2_RENDER
             Window_xPos = SDL_WINDOWPOS_CENTERED;
             Window_yPos = SDL_WINDOWPOS_CENTERED;
@@ -1291,6 +1306,8 @@ int Window_Main_Linux(int argc, char** argv)
 
 #endif
 
+	// update the default size if needed
+	Window_UpdateDefaultWindowSize();
     
     Window_RecreateSDL2Window();
 #if !defined(TARGET_ANDROID) && !defined(ARCH_WASM)
