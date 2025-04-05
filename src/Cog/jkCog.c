@@ -256,6 +256,15 @@ void jkCog_EndLevel(sithCog *ctx)
     }
 }
 
+#ifdef DYNAMIC_POV
+void jkCog_SetPovFov(sithCog* ctx)
+{
+	extern int jkPlayer_povFov;
+	cog_flex_t fov = sithCogExec_PopFlex(ctx);
+	jkPlayer_povFov = (int)stdMath_Clamp(fov, 40.0f, 170.0f);
+}
+#endif
+
 void jkCog_SetPovModel(sithCog *ctx)
 {
     rdModel3 *model3; // edi
@@ -1237,6 +1246,7 @@ void jkCog_RegisterVerbs()
     sithCogScript_RegisterVerb(sithCog_pSymbolTable, jkCog_GetChoice, "jkgetchoice");
 
 #ifdef DYNAMIC_POV
+	sithCogScript_RegisterVerb(sithCog_pSymbolTable, jkCog_SetPovFov, "jksetpovfov");	
 	sithCogScript_RegisterVerb(sithCog_pSymbolTable, jkCog_SetWaggleEx, "jksetwaggleex");
 	sithCogScript_RegisterVerb(sithCog_pSymbolTable, jkCog_SetIdleWaggle, "jksetidlewaggle");
 	sithCogScript_RegisterVerb(sithCog_pSymbolTable, jkCog_GetMuzzleOffset, "jkgetmuzzleoffset");

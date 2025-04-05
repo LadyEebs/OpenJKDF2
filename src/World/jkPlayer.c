@@ -45,7 +45,7 @@
 #ifdef QOL_IMPROVEMENTS
 int Window_isHiDpi_tmp = 0;
 int Window_isFullscreen_tmp = 0;
-int jkPlayer_povFov = 55;
+int jkPlayer_povFov = 70;
 int jkPlayer_fov = 90;
 int jkPlayer_fovIsVertical = 1;
 int jkPlayer_enableTextureFilter = 0;
@@ -219,7 +219,6 @@ int jkPlayer_aMotsFpBins[74] =
 // Added: cvars
 void jkPlayer_StartupVars()
 {
-	sithCvar_RegisterInt("r_povFov",                    55,                         &jkPlayer_povFov,                   CVARFLAG_LOCAL);
 	sithCvar_RegisterInt("r_fov",                       90,                         &jkPlayer_fov,                      CVARFLAG_LOCAL);
     sithCvar_RegisterBool("r_fovIsVertical",            1,                          &jkPlayer_fovIsVertical,            CVARFLAG_LOCAL);
     sithCvar_RegisterBool("r_enableTextureFilter",      0,                          &jkPlayer_enableTextureFilter,      CVARFLAG_LOCAL);
@@ -293,7 +292,7 @@ void jkPlayer_ResetVars()
 #ifdef QOL_IMPROVEMENTS
     Window_isHiDpi_tmp = 0;
     Window_isFullscreen_tmp = 0;
-	jkPlayer_povFov = 55;
+	jkPlayer_povFov = 70;
     jkPlayer_fov = 90;
     jkPlayer_fovIsVertical = 1;
     jkPlayer_enableTextureFilter = 0;
@@ -709,7 +708,6 @@ void jkPlayer_WriteConf(wchar_t *name)
 #ifdef QOL_IMPROVEMENTS
 		jkPlayer_multiSample = stdMath_ClampInt(jkPlayer_multiSample, SAMPLE_MODE_MIN, SAMPLE_MODE_MAX);
 
-		stdJSON_SaveInt(ext_fpath, "povfov", jkPlayer_povFov);
         stdJSON_SaveInt(ext_fpath, "fov", jkPlayer_fov);
         stdJSON_SaveBool(ext_fpath, "fovisvertical", jkPlayer_fovIsVertical);
         stdJSON_SaveBool(ext_fpath, "windowishidpi", Window_isHiDpi);
@@ -966,7 +964,6 @@ int jkPlayer_ReadConf(wchar_t *name)
         jkPlayer_ParseLegacyExt();
 
         // New JSON parsing
-		jkPlayer_povFov = stdJSON_GetInt(ext_fpath, "povfov", jkPlayer_povFov);
         jkPlayer_fov = stdJSON_GetInt(ext_fpath, "fov", jkPlayer_fov);
         jkPlayer_fovIsVertical = stdJSON_GetBool(ext_fpath, "fovisvertical", jkPlayer_fovIsVertical);
         Window_isHiDpi_tmp = stdJSON_GetBool(ext_fpath, "windowishidpi", Window_isHiDpi);
@@ -1025,8 +1022,6 @@ int jkPlayer_ReadConf(wchar_t *name)
             jkPlayer_fov = FOV_MIN;
         if (jkPlayer_fov > FOV_MAX)
             jkPlayer_fov = FOV_MAX;
-
-		jkPlayer_povFov = stdMath_ClampInt(jkPlayer_povFov, FOV_MIN, FOV_MAX);
 
         Window_SetHiDpi(Window_isHiDpi_tmp);
         Window_SetFullscreen(Window_isFullscreen_tmp);
@@ -1165,7 +1160,8 @@ void jkPlayer_DrawPov()
 	rdMatrixMode(RD_MATRIX_PROJECTION);
 	rdIdentity();
 	
-	float fpfov = stdMath_ArcTan3(1.0, stdMath_Tan((float)stdMath_ClampInt(jkPlayer_povFov, FOV_MIN, FOV_MAX) * 0.5f) / rdCamera_pCurCamera->screenAspectRatio) * -2.0;
+	float povfov = (float)stdMath_ClampInt(jkPlayer_povFov, FOV_MIN, FOV_MAX);
+	float fpfov = stdMath_ArcTan3(1.0, stdMath_Tan(povfov * 0.5f) / rdCamera_pCurCamera->screenAspectRatio) * -2.0;
 	fpfov /= sithCamera_currentCamera->zoomScale;
 	rdPerspective(/*rdCamera_pCurCamera->fov*/fpfov, rdCamera_pCurCamera->screenAspectRatio, rdCamera_pCurCamera->pClipFrustum->field_0.y, rdCamera_pCurCamera->pClipFrustum->field_0.z);
 
