@@ -29,6 +29,7 @@
 #include "General/stdFnames.h"
 #include "Main/sithCvar.h"
 #include "stdPlatform.h"
+#include "Win95/stdMci.h"
 
 // Added
 extern int jkCredits_cdOverride;
@@ -75,6 +76,10 @@ void jkGuiMain_Show()
     int v1; // esi
     wchar_t *v2; // eax
     wchar_t *v4; // [esp-4h] [ebp-Ch]
+
+#ifdef MENU_16BIT
+	stdMci_PlayFromPath("Menu.ogg");
+#endif
 
     if (!Main_bMotsCompat) {
         jkGuiMain_elements[0].rect.y = 160;

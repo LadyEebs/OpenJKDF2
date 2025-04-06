@@ -18,6 +18,7 @@
 #include "General/stdString.h"
 #include "General/stdFnames.h"
 #include "Platform/std3D.h"
+#include "Win95/stdMci.h"
 
 static wchar_t jkGuiTitle_tmpBuffer[512];
 static wchar_t jkGuiTitle_versionBuffer[64];
@@ -323,6 +324,10 @@ void jkGuiTitle_ShowLoading(char *a1, wchar_t *a2)
 
 #ifdef QOL_IMPROVEMENTS
     jkGuiTitle_elementsLoad[4].bIsVisible = 0;
+#endif
+
+#ifdef MENU_16BIT
+	stdMci_Stop();
 #endif
 
     jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->palette);
