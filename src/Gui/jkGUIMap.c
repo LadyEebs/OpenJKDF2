@@ -42,7 +42,11 @@ static jkGuiMenu jkGuiMap_menu = { &jkGuiMap_aElements, 0, 0xFFFF, 0xFFFF, 15, N
 
 void jkGuiMap_Startup()
 {
-    jkGui_InitMenu(&jkGuiMap_menu, jkGui_stdBitmaps[JKGUI_BM_BK_FIELD_LOG]);
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiMap_menu, jkGui_stdBitmaps[JKGUI_BM_BK_FIELD_LOG], jkGui_stdBitmaps16[JKGUI_BM_BK_FIELD_LOG]);
+#else
+	jkGui_InitMenu(&jkGuiMap_menu, jkGui_stdBitmaps[JKGUI_BM_BK_FIELD_LOG]);
+#endif
 }
 
 void jkGuiMap_Shutdown()

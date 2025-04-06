@@ -3706,6 +3706,9 @@ typedef struct jkGuiMenu
   int lastClicked;
   jkGuiElement* pReturnKeyShortcutElement;
   jkGuiElement* pEscapeKeyShortcutElement;
+#ifdef RENDER_DROID2
+  stdBitmap* bkBm16;
+#endif
 } jkGuiMenu;
 
 typedef struct stdPalEffect

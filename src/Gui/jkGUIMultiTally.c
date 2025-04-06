@@ -468,9 +468,15 @@ int jkGuiMultiTally_SortPlayerScore(const sithPlayerInfo *pA, const sithPlayerIn
 
 void jkGuiMultiTally_Startup()
 {
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiMultiTally_menu, jkGui_stdBitmaps[JKGUI_BM_BK_TALLY], jkGui_stdBitmaps16[JKGUI_BM_BK_TALLY]);
+	jkGui_InitMenu(&jkGuiMultiTally_menu2, jkGui_stdBitmaps[JKGUI_BM_BK_TALLY], jkGui_stdBitmaps16[JKGUI_BM_BK_TALLY]);
+	jkGui_InitMenu(&jkGuiMultiTally_menu3, jkGui_stdBitmaps[JKGUI_BM_BK_TALLY], jkGui_stdBitmaps16[JKGUI_BM_BK_TALLY]);
+#else
     jkGui_InitMenu(&jkGuiMultiTally_menu, jkGui_stdBitmaps[JKGUI_BM_BK_TALLY]);
     jkGui_InitMenu(&jkGuiMultiTally_menu2, jkGui_stdBitmaps[JKGUI_BM_BK_TALLY]);
     jkGui_InitMenu(&jkGuiMultiTally_menu3, jkGui_stdBitmaps[JKGUI_BM_BK_TALLY]);
+#endif
 }
 
 void jkGuiMultiTally_Shutdown()

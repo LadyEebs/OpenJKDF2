@@ -21,7 +21,15 @@ typedef struct stdBitmap stdBitmap;
 typedef struct stdFont stdFont;
 typedef struct jkEpisodeLoad jkEpisodeLoad;
 
-void jkGui_InitMenu(jkGuiMenu *menu, stdBitmap *bgBitmap);
+#ifdef MENU_16BIT
+extern stdBitmap* jkGui_stdBitmaps16[35];
+#endif
+
+void jkGui_InitMenu(jkGuiMenu *menu, stdBitmap *bgBitmap
+#ifdef MENU_16BIT
+, stdBitmap* bgBitmap16
+#endif
+);
 int jkGui_MessageBeep();
 int jkGui_Startup();
 void jkGui_Shutdown();

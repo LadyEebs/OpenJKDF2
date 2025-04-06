@@ -167,8 +167,13 @@ LABEL_23:
 
 void jkGuiSetup_Startup()
 {
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiSetup_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP], jkGui_stdBitmaps16[JKGUI_BM_BK_SETUP]);
+	jkGui_InitMenu(&jkGuiSetupControls_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP], jkGui_stdBitmaps16[JKGUI_BM_BK_SETUP]);
+#else
     jkGui_InitMenu(&jkGuiSetup_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
     jkGui_InitMenu(&jkGuiSetupControls_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
+#endif
 }
 
 void jkGuiSetup_Shutdown()

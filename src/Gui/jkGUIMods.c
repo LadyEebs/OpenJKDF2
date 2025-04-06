@@ -152,8 +152,12 @@ void jkGuiMods_Startup()
     if ( jkGuiMods_bInitted )
         return;
 
-    jkGui_InitMenu(&jkGuiMods_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
-    jkGuiMods_bInitted = 1;
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiMods_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP], jkGui_stdBitmaps16[JKGUI_BM_BK_SETUP]);
+#else
+	jkGui_InitMenu(&jkGuiMods_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
+#endif
+	jkGuiMods_bInitted = 1;
 }
 
 void jkGuiMods_Shutdown()

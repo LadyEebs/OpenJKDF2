@@ -33,8 +33,13 @@ static jkGuiMenu jkGuiDialog_OkCancel_menu  = {jkGuiDialog_OkCancel_buttons, 0xF
 
 void jkGuiDialog_Startup()
 {
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiDialog_OkCancel_menu, 0, 0);
+	jkGui_InitMenu(&jkGuiDialog_Ok_menu, 0, 0);
+#else
     jkGui_InitMenu(&jkGuiDialog_OkCancel_menu, 0);
     jkGui_InitMenu(&jkGuiDialog_Ok_menu, 0);
+#endif
 }
 
 void jkGuiDialog_Shutdown()

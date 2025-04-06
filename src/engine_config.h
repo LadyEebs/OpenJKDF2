@@ -40,6 +40,9 @@
 #define FOG                  // infernal machine style fog rendering
 
 #ifdef RENDER_DROID2
+
+#define MENU_16BIT           // 16 bit menu bitmaps
+
 // these are implicit in RENDER_DROID2, the defines are for the old pipeline
 #ifdef SPHERE_AO
 #undef SPHERE_AO

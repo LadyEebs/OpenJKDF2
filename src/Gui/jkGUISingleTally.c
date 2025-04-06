@@ -82,7 +82,11 @@ void jkGuiSingleTally_Startup()
         jkGuiSingleTally_foStars = stdBitmap_Load("ui\\bm\\foStars.bm", 1, 0);
     }
     
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiSingleTally_menu, jkGui_stdBitmaps[JKGUI_BM_BK_TALLY], jkGui_stdBitmaps16[JKGUI_BM_BK_TALLY]);
+#else
     jkGui_InitMenu(&jkGuiSingleTally_menu, jkGui_stdBitmaps[JKGUI_BM_BK_TALLY]);
+#endif
 }
 
 void jkGuiSingleTally_Shutdown()

@@ -702,7 +702,11 @@ int jkGuiMouse_Show()
 
 void jkGuiMouse_Startup()
 {
-    jkGui_InitMenu(&jkGuiMouse_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiMouse_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP], jkGui_stdBitmaps16[JKGUI_BM_BK_SETUP]);
+#else
+	jkGui_InitMenu(&jkGuiMouse_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
+#endif
 }
 
 void jkGuiMouse_Shutdown()

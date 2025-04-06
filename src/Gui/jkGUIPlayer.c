@@ -77,8 +77,13 @@ int jkGuiPlayer_Startup()
         jkGuiPlayer_menuNewElements[7].rect.y = 0x17C;
     }
 
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiPlayer_menuSelect, jkGui_stdBitmaps[JKGUI_BM_BK_MAIN], jkGui_stdBitmaps16[JKGUI_BM_BK_MAIN]);
+	jkGui_InitMenu(&jkGuiPlayer_menuNew, jkGui_stdBitmaps[JKGUI_BM_BK_MAIN], jkGui_stdBitmaps16[JKGUI_BM_BK_MAIN]);
+#else
     jkGui_InitMenu(&jkGuiPlayer_menuSelect, jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]);
     jkGui_InitMenu(&jkGuiPlayer_menuNew, jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]);
+#endif
     jkGuiPlayer_bInitted = 1;
     return 1;
 }

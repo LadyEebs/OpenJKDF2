@@ -651,7 +651,11 @@ void jkGuiForce_Startup()
         jkGuiForce_pElements = jkGuiForce_buttons;
     }
 
-    jkGui_InitMenu(jkGuiForce_pMenu, jkGui_stdBitmaps[JKGUI_BM_BK_FORCE]);
+#ifdef MENU_16BIT
+	jkGui_InitMenu(jkGuiForce_pMenu, jkGui_stdBitmaps[JKGUI_BM_BK_FORCE], jkGui_stdBitmaps16[JKGUI_BM_BK_FORCE]);
+#else
+	jkGui_InitMenu(jkGuiForce_pMenu, jkGui_stdBitmaps[JKGUI_BM_BK_FORCE]);
+#endif
     if (Main_bMotsCompat) {
         for (int i = 0; i < 19; i++)
         {

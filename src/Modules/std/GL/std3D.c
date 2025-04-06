@@ -399,8 +399,7 @@ typedef struct std3D_worldStage
 
 std3D_worldStage worldStages[WORLD_STAGE_COUNT][WORLD_REG_COUNT][RD_NUM_TEXCOORDS];
 
-GLint programMenu_attribute_coord3d, programMenu_attribute_v_color, programMenu_attribute_v_uv, programMenu_attribute_v_norm;
-GLint programMenu_uniform_mvp, programMenu_uniform_tex, programMenu_uniform_displayPalette;
+GLint programMenu_attribute_coord3d, programMenu_attribute_v_color, programMenu_attribute_v_uv;
 
 std3DSimpleTexStage std3D_uiProgram;
 std3DSimpleTexStage std3D_texFboStage;
@@ -1682,15 +1681,6 @@ void std3D_setupMenuVAO()
 		(GLvoid*)offsetof(D3DVERTEX, color) // offset of first element
 	);
 
-	/*glVertexAttribPointer(
-		std3D_texFboStage.attribute_v_light, // attribute
-		1,                 // number of elements per vertex, here (L)
-		GL_FLOAT,  // the type of each element
-		GL_FALSE,          // normalize fixed-point data?
-		sizeof(D3DVERTEX),                 // no extra data between each position
-		(GLvoid*)offsetof(D3DVERTEX, lightLevel) // offset of first element
-	);*/
-
 	glVertexAttribPointer(
 		programMenu_attribute_v_uv,    // attribute
 		2,                 // number of elements per vertex, here (U,V)
@@ -2808,6 +2798,7 @@ void std3D_DrawMenu()
 	glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthFunc(GL_ALWAYS);
+	glClear(GL_DEPTH_BUFFER_BIT);
 	glUseProgram(programMenu);
     
     float menu_w, menu_h, menu_u, menu_v, menu_x;
@@ -2875,7 +2866,160 @@ void std3D_DrawMenu()
 
     if (!bFixHudScale)
     {
-        GL_tmpVertices[0].x = menu_x;
+//		float padScale = menu_x / Window_xSize ;// * 0.5;
+//
+//		// left
+//		GL_tmpVertices[0].x = 0.0;
+//		GL_tmpVertices[0].y = 0.0;
+//		GL_tmpVertices[0].z = 0.0;
+//		GL_tmpVertices[0].tu = menu_u * padScale;
+//		GL_tmpVertices[0].tv = 0.0;
+//		*(uint32_t*)&GL_tmpVertices[0].nx = 0;
+//		GL_tmpVertices[0].color = 0xFF3F3F3F;
+//		*(uint32_t*)&GL_tmpVertices[0].nz = 0;
+//		GL_tmpVertices[0].lightLevel = 1.0f;
+//
+//		GL_tmpVertices[1].x = 0.0;
+//		GL_tmpVertices[1].y = menu_h;
+//		GL_tmpVertices[1].z = 0.0;
+//		GL_tmpVertices[1].tu = menu_u * padScale;
+//		GL_tmpVertices[1].tv = menu_v;
+//		*(uint32_t*)&GL_tmpVertices[1].nx = 0;
+//		GL_tmpVertices[1].color = 0xFF3F3F3F;
+//		*(uint32_t*)&GL_tmpVertices[1].nz = 0;
+//		GL_tmpVertices[1].lightLevel = 1.0f;
+//
+//		GL_tmpVertices[2].x = menu_x;
+//		GL_tmpVertices[2].y = menu_h;
+//		GL_tmpVertices[2].z = 0.0;
+//		GL_tmpVertices[2].tu = 0.0;
+//		GL_tmpVertices[2].tv = menu_v;
+//		*(uint32_t*)&GL_tmpVertices[2].nx = 0;
+//		GL_tmpVertices[2].color = 0xFFFFFFFF;
+//		*(uint32_t*)&GL_tmpVertices[2].nz = 0;
+//		GL_tmpVertices[2].lightLevel = 0.0f;
+//
+//		GL_tmpVertices[3].x = menu_x;
+//		GL_tmpVertices[3].y = 0.0;
+//		GL_tmpVertices[3].z = 0.0;
+//		GL_tmpVertices[3].tu = 0.0;
+//		GL_tmpVertices[3].tv = 0.0;
+//		*(uint32_t*)&GL_tmpVertices[3].nx = 0;
+//		GL_tmpVertices[3].color = 0xFFFFFFFF;
+//		*(uint32_t*)&GL_tmpVertices[3].nz = 0;
+//		GL_tmpVertices[3].lightLevel = 0.0f;
+//
+//		GL_tmpTris[0].v1 = 1;
+//		GL_tmpTris[0].v2 = 0;
+//		GL_tmpTris[0].v3 = 2;
+//
+//		GL_tmpTris[1].v1 = 0;
+//		GL_tmpTris[1].v2 = 3;
+//		GL_tmpTris[1].v3 = 2;
+//
+//		// center
+//
+//        GL_tmpVertices[4].x = menu_x;
+//        GL_tmpVertices[4].y = 0.0;
+//        GL_tmpVertices[4].z = 0.0;
+//        GL_tmpVertices[4].tu = 0.0;
+//        GL_tmpVertices[4].tv = 0.0;
+//        *(uint32_t*)&GL_tmpVertices[4].nx = 0;
+//        GL_tmpVertices[4].color = 0xFFFFFFFF;
+//        *(uint32_t*)&GL_tmpVertices[4].nz = 0;
+//		GL_tmpVertices[4].lightLevel = 0.0f;
+//
+//        GL_tmpVertices[5].x = menu_x;
+//        GL_tmpVertices[5].y = menu_h;
+//        GL_tmpVertices[5].z = 0.0;
+//        GL_tmpVertices[5].tu = 0.0;
+//        GL_tmpVertices[5].tv = menu_v;
+//        *(uint32_t*)&GL_tmpVertices[5].nx = 0;
+//        GL_tmpVertices[5].color = 0xFFFFFFFF;
+//        *(uint32_t*)&GL_tmpVertices[5].nz = 0;
+//		GL_tmpVertices[5].lightLevel = 0.0f;
+//
+//        GL_tmpVertices[6].x = menu_x + menu_w;
+//        GL_tmpVertices[6].y = menu_h;
+//        GL_tmpVertices[6].z = 0.0;
+//        GL_tmpVertices[6].tu = menu_u;
+//        GL_tmpVertices[6].tv = menu_v;
+//        *(uint32_t*)&GL_tmpVertices[6].nx = 0;
+//        GL_tmpVertices[6].color = 0xFFFFFFFF;
+//        *(uint32_t*)&GL_tmpVertices[6].nz = 0;
+//		GL_tmpVertices[6].lightLevel = 0.0f;
+//
+//        GL_tmpVertices[7].x = menu_x + menu_w;
+//        GL_tmpVertices[7].y = 0.0;
+//        GL_tmpVertices[7].z = 0.0;
+//        GL_tmpVertices[7].tu = menu_u;
+//        GL_tmpVertices[7].tv = 0.0;
+//        *(uint32_t*)&GL_tmpVertices[7].nx = 0;
+//        GL_tmpVertices[7].color = 0xFFFFFFFF;
+//        *(uint32_t*)&GL_tmpVertices[7].nz = 0;
+//		GL_tmpVertices[7].lightLevel = 0.0f;
+//
+//        GL_tmpTris[2].v1 = 5;
+//        GL_tmpTris[2].v2 = 4;
+//        GL_tmpTris[2].v3 = 6;
+//        
+//        GL_tmpTris[3].v1 = 4;
+//        GL_tmpTris[3].v2 = 7;
+//        GL_tmpTris[3].v3 = 6;
+//
+//		// right
+//		GL_tmpVertices[8].x = menu_x + menu_w;
+//		GL_tmpVertices[8].y = 0.0;
+//		GL_tmpVertices[8].z = 0.0;
+//		GL_tmpVertices[8].tu = menu_u;
+//		GL_tmpVertices[8].tv = 0.0;
+//		*(uint32_t*)&GL_tmpVertices[8].nx = 0;
+//		GL_tmpVertices[8].color = 0xFFFFFFFF;
+//		*(uint32_t*)&GL_tmpVertices[8].nz = 0;
+//		GL_tmpVertices[8].lightLevel = 0.0f;
+//
+//		GL_tmpVertices[9].x = menu_x + menu_w;
+//		GL_tmpVertices[9].y = menu_h;
+//		GL_tmpVertices[9].z = 0.0;
+//		GL_tmpVertices[9].tu = menu_u;
+//		GL_tmpVertices[9].tv = menu_v;
+//		*(uint32_t*)&GL_tmpVertices[9].nx = 0;
+//		GL_tmpVertices[9].color = 0xFFFFFFFF;
+//		*(uint32_t*)&GL_tmpVertices[9].nz = 0;
+//		GL_tmpVertices[9].lightLevel = 0.0f;
+//
+//		GL_tmpVertices[10].x = Window_xSize;
+//		GL_tmpVertices[10].y = menu_h;
+//		GL_tmpVertices[10].z = 0.0;
+//		GL_tmpVertices[10].tu = menu_u - menu_u * padScale;
+//		GL_tmpVertices[10].tv = menu_v;
+//		*(uint32_t*)&GL_tmpVertices[10].nx = 0;
+//		GL_tmpVertices[10].color = 0xFF3F3F3F;
+//		*(uint32_t*)&GL_tmpVertices[10].nz = 0;
+//		GL_tmpVertices[10].lightLevel = 1.0f;
+//
+//		GL_tmpVertices[11].x = Window_xSize;
+//		GL_tmpVertices[11].y = 0.0;
+//		GL_tmpVertices[11].z = 0.0;
+//		GL_tmpVertices[11].tu = menu_u - menu_u * padScale;
+//		GL_tmpVertices[11].tv = 0.0;
+//		*(uint32_t*)&GL_tmpVertices[11].nx = 0;
+//		GL_tmpVertices[11].color = 0xFF3F3F3F;
+//		*(uint32_t*)&GL_tmpVertices[11].nz = 0;
+//		GL_tmpVertices[11].lightLevel = 1.0f;
+//
+//		GL_tmpTris[4].v1 = 9;
+//		GL_tmpTris[4].v2 = 8;
+//		GL_tmpTris[4].v3 = 10;
+//
+//		GL_tmpTris[5].v1 = 8;
+//		GL_tmpTris[5].v2 = 11;
+//		GL_tmpTris[5].v3 = 10;
+//        
+//        GL_tmpVerticesAmt = 12;
+//        GL_tmpTrisAmt = 6;
+
+		 GL_tmpVertices[0].x = menu_x;
         GL_tmpVertices[0].y = 0.0;
         GL_tmpVertices[0].z = 0.0;
         GL_tmpVertices[0].tu = 0.0;
@@ -3224,7 +3368,7 @@ void std3D_DrawMapOverlay()
 	std3D_PopDebugGroup();
 }
 
-void std3D_DrawUIBitmapRGBA(stdBitmap* pBmp, int mipIdx, float dstX, float dstY, rdRect* srcRect, float scaleX, float scaleY, int bAlphaOverwrite, uint8_t color_r, uint8_t color_g, uint8_t color_b, uint8_t color_a)
+void std3D_DrawUIBitmapRGBAZ(stdBitmap* pBmp, int mipIdx, float dstX, float dstY, rdRect* srcRect, float scaleX, float scaleY, int bAlphaOverwrite, uint8_t color_r, uint8_t color_g, uint8_t color_b, uint8_t color_a, float depth)
 {
     float internalWidth = Video_menuBuffer.format.width;
     float internalHeight = Video_menuBuffer.format.height;
@@ -3310,7 +3454,7 @@ void std3D_DrawUIBitmapRGBA(stdBitmap* pBmp, int mipIdx, float dstX, float dstY,
 
     GL_tmpUIVertices[GL_tmpUIVerticesAmt+0].x = dstX;
     GL_tmpUIVertices[GL_tmpUIVerticesAmt+0].y = dstY;
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+0].z = 0.0;
+    GL_tmpUIVertices[GL_tmpUIVerticesAmt+0].z = depth;
     GL_tmpUIVertices[GL_tmpUIVerticesAmt+0].tu = u1;
     GL_tmpUIVertices[GL_tmpUIVerticesAmt+0].tv = v1;
     *(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt+0].nx = 0;
@@ -3319,7 +3463,7 @@ void std3D_DrawUIBitmapRGBA(stdBitmap* pBmp, int mipIdx, float dstX, float dstY,
     
     GL_tmpUIVertices[GL_tmpUIVerticesAmt+1].x = dstX;
     GL_tmpUIVertices[GL_tmpUIVerticesAmt+1].y = dstY + (dstScaleY * h_dst);
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+1].z = 0.0;
+    GL_tmpUIVertices[GL_tmpUIVerticesAmt+1].z = depth;
     GL_tmpUIVertices[GL_tmpUIVerticesAmt+1].tu = u1;
     GL_tmpUIVertices[GL_tmpUIVerticesAmt+1].tv = v2;
     *(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt+1].nx = 0;
@@ -3328,7 +3472,7 @@ void std3D_DrawUIBitmapRGBA(stdBitmap* pBmp, int mipIdx, float dstX, float dstY,
     
     GL_tmpUIVertices[GL_tmpUIVerticesAmt+2].x = dstX + (dstScaleX * w_dst);
     GL_tmpUIVertices[GL_tmpUIVerticesAmt+2].y = dstY + (dstScaleY * h_dst);
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+2].z = 0.0;
+    GL_tmpUIVertices[GL_tmpUIVerticesAmt+2].z = depth;
     GL_tmpUIVertices[GL_tmpUIVerticesAmt+2].tu = u2;
     GL_tmpUIVertices[GL_tmpUIVerticesAmt+2].tv = v2;
     *(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt+2].nx = 0;
@@ -3337,7 +3481,7 @@ void std3D_DrawUIBitmapRGBA(stdBitmap* pBmp, int mipIdx, float dstX, float dstY,
     
     GL_tmpUIVertices[GL_tmpUIVerticesAmt+3].x = dstX + (dstScaleX * w_dst);
     GL_tmpUIVertices[GL_tmpUIVerticesAmt+3].y = dstY;
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+3].z = 0.0;
+    GL_tmpUIVertices[GL_tmpUIVerticesAmt+3].z = depth;
     GL_tmpUIVertices[GL_tmpUIVerticesAmt+3].tu = u2;
     GL_tmpUIVertices[GL_tmpUIVerticesAmt+3].tv = v1;
     *(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt+3].nx = 0;
@@ -3360,9 +3504,19 @@ void std3D_DrawUIBitmapRGBA(stdBitmap* pBmp, int mipIdx, float dstX, float dstY,
     GL_tmpUITrisAmt += 2;
 }
 
+void std3D_DrawUIBitmapRGBA(stdBitmap* pBmp, int mipIdx, float dstX, float dstY, rdRect* srcRect, float scaleX, float scaleY, int bAlphaOverwrite, uint8_t color_r, uint8_t color_g, uint8_t color_b, uint8_t color_a)
+{
+	std3D_DrawUIBitmapRGBAZ(pBmp, mipIdx, dstX, dstY, srcRect, scaleX, scaleY, bAlphaOverwrite, color_r, color_g, color_b, color_a, 0.0f);
+}
+
 void std3D_DrawUIBitmap(stdBitmap* pBmp, int mipIdx, float dstX, float dstY, rdRect* srcRect, float scale, int bAlphaOverwrite)
 {
     std3D_DrawUIBitmapRGBA(pBmp, mipIdx, dstX, dstY, srcRect, scale, scale, bAlphaOverwrite, 0xFF, 0xFF, 0xFF, 0xFF);
+}
+
+void std3D_DrawUIBitmapZ(stdBitmap* pBmp, int mipIdx, float dstX, float dstY, rdRect* srcRect, float scaleX, float scaleY, int bAlphaOverwrite, float depth)
+{
+	std3D_DrawUIBitmapRGBAZ(pBmp, mipIdx, dstX, dstY, srcRect, scaleX, scaleY, bAlphaOverwrite, 0xFF, 0xFF, 0xFF, 0xFF, depth);
 }
 
 void std3D_DrawUIClearedRect(uint8_t palIdx, rdRect* dstRect)
@@ -3501,7 +3655,7 @@ void std3D_DrawUIRenderList()
     glDepthMask(GL_TRUE);
     glCullFace(GL_FRONT);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-    glDepthFunc(GL_ALWAYS);
+    glDepthFunc(GL_LESS);//ALWAYS);
 	glUseProgram(std3D_uiProgram.program); // TODO: simpler shader
     
     last_ui_tex = 0;

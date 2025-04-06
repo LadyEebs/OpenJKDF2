@@ -94,9 +94,14 @@ static jkGuiMenu jkGuiGeneral_menuAdvanced = { jkGuiGeneral_aElementsAdvanced, 0
 
 void jkGuiGeneral_Startup()
 {
-    jkGui_InitMenu(&jkGuiGeneral_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
-#if defined(QOL_IMPROVEMENTS)
-    jkGui_InitMenu(&jkGuiGeneral_menuAdvanced, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiGeneral_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP], jkGui_stdBitmaps16[JKGUI_BM_BK_SETUP]);
+	jkGui_InitMenu(&jkGuiGeneral_menuAdvanced, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP], jkGui_stdBitmaps16[JKGUI_BM_BK_SETUP]);
+#else
+	jkGui_InitMenu(&jkGuiGeneral_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
+	#ifdef QOL_IMPROVEMENTS
+		jkGui_InitMenu(&jkGuiGeneral_menuAdvanced, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
+	#endif
 #endif
 }
 

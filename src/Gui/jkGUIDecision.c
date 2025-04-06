@@ -24,7 +24,11 @@ static jkGuiMenu jkGuiDecision_menu = {jkGuiDecision_buttons, -1, 0x0E1, 0x0FF, 
 
 void jkGuiDecision_Startup()
 {
-    jkGui_InitMenu(&jkGuiDecision_menu, jkGui_stdBitmaps[JKGUI_BM_BK_DECISION]);
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiDecision_menu, jkGui_stdBitmaps[JKGUI_BM_BK_DECISION], jkGui_stdBitmaps16[JKGUI_BM_BK_DECISION]);
+#else
+	jkGui_InitMenu(&jkGuiDecision_menu, jkGui_stdBitmaps[JKGUI_BM_BK_DECISION]);
+#endif
 }
 
 void jkGuiDecision_Shutdown()

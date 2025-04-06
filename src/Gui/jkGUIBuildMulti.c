@@ -271,7 +271,11 @@ int jkGuiBuildMulti_bRendering = 0;
 
 void jkGuiBuildMulti_StartupEditCharacter()
 {
-    jkGui_InitMenu(&jkGuiBuildMulti_menu, jkGui_stdBitmaps[JKGUI_BM_BK_BUILD_MULTI]);
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiBuildMulti_menu, jkGui_stdBitmaps[JKGUI_BM_BK_BUILD_MULTI], jkGui_stdBitmaps16[JKGUI_BM_BK_BUILD_MULTI]);
+#else
+	jkGui_InitMenu(&jkGuiBuildMulti_menu, jkGui_stdBitmaps[JKGUI_BM_BK_BUILD_MULTI]);
+#endif
 }
 
 void jkGuiBuildMulti_ShutdownEditCharacter()
@@ -716,8 +720,12 @@ void jkGuiBuildMulti_ModelDrawer(jkGuiElement *pElement, jkGuiMenu *pMenu, stdVB
 
     if ( jkGuiBuildMulti_lastModelDrawMs )
     {
-        if ( stdPlatform_GetTimeMsec() - (uint32_t)jkGuiBuildMulti_lastModelDrawMs <= BUILDMULTI_SWITCH_DELAY_MS ) {
-            stdDisplay_VBufferCopy(pVbuf, pMenu->texture, 315u, 115, &jkGuiBuildMulti_rect_5353C8, 0);
+        if ( stdPlatform_GetTimeMsec() - (uint32_t)jkGuiBuildMulti_lastModelDrawMs <= BUILDMULTI_SWITCH_DELAY_MS )
+		{
+		#ifdef MENU_16BIT
+			if (!pMenu->bkBm16)
+		#endif
+				stdDisplay_VBufferCopy(pVbuf, pMenu->texture, 315u, 115, &jkGuiBuildMulti_rect_5353C8, 0);
             return;
         }
         jkGuiBuildMulti_ThingCleanup(); // inlined
@@ -905,10 +913,15 @@ int jkGuiBuildMulti_Startup()
         jkGuiBuildMulti_pNewCharacterMenu = &jkGuiBuildMulti_menuNewCharacterMots;
         jkGuiBuildMulti_pNewCharacterElements = jkGuiBuildMulti_menuNewCharacter_buttonsMots;
     }
+#ifdef MENU_16BIT
+	jkGui_InitMenu(jkGuiBuildMulti_pNewCharacterMenu, jkGui_stdBitmaps[JKGUI_BM_BK_BUILD_LOAD], jkGui_stdBitmaps16[JKGUI_BM_BK_BUILD_LOAD]);
+	jkGui_InitMenu(&jkGuiBuildMulti_menuEditCharacter, jkGui_stdBitmaps[JKGUI_BM_BK_BUILD_LOAD], jkGui_stdBitmaps16[JKGUI_BM_BK_BUILD_LOAD]);
+	jkGui_InitMenu(&jkGuiBuildMulti_menuLoadCharacter, jkGui_stdBitmaps[JKGUI_BM_BK_BUILD_LOAD], jkGui_stdBitmaps16[JKGUI_BM_BK_BUILD_LOAD]);
+#else
     jkGui_InitMenu(jkGuiBuildMulti_pNewCharacterMenu, jkGui_stdBitmaps[JKGUI_BM_BK_BUILD_LOAD]);
     jkGui_InitMenu(&jkGuiBuildMulti_menuEditCharacter, jkGui_stdBitmaps[JKGUI_BM_BK_BUILD_LOAD]);
     jkGui_InitMenu(&jkGuiBuildMulti_menuLoadCharacter, jkGui_stdBitmaps[JKGUI_BM_BK_BUILD_LOAD]);
-
+#endif
     jkGuiBuildMulti_bInitted = 1;
     return 1;
 }

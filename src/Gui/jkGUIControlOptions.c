@@ -42,7 +42,11 @@ static jkGuiMenu jkGuiControlOptions_menu = {jkGuiControlOptions_buttons, 0, 0xF
 
 void jkGuiControlOptions_Startup()
 {
-    jkGui_InitMenu(&jkGuiControlOptions_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiControlOptions_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP], jkGui_stdBitmaps16[JKGUI_BM_BK_SETUP]);
+#else
+	jkGui_InitMenu(&jkGuiControlOptions_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
+#endif
 }
 
 void jkGuiControlOptions_Shutdown()

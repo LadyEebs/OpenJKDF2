@@ -62,6 +62,11 @@ void jkGuiRend_CopyVBuffer(jkGuiMenu *menu, rdRect *rect)
 {
     if ( g_app_suspended && !jkGuiRend_bIsSurfaceValid )
     {
+#ifdef MENU_16BIT
+		if ( menu->bkBm16 ) // 16 bit menu
+			stdDisplay_VBufferFill(jkGuiRend_menuBuffer, 0, rect);
+		else
+#endif
         if ( menu->texture )
             stdDisplay_VBufferCopy(jkGuiRend_menuBuffer, menu->texture, rect->x, rect->y, rect, 0);
     }
@@ -229,6 +234,8 @@ void jkGuiRend_UpdateDrawMenu(jkGuiMenu *menu)
     }
 }
 
+#include "Modules/std/std3D.h"
+
 void jkGuiRend_Paint(jkGuiMenu *menu)
 {
 
@@ -243,6 +250,30 @@ void jkGuiRend_Paint(jkGuiMenu *menu)
     stdControl_ShowCursor(0);
     stdDisplay_SetMasterPalette(jkGuiRend_palette);
 
+#ifdef MENU_16BIT
+	if (menu->bkBm16)
+	{
+		stdDisplay_VBufferFill(jkGuiRend_menuBuffer, 0, 0);
+
+		float screenW = Video_menuBuffer.format.width;
+		float screenH = Video_menuBuffer.format.height;
+
+		float menu_w = menu->bkBm16->mipSurfaces[0]->format.width;
+		float menu_h = menu->bkBm16->mipSurfaces[0]->format.height;
+
+		float menu_x = (menu_w - (menu_h * (screenW / screenH))) / 2.0;
+		menu_w = (menu_h * (screenW / screenH));
+
+		float scaleX = screenW / menu_w;
+		float scaleY = screenH / menu_h;
+
+		rdRect rect = { menu_x, 0, menu_w, menu_h };
+		std3D_DrawUIBitmapZ(menu->bkBm16, 0, 0, 0, &rect, scaleX, scaleY, 0, 0.99f);
+	}
+#ifndef TARGET_TWL
+	else
+#endif
+#endif
 #ifndef TARGET_TWL
     if ( menu->texture )
         stdDisplay_VBufferCopy(jkGuiRend_menuBuffer, menu->texture, 0, 0, 0, 0);

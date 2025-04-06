@@ -544,7 +544,11 @@ int jkGuiKeyboard_Show()
 
 void jkGuiKeyboard_Startup()
 {
-    jkGui_InitMenu(&jkGuiKeyboard_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiKeyboard_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP], jkGui_stdBitmaps16[JKGUI_BM_BK_SETUP]);
+#else
+	jkGui_InitMenu(&jkGuiKeyboard_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
+#endif
 }
 
 void jkGuiKeyboard_Shutdown()

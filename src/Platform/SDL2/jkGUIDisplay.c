@@ -158,8 +158,13 @@ void jkGuiDisplay_UpdateSampleText()
 
 void jkGuiDisplay_Startup()
 {
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiDisplay_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP], jkGui_stdBitmaps16[JKGUI_BM_BK_SETUP]);
+	jkGui_InitMenu(&jkGuiDisplay_menuAdvanced, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP], jkGui_stdBitmaps16[JKGUI_BM_BK_SETUP]);
+#else
     jkGui_InitMenu(&jkGuiDisplay_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
     jkGui_InitMenu(&jkGuiDisplay_menuAdvanced, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
+#endif
     jkGuiDisplay_aElements[19].wstr = render_level;
 
     jkGuiDisplay_aElements[21].wstr = gamma_level;

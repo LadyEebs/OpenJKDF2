@@ -80,10 +80,17 @@ wchar_t jkGuiMultiplayer_ipText[256];
 
 void jkGuiMultiplayer_Startup()
 {
-    jkGui_InitMenu(&jkGuiMultiplayer_menu, jkGui_stdBitmaps[JKGUI_BM_BK_MULTI]);
-    jkGui_InitMenu(&jkGuiMultiplayer_menu2, jkGui_stdBitmaps[JKGUI_BM_BK_MULTI]);
-    jkGui_InitMenu(&jkGuiMultiplayer_menu3, jkGui_stdBitmaps[JKGUI_BM_BK_MULTI]);
-    jkGui_InitMenu(&jkGuiMultiplayer_menu4, jkGui_stdBitmaps[JKGUI_BM_BK_MULTI]);
+#ifdef MENU_16BIT
+    jkGui_InitMenu(&jkGuiMultiplayer_menu, jkGui_stdBitmaps[JKGUI_BM_BK_MULTI], jkGui_stdBitmaps16[JKGUI_BM_BK_MULTI]);
+    jkGui_InitMenu(&jkGuiMultiplayer_menu2, jkGui_stdBitmaps[JKGUI_BM_BK_MULTI], jkGui_stdBitmaps16[JKGUI_BM_BK_MULTI]);
+    jkGui_InitMenu(&jkGuiMultiplayer_menu3, jkGui_stdBitmaps[JKGUI_BM_BK_MULTI], jkGui_stdBitmaps16[JKGUI_BM_BK_MULTI]);
+    jkGui_InitMenu(&jkGuiMultiplayer_menu4, jkGui_stdBitmaps[JKGUI_BM_BK_MULTI], jkGui_stdBitmaps16[JKGUI_BM_BK_MULTI]);
+#else
+	jkGui_InitMenu(&jkGuiMultiplayer_menu, jkGui_stdBitmaps[JKGUI_BM_BK_MULTI]);
+	jkGui_InitMenu(&jkGuiMultiplayer_menu2, jkGui_stdBitmaps[JKGUI_BM_BK_MULTI]);
+	jkGui_InitMenu(&jkGuiMultiplayer_menu3, jkGui_stdBitmaps[JKGUI_BM_BK_MULTI]);
+	jkGui_InitMenu(&jkGuiMultiplayer_menu4, jkGui_stdBitmaps[JKGUI_BM_BK_MULTI]);
+#endif
     jkGuiMultiplayer_bInitted = 1;
 
 #ifdef QOL_IMPROVEMENTS

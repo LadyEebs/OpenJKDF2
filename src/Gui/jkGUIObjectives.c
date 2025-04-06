@@ -128,7 +128,11 @@ int jkGuiObjectives_Show()
 
 void jkGuiObjectives_Startup()
 {
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiObjectives_menu, jkGui_stdBitmaps[JKGUI_BM_BK_FIELD_LOG], jkGui_stdBitmaps16[JKGUI_BM_BK_FIELD_LOG]);
+#else
     jkGui_InitMenu(&jkGuiObjectives_menu, jkGui_stdBitmaps[JKGUI_BM_BK_FIELD_LOG]);
+#endif
 }
 
 void jkGuiObjectives_Shutdown()

@@ -198,7 +198,13 @@ void jkGuiMain_ShowCutscenes()
     char v12[256]; // [esp+6Ch] [ebp-100h] BYREF
 
     if ( !jkGuiCutscenes_initted )
+	{
+#ifdef MENU_16BIT
+		jkGui_InitMenu(&jkGuiMain_cutscenesMenu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP], jkGui_stdBitmaps16[JKGUI_BM_BK_SETUP]);
+#else
         jkGui_InitMenu(&jkGuiMain_cutscenesMenu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
+#endif
+	}
     jkGuiCutscenes_initted = 1;
     jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->palette);
     jkGuiRend_DarrayNewStr(&darray, 32, 1);
@@ -252,7 +258,11 @@ LABEL_17:
 
 void jkGuiMain_Startup()
 {
-    jkGui_InitMenu(&jkGuiMain_menu, jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]);
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiMain_menu, jkGui_stdBitmaps[JKGUI_BM_BK_MAIN], jkGui_stdBitmaps16[JKGUI_BM_BK_MAIN]);
+#else
+	jkGui_InitMenu(&jkGuiMain_menu, jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]);
+#endif
 
     // Added: clean reset
     jkGuiMain_bIdk = 1;

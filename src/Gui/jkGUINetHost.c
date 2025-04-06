@@ -265,8 +265,14 @@ void jkGuiNetHost_LoadSettings()
 
 void jkGuiNetHost_Startup()
 {
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiNetHost_menu, jkGui_stdBitmaps[JKGUI_BM_BK_MULTI], jkGui_stdBitmaps16[JKGUI_BM_BK_MULTI]);
+	jkGui_InitMenu(&jkGuiNetHost_menuSettings, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP], jkGui_stdBitmaps16[JKGUI_BM_BK_SETUP]);
+
+#else
     jkGui_InitMenu(&jkGuiNetHost_menu, jkGui_stdBitmaps[JKGUI_BM_BK_MULTI]);
     jkGui_InitMenu(&jkGuiNetHost_menuSettings, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
+#endif
     
     jkGuiNetHost_LoadSettings();
     jkGuiNetHost_bInitted = 1;

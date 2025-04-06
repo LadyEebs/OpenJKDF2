@@ -82,7 +82,11 @@ static jkGuiMenu jkGuiGameplay_menu = {jkGuiGameplay_buttons, 0, 0xFF, 0xE1, 0xF
 
 void jkGuiGameplay_Startup()
 {
-    jkGui_InitMenu(&jkGuiGameplay_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiGameplay_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP], jkGui_stdBitmaps16[JKGUI_BM_BK_SETUP]);
+#else
+	jkGui_InitMenu(&jkGuiGameplay_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
+#endif
 }
 
 void jkGuiGameplay_Shutdown()

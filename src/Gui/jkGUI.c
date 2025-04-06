@@ -23,41 +23,41 @@
 #include "Cog/jkCog.h"
 
 const char* jkGui_aBitmaps[35] = {
-    "bkMain.bm",
-    "bkSingle.bm",
-    "bkMulti.bm",
-    "bkSetup.bm",
-    "bkEsc.bm",
-    "bkLoading.bm",
-    "bkFieldLog.bm",
-    "bkDialog.bm",
-    "bkEsc.bm",
-    "bkForce.bm",
-    "bkTally.bm",
-    "bkBuildMulti.bm",
-    "bkBuildLoad.bm",
-    "up15.bm",
-    "down15.bm",
-    "check.bm",
-    "objectivescheck.bm",
-    "sliderThumb.bm",
-    "sliderBack.bm",
-    "sliderBack200.bm",
-    "flOk.bm",
-    "flRotLef.bm",
-    "flRotRig.bm",
-    "flRotUp.bm",
-    "flRotDow.bm",
-    "flPlus.bm",
-    "flMinus.bm",
-    "flTransLeft.bm",
-    "flTransRight.bm",
-    "flTransUp.bm",
-    "flTransDown.bm",
-    "flSpin.bm",
-    "flReset.bm",
-    "arrowLeft.bm",
-    "arrowRight.bm"
+    "bkMain",
+    "bkSingle",
+    "bkMulti",
+    "bkSetup",
+    "bkEsc",
+    "bkLoading",
+    "bkFieldLog",
+    "bkDialog",
+    "bkEsc",
+    "bkForce",
+    "bkTally",
+    "bkBuildMulti",
+    "bkBuildLoad",
+    "up15",
+    "down15",
+    "check",
+    "objectivescheck",
+    "sliderThumb",
+    "sliderBack",
+    "sliderBack200",
+    "flOk",
+    "flRotLef",
+    "flRotRig",
+    "flRotUp",
+    "flRotDow",
+    "flPlus",
+    "flMinus",
+    "flTransLeft",
+    "flTransRight",
+    "flTransUp",
+    "flTransDown",
+    "flSpin",
+    "flReset",
+    "arrowLeft",
+    "arrowRight"
 };
 
 const char* jkGui_aFonts[12] = {
@@ -75,15 +75,30 @@ const char* jkGui_aFonts[12] = {
     "FLTitle.sft"
 };
 
+#ifdef MENU_16BIT
+stdBitmap* jkGui_stdBitmaps16[35];
+#endif
+
 static int jkGui_bInitialized;
 
-void jkGui_InitMenu(jkGuiMenu *menu, stdBitmap *bgBitmap)
+void jkGui_InitMenu(jkGuiMenu *menu
+	, stdBitmap *bgBitmap
+#ifdef MENU_16BIT
+	, stdBitmap* bgBitmap16
+#endif
+)
 {
     if ( bgBitmap )
     {
         menu->palette = (uint8_t*)bgBitmap->palette;
         menu->texture = bgBitmap->mipSurfaces[0];
     }
+#ifdef MENU_16BIT
+	// added
+	if (bgBitmap16 && bgBitmap16->format.bpp == 16)
+		menu->bkBm16 = bgBitmap16;
+#endif
+
     
     jkGuiElement* iter = menu->paElements;
     while ( iter->type != ELEMENT_END )
@@ -152,12 +167,20 @@ int jkGui_Startup()
 
     for (int i = 0; i < 35; i++)
     {
-        stdString_snprintf(tmp, 128, "ui\\bm\\%s", jkGui_aBitmaps[i]);
+        stdString_snprintf(tmp, 128, "ui\\bm\\%s.bm", jkGui_aBitmaps[i]);
         jkGui_stdBitmaps[i] = stdBitmap_Load(tmp, 1, 0);
         if (jkGui_stdBitmaps[i] == NULL) {
             Windows_GameErrorMsgbox("ERR_CANNOT_LOAD_FILE %s", tmp);
         }
     }
+
+#ifdef MENU_16BIT
+	for (int i = 0; i < 35; i++)
+	{
+		stdString_snprintf(tmp, 128, "ui\\bm\\%s16.bm", jkGui_aBitmaps[i]);
+		jkGui_stdBitmaps16[i] = stdBitmap_Load(tmp, 1, 0);
+	}
+#endif
 
     Window_ShowCursorUnwindowed(Main_bWindowGUI == 0);
     jkGuiRend_SetPalette(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->palette);

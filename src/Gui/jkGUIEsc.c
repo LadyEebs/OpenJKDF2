@@ -64,7 +64,11 @@ static jkGuiMenu jkGuiEsc_menu = { jkGuiEsc_aElements, -1, 0x0FFFF, 0x0FFFF, 0x0
 
 void jkGuiEsc_Startup()
 {
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiEsc_menu, jkGui_stdBitmaps[JKGUI_BM_BK_ESC], jkGui_stdBitmaps16[JKGUI_BM_BK_ESC]);
+#else
     jkGui_InitMenu(&jkGuiEsc_menu, jkGui_stdBitmaps[JKGUI_BM_BK_ESC]);
+#endif
     jkGuiEsc_bInitialized = 1;
 }
 

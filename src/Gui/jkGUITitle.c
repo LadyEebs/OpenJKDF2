@@ -52,10 +52,16 @@ static jkGuiMenu jkGuiTitle_menuLoadStatic = {jkGuiTitle_elementsLoadStatic, 0xF
 
 void jkGuiTitle_Startup()
 {
-    jkGui_InitMenu(&jkGuiTitle_menuLoadStatic, jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]);
-    jkGui_InitMenu(&jkGuiTitle_menuLoad, jkGui_stdBitmaps[JKGUI_BM_BK_LOADING]);
-#ifdef QOL_IMPROVEMENTS
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiTitle_menuLoadStatic, jkGui_stdBitmaps[JKGUI_BM_BK_MAIN], jkGui_stdBitmaps16[JKGUI_BM_BK_MAIN]);
+	jkGui_InitMenu(&jkGuiTitle_menuLoad, jkGui_stdBitmaps[JKGUI_BM_BK_LOADING], jkGui_stdBitmaps16[JKGUI_BM_BK_LOADING]);
     jkGuiTitle_elementsLoad[4].bIsVisible = 0;
+#else
+	jkGui_InitMenu(&jkGuiTitle_menuLoadStatic, jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]);
+	jkGui_InitMenu(&jkGuiTitle_menuLoad, jkGui_stdBitmaps[JKGUI_BM_BK_LOADING]);
+#ifdef QOL_IMPROVEMENTS
+	jkGuiTitle_elementsLoad[4].bIsVisible = 0;
+#endif
 #endif
 }
 
@@ -232,7 +238,9 @@ void jkGuiTitle_LoadBarDraw(jkGuiElement *element, jkGuiMenu *menu, stdVBuffer *
 void jkGuiTitle_WorldLoadCallback(float percentage)
 {
     double v1; // st7
-
+#ifdef MENU_16BIT
+	jkGuiMenu* menu = jkGuiTitle_whichLoading == 1 ? &jkGuiTitle_menuLoadStatic : &jkGuiTitle_menuLoad;
+#endif
     if ( jkGuiTitle_loadPercent != (__int64)percentage )
     {
         jkGuiTitle_loadPercent = (__int64)percentage;
@@ -250,19 +258,30 @@ void jkGuiTitle_WorldLoadCallback(float percentage)
             jkGuiRend_UpdateAndDrawClickable(&jkGuiTitle_elementsLoad[1], &jkGuiTitle_menuLoad, 1);
         }
 #if defined(SDL2_RENDER) || defined(TARGET_TWL)
-#if defined(PLATFORM_POSIX) && !defined(TARGET_TWL)
-    static uint64_t lastRefresh = 0;
-    // Only update loading bar at 30fps, so that we don't waste time
-    // during vsync.
-    if (Linux_TimeUs() - lastRefresh < 32*1000) {
-        return;
+#ifdef MENU_16BIT
+		if (!menu->bkBm16)
+#endif
+		{
+		#if defined(PLATFORM_POSIX) && !defined(TARGET_TWL)
+			static uint64_t lastRefresh = 0;
+			// Only update loading bar at 30fps, so that we don't waste time
+			// during vsync.
+			if (Linux_TimeUs() - lastRefresh < 32*1000) {
+				return;
+			}
+
+			lastRefresh = Linux_TimeUs();
+		#endif
+			stdDisplay_DDrawGdiSurfaceFlip();
+		#endif
+		}
     }
 
-    lastRefresh = Linux_TimeUs();
+#ifdef MENU_16BIT
+	// need to paint every frame for 16bit bm
+	if (menu->bkBm16)
+		jkGuiRend_Paint(jkGuiTitle_whichLoading == 1 ? &jkGuiTitle_menuLoadStatic : &jkGuiTitle_menuLoad);
 #endif
-    stdDisplay_DDrawGdiSurfaceFlip();
-#endif
-    }
 }
 
 // MOTS altered: Added some string to the printf

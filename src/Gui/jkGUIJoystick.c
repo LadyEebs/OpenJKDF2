@@ -1129,7 +1129,11 @@ int jkGuiJoystick_DisableJoystickClick(jkGuiElement *pElement, jkGuiMenu *pMenu,
 
 void jkGuiJoystick_Startup()
 {
+#ifdef MENU_16BIT
+	jkGui_InitMenu(&jkGuiJoystick_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP], jkGui_stdBitmaps16[JKGUI_BM_BK_SETUP]);
+#else
     jkGui_InitMenu(&jkGuiJoystick_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
+#endif
 }
 
 void jkGuiJoystick_Shutdown()
