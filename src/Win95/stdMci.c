@@ -394,6 +394,32 @@ int stdMci_Play(uint8_t trackFrom, uint8_t trackTo)
     return 1;
 }
 
+void stdMci_PlayFromPath(const char* path)
+{
+	if (stdMci_music)
+	{
+		Mix_HaltMusic();
+		Mix_FreeMusic(stdMci_music);
+	}
+
+	char tmp[256];
+	snprintf(tmp, 255, "MUSIC/%s", path);
+	stdMci_TryPlay(tmp);
+	if (!stdMci_music)
+	{
+		stdPlatform_Printf("stdMci: Failed to play music file %s.\n", tmp);
+		return;
+	}
+
+	Mix_HaltMusic();
+	if (Mix_PlayMusic(stdMci_music, -1) < 0)
+		stdPlatform_Printf("stdMci: Error in Mix_PlayMusic, %s\n", Mix_GetError());
+
+	Mix_HookMusicFinished(stdMci_trackFinished);
+	stdPlatform_Printf("stdMci: Playing music `%s'\n", tmp);
+}
+
+
 void stdMci_SetVolume(float vol)
 {
     stdPlatform_Printf("stdMci: Set vol %f\n", vol);

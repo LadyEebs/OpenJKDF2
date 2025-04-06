@@ -18,6 +18,7 @@
 
 int stdMci_Startup();
 void stdMci_Shutdown();
+void stdMci_PlayFromPath(const char* path);
 int stdMci_Play(uint8_t trackFrom, uint8_t trackTo);
 void stdMci_SetVolume(float vol);
 void stdMci_Stop();
