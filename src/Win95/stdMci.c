@@ -364,7 +364,7 @@ done:
 
     stdMci_trackCurrent = track;
     Mix_HaltMusic();
-    if (Mix_PlayMusic(stdMci_music, 0) < 0) {
+    if (Mix_PlayMusic(stdMci_music, -1) < 0) {
         stdPlatform_Printf("stdMci: Error in Mix_PlayMusic, %s\n", Mix_GetError());
     }
     Mix_HookMusicFinished(stdMci_trackFinished);
