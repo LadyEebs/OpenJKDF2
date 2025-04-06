@@ -166,6 +166,9 @@ typedef struct std3DFramebuffer
 	bool    downscale;
 	int     msaaMode;
 
+	int32_t internalWidth;
+	int32_t internalHeight;
+
 	//GLuint rbo;
 	GLuint zfbo;
     GLuint fbo;
@@ -809,22 +812,22 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 	pFb->samples = abs(pFb->msaaMode) << 1;
 	pFb->downscale = pFb->msaaMode < SAMPLE_NONE;
 
-	int msaa_width = width;
-	int msaa_height = height;
+	pFb->internalWidth = width;
+	pFb->internalHeight = height;
 	if (pFb->downscale)
 	{
 		if (pFb->msaaMode == SAMPLE_2x1)
 		{
 			// 2:1 horizontal
 			// 1:1 vertical
-			msaa_width /= 2;
+			pFb->internalWidth /= 2;
 		}
 		else if (pFb->msaaMode == SAMPLE_2x2)
 		{
 			// 2:1 horizontal
 			// 2:1 vertical
-			msaa_width /= 2;
-			msaa_height /= 2;
+			pFb->internalWidth /= 2;
+			pFb->internalHeight /= 2;
 		}
 	}
 
@@ -843,7 +846,7 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 	{
 		glGenTextures(1, &pFb->tex0);
 		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pFb->tex0);
-		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, fboFormat, msaa_width, msaa_height, GL_TRUE);
+		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, fboFormat, pFb->internalWidth, pFb->internalHeight, GL_TRUE);
 
 		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -876,7 +879,7 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 		{
 			glGenTextures(1, &pFb->tex1);
 			glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pFb->tex1);
-			glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, emissiveFormat, msaa_width, msaa_height, GL_TRUE);
+			glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, emissiveFormat, pFb->internalWidth, pFb->internalHeight, GL_TRUE);
 			
 			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -907,7 +910,7 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 		{
 			glGenTextures(1, &pFb->tex2);
 			glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pFb->tex2);
-			glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, GL_RGBA16F, msaa_width, msaa_height, GL_TRUE);
+			glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, GL_RGBA16F, pFb->internalWidth, pFb->internalHeight, GL_TRUE);
 			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -935,7 +938,7 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 	{
 		glGenTextures(1, &pFb->ztex);
 		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pFb->ztex);
-		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, GL_DEPTH24_STENCIL8, msaa_width, msaa_height, GL_TRUE);
+		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, GL_DEPTH24_STENCIL8, pFb->internalWidth, pFb->internalHeight, GL_TRUE);
 		
 		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -1072,13 +1075,13 @@ void std3D_generateExtraFramebuffers(int32_t width, int32_t height)
 #ifdef CHROMA_SUBSAMPLING
 	GLuint refrFormat = GL_RG8_SNORM;
 #else
-	GLuint refrFormat = GL_RGBA8;// GL_RGB565;
-	//GLuint refrFormat = jkPlayer_enable32Bit ? GL_RGB10_A2 : GL_RGB5_A1;
+	//GLuint refrFormat = GL_RGBA8;// GL_RGB565;
+	GLuint refrFormat = GL_RGB5_A1;//jkPlayer_enable32Bit ? GL_RGB10_A2 : GL_RGB5_A1;
 #endif
 
-	std3D_generateIntermediateFbo(width, height, &refr, refrFormat, 0, 0, 0, 0);// 1, 0, 1, std3D_framebuffer.ztex);
+	std3D_generateIntermediateFbo(width >> 1, height >> 1, &refr, refrFormat, 0, 0, 0, 0);// 1, 0, 1, std3D_framebuffer.ztex);
 	//std3D_generateIntermediateFbo(width, height, &refrZ, GL_R32F, 0, 0, 1, std3D_framebuffer.ztex);
-	std3D_generateIntermediateFbo(width, height, &refrZ, refrFormat, 0, 0, 0, 0);// 1, 0, 1, std3D_framebuffer.ztex);
+	std3D_generateIntermediateFbo(width >> 1, height >> 1, &refrZ, refrFormat, 0, 0, 0, 0);// 1, 0, 1, std3D_framebuffer.ztex);
 
 	std3D_mainFbo.fbo = std3D_framebuffer.resolveFbo;
 	std3D_mainFbo.tex = std3D_framebuffer.resolve0;
@@ -2723,6 +2726,9 @@ void std3D_ResolveMSAA()
 		{
 			//std3D_DrawSimpleTex(&std3D_resolveStage, &std3D_mainFbo, std3D_framebuffer.tex0, std3D_framebuffer.tex1, 0, 0.0, 0.0, 0.0, 0, "MSAA Resolve");
 		
+			glViewport(0, 0, std3D_framebuffer.w, std3D_framebuffer.h);
+			glDisable(GL_SCISSOR_TEST);
+			
 			glBindFramebuffer(GL_FRAMEBUFFER, std3D_framebuffer.resolveFbo);
 			glDepthFunc(GL_ALWAYS);
 			glDisable(GL_CULL_FACE);
@@ -5318,7 +5324,7 @@ void std3D_UpdateSharedUniforms()
 	else
 		sharedUniforms.ditherScale = 0.0f;
 
-	rdVector_Set2(&sharedUniforms.resolution, std3D_framebuffer.w, std3D_framebuffer.h);
+	rdVector_Set2(&sharedUniforms.resolution, std3D_framebuffer.internalWidth, std3D_framebuffer.internalHeight);
 
 	extern rdVector4 rdroid_sgBasis[RD_AMBIENT_LOBES]; //eww
 	memcpy(sharedUniforms.sgBasis, rdroid_sgBasis, sizeof(rdVector4) * RD_AMBIENT_LOBES);
