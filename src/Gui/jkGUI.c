@@ -204,6 +204,14 @@ void jkGui_Shutdown()
         jkGui_stdBitmaps[i] = NULL;
     }
 
+#ifdef MENU_16BIT
+	for (int i = 0; i < 35; i++)
+	{
+		stdBitmap_Free(jkGui_stdBitmaps16[i]);
+		jkGui_stdBitmaps16[i] = NULL;
+	}
+#endif
+
     stdString_WcharToChar(playerShortName, jkPlayer_playerShortName, 31);
     playerShortName[31] = 0;
     wuRegistry_SetString("playerShortName", playerShortName);
