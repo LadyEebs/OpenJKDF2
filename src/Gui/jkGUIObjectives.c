@@ -137,5 +137,9 @@ void jkGuiObjectives_Startup()
 
 void jkGuiObjectives_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiObjectives_menu.bkBm16 = NULL;
+#endif
+
     ;
 }

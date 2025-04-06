@@ -15,6 +15,7 @@
 #include "stdPlatform.h"
 #include "jk.h"
 #include "types.h"
+#include "Modules/std/std3D.h"
 
 #include <math.h>
 
@@ -233,8 +234,6 @@ void jkGuiRend_UpdateDrawMenu(jkGuiMenu *menu)
         jkGuiRend_UpdateAndDrawClickable(&menu->paElements[menu->clickableIdxIdk], menu, 1);
     }
 }
-
-#include "Modules/std/std3D.h"
 
 void jkGuiRend_Paint(jkGuiMenu *menu)
 {

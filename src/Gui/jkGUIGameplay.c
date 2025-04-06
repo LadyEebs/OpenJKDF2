@@ -91,6 +91,9 @@ void jkGuiGameplay_Startup()
 
 void jkGuiGameplay_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiGameplay_menu.bkBm16 = NULL;
+#endif
     ;
 }
 

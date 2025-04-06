@@ -553,5 +553,8 @@ void jkGuiKeyboard_Startup()
 
 void jkGuiKeyboard_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiKeyboard_menu.bkBm16 = NULL;
+#endif
     ;
 }

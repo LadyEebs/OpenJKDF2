@@ -481,6 +481,11 @@ void jkGuiMultiTally_Startup()
 
 void jkGuiMultiTally_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiMultiTally_menu.bkBm16 = NULL;
+	jkGuiMultiTally_menu2.bkBm16 = NULL;
+	jkGuiMultiTally_menu3.bkBm16 = NULL;
+#endif
     // Added: clean reset
     memset(jkGuiMultiTally_waTmp, 0, sizeof(jkGuiMultiTally_waTmp));
 

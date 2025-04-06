@@ -461,5 +461,8 @@ void jkGuiSaveLoad_Startup()
 
 void jkGuiSaveLoad_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiSaveLoad_menu.bkBm16 = NULL;
+#endif
     ;
 }

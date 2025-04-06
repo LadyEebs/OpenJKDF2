@@ -51,6 +51,9 @@ void jkGuiControlOptions_Startup()
 
 void jkGuiControlOptions_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiControlOptions_menu.bkBm16 = NULL;
+#endif
     ;
 }
 

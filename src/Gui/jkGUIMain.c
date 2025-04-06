@@ -270,6 +270,9 @@ void jkGuiMain_Startup()
 
 void jkGuiMain_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiMain_menu.bkBm16 = NULL;
+#endif
     // Added: clean reset
     jkGuiCutscenes_initted = 0;
 }

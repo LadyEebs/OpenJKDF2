@@ -928,6 +928,12 @@ int jkGuiBuildMulti_Startup()
 
 void jkGuiBuildMulti_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiBuildMulti_pNewCharacterMenu->bkBm16 = NULL;
+	jkGuiBuildMulti_menuEditCharacter.bkBm16 = NULL;
+	jkGuiBuildMulti_menuLoadCharacter.bkBm16 = NULL;
+#endif
+
     jkGuiBuildMulti_bInitted = 0;
 
     // Added: clean reset

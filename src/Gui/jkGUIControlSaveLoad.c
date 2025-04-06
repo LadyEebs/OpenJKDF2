@@ -301,6 +301,10 @@ void jkGuiControlSaveLoad_Startup()
 
 void jkGuiControlSaveLoad_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiControlSaveLoad_menu.bkBm16 = NULL;
+#endif
+
     // Added: clean reset
     memset(jkGuiControlSaveLoad_awTmp, 0, sizeof(jkGuiControlSaveLoad_awTmp));
     memset(&jkGuiControlSaveLoad_darray, 0, sizeof(jkGuiControlSaveLoad_darray)); // TODO free?

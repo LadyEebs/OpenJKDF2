@@ -44,6 +44,10 @@ void jkGuiDialog_Startup()
 
 void jkGuiDialog_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiDialog_OkCancel_menu.bkBm16 = NULL;
+	jkGuiDialog_Ok_menu.bkBm16 = NULL;
+#endif
     ;
 }
 

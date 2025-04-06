@@ -107,6 +107,10 @@ void jkGuiGeneral_Startup()
 
 void jkGuiGeneral_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiGeneral_menu.bkBm16 = NULL;
+	jkGuiGeneral_menuAdvanced.bkBm16 = NULL;
+#endif
     // Added: clean restart
     memset(slider_val_text, 0, sizeof(slider_val_text));
 }

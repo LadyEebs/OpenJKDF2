@@ -74,6 +74,9 @@ void jkGuiEsc_Startup()
 
 void jkGuiEsc_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiEsc_menu.bkBm16 = NULL;
+#endif
     jkGuiEsc_bInitialized = 0;
 }
 

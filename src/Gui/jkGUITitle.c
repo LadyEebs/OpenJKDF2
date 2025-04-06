@@ -70,6 +70,11 @@ void jkGuiTitle_Shutdown()
     // Added: clean reset
     memset(jkGuiTitle_versionBuffer, 0, sizeof(jkGuiTitle_versionBuffer));
     jkGuiTitle_loadPercent = 0;
+
+#ifdef MENU_16BIT
+	jkGuiTitle_menuLoad.bkBm16 = NULL;
+	jkGuiTitle_menuLoadStatic.bkBm16 = NULL;
+#endif
 }
 
 char jkGuiTitle_sub_4189A0(char *a1)

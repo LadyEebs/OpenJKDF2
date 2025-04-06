@@ -711,6 +711,9 @@ void jkGuiMouse_Startup()
 
 void jkGuiMouse_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiMouse_menu.bkBm16 = NULL;
+#endif
     // Added: clean reset
     jkGuiMouse_dword_530328 = -1;
     jkGuiMouse_dword_53032C = -1;

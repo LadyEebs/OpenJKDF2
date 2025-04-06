@@ -102,6 +102,13 @@ void jkGuiMultiplayer_Startup()
 
 void jkGuiMultiplayer_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiMultiplayer_menu.bkBm16 = NULL;
+	jkGuiMultiplayer_menu2.bkBm16 = NULL;
+	jkGuiMultiplayer_menu3.bkBm16 = NULL;
+	jkGuiMultiplayer_menu4.bkBm16 = NULL;
+#endif
+
     jkGuiMultiplayer_bInitted = 0;
 }
 

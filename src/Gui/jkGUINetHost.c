@@ -280,6 +280,11 @@ void jkGuiNetHost_Startup()
 
 void jkGuiNetHost_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiNetHost_menu.bkBm16 = NULL;
+	jkGuiNetHost_menuSettings.bkBm16 = NULL;
+#endif
+
     jkGuiNetHost_SaveSettings();
     jkGuiNetHost_bInitted = 0;
 

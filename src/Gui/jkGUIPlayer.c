@@ -90,6 +90,10 @@ int jkGuiPlayer_Startup()
 
 void jkGuiPlayer_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiPlayer_menuNew.bkBm16 = NULL;
+	jkGuiPlayer_menuSelect.bkBm16 = NULL;
+#endif
     jkGuiPlayer_bInitted = 0;
 
     // Added: clean reset

@@ -88,6 +88,12 @@ void jkGuiSingleplayer_Startup()
 
 void jkGuiSingleplayer_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiSingleplayer_menu1.bkBm16 = NULL;
+	jkGuiSingleplayer_menu2.bkBm16 = NULL;
+	jkGuiSingleplayer_menu3.bkBm16 = NULL;
+#endif
+
     // Added: memleak
     if ( jkGui_episodeLoad.paEntries )
     {

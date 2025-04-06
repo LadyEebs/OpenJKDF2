@@ -51,6 +51,9 @@ void jkGuiMap_Startup()
 
 void jkGuiMap_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiMap_menu.bkBm16 = NULL;
+#endif
     ;
 }
 

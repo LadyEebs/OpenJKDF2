@@ -91,6 +91,10 @@ void jkGuiSingleTally_Startup()
 
 void jkGuiSingleTally_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiSingleTally_menu.bkBm16 = NULL;
+#endif
+
     // Added: clean reset
     if (jkGuiSingleTally_foStars) {
         stdBitmap_Free(jkGuiSingleTally_foStars);

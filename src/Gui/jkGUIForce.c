@@ -678,6 +678,9 @@ void jkGuiForce_Startup()
 
 void jkGuiForce_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiForce_pMenu->bkBm16 = NULL;
+#endif
     for (int i = 0; i < (Main_bMotsCompat ? 19 : 17); i++)
     {
         if ( jkGuiForce_aBitmaps[i] )

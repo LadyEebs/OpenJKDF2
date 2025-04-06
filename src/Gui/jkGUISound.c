@@ -85,6 +85,10 @@ void jkGuiSound_Startup()
 
 void jkGuiSound_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiSound_menu.bkBm16 = NULL;
+#endif
+
     wuRegistry_SaveFloat("musicVolume", jkGuiSound_musicVolume);
     wuRegistry_SaveFloat("sfxVolume", jkGuiSound_sfxVolume);
     wuRegistry_SaveInt("numChannels", jkGuiSound_numChannels);

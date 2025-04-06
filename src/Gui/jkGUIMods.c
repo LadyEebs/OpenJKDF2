@@ -162,6 +162,9 @@ void jkGuiMods_Startup()
 
 void jkGuiMods_Shutdown()
 {
+#ifdef MENU_16BIT
+	jkGuiMods_menu.bkBm16 = NULL;
+#endif
     jkGuiMods_bInitted = 0;
 }
 

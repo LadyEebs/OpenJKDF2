@@ -178,5 +178,9 @@ void jkGuiSetup_Startup()
 
 void jkGuiSetup_Shutdown()
 {
-    ;
+#ifdef MENU_16BIT
+	jkGuiSetup_menu.bkBm16 = NULL;
+	jkGuiSetupControls_menu.bkBm16 = NULL;
+#endif
+	;
 }
