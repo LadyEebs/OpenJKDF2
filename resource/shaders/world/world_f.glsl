@@ -171,7 +171,7 @@ void main(void)
 	fragGlow.rgb *= emissiveFactor.w;
 
 	// note we subtract instead of add to avoid boosting blacks
-	fragGlow.rgb = saturate(-dither * ditherScale + fragGlow.rgb);
+	fragGlow.rgb = saturate(-dither * ditherScaleAlways + fragGlow.rgb);
 
 #ifdef MOTION_BLUR
 	vec2 curTC  = f_curTC.xy / f_curTC.w;
