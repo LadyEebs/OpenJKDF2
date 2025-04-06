@@ -1162,7 +1162,7 @@ void Window_RecreateSDL2Window()
         //SDL_GL_DeleteContext(glWindowContext);
         //SDL_DestroyWindow(displayWindow);
 
-        flags |= SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
+        flags |= SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
     }
 
 #ifdef WIN64_STANDALONE
