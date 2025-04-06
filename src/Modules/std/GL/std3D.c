@@ -400,6 +400,7 @@ typedef struct std3D_worldStage
 std3D_worldStage worldStages[WORLD_STAGE_COUNT][WORLD_REG_COUNT][RD_NUM_TEXCOORDS];
 
 GLint programMenu_attribute_coord3d, programMenu_attribute_v_color, programMenu_attribute_v_uv;
+GLint programMenu_uniform_mvp, programMenu_uniform_tex, programMenu_uniform_displayPalette;
 
 std3DSimpleTexStage std3D_uiProgram;
 std3DSimpleTexStage std3D_texFboStage;
