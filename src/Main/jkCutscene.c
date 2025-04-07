@@ -416,7 +416,8 @@ int jkCutscene_sub_421310(char* fpath)
         stdSound_BufferUnlock(jkCutscene_audio3, stream, len);
         //stdSound_BufferPlay(jkCutscene_audio3, 0);
 
-        jkGui_SetModeMenu(smush_get_palette(jkCutscene_pSmush));
+		stdMci_Stop();
+		jkGui_SetModeMenu(smush_get_palette(jkCutscene_pSmush));
     }
 
     jkCutscene_55AA54 = 0;

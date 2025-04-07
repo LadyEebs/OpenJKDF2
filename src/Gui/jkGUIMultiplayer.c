@@ -408,7 +408,8 @@ int jkGuiMultiplayer_ShowSynchronizing()
 
     v2 = jkGui_stdBitmaps[JKGUI_BM_BK_MULTI]->palette;
     g_submodeFlags |= 8u;
-    jkGui_SetModeMenu(v2);
+	jkGui_PlayMusic();
+	jkGui_SetModeMenu(v2);
     jkGuiMultiplayer_aElements4[1].wstr = jkStrings_GetUniStringWithFallback("GUI_SYNCHRONIZING");
     jkGuiMultiplayer_menu4.idkFunc = jkGuiMultiplayer_idk;
     jkGuiRend_MenuSetEscapeKeyShortcutElement(&jkGuiMultiplayer_menu4, &jkGuiMultiplayer_aElements4[2]);
@@ -674,7 +675,8 @@ int jkGuiMultiplayer_Show2()
             if ( stdComm_dword_8321F8 != 2 )
                 return result;
             g_submodeFlags |= 8;
-            jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_MULTI]->palette);
+			jkGui_PlayMusic();
+			jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_MULTI]->palette);
             jkGuiMultiplayer_aElements4[1].wstr = jkStrings_GetUniStringWithFallback("GUINET_WAITHOSTSETTINGS");
             jkGuiMultiplayer_menu4.idkFunc = jkGuiMultiplayer_sub_4142C0;
             jkGuiRend_MenuSetEscapeKeyShortcutElement(&jkGuiMultiplayer_menu4, &jkGuiMultiplayer_aElements4[2]);
@@ -782,7 +784,8 @@ int jkGuiMultiplayer_ShowWaitHostSettings()
 
     v2 = jkGui_stdBitmaps[JKGUI_BM_BK_MULTI]->palette;
     g_submodeFlags |= 8u;
-    jkGui_SetModeMenu(v2);
+	jkGui_PlayMusic();
+	jkGui_SetModeMenu(v2);
     jkGuiMultiplayer_aElements4[1].wstr = jkStrings_GetUniStringWithFallback("GUINET_WAITHOSTSETTINGS");
     jkGuiMultiplayer_menu4.idkFunc = jkGuiMultiplayer_sub_4142C0;
     jkGuiRend_MenuSetEscapeKeyShortcutElement(&jkGuiMultiplayer_menu4, &jkGuiMultiplayer_aElements4[2]);

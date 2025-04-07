@@ -222,6 +222,23 @@ void jkGui_Shutdown()
     jkGui_bInitialized = 0;
 }
 
+#include "Devices/sithSoundMixer.h"
+#include "Win95/stdMci.h"
+
+void jkGui_PlayMusic()
+{
+#ifdef MENU_16BIT
+	if (!stdMci_CheckStatus())
+	{
+		stdMci_PlayFromPath("Menu.ogg");
+		sithSoundMixer_musicVolume = 1.0;
+		sithSoundMixer_UpdateMusicVolume(jkGuiSound_musicVolume);
+		//stdSound_SetMenuVolume(jkGuiSound_sfxVolume);
+		//sithSoundMixer_UpdateMusicVolume(jkGuiSound_musicVolume);
+	}
+#endif
+}
+
 int jkGui_SetModeMenu(const void *palette)
 {
     signed int result; // eax

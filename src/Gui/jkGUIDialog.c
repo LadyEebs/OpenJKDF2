@@ -78,7 +78,8 @@ int jkGuiDialog_OkCancelDialog(wchar_t *stringA, wchar_t *stringB)
     v2 = 0;
     if ( !jkGui_GdiMode )
     {
-        jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->palette);
+		jkGui_PlayMusic();
+		jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->palette);
         v2 = 1;
     }
     jkGuiDialog_OkCancel_buttons[0].wstr = stringA;
@@ -108,7 +109,8 @@ void jkGuiDialog_ErrorDialog(wchar_t *stringA, wchar_t *stringB)
     v2 = 0;
     if ( !jkGui_GdiMode )
     {
-        jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->palette);
+		jkGui_PlayMusic();
+		jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->palette);
         v2 = 1;
     }
     jkGuiDialog_Ok_buttons[0].wstr = stringA;
@@ -137,7 +139,8 @@ int jkGuiDialog_YesNoDialog(wchar_t *stringA, wchar_t *stringB)
     v2 = 0;
     if ( !jkGui_GdiMode )
     {
-        jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->palette);
+		jkGui_PlayMusic();
+		jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->palette);
         v2 = 1;
     }
     jkGuiDialog_OkCancel_buttons[0].wstr = stringA;

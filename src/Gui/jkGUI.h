@@ -33,6 +33,7 @@ void jkGui_InitMenu(jkGuiMenu *menu, stdBitmap *bgBitmap
 int jkGui_MessageBeep();
 int jkGui_Startup();
 void jkGui_Shutdown();
+void jkGui_PlayMusic(); // added
 int jkGui_SetModeMenu(const void *palette);
 void jkGui_SetModeGame();
 void jkGui_sub_412E20(jkGuiMenu* menu, int a2, int a3, int a4);
