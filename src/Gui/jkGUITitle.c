@@ -326,9 +326,9 @@ void jkGuiTitle_ShowLoading(char *a1, wchar_t *a2)
     jkGuiTitle_elementsLoad[4].bIsVisible = 0;
 #endif
 
-	stdMci_Stop();
+	jkGuiRend_StopAudio();
 
-	//jkGui_PlayMusic();
+	//jkGuiRend_UpdateAudio();
 	jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->palette);
     jkGuiTitle_whichLoading = 2;
     jkGuiRend_SetCursorVisible(0);

@@ -508,7 +508,7 @@ int jkGuiForce_Show(int bCanSpendStars, int isMulti, int a4, wchar_t* a5, int *p
     jkGuiForce_bCanSpendStars = bCanSpendStars;
     jkGuiForce_isMulti = isMulti;
 
-	jkGui_PlayMusic();
+	jkGuiRend_UpdateAudio();
 	jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_FORCE]->palette);
     
     jkGuiForce_pElements[EIDX_NAMETEXT].wstr = jkPlayer_playerShortName;

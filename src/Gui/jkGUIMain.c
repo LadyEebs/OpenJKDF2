@@ -114,7 +114,7 @@ void jkGuiMain_Show()
     jkGuiMain_elements[8].wstr = openjkdf2_waReleaseVersion;
     jkGuiMain_elements[9].wstr = openjkdf2_waReleaseCommitShort;
 
-	jkGui_PlayMusic();
+	jkGuiRend_UpdateAudio();
 	jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->palette);
     if ( !jkGuiMain_bIdk || (jkGuiMain_bIdk = 0, jkGuiPlayer_ShowNewPlayer(1), !stdComm_dword_8321F8) || jkGuiMultiplayer_Show2() != 1 )
     {
@@ -217,7 +217,7 @@ void jkGuiMain_ShowCutscenes()
 #endif
 	}
     jkGuiCutscenes_initted = 1;
-	jkGui_PlayMusic();
+	jkGuiRend_UpdateAudio();
 	jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->palette);
     jkGuiRend_DarrayNewStr(&darray, 32, 1);
     if ( !jkPlayer_ReadConf(jkPlayer_playerShortName) )

@@ -158,4 +158,8 @@ void jkGuiRend_TextButtonDraw(jkGuiElement *element, jkGuiMenu *menu, stdVBuffer
 void jkGuiRend_FocusElementDir(jkGuiMenu *pMenu, int dir);
 void jkGuiRend_UpdateController();
 
+// added 
+void jkGuiRend_UpdateAudio();
+void jkGuiRend_StopAudio();
+
 #endif // _JKGUIREND_H

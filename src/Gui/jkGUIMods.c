@@ -186,7 +186,7 @@ void jkGuiMods_Show()
     jkGuiMods_aElements[4].wstr = openjkdf2_waReleaseVersion;
     jkGuiMods_aElements[5].wstr = openjkdf2_waReleaseCommitShort;
 
-	jkGui_PlayMusic();
+	jkGuiRend_UpdateAudio();
 	jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->palette);
     jkGuiRend_DarrayNewStr(&darray, 32, 1);
     

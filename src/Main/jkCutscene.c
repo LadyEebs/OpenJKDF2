@@ -18,6 +18,7 @@
 #include "General/stdString.h"
 #include "stdPlatform.h"
 #include "Platform/std3D.h"
+#include "Gui/jkGUIRend.h"
 
 #include "smacker.h"
 #include "smush.h"
@@ -251,7 +252,7 @@ int jkCutscene_sub_421310(char* fpath)
 
 #if defined(SDL2_RENDER) || defined(TARGET_TWL)
     sithSoundMixer_StopSong();
-    stdMci_Stop();
+	jkGuiRend_StopAudio();
     if (jkCutscene_palette) {
         free(jkCutscene_palette);
     }
@@ -416,7 +417,7 @@ int jkCutscene_sub_421310(char* fpath)
         stdSound_BufferUnlock(jkCutscene_audio3, stream, len);
         //stdSound_BufferPlay(jkCutscene_audio3, 0);
 
-		stdMci_Stop();
+		jkGuiRend_StopAudio();
 		jkGui_SetModeMenu(smush_get_palette(jkCutscene_pSmush));
     }
 

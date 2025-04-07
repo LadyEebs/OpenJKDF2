@@ -208,7 +208,7 @@ int jkGuiMultiTally_Show(int a1)
         if ( result == -1 )
             return result;
     }
-	jkGui_PlayMusic();
+	jkGuiRend_UpdateAudio();
 	jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_TALLY]->palette);
     jkGuiMultiTally_buttons[1].wstr = jkGui_sub_412ED0();
     jkGuiRend_MenuSetReturnKeyShortcutElement(&jkGuiMultiTally_menu, &jkGuiMultiTally_buttons[90]);
@@ -550,7 +550,7 @@ int jkGuiMultiTally_ShowTeamScores(int a1)
     jkGuiMultiTally_msStart = stdPlatform_GetTimeMsec();
     jkGuiMultiTally_idkType = a1;
     jkGuiMultiTally_dword_5568D0 = 0;
-	jkGui_PlayMusic();
+	jkGuiRend_UpdateAudio();
 	jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_TALLY]->palette);
     jkGuiRend_SetVisibleAndDraw(&jkGuiMultiTally_buttons3[15], &jkGuiMultiTally_menu3, a1); // MOTS removed?
     jkGuiMultiTally_buttons3[1].wstr = jkGui_sub_412ED0();

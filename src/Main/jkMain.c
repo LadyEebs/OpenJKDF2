@@ -322,7 +322,7 @@ void jkMain_EscapeMenuShow(int a1, int a2)
 {
     if ( !sithNet_isMulti )
         sithTime_Pause();
-	jkGui_PlayMusic();
+	jkGuiRend_UpdateAudio();
     jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_ESC]->palette);
     jkGuiEsc_Show();
 }

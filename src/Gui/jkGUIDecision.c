@@ -40,7 +40,7 @@ void jkGuiDecision_Shutdown()
 
 int jkGuiDecision_Show()
 {
-	jkGui_PlayMusic();
+	jkGuiRend_UpdateAudio();
 	jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_DECISION]->palette);
 
     int clicked = jkGuiRend_DisplayAndReturnClicked(&jkGuiDecision_menu);

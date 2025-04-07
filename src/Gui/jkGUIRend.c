@@ -16,6 +16,8 @@
 #include "jk.h"
 #include "types.h"
 #include "Modules/std/std3D.h"
+#include "Devices/sithSoundMixer.h"
+#include "Win95/stdMci.h"
 
 #include <math.h>
 
@@ -27,6 +29,9 @@ static stdSound_buffer_t* jkGuiRend_DsoundHandles[4] = {0};
 jkGuiMenu *jkGuiRend_activeMenu = NULL;
 static stdVBuffer* jkGuiRend_menuBuffer = NULL;
 static stdVBuffer *jkGuiRend_texture_dword_8561E8 = NULL;
+
+// added
+static stdSound_buffer_t* jkGuiRend_DsoundAmbienceHandle = 0;
 
 int jkGuiRend_thing_five = 0;
 int jkGuiRend_thing_four = 0;
@@ -2659,4 +2664,56 @@ void jkGuiRend_UpdateController()
         jkGuiRend_WindowHandler(0, WM_KEYFIRST, VK_ESCAPE, 0, 0);
         printf("b\n");
     }
+}
+
+void jkGuiRend_UpdateAudio()
+{
+#ifdef MENU_16BIT
+	// check music status
+	if (!sithSoundMixer_bPlayingMci)
+	{
+		// play if it's not playing
+		sithSoundMixer_PlaySongFromPath("Menu.ogg");
+		sithSoundMixer_musicVolume = 1.0; // make sure volume is up
+		sithSoundMixer_UpdateMusicVolume(jkGuiSound_musicVolume);
+	}
+
+	// check ambient loop
+	if (!jkGuiRend_DsoundAmbienceHandle)
+	{
+		stdSound_buffer_t* newHandle = sithSound_InitFromPath("torchlight.wav");
+		if (newHandle)
+		{
+			if (jkGuiRend_DsoundAmbienceHandle)
+			{
+				stdSound_BufferRelease(jkGuiRend_DsoundAmbienceHandle);
+				jkGuiRend_DsoundAmbienceHandle = NULL;
+			}
+			jkGuiRend_DsoundAmbienceHandle = newHandle;
+			stdSound_BufferSetVolume(newHandle, 0.5f);
+			stdSound_BufferPlay(newHandle, 1);
+		}
+	}
+	else
+	{
+		stdSound_BufferSetVolume(jkGuiRend_DsoundAmbienceHandle, 0.5f);
+		stdSound_BufferPlay(jkGuiRend_DsoundAmbienceHandle, 1);
+	}
+#endif
+}
+
+void jkGuiRend_StopAudio()
+{
+	// stop the music track
+	extern int sithSoundMixer_playingTrack;
+	if (!sithSoundMixer_playingTrack)
+	{
+		sithSoundMixer_StopSong();
+		stdMci_Stop(); // call just in case it didn't in sithSoundMixer_StopSong
+	}
+
+	// stop the audio track
+	if(jkGuiRend_DsoundAmbienceHandle)
+		stdSound_BufferStop(jkGuiRend_DsoundAmbienceHandle);
+
 }

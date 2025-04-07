@@ -16,6 +16,8 @@
 #include "Modules/std/stdProfiler.h"
 #include "jk.h"
 
+int sithSoundMixer_playingTrack = 0;
+
 int sithSoundMixer_Startup()
 {
     if ( !stdMci_Startup() )
@@ -26,7 +28,7 @@ int sithSoundMixer_Startup()
         sithSoundMixer_musicVolume = 1.0;
         stdMci_SetVolume(sithSoundMixer_globalVolume);
     }
-
+	sithSoundMixer_playingTrack = 0;
     sithSoundMixer_bInitted = 1;
     return 1;
 }
@@ -38,6 +40,33 @@ void sithSoundMixer_Shutdown()
         stdMci_Shutdown();
         sithSoundMixer_bInitted = 0;
     }
+	sithSoundMixer_playingTrack = 0;
+}
+
+int sithSoundMixer_PlaySongFromPath(const char* path)
+{
+	if (sithSoundMixer_playingTrack)
+		return 0;
+
+	if (sithSoundMixer_bPlayingMci)
+		stdMci_Stop();
+	sithSoundMixer_playingTrack = 0;
+	sithSoundMixer_bPlayingMci = 1;
+	if (!sithSoundMixer_bIsMuted)
+	{
+		if (sithSoundMixer_bInitted)
+		{
+			sithSoundMixer_musicVolume = 1.0;
+			stdMci_SetVolume(sithSoundMixer_globalVolume);
+		}
+
+		if (!stdMci_PlayFromPath(path))
+		{
+			sithSoundMixer_bPlayingMci = 0;
+			return 0;
+		}
+	}
+	return 1;
 }
 
 int sithSoundMixer_PlaySong(unsigned int trackFrom, unsigned int trackTo, unsigned int trackNum, int a4)
@@ -60,6 +89,7 @@ int sithSoundMixer_PlaySong(unsigned int trackFrom, unsigned int trackTo, unsign
     {
         trackFrom_ = trackTo_;
     }
+	sithSoundMixer_playingTrack = 1;
     sithSoundMixer_trackFrom = trackFrom;
     sithSoundMixer_bPlayingMci = 1;
     sithSoundMixer_trackTo = trackTo_;
@@ -202,6 +232,7 @@ void sithSoundMixer_Close()
     sithSoundMixer_pPlayingSoundIdk = 0;
     sithSoundMixer_dword_836BFC = 0;
     sithSoundMixer_bOpened = 0;
+	sithSoundMixer_playingTrack = 0;
 }
 
 void sithSoundMixer_ClearAll()

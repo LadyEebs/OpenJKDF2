@@ -471,7 +471,7 @@ int jkCredits_Skip()
     if (jkCredits_pVbufferTmp)
         stdDisplay_VBufferFree(jkCredits_pVbufferTmp);
 
-    stdMci_Stop();
+	jkGuiRend_StopAudio();
     return 1;
 }
 

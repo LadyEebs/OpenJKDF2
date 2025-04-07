@@ -394,7 +394,7 @@ int stdMci_Play(uint8_t trackFrom, uint8_t trackTo)
     return 1;
 }
 
-void stdMci_PlayFromPath(const char* path)
+int stdMci_PlayFromPath(const char* path)
 {
 	if (stdMci_music)
 	{
@@ -408,7 +408,7 @@ void stdMci_PlayFromPath(const char* path)
 	if (!stdMci_music)
 	{
 		stdPlatform_Printf("stdMci: Failed to play music file %s.\n", tmp);
-		return;
+		return 0;
 	}
 
 	Mix_HaltMusic();
@@ -417,6 +417,8 @@ void stdMci_PlayFromPath(const char* path)
 
 	Mix_HookMusicFinished(stdMci_trackFinished);
 	stdPlatform_Printf("stdMci: Playing music `%s'\n", tmp);
+
+	return 1;
 }
 
 

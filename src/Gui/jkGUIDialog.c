@@ -78,7 +78,7 @@ int jkGuiDialog_OkCancelDialog(wchar_t *stringA, wchar_t *stringB)
     v2 = 0;
     if ( !jkGui_GdiMode )
     {
-		jkGui_PlayMusic();
+		jkGuiRend_UpdateAudio();
 		jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->palette);
         v2 = 1;
     }
@@ -109,7 +109,7 @@ void jkGuiDialog_ErrorDialog(wchar_t *stringA, wchar_t *stringB)
     v2 = 0;
     if ( !jkGui_GdiMode )
     {
-		jkGui_PlayMusic();
+		jkGuiRend_UpdateAudio();
 		jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->palette);
         v2 = 1;
     }
@@ -139,7 +139,7 @@ int jkGuiDialog_YesNoDialog(wchar_t *stringA, wchar_t *stringB)
     v2 = 0;
     if ( !jkGui_GdiMode )
     {
-		jkGui_PlayMusic();
+		jkGuiRend_UpdateAudio();
 		jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->palette);
         v2 = 1;
     }
