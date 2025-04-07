@@ -329,10 +329,10 @@ int jkGui_SetModeMenu(const void *palette)
 
 void jkGui_SetModeGame()
 {
-	jkGuiRend_StopAudio();
     if ( jkGui_GdiMode )
     {
-        if ( --jkGui_modesets <= 0 )
+		jkGuiRend_StopAmbience();
+		if ( --jkGui_modesets <= 0 )
         {
             jkGuiRend_Close();
             jkGui_GdiMode = 0;

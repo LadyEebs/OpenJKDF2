@@ -554,6 +554,8 @@ void jkGuiRend_Close()
     jkGuiRend_menuBuffer = 0;
     jkGuiRend_texture_dword_8561E8 = 0;
     jkGuiRend_bOpen = 0;
+
+	jkGuiRend_StopAudio();
 }
 
 jkGuiElement* jkGuiRend_MenuGetClickableById(jkGuiMenu *menu, int id)
@@ -2702,7 +2704,7 @@ void jkGuiRend_UpdateAudio()
 #endif
 }
 
-void jkGuiRend_StopAudio()
+void jkGuiRend_StopMusic()
 {
 	// stop the music track
 	extern int sithSoundMixer_playingTrack;
@@ -2711,9 +2713,17 @@ void jkGuiRend_StopAudio()
 		sithSoundMixer_StopSong();
 		stdMci_Stop(); // call just in case it didn't in sithSoundMixer_StopSong
 	}
+}
 
-	// stop the audio track
-	if(jkGuiRend_DsoundAmbienceHandle)
+void jkGuiRend_StopAmbience()
+{
+	// stop the ambient audio track
+	if (jkGuiRend_DsoundAmbienceHandle)
 		stdSound_BufferStop(jkGuiRend_DsoundAmbienceHandle);
+}
 
+void jkGuiRend_StopAudio()
+{
+	jkGuiRend_StopMusic();
+	jkGuiRend_StopAmbience();
 }

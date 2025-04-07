@@ -161,5 +161,7 @@ void jkGuiRend_UpdateController();
 // added 
 void jkGuiRend_UpdateAudio();
 void jkGuiRend_StopAudio();
+void jkGuiRend_StopMusic();
+void jkGuiRend_StopAmbience();
 
 #endif // _JKGUIREND_H
