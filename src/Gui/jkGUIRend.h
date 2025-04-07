@@ -88,6 +88,7 @@ void jkGuiRend_CopyVBuffer(jkGuiMenu *menu, rdRect *rect);
 void jkGuiRend_SetPalette(uint8_t* pal);
 void jkGuiRend_DrawRect(stdVBuffer *vbuf, rdRect *rect, __int16 color);
 void jkGuiRend_UpdateDrawMenu(jkGuiMenu *menu);
+void jkGuiRend_PaintBg(jkGuiMenu* menu); // added
 void jkGuiRend_Paint(jkGuiMenu *menu);
 void jkGuiRend_ElementSetClickShortcutScancode(jkGuiElement *element, int idk);
 void jkGuiRend_MenuSetReturnKeyShortcutElement(jkGuiMenu *menu, jkGuiElement *element);

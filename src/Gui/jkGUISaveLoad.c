@@ -163,7 +163,10 @@ int jkGuiSaveLoad_DeleteOnClick(jkGuiElement *element, jkGuiMenu *menu, int mous
         {
             wstr_confirmDel = jkStrings_GetUniStringWithFallback("GUI_SLCONFIRM_DELETE");
             wstr_del = jkStrings_GetUniStringWithFallback("GUI_SLDELETE");
-            if ( jkGuiDialog_YesNoDialog(wstr_del, wstr_confirmDel) )
+#ifdef MENU_16BIT
+			jkuGuiRend_dialogBackgroundMenu = &jkGuiSaveLoad_menu;
+#endif
+			if ( jkGuiDialog_YesNoDialog(wstr_del, wstr_confirmDel) )
             {
                 sithGamesave_GetProfilePath(FileName, 128, (char *)v2);
                 stdFileUtil_DelFile(FileName);
@@ -410,8 +413,13 @@ LABEL_44:
         }
         v27 = jkStrings_GetUniStringWithFallback("GUI_SLCONFIRM_OVERWRITE");
         v11 = jkStrings_GetUniStringWithFallback("GUI_SLOVERWRITE");
-        if ( jkGuiDialog_YesNoDialog(v11, v27) )
+#ifdef MENU_16BIT
+		jkuGuiRend_dialogBackgroundMenu = &jkGuiSaveLoad_menu;
+#endif
+		if ( jkGuiDialog_YesNoDialog(v11, v27) )
+		{
             goto LABEL_44;
+		}
     }
     if ( !v6 )
         goto LABEL_46;

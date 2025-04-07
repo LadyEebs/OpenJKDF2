@@ -280,6 +280,9 @@ void jkGuiPlayer_ShowNewPlayer(int a1)
                 v9 = jkStrings_GetUniStringWithFallback("GUI_CONFIRM_REMOVE_PLAYER");
                 jk_snwprintf(v24, 0x100u, v9, a2);
                 v10 = jkStrings_GetUniStringWithFallback("GUI_REMOVE");
+#ifdef MENU_16BIT
+				jkuGuiRend_dialogBackgroundMenu = &jkGuiPlayer_menuNew;
+#endif
                 if ( jkGuiDialog_YesNoDialog(v10, v24) )
                 {
                     stdString_WcharToChar(v20, a2, 127);

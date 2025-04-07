@@ -141,8 +141,13 @@ void jkGuiMain_Show()
                 case 12:
                     v4 = jkStrings_GetUniStringWithFallback("GUI_QUITCONFIRM_Q");
                     v2 = jkStrings_GetUniStringWithFallback("GUI_QUITCONFIRM");
+#ifdef MENU_16BIT
+					jkuGuiRend_dialogBackgroundMenu = &jkGuiMain_menu;
+#endif
                     if ( !jkGuiDialog_YesNoDialog(v2, v4) )
-                        goto LABEL_12;
+                    {
+						goto LABEL_12;
+					}
 
                     // TODO proper shutdown?
 #ifdef WIN32_BLOBS
@@ -151,7 +156,7 @@ void jkGuiMain_Show()
                     sithCvar_SaveGlobals();
                     jkPlayer_WriteConf(jkPlayer_playerShortName); // Added
                     g_should_exit = 1;
-                    //exit(0);
+					//exit(0);
                     return;
 #endif
                     break;

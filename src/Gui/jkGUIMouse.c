@@ -639,9 +639,13 @@ int jkGuiMouse_RestoreDefaultsClicked(jkGuiElement *pClickedElement, jkGuiMenu *
     jkGuiRend_PlayWav(pMenu->soundClick);
     v7 = jkStrings_GetUniStringWithFallback("GUI_RESTORE_DEFAULTS_Q");
     v5 = jkStrings_GetUniStringWithFallback("GUI_RESTORE_DEFAULTS");
-    if ( jkGuiDialog_YesNoDialog(v5, v7) )
+#ifdef MENU_16BIT
+	jkuGuiRend_dialogBackgroundMenu = pMenu;
+#endif
+	if ( jkGuiDialog_YesNoDialog(v5, v7) )
         sithControl_sub_4D7670();
-    jkGuiMouse_sub_417210();
+
+	jkGuiMouse_sub_417210();
     jkGuiMouse_dword_53032C = -1;
     jkGuiMouse_dword_530328 = -1;
     jkGuiMouse_sub_416D40(pMenu, 0);

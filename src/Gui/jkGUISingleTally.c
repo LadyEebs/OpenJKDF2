@@ -59,7 +59,10 @@ int jkGuiSingleTally_Show()
         ret = jkGuiRend_DisplayAndReturnClicked(&jkGuiSingleTally_menu);
         if ( ret == -1 )
         {
-            if ( !jkGuiDialog_YesNoDialog(jkStrings_GetUniStringWithFallback("GUI_ABORT_GAME"), jkStrings_GetUniStringWithFallback("GUI_CONFIRM_ABORTCD")) )
+#ifdef MENU_16BIT
+			jkuGuiRend_dialogBackgroundMenu = &jkGuiSingleTally_menu;
+#endif
+			if ( !jkGuiDialog_YesNoDialog(jkStrings_GetUniStringWithFallback("GUI_ABORT_GAME"), jkStrings_GetUniStringWithFallback("GUI_CONFIRM_ABORTCD")) )
                 continue;
         }
         else if ( ret != 1 )

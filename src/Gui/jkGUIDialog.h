@@ -10,6 +10,10 @@
 #define jkGuiDialog_ErrorDialog_ADDR (0x00416A90)
 #define jkGuiDialog_YesNoDialog_ADDR (0x00416BA0)
 
+#ifdef MENU_16BIT
+extern jkGuiMenu* jkuGuiRend_dialogBackgroundMenu;
+#endif
+
 void jkGuiDialog_Startup();
 void jkGuiDialog_Shutdown();
 

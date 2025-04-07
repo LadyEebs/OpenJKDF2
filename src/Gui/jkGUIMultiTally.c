@@ -328,8 +328,13 @@ int jkGuiMultiTally_Show(int a1)
         {
             v31 = jkStrings_GetUniStringWithFallback("GUI_CONFIRM_ABORT");
             v18 = jkStrings_GetUniStringWithFallback("GUI_ABORT_GAME");
-            if ( !jkGuiDialog_YesNoDialog(v18, v31) )
+#ifdef MENU_16BIT
+			jkuGuiRend_dialogBackgroundMenu = &jkGuiMultiTally_menu;
+#endif
+			if ( !jkGuiDialog_YesNoDialog(v18, v31) )
+			{
                 continue;
+			}
         }
         else if ( v16 != 1 )
         {
@@ -407,7 +412,10 @@ int jkGuiMultiTally_Show(int a1)
             {
                 v32 = jkStrings_GetUniStringWithFallback("GUI_CONFIRM_ABORT");
                 v30 = jkStrings_GetUniStringWithFallback("GUI_ABORT_GAME");
-                if ( jkGuiDialog_YesNoDialog(v30, v32) )
+#ifdef MENU_16BIT
+				jkuGuiRend_dialogBackgroundMenu = &jkGuiMultiTally_menu2;
+#endif
+				if ( jkGuiDialog_YesNoDialog(v30, v32) )
                 {
 LABEL_50:
                     v28 = 0;
@@ -614,7 +622,10 @@ int jkGuiMultiTally_ShowTeamScores(int a1)
         {
             v17 = jkStrings_GetUniStringWithFallback("GUI_CONFIRM_ABORT");
             v15 = jkStrings_GetUniStringWithFallback("GUI_ABORT_GAME");
-            if ( !jkGuiDialog_YesNoDialog(v15, v17) )
+#ifdef MENU_16BIT
+			jkuGuiRend_dialogBackgroundMenu = &jkGuiMultiTally_menu3;
+#endif
+			if ( !jkGuiDialog_YesNoDialog(v15, v17) )
                 continue;
         }
         else if ( v13 != 1 )

@@ -12,6 +12,10 @@
 #include "Main/jkStrings.h"
 #include "Win95/stdDisplay.h"
 
+#ifdef MENU_16BIT
+jkGuiMenu* jkuGuiRend_dialogBackgroundMenu = NULL;
+#endif
+
 jkGuiElement jkGuiDialog_Ok_buttons[4] = {
     {ELEMENT_TEXT, 0, 2, 0, 3, {0x82, 0x8C, 0x186, 0x28}, 1, 0, 0, 0, 0, 0, {0}, 0},
     {ELEMENT_TEXT, 0, 0, 0, 3, {0x82, 0xBE, 0x186, 0x5A}, 1, 0, 0, 0, 0, 0, {0}, 0},
@@ -90,6 +94,10 @@ int jkGuiDialog_OkCancelDialog(wchar_t *stringA, wchar_t *stringB)
     jkGuiDialog_OkCancel_menu.texture = 0;
     if ( v2 )
         jkGui_SetModeGame();
+
+#ifdef MENU_16BIT
+	jkuGuiRend_dialogBackgroundMenu = 0;
+#endif
     return v5 == 1;
 }
 
@@ -115,6 +123,10 @@ void jkGuiDialog_ErrorDialog(wchar_t *stringA, wchar_t *stringB)
     jkGuiDialog_Ok_menu.texture = 0;
     if ( v2 )
         jkGui_SetModeGame();
+
+#ifdef MENU_16BIT
+	jkuGuiRend_dialogBackgroundMenu = 0;
+#endif
 }
 
 int jkGuiDialog_YesNoDialog(wchar_t *stringA, wchar_t *stringB)
@@ -142,5 +154,10 @@ int jkGuiDialog_YesNoDialog(wchar_t *stringA, wchar_t *stringB)
     jkGuiDialog_OkCancel_menu.texture = 0;
     if ( v2 )
         jkGui_SetModeGame();
+
+#ifdef MENU_16BIT
+	jkuGuiRend_dialogBackgroundMenu = 0;
+#endif
+
     return v5 == 1;
 }

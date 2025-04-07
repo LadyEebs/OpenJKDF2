@@ -1103,7 +1103,10 @@ LABEL_8:
                 v7 = jkStrings_GetUniStringWithFallback("GUI_CONFIRM_REMOVE_PLAYER");
                 jk_snwprintf(wtmp1, 0x100u, v7, v6);
                 v8 = jkStrings_GetUniStringWithFallback("GUI_REMOVE");
-                if ( jkGuiDialog_YesNoDialog(v8, wtmp1) )
+#ifdef MENU_16BIT
+				jkuGuiRend_dialogBackgroundMenu = &jkGuiBuildMulti_menuEditCharacter;
+#endif
+				if ( jkGuiDialog_YesNoDialog(v8, wtmp1) )
                 {
                     stdString_WcharToChar(aPlayerName, jkPlayer_playerShortName, 127);
                     aPlayerName[127] = 0;
@@ -1638,6 +1641,9 @@ LABEL_18:
                 v18 = jkStrings_GetUniStringWithFallback("GUI_CONFIRM_REMOVE_PLAYER");
                 jk_snwprintf(wtmp1, 0x100u, v18, v17);
                 v19 = jkStrings_GetUniStringWithFallback("GUI_REMOVE");
+#ifdef MENU_16BIT
+				jkuGuiRend_dialogBackgroundMenu = &jkGuiBuildMulti_menuLoadCharacter;
+#endif
                 if ( jkGuiDialog_YesNoDialog(v19, wtmp1) )
                 {
                     stdString_WcharToChar(tmp1, jkPlayer_playerShortName, 127);

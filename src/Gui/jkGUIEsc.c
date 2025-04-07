@@ -148,11 +148,15 @@ void jkGuiEsc_Show()
                 return;
 
             case JKGUIESC_RESTART:
-                if ( !jkGuiDialog_YesNoDialog(jkStrings_GetUniStringWithFallback("GUI_RESTART_MISSION"), jkStrings_GetUniStringWithFallback("GUI_CONFIRM_RESTART")) )
-                    continue;
-                jkPlayer_LoadAutosave();
-                jkMain_MissionReload();
-                jkGuiRend_UpdateSurface();
+#ifdef MENU_16BIT
+				jkuGuiRend_dialogBackgroundMenu = &jkGuiEsc_menu;
+#endif
+                if ( jkGuiDialog_YesNoDialog(jkStrings_GetUniStringWithFallback("GUI_RESTART_MISSION"), jkStrings_GetUniStringWithFallback("GUI_CONFIRM_RESTART")) )
+                {
+					jkPlayer_LoadAutosave();
+					jkMain_MissionReload();
+					jkGuiRend_UpdateSurface();
+				}
                 return;
 
             case JKGUIESC_SAVE:
@@ -169,11 +173,15 @@ void jkGuiEsc_Show()
                 continue;
 
             case JKGUIESC_ABORT:
-                if ( !jkGuiDialog_YesNoDialog(jkStrings_GetUniStringWithFallback("GUI_ABORT_GAME"), jkStrings_GetUniStringWithFallback("GUI_CONFIRM_ABORT")) )
-                    continue;
-                jkMain_MenuReturn();
-                jkGuiRend_UpdateSurface();
-                return;
+#ifdef MENU_16BIT
+				jkuGuiRend_dialogBackgroundMenu = &jkGuiEsc_menu;
+#endif
+                if ( jkGuiDialog_YesNoDialog(jkStrings_GetUniStringWithFallback("GUI_ABORT_GAME"), jkStrings_GetUniStringWithFallback("GUI_CONFIRM_ABORT")) )
+                {
+					jkMain_MenuReturn();
+					jkGuiRend_UpdateSurface();
+				}
+				return;
 
             default:
                 continue;

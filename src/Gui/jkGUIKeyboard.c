@@ -395,7 +395,10 @@ void jkGuiKeyboard_sub_4123C0(jkGuiMenu *pMenu)
             v6 = jkStrings_GetUniStringWithFallback("GUI_ALREADY_BOUND_Q");
             jk_snwprintf(v13, 0x100u, v6, v12);
             v7 = jkStrings_GetUniStringWithFallback("GUI_ALREADY_BOUND");
-            if ( jkGuiDialog_YesNoDialog(v7, v13) )
+#ifdef MENU_16BIT
+			jkuGuiRend_dialogBackgroundMenu = &jkGuiKeyboard_menu;
+#endif
+			if ( jkGuiDialog_YesNoDialog(v7, v13) )
             {
                 v4 = v11;
 LABEL_23:
@@ -502,7 +505,10 @@ int jkGuiKeyboard_RestoreDefaultsClicked(jkGuiElement *pElement, jkGuiMenu *pMen
     jkGuiRend_PlayWav(pMenu->soundClick);
     v4 = jkStrings_GetUniStringWithFallback("GUI_RESTORE_DEFAULTS_Q");
     v3 = jkStrings_GetUniStringWithFallback("GUI_RESTORE_DEFAULTS");
-    if ( jkGuiDialog_YesNoDialog(v3, v4) )
+#ifdef MENU_16BIT
+	jkuGuiRend_dialogBackgroundMenu = &jkGuiKeyboard_menu;
+#endif
+	if ( jkGuiDialog_YesNoDialog(v3, v4) )
     {
         sithControl_sub_4D7350();
         jkHudInv_InputInit();

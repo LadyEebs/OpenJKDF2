@@ -24,7 +24,7 @@ static uint8_t jkGuiRend_palette[0x300] = {0};
 static WindowDrawHandler_t jkGuiRend_idk2 = 0;
 static WindowDrawHandler_t jkGuiRend_idk = 0;
 static stdSound_buffer_t* jkGuiRend_DsoundHandles[4] = {0};
-static jkGuiMenu *jkGuiRend_activeMenu = NULL;
+jkGuiMenu *jkGuiRend_activeMenu = NULL;
 static stdVBuffer* jkGuiRend_menuBuffer = NULL;
 static stdVBuffer *jkGuiRend_texture_dword_8561E8 = NULL;
 
@@ -235,20 +235,8 @@ void jkGuiRend_UpdateDrawMenu(jkGuiMenu *menu)
     }
 }
 
-void jkGuiRend_Paint(jkGuiMenu *menu)
+void jkGuiRend_PaintBg(jkGuiMenu* menu)
 {
-
-    int ret;
-    
-    jkGuiElement* lastFocused = menu->focusedElement;
-    jkGuiElement* lastDown = menu->lastMouseDownClickable;
-
-    if (!g_app_suspended || jkGuiRend_bIsSurfaceValid)
-        return;
-    
-    stdControl_ShowCursor(0);
-    stdDisplay_SetMasterPalette(jkGuiRend_palette);
-
 #ifdef MENU_16BIT
 	if (menu->bkBm16)
 	{
@@ -274,9 +262,26 @@ void jkGuiRend_Paint(jkGuiMenu *menu)
 #endif
 #endif
 #ifndef TARGET_TWL
-    if ( menu->texture )
-        stdDisplay_VBufferCopy(jkGuiRend_menuBuffer, menu->texture, 0, 0, 0, 0);
+		if (menu->texture)
+			stdDisplay_VBufferCopy(jkGuiRend_menuBuffer, menu->texture, 0, 0, 0, 0);
 #endif
+}
+
+void jkGuiRend_Paint(jkGuiMenu *menu)
+{
+
+    int ret;
+    
+    jkGuiElement* lastFocused = menu->focusedElement;
+    jkGuiElement* lastDown = menu->lastMouseDownClickable;
+
+    if (!g_app_suspended || jkGuiRend_bIsSurfaceValid)
+        return;
+    
+    stdControl_ShowCursor(0);
+    stdDisplay_SetMasterPalette(jkGuiRend_palette);
+
+	jkGuiRend_PaintBg(menu);
 
     jkGuiElement* clickable = &menu->paElements[0];
     int clickableIdx = 0;
@@ -325,9 +330,19 @@ int jkGuiRend_DisplayAndReturnClicked(jkGuiMenu *menu)
     jkGuiRend_FocusElementDir(menu, FOCUS_NONE);
 #endif
 
+#ifdef MENU_16BIT
+	extern jkGuiMenu* jkuGuiRend_dialogBackgroundMenu;
+#endif
+
     jkGuiRend_SetCursorVisible(1);
     while ( !menu->lastClicked )
     {
+#ifdef MENU_16BIT
+		// make sure we draw the previous menu background
+		if (jkuGuiRend_dialogBackgroundMenu)
+			jkGuiRend_PaintBg(jkuGuiRend_dialogBackgroundMenu);
+#endif
+
         msgret = Window_MessageLoop();
         if ( jkGuiRend_thing_four && jkGuiRend_thing_five )
         { 

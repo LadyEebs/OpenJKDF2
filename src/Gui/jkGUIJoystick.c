@@ -806,7 +806,10 @@ int jkGuiJoystick_RestoreDefaultsClick(jkGuiElement *pElement, jkGuiMenu *pMenu,
     jkGuiRend_PlayWav(pMenu->soundClick);
     v7 = jkStrings_GetUniStringWithFallback("GUI_RESTORE_DEFAULTS_Q");
     v6 = jkStrings_GetUniStringWithFallback("GUI_RESTORE_DEFAULTS");
-    if ( jkGuiDialog_YesNoDialog(v6, v7) )
+#ifdef MENU_16BIT
+	jkuGuiRend_dialogBackgroundMenu = &jkGuiJoystick_menu;
+#endif
+	if ( jkGuiDialog_YesNoDialog(v6, v7) )
         sithControl_JoyInputInit();
     jkGuiJoystick_sub_41B390();
     jkGuiJoystick_dword_536B9C = -1;

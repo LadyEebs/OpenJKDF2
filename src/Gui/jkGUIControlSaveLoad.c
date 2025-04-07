@@ -77,7 +77,10 @@ int jkGuiControlSaveLoad_ConfirmDelete(jkGuiElement *pElement, jkGuiMenu *pMenu,
         v5 = (jkGuiControlInfo *)jkGuiRend_GetId(&jkGuiControlSaveLoad_darray, jkGuiControlSaveLoad_aElements[4].selectedTextEntry);
         v11 = jkStrings_GetUniStringWithFallback("GUI_CSLCONFIRM_DELETE");
         v6 = jkStrings_GetUniStringWithFallback("GUI_CSLDELETE");
-        if ( jkGuiDialog_YesNoDialog(v6, v11) )
+#ifdef MENU_16BIT
+		jkuGuiRend_dialogBackgroundMenu = pMenu;
+#endif
+		if ( jkGuiDialog_YesNoDialog(v6, v11) )
         {
             stdString_snprintf(tmp, 128, "controls\\%s", v5->fpath); // Added: sprintf -> snprintf
             stdFileUtil_DelFile(tmp);
@@ -97,7 +100,7 @@ int jkGuiControlSaveLoad_ConfirmDelete(jkGuiElement *pElement, jkGuiMenu *pMenu,
             if ( jkGuiControlSaveLoad_dword_559C80 || (jkGuiControlSaveLoad_aElements[5].bIsVisible = 0, v9 > 0) )
                 jkGuiControlSaveLoad_aElements[5].bIsVisible = 1;
         }
-        jkGuiRend_Paint(pMenu);
+		jkGuiRend_Paint(pMenu);
     }
     return 0;
 }
