@@ -785,6 +785,7 @@ typedef struct rdUITri
   int v3;
   int flags;
   uint32_t texture; // DirectDrawSurface*
+  stdBitmap* bm;
 } rdUITri;
 
 typedef struct rdLine

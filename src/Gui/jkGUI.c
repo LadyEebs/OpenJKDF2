@@ -77,6 +77,25 @@ const char* jkGui_aFonts[12] = {
 
 #ifdef MENU_16BIT
 stdBitmap* jkGui_stdBitmaps16[35];
+
+// todo: figure out how to toggle this from the bm itself
+int jkGui_MenuUsesLights(int i)
+{
+	switch (i)
+	{
+		case JKGUI_BM_BK_MAIN:
+		case JKGUI_BM_BK_SINGLE:
+		case JKGUI_BM_BK_MULTI:
+		case JKGUI_BM_BK_ESC:
+		case JKGUI_BM_BK_LOADING:
+		case JKGUI_BM_BK_BUILD_MULTI:
+		case JKGUI_BM_BK_BUILD_LOAD:
+			return 1;
+
+		default:
+			return 0;
+	}
+}
 #endif
 
 static int jkGui_bInitialized;
@@ -179,6 +198,8 @@ int jkGui_Startup()
 	{
 		stdString_snprintf(tmp, 128, "ui\\bm\\%s16.bm", jkGui_aBitmaps[i]);
 		jkGui_stdBitmaps16[i] = stdBitmap_Load(tmp, 1, 0);
+		if (jkGui_stdBitmaps16[i])
+			jkGui_stdBitmaps16[i]->useLights = jkGui_MenuUsesLights(i);
 	}
 #endif
 

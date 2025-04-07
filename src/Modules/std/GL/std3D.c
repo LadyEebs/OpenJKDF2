@@ -117,6 +117,7 @@ typedef struct std3DSimpleTexStage
     GLint uniform_tex3;
 	GLint uniform_tex4;
 	GLint uniform_iResolution;
+	GLint uniform_iTime;
 
     GLint uniform_param1;
     GLint uniform_param2;
@@ -1559,6 +1560,7 @@ bool std3D_loadSimpleTexProgram(const char* fpath_base, const char* defines, std
     pOut->uniform_mvp = std3D_tryFindUniform(pOut->program, "mvp");
 	pOut->uniform_proj = std3D_tryFindUniform(pOut->program, "projMatrix");
     pOut->uniform_iResolution = std3D_tryFindUniform(pOut->program, "iResolution");
+	pOut->uniform_iTime = std3D_tryFindUniform(pOut->program, "iTime");
     pOut->uniform_tex = std3D_tryFindUniform(pOut->program, "tex");
     pOut->uniform_tex2 = std3D_tryFindUniform(pOut->program, "tex2");
     pOut->uniform_tex3 = std3D_tryFindUniform(pOut->program, "tex3");
@@ -2305,6 +2307,7 @@ void std3D_FreeResources()
     worldpal_data = NULL;
     worldpal_lights_data = NULL;
     displaypal_data = NULL;
+	phase_data = NULL;
 
     if (menu_data_all)
         free(menu_data_all);
@@ -3494,13 +3497,15 @@ void std3D_DrawUIBitmapRGBAZ(stdBitmap* pBmp, int mipIdx, float dstX, float dstY
     GL_tmpUITris[GL_tmpUITrisAmt+0].v3 = GL_tmpUIVerticesAmt+2;
     GL_tmpUITris[GL_tmpUITrisAmt+0].flags = bAlphaOverwrite;
     GL_tmpUITris[GL_tmpUITrisAmt+0].texture = pBmp->aTextureIds[mipIdx];
-    
+    GL_tmpUITris[GL_tmpUITrisAmt+0].bm = pBmp;
+
     GL_tmpUITris[GL_tmpUITrisAmt+1].v1 = GL_tmpUIVerticesAmt+0;
     GL_tmpUITris[GL_tmpUITrisAmt+1].v2 = GL_tmpUIVerticesAmt+3;
     GL_tmpUITris[GL_tmpUITrisAmt+1].v3 = GL_tmpUIVerticesAmt+2;
     GL_tmpUITris[GL_tmpUITrisAmt+1].flags = bAlphaOverwrite;
     GL_tmpUITris[GL_tmpUITrisAmt+1].texture = pBmp->aTextureIds[mipIdx];
-    
+  	GL_tmpUITris[GL_tmpUITrisAmt+1].bm = pBmp;
+  
     GL_tmpUIVerticesAmt += 4;
     GL_tmpUITrisAmt += 2;
 }
@@ -3633,13 +3638,15 @@ void std3D_DrawUIClearedRectRGBA(uint8_t color_r, uint8_t color_g, uint8_t color
     GL_tmpUITris[GL_tmpUITrisAmt+0].v3 = GL_tmpUIVerticesAmt+2;
     GL_tmpUITris[GL_tmpUITrisAmt+0].flags = 0;
     GL_tmpUITris[GL_tmpUITrisAmt+0].texture = blank_tex_white;
-    
+	GL_tmpUITris[GL_tmpUITrisAmt+0].bm = 0;
+
     GL_tmpUITris[GL_tmpUITrisAmt+1].v1 = GL_tmpUIVerticesAmt+0;
     GL_tmpUITris[GL_tmpUITrisAmt+1].v2 = GL_tmpUIVerticesAmt+3;
     GL_tmpUITris[GL_tmpUITrisAmt+1].v3 = GL_tmpUIVerticesAmt+2;
     GL_tmpUITris[GL_tmpUITrisAmt+1].flags = 0;
     GL_tmpUITris[GL_tmpUITrisAmt+1].texture = blank_tex_white;
-    
+	GL_tmpUITris[GL_tmpUITrisAmt+1].bm = 0;
+
     GL_tmpUIVerticesAmt += 4;
     GL_tmpUITrisAmt += 2;
 }
@@ -3717,11 +3724,10 @@ void std3D_DrawUIRenderList()
     glViewport(0, 0, width, height);
     glUniform2f(std3D_uiProgram.uniform_iResolution, internalWidth, internalHeight);
 
-    float param1 = 1.0;
-    float param2 = 1.0;
+	glUniform1f(std3D_uiProgram.uniform_iTime, (float)stdPlatform_GetTimeSinceStart() / 1000.0f);
 
+	float param1 = 1.0;
     glUniform1f(std3D_uiProgram.uniform_param1, param1);
-    glUniform1f(std3D_uiProgram.uniform_param2, param2);
     glUniform1f(std3D_uiProgram.uniform_param3, jkPlayer_gamma);
     
     }
@@ -3754,6 +3760,9 @@ void std3D_DrawUIRenderList()
     else
         glBindTexture(GL_TEXTURE_2D, tex_id);
 
+	float param2 = tris[0].bm && tris[0].bm->useLights ? 1.0 : 0.0;
+	glUniform1f(std3D_uiProgram.uniform_param2, param2);
+
     if (tris[0].flags) {
         glUniform1f(std3D_uiProgram.uniform_param1, 1.0);
     }
@@ -3784,6 +3793,9 @@ void std3D_DrawUIRenderList()
                 glBindTexture(GL_TEXTURE_2D, blank_tex_white);
             else
                 glBindTexture(GL_TEXTURE_2D, tex_id);
+
+			float param2 = tris[j].bm && tris[j].bm->useLights ? 1.0 : 0.0;
+			glUniform1f(std3D_uiProgram.uniform_param2, param2);
 
             if (tris[j].flags) {
                 glUniform1f(std3D_uiProgram.uniform_param1, 1.0);

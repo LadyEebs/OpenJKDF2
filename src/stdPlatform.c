@@ -169,6 +169,13 @@ uint32_t stdPlatform_GetTimeMsec()
 {
     return Linux_TimeMs();
 }
+
+static uint32_t timeAtStart;
+
+uint32_t stdPlatform_GetTimeSinceStart()
+{
+	return Linux_TimeMs() - timeAtStart;
+}
 #endif
 
 void stdPlatform_InitServices(HostServices *handlers)
@@ -220,6 +227,8 @@ void stdPlatform_InitServices(HostServices *handlers)
 
 int stdPlatform_Startup()
 {
+	timeAtStart = Linux_TimeMs();
+
     return 1;
 }
 

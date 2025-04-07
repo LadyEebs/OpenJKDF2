@@ -23,6 +23,9 @@ typedef struct stdBitmap
     uint32_t* aTextureIds;
     void** paDataDepthConverted;
 #endif
+#ifdef MENU_16BIT
+	int useLights;
+#endif
 } stdBitmap;
 
 typedef struct bitmapHeader

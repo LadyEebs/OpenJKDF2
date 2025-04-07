@@ -45,6 +45,7 @@ uint64_t Linux_TimeUs();
 int stdPrintf(void* a1, char *a2, int line, char *fmt, ...);
 int stdPlatform_Printf(const char *fmt, ...);
 uint32_t stdPlatform_GetTimeMsec();
+uint32_t stdPlatform_GetTimeSinceStart();
 #endif
 
 int stdConsolePrintf(const char *fmt, ...);
