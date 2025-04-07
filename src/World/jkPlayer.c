@@ -1031,10 +1031,6 @@ int jkPlayer_ReadConf(wchar_t *name)
         jkPlayer_bHasLoadedSettingsOnce = 1;
 #endif
 
-		// make sure we apply volume changes..
-		sithSoundMixer_UpdateMusicVolume(jkGuiSound_musicVolume);
-		stdSound_SetMenuVolume(jkGuiSound_sfxVolume);
-
         stdConffile_Close();
         return 1;
     }
