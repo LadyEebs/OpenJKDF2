@@ -239,13 +239,13 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	{
 		rdSetBlendEnabled(RD_TRUE);
 		rdSetBlendMode(RD_BLEND_ONE, RD_BLEND_INVSRCCOLOR);
+		rdSetZBufferMethod(RD_ZBUFFER_READ_NOWRITE);
 	}
 	else
 	{
 		rdSetBlendMode(RD_BLEND_SRCALPHA, RD_BLEND_INVSRCALPHA);
+		rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
 	}
-
-	rdSetZBufferMethod(RD_ZBUFFER_READ_NOWRITE);
 
 	extern int jkPlayer_enableTextureFilter;
 	rdTexFilterMode(!jkPlayer_enableTextureFilter || (sprite->face.type & RD_FF_TEX_FILTER_NEAREST) ? RD_TEXFILTER_NEAREST : RD_TEXFILTER_BILINEAR);
