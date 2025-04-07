@@ -117,6 +117,7 @@ typedef struct std3DSimpleTexStage
     GLint uniform_tex3;
 	GLint uniform_tex4;
 	GLint uniform_iResolution;
+	GLint uniform_iResolution2;
 	GLint uniform_iTime;
 
     GLint uniform_param1;
@@ -1560,6 +1561,7 @@ bool std3D_loadSimpleTexProgram(const char* fpath_base, const char* defines, std
     pOut->uniform_mvp = std3D_tryFindUniform(pOut->program, "mvp");
 	pOut->uniform_proj = std3D_tryFindUniform(pOut->program, "projMatrix");
     pOut->uniform_iResolution = std3D_tryFindUniform(pOut->program, "iResolution");
+	pOut->uniform_iResolution2 = std3D_tryFindUniform(pOut->program, "iResolution2");
 	pOut->uniform_iTime = std3D_tryFindUniform(pOut->program, "iTime");
     pOut->uniform_tex = std3D_tryFindUniform(pOut->program, "tex");
     pOut->uniform_tex2 = std3D_tryFindUniform(pOut->program, "tex2");
@@ -3922,6 +3924,8 @@ void std3D_DrawSimpleTex(std3DSimpleTexStage* pStage, std3DIntermediateFbo* pFbo
 
 	glUniform1i(pStage->uniform_tex, TEX_SLOT_DIFFUSE);
 	glUniform1i(pStage->uniform_lightbuf, TEX_SLOT_CLUSTER_BUFFER);
+
+	glUniform2f(pStage->uniform_iResolution2, std3D_framebuffer.internalWidth, std3D_framebuffer.internalHeight);
 
 	//if(renderPassProj)
 		//glUniformMatrix4fv(pStage->uniform_proj, 1, GL_FALSE, (float*)renderPassProj);

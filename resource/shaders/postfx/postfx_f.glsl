@@ -6,6 +6,7 @@ layout(binding = 1) uniform flexSampler2D tex2;
 layout(binding = 2) uniform flexSampler2D tex3;
 
 layout(location = 0) uniform vec2 iResolution;
+uniform vec2 iResolution2;
 
 layout(location = 4) uniform vec3 colorEffects_tint;
 layout(location = 5) uniform vec3 colorEffects_filter;
@@ -139,7 +140,7 @@ void main(void)
 	// when dithering, try to smooth it out with a classic voodoo style filter
 	if(param2 > 0.0)
 	{
-		vec2 pixsize = vec2(1.0) / textureSize(tex, 0).xy;
+		vec2 pixsize = vec2(1.0) / iResolution2.xy;// / textureSize(tex, 0).xy;
 		
 		flex3 pixel00 = sampled_color;
 		
