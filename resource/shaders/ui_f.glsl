@@ -90,7 +90,7 @@ void main(void)
 			vec2  Xi    = hammersley(i, 8).xy;
 			float r     = sqrt(Xi.x);
 			float theta = Xi.y * M_2PI;
-			vec2  point = vec2(r * 0.8 * cos(theta), r * sin(theta));
+			vec2  point = vec2(r * 0.7 * cos(theta), r * sin(theta));
 			point.y    -= 0.25; // bump them up a bit so the top of the menu is well lit
 
 			vec3 lightPos    = vec3(point, 0.5);
@@ -107,7 +107,7 @@ void main(void)
 			//atten *= 0.5;
 
 			// tighter attenuation via quadratic falloff
-			const float invLightRadius = 1.0 / 1.5;
+			const float invLightRadius = 1.0 / 1.6;
 			vec3 dist = ldir * invLightRadius;
 			float atten = saturate(1.0 - dot(dist, dist));
 			atten *= atten;
