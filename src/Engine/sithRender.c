@@ -1914,7 +1914,10 @@ void sithRender_RenderLevelGeometry()
 					texInfo = surfaceMat->texinfos[surface->surfaceInfo.face.wallCel];
 			}
 
-			if (surface->adjoin && surfaceMat && ((surface->surfaceInfo.face.type & 2) != 0 || (texInfo->header.texture_type & 8) != 0 && (texInfo->texture_ptr->alpha_en & 1) != 0))
+			if (surface->adjoin && surfaceMat
+				&& ((surface->surfaceInfo.face.type & 2) != 0) // surface is translucent
+				// || (texInfo->header.texture_type & 8) != 0 && (texInfo->texture_ptr->alpha_en & 1) != 0) // surface is texture + alpha test
+			)
 			{
 				if (sithRender_numSurfaces < SITH_MAX_VISIBLE_ALPHA_SURFACES)
 					sithRender_aSurfaces[sithRender_numSurfaces++] = surface;
