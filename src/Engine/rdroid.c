@@ -56,7 +56,6 @@ static const rdDirtyBit rdroid_matrixBit[RD_MATRIX_TYPES] =
 
 // todo: completely remove this in favor of a light type
 rdVector4 rdroid_sgBasis[RD_AMBIENT_LOBES];
-float    rdroid_overbright = 1.0f;
 
 void rdUpdateDirtyState();
 
@@ -147,7 +146,7 @@ void rdResetLightingState()
 {
 	rdroid_stateBits.lightMode = RD_LIGHTMODE_GOURAUD;
 	memset(&rdroid_lightingState, 0, sizeof(rdroid_lightingState));
-	rdroid_overbright = 1.0f;
+	rdroid_lightingState.overbright = 1.0f;
 	//rdVector_Zero3(&rdroid_lightingState.ambientColor);
 	//rdAmbient_Zero(&rdroid_lightingState.ambientLobes);
 }
@@ -635,7 +634,7 @@ void rdFogColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 
 void rdFogColorf(float r, float g, float b, float a)
 {
-	float scale = 255.0f / rdroid_overbright;
+	float scale = 255.0f / rdroid_lightingState.overbright;
 
 	uint32_t ir = stdMath_ClampInt(r * scale, 0, 255);
 	uint32_t ig = stdMath_ClampInt(g * scale, 0, 255);
@@ -738,7 +737,7 @@ void rdVertex3v(const float* v)
 
 void rdColor4f(float r, float g, float b, float a)
 {
-	float scale = 255.0f / rdroid_overbright;
+	float scale = 255.0f / rdroid_lightingState.overbright;
 	r *= scale;
 	g *= scale;
 	b *= scale;
@@ -1085,7 +1084,7 @@ void rdSetDecalMode(rdDecalMode_t mode)
 
 void rdSetOverbright(float overbright)
 {
-	rdroid_overbright = stdMath_Clamp(overbright, 0.1f, 4.0f);
+	rdroid_lightingState.overbright = stdMath_Clamp(overbright, 0.1f, 4.0f);
 }
 
 void rdStencilBit(uint8_t bit)
@@ -1133,7 +1132,15 @@ int rdAddLight(rdLight* pLight, rdVector3* pPosition)
 
 	rdVector4 viewPos;
 	rdMatrix_TransformPoint44(&viewPos, &pos4, &rdroid_matrices[RD_MATRIX_VIEW]);
-	return rdCluster_AddLight(pLight, (rdVector3*)&viewPos, 1.0f / rdroid_overbright);
+
+	rdVector4 dir4;
+	rdVector_Copy3(&dir4, &pLight->direction);
+	dir4.w = 0.0f;
+
+	rdVector4 viewDir;
+	rdMatrix_TransformVector44(&viewDir, &dir4, &rdroid_matrices[RD_MATRIX_VIEW]);
+
+	return rdCluster_AddLight(pLight, (rdVector3*)&viewPos, (rdVector3*)&viewDir, 1.0f / rdroid_lightingState.overbright);
 }
 
 extern int jkPlayer_enableShadows;
@@ -1185,7 +1192,7 @@ void rdAmbientFlags(uint32_t flags)
 
 void rdExtraLight(float extra)
 {
-	float scale = 255.0f / rdroid_overbright;
+	float scale = 255.0f / rdroid_lightingState.overbright;
 	extra *= scale;
 
 	uint32_t ie = stdMath_ClampInt(extra, 0, 255);
@@ -1196,7 +1203,7 @@ void rdExtraLight(float extra)
 
 void rdAmbientLight(float r, float g, float b)
 {
-	float scale = 255.0f / rdroid_overbright;
+	float scale = 255.0f / rdroid_lightingState.overbright;
 	r *= scale;
 	g *= scale;
 	b *= scale;
@@ -1225,7 +1232,7 @@ void rdAmbientLightSH(rdAmbient* amb)
 		return;
 	}
 
-	float scale = 255.0f / rdroid_overbright; // still rgb8, but with 4x the dynamic range
+	float scale = 255.0f / rdroid_lightingState.overbright; // still rgb8, but with 4x the dynamic range
 	for(int i = 0; i < RD_AMBIENT_LOBES; ++i)
 	{
 		float r = amb->sgs[i].x * scale;

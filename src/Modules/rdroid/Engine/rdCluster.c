@@ -338,7 +338,7 @@ void rdCluster_AssignDecalsToClustersJob(uint32_t jobIndex, uint32_t groupIndex)
 
 #endif
 
-int rdCluster_AddLight(rdLight* light, rdVector3* position, float intensity)
+int rdCluster_AddLight(rdLight* light, rdVector3* position, rdVector3* direction, float intensity)
 {
 	if (rdroid_numClusterLights >= STD3D_CLUSTER_MAX_LIGHTS || !light->active)
 		return 0;
@@ -351,9 +351,12 @@ int rdCluster_AddLight(rdLight* light, rdVector3* position, float intensity)
 	clusterLight->position.y = position->y;
 	clusterLight->position.z = position->z;
 
-	clusterLight->direction_intensity.x = light->direction.x;
-	clusterLight->direction_intensity.y = light->direction.y;
-	clusterLight->direction_intensity.z = light->direction.z;
+	if (direction)
+	{
+		clusterLight->direction_intensity.x = direction->x;
+		clusterLight->direction_intensity.y = direction->y;
+		clusterLight->direction_intensity.z = direction->z;
+	}
 	clusterLight->direction_intensity.w = light->intensity;
 
 	clusterLight->color.x = light->color.x * intensity;

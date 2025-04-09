@@ -79,7 +79,8 @@ void main(void)
 		const vec2 texsize = textureSize(tex, 0).xy;
 		const float aspect = (texsize.x/texsize.y);
 
-		vec3 surfacePos = vec3(f_uv.xy * 2.0 - 1.0, 0.0);
+		vec2 snappedUV = floor(f_uv.xy * texsize * 0.5) / (texsize * 0.5);
+		vec3 surfacePos = vec3(snappedUV.xy * 2.0 - 1.0, 0.0);
 		surfacePos.x   *= aspect;
 
 		// sample some lights around the center of the screen
@@ -107,14 +108,14 @@ void main(void)
 			//atten *= 0.5;
 
 			// tighter attenuation via quadratic falloff
-			const float invLightRadius = 1.0 / 1.6;
+			const float invLightRadius = 1.0 / 1.4;
 			vec3 dist = ldir * invLightRadius;
 			float atten = saturate(1.0 - dot(dist, dist));
-			atten *= atten;
+			//atten *= atten;
         
 			float lightIntensity = sqrt(saturate(intensity + 0.1));
 			lightIntensity *= saturate(lvec.z); // ndotl
-			lightIntensity *= atten * 0.75;
+			lightIntensity *= atten * 0.6;
 
 			// smooth random flicker
 			// interpolate between 2 flickers at N time

@@ -13,6 +13,8 @@
 
 int sithLight_Load(sithWorld *world, int a2)
 {
+	return 1;
+
     if (a2)
         return 0;
 

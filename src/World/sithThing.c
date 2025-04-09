@@ -103,6 +103,10 @@ const char* sithThing_aParams[NUM_THING_PARAMS] = {
     "light",
 #ifdef RGB_THING_LIGHTS
 	"lightcolor",
+	#ifdef RENDER_DROID2
+	"lightradius",
+	"lightangle",
+	#endif
 #endif
     "attach",
     "soundclass",
@@ -1936,6 +1940,14 @@ int sithThing_LoadThingParam(stdConffileArg *arg, sithThing* pThing, int param)
 			{
 				result = 0;
 			}
+			break;
+		case THINGPARAM_LIGHTRADIUS:
+			pThing->lightRadius = _atof(arg->value);
+			result = 1;
+			break;
+		case THINGPARAM_LIGHTANGLE:
+			pThing->lightAngle = _atof(arg->value);
+			result = 1;
 			break;
 #endif
         case THINGPARAM_SOUNDCLASS:

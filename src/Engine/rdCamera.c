@@ -466,6 +466,27 @@ void rdCamera_SetAttenuation(rdCamera *camera, float minVal, float maxVal)
     }
 }
 
+#ifdef RENDER_DROID2
+
+int rdCamera_AddLightExplicitRadius(rdCamera* camera, rdLight* light, float radius, rdVector3* lightPos)
+{
+	if (camera->numLights >= RDCAMERA_MAX_LIGHTS)
+		return 0;
+
+	camera->lights[camera->numLights] = light;
+	light->type = 8;
+	light->falloffMin = radius;
+	light->falloffMax = radius;
+
+	light->id = camera->numLights;
+	rdVector_Copy3(&camera->lightPositions[camera->numLights], lightPos);
+
+	++camera->numLights;
+	return 1;
+}
+
+#endif
+
 int rdCamera_AddLight(rdCamera *camera, rdLight *light, rdVector3 *lightPos)
 {
     //sithRender_RenderDebugLight(light->intensity * 10.0, lightPos);

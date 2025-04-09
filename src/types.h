@@ -1068,6 +1068,7 @@ typedef struct std3D_LightingState // todo: pack this
 	//rdVector3 ambientColor;   // rgb ambient color
 	//rdAmbient ambientStateSH; // directional ambient
 	rdVector4 ambientCenter;
+	float overbright;
 } std3D_LightingState;
 //static_assert(sizeof(std3D_LightingState) == sizeof(uint32_t) * 10, "std3D_TextureState not 40 bytes");
 
@@ -3454,6 +3455,10 @@ typedef struct sithThing
     float light;
 #ifdef RGB_THING_LIGHTS
 	rdVector3 lightColor;
+#ifdef RENDER_DROID2
+	float lightRadius;
+	float lightAngle;
+#endif
 #endif
     float lightMin;
     int isVisible;

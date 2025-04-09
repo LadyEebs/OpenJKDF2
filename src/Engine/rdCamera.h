@@ -71,4 +71,8 @@ void rdCamera_GetFrustumCornerRays(rdCamera* camera, rdMatrix34* camMat, rdVecto
 void rdCamera_GetFrustumRay(rdCamera* camera, rdVector3* result, float u, float v, float depth);
 #endif
 
+#ifdef RENDER_DROID2
+int rdCamera_AddLightExplicitRadius(rdCamera* camera, rdLight* light, float radius, rdVector3* lightPos);
+#endif
+
 #endif // _RDCAMERA_H

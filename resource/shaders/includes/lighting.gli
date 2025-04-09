@@ -72,6 +72,12 @@ vec3 fresnel_approx(vec3 f0, float costh)
 	return f0 + (1.0 - f0) * exp2(-8.35 * costh);
 }
 
+float halfLambert(float NdotL)
+{
+	NdotL = NdotL * 0.5 + 0.5;
+	return NdotL * NdotL;
+}
+
 void calc_point_light(inout light_result result, uint light_index, light_input params)
 {
 	vec3 viewPos = 	vec4( unpackHalf2x16(params.pos.x).xy, unpackHalf2x16(params.pos.y).xy ).xyz;
@@ -86,20 +92,29 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	lvec         = lvec * rcpLen;
 
 	float intensity = lights[light_index].direction_intensity.w;
-	//if(lights[light_index].type == 3)
-	//{
-	//	float angle = dot(lights[light_index].direction_intensity.xyz, lvec);
-	//	if (angle <= lights[light_index].cosAngleY)
-	//		continue;
-	//
-	//	if (angle < lights[light_index].cosAngleX)
-    //        intensity = (1.0 - (lights[light_index].cosAngleX - angle) * lights[light_index].lux.x) * intensity;
-	//}
-
-	// this is JK's dynamic light attenuation model
-	// note it depends on scalar value matching whatever was used to calculate the intensity, it seems
-	if (lights[light_index].type > 0)
+	if((lights[light_index].type & 3) == 3)
 	{
+		float angle = dot(lights[light_index].direction_intensity.xyz, lvec);
+		if (angle <= lights[light_index].cosAngleY)
+			return;
+	
+		if (angle < lights[light_index].cosAngleX)
+            intensity *= saturate(1.0 - (lights[light_index].cosAngleX - angle) * lights[light_index].lux.x);
+	}
+
+	
+	if ((lights[light_index].type & 8) == 8) // quadratic falloff
+	{
+		float falloff = saturate(1.0 - dotVector * (lights[light_index].invFalloff * lights[light_index].invFalloff));
+
+		intensity *= falloff * falloff;
+
+		//vec3 lightDist = lvec * lights[light_index].invFalloff;
+		//intensity *= saturate(1.0 - dot(lightDist, lightDi3st));
+	}
+	else if (lights[light_index].type > 0) 	// JK's original dynamic light attenuation model
+	{
+		// note it depends on scalar value matching whatever was used to calculate the intensity, it seems
 		const float scalar = 0.4; // todo: needs to come from rdCamera_pCurCamera->attenuationMin
 		intensity -= scalar * len;
 	}
@@ -115,7 +130,7 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 		return;
 
 	vec3 normal = unpackSnorm4x8(params.normal).xyz;
-	float lightMagnitude = saturate( dot(normal.xyz, lvec) * intensity );
+	float lightMagnitude = halfLambert( dot(normal.xyz, lvec) ) * intensity;
 	//float signedMagnitude = lightMagnitude;
 	//lightMagnitude = max(lightMagnitude, float(0.0)) * intensity;
 
@@ -144,36 +159,41 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 		lightColor *= vec3(unpackUnorm4x8(params.tint).rgb);
 	}
 
-	vec2 coeffs = unpackHalf2x16(params.spec_c);
-#ifdef GGX	
-	// Unity "Optimizing PBR"
-	// https://community.arm.com/cfs-file/__key/communityserver-blogs-components-weblogfiles/00-00-00-20-66/siggraph2015_2D00_mmg_2D00_renaldas_2D00_slides.pdf
-	// approximated microfacet GGX lobe, fresnel and visibility approximated with ldoth, spec color applied at the end
-	//vec3  view  = unpackSnorm4x8(params.view).xyz;
-	//vec3  h     = normalize(lvec + view);
-	//float ndoth = clamp(dot(h, normal), float(0.0), float(1.0));
-	//float ldoth = clamp(dot(h, lvec), float(0.0), float(1.0));
-	//
-	//float d       = (ndoth * ndoth) * (coeffs.x - float(1.0)) + float(1.00001);
-	//      d       = coeffs.x / ((d * d) * max(float(0.1), ldoth * ldoth) * coeffs.y);
-
-	vec3 reflected = unpackSnorm4x8(params.reflected).xyz;
-
-	float rdotv = dot(reflected, lvec);
-	float     d = (rdotv * rdotv) * coeffs.y + 1.00001;
-	          d = coeffs.x * fastRcpNR1(d * d);
-#else
-	// "Physically Based Shading on Mobile"
-	// https://www.unrealengine.com/en-US/blog/physically-based-shading-on-mobile
-	// approximated energy conserving phong lobe, fresnel and spec color must be applied at the end with env_brdf
-	vec3 reflected = unpackSnorm4x8(params.reflected).xyz;
-
-	float rdotv  = dot(reflected, lvec);
-	float d      = coeffs.x * fastExp2( coeffs.y * rdotv + (-coeffs.y) );
+#ifdef WORLD
+	if (lightMode > 3)
 #endif
+	{
+		vec2 coeffs = unpackHalf2x16(params.spec_c);
+	#ifdef GGX	
+		// Unity "Optimizing PBR"
+		// https://community.arm.com/cfs-file/__key/communityserver-blogs-components-weblogfiles/00-00-00-20-66/siggraph2015_2D00_mmg_2D00_renaldas_2D00_slides.pdf
+		// approximated microfacet GGX lobe, fresnel and visibility approximated with ldoth, spec color applied at the end
+		//vec3  view  = unpackSnorm4x8(params.view).xyz;
+		//vec3  h     = normalize(lvec + view);
+		//float ndoth = clamp(dot(h, normal), float(0.0), float(1.0));
+		//float ldoth = clamp(dot(h, lvec), float(0.0), float(1.0));
+		//
+		//float d       = (ndoth * ndoth) * (coeffs.x - float(1.0)) + float(1.00001);
+		//      d       = coeffs.x / ((d * d) * max(float(0.1), ldoth * ldoth) * coeffs.y);
 
-	result.specular = packF2x11_1x10((lightMagnitude * d) * lightColor.rgb + (unpackF2x11_1x10(result.specular)));
-	//result.specular = lightColor.rgb * vec3(lightMagnitude * d) + result.specular;
+		vec3 reflected = unpackSnorm4x8(params.reflected).xyz;
+
+		float rdotv = dot(reflected, lvec);
+		float     d = (rdotv * rdotv) * coeffs.y + 1.00001;
+				  d = coeffs.x * fastRcpNR1(d * d);
+	#else
+		// "Physically Based Shading on Mobile"
+		// https://www.unrealengine.com/en-US/blog/physically-based-shading-on-mobile
+		// approximated energy conserving phong lobe, fresnel and spec color must be applied at the end with env_brdf
+		vec3 reflected = unpackSnorm4x8(params.reflected).xyz;
+
+		float rdotv  = dot(reflected, lvec);
+		float d      = coeffs.x * fastExp2( coeffs.y * rdotv + (-coeffs.y) );
+	#endif
+
+		result.specular = packF2x11_1x10((lightMagnitude * d) * lightColor.rgb + (unpackF2x11_1x10(result.specular)));
+		//result.specular = lightColor.rgb * vec3(lightMagnitude * d) + result.specular;
+	}
 }
 
 void calculate_lighting(inout light_result result, light_input params, uint cluster)

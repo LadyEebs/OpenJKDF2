@@ -7,7 +7,7 @@
 
 void rdCluster_Clear();
 
-int rdCluster_AddLight(rdLight* light, rdVector3* position, float intensity);
+int rdCluster_AddLight(rdLight* light, rdVector3* position, rdVector3* direction, float intensity);
 int rdCluster_AddOccluder(rdVector3* position, float radius, rdVector3* verts);
 int rdCluster_AddDecal(stdVBuffer* vbuf, rdDDrawSurface* texture, rdVector3* verts,
 	rdMatrix44* decalMatrix, rdVector3* color, uint32_t flags, float angleFade);

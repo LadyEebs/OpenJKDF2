@@ -85,10 +85,12 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #define U_GEO_MODE			7
 #define U_BLEND_MODE		8
 #define U_FLAGS				9
-#define U_AMB_COLOR			10
-#define U_AMB_CENTER		11
-#define U_AMB_NUM_SG		12
-#define U_AMB_SGS			13
+#define U_OVERBRIGHT		10
+#define U_INV_OVERBRIGHT    11
+#define U_AMB_COLOR			12
+#define U_AMB_CENTER		13
+#define U_AMB_NUM_SG		14
+#define U_AMB_SGS			15
 
 #define UBO_SLOT_LIGHTS        0
 #define UBO_SLOT_OCCLUDERS     1
@@ -242,8 +244,8 @@ typedef struct std3D_SharedUniforms
 	rdVector4 mipDistances;
 
 	float     timeSeconds;
-	float     lightMult;
-	float     invlightMult;
+	float     pad0;//lightMult;
+	float     pad1;//invlightMult;
 	float     ditherScale;
 
 	rdVector2 resolution;
@@ -255,6 +257,10 @@ typedef struct std3D_SharedUniforms
 	float ditherScaleAlways;
 
 	rdVector4 scale_bias[8];
+
+	//rdVector2 resolution2;
+	//rdVector2 padding;
+
 } std3D_SharedUniforms;
 std3D_SharedUniforms sharedUniforms;
 
@@ -4389,7 +4395,7 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
 
 		// auto generate a specular texture from the indices
-		if(1)
+		if(0)//1)
 		{
 			glGenTextures(1, &specular_texture);
 			glActiveTexture(GL_TEXTURE0);
@@ -5483,9 +5489,8 @@ void std3D_UpdateSharedUniforms()
 	sharedUniforms.timeSeconds = sithTime_curSeconds;
 	sharedUniforms.deltaTime = sithTime_deltaSeconds;
 
-	extern float rdroid_overbright;
-	sharedUniforms.lightMult = 1.0f / rdroid_overbright;//jkGuiBuildMulti_bRendering ? 0.85 : (jkPlayer_enableBloom ? 0.9 : 0.85);
-	sharedUniforms.invlightMult = rdroid_overbright;
+	//sharedUniforms.lightMult = 1.0f / rdroid_overbright;//jkGuiBuildMulti_bRendering ? 0.85 : (jkPlayer_enableBloom ? 0.9 : 0.85);
+	//sharedUniforms.invlightMult = rdroid_overbright;
 
 	uint8_t bpp = std3D_framebufferFlags & 0x4 ? 10 : 5;
 	sharedUniforms.ditherScaleAlways = 1.0f / (float)((1 << bpp) - 1);
@@ -5496,6 +5501,7 @@ void std3D_UpdateSharedUniforms()
 		sharedUniforms.ditherScale = 0.0f;
 
 	rdVector_Set2(&sharedUniforms.resolution, std3D_framebuffer.internalWidth, std3D_framebuffer.internalHeight);
+	//rdVector_Set2(&sharedUniforms.resolution2, std3D_framebuffer.w, std3D_framebuffer.h);
 
 	extern rdVector4 rdroid_sgBasis[RD_AMBIENT_LOBES]; //eww
 	memcpy(sharedUniforms.sgBasis, rdroid_sgBasis, sizeof(rdVector4) * RD_AMBIENT_LOBES);
@@ -5924,6 +5930,9 @@ void std3D_SetLightingState(std3D_worldStage* pStage, std3D_DrawCallState* pStat
 	glUniform4fv(U_AMB_SGS, RD_AMBIENT_LOBES, &sgs[0].x);
 	glUniform4fv(U_AMB_CENTER, 1, &pState->lightingState.ambientCenter);
 	glUniform1ui(U_AMB_NUM_SG, RD_AMBIENT_LOBES);
+
+	glUniform1f(U_OVERBRIGHT, pState->lightingState.overbright);
+	glUniform1f(U_INV_OVERBRIGHT, 1.0f / pState->lightingState.overbright);
 
 	//glUniform4fv(pStage->uniform_ambient_sg, RD_AMBIENT_LOBES, &sgs[0].x);
 	//glUniform4fv(pStage->uniform_ambient_center, 1, &pState->lightingState.ambientCenter);

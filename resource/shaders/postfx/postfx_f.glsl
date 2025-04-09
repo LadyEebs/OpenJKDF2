@@ -138,7 +138,7 @@ void main(void)
 	flex3 sampled_color = textureLod(tex, uv, 0).xyz;
 
 	// when dithering, try to smooth it out with a classic voodoo style filter
-	if(param2 > 0.0)
+	/*if(param2 > 0.0)
 	{
 		vec2 pixsize = vec2(1.0) / iResolution2.xy;// / textureSize(tex, 0).xy;
 		
@@ -163,7 +163,7 @@ void main(void)
 		flex3 diff2 = clamp(pixel10 - pixel00, flex3(-32.0/255.0), flex3(32.0/255.0));
 		
 		sampled_color = (pixel00 + (diff0 + diff1 + diff2) * flex3(1.0 / 3.0));
-	}
+	}*/
 
 	//vec2 invPixelSize = 1.0 / iResolution.xy;
 	//
@@ -191,7 +191,7 @@ void main(void)
 	flex2 oneOverUV = flex(1.0) - flex2(uv.xy);
 	flex edge = flex(uv.x) * flex(uv.y) * oneOverUV.x * oneOverUV.y;
 	edge = clamp(vignetteStrength * edge, flex(0.0), flex(1.0));
-	sampled_color *= pow(edge, vignettePower) * flex(0.5) + flex(0.5);
+//	sampled_color *= pow(edge, vignettePower) * flex(0.5) + flex(0.5);
     
 	flex3 bloom = textureLod(tex2, uv.xy, 0).xyz;
 	sampled_color.rgb = bloom.rgb + sampled_color.rgb * (flex3(1.0) - bloom.rgb);
@@ -207,7 +207,7 @@ void main(void)
 	sampled_color.rgb *= flex3(colorEffects_filter.rgb);
 //#endif
 
-    fragColor.rgb = (pow(sampled_color.rgb, flex3(fastRcpNR0(param3))));
+    fragColor.rgb = (pow(sampled_color.rgb, flex3(1.0/param3)));
 	fragColor.w = flex(1.0);
 }
 

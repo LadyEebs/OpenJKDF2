@@ -109,7 +109,7 @@ void main(void)
 		color0.xyz += CalculateAmbientDiffuse(normal);
 
 	color1.rgb = vec3(0.0);
-	if (lightMode >= 2)
+	if (lightMode > 2)
 		color1.xyz = CalculateAmbientSpecular(roughnessFactor, normal, view, reflect(-view, normal));
 
 	// light mode "diffuse" (a.k.a new gouraud)
@@ -159,7 +159,7 @@ void main(void)
 			}
 	
 			color0.rgb = unpackF2x11_1x10(result.diffuse);
-			color1.rgb = unpackF2x11_1x10(result.specular);
+			//color1.rgb = unpackF2x11_1x10(result.specular);
 		}
 	}
 

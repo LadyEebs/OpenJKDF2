@@ -17,10 +17,13 @@ import "defines.gli"
 #define U_BLEND_MODE   8
 
 #define U_FLAGS       9
-#define U_AMB_COLOR   10
-#define U_AMB_CENTER  11
-#define U_AMB_NUM_SG  12
-#define U_AMB_SGS     13
+#define U_OVERBRIGHT		10
+#define U_INV_OVERBRIGHT    11
+
+#define U_AMB_COLOR   12
+#define U_AMB_CENTER  13
+#define U_AMB_NUM_SG  14
+#define U_AMB_SGS     15
 
 // todo: move me
 layout(location = U_MODEL_MATRIX) uniform mat4 modelMatrix;
@@ -39,6 +42,9 @@ layout(location = U_LIGHT_MODE) uniform int lightMode;
 layout(location = U_GEO_MODE) uniform int geoMode;
 layout(location = U_BLEND_MODE) uniform int blend_mode;
 //uniform int ditherMode;
+
+layout(location = U_INV_OVERBRIGHT) uniform float light_mult;
+layout(location = U_OVERBRIGHT) uniform float invlightMult;
 
 layout(location = U_FLAGS) uniform int aoFlags;
 layout(location = U_AMB_COLOR) uniform vec4 ambientColor;
@@ -66,8 +72,9 @@ layout(binding = UBO_SLOT_SHARED, std140) uniform sharedBlock
 	vec4  mipDistances;
 
 	float timeSeconds;
-	float light_mult;
-	float invlightMult;
+	float pad0, pad1;
+	//float light_mult;
+	//float invlightMult;
 	float ditherScale;
 
 	vec2  iResolution;
@@ -78,6 +85,9 @@ layout(binding = UBO_SLOT_SHARED, std140) uniform sharedBlock
 	float ditherScaleAlways;
 
 	vec4 aScaleBias[8];
+
+	//vec2 resolution2;
+	//vec2 padding;
 };
 
 // Fog state

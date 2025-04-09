@@ -835,14 +835,17 @@ int sithRender_AddSurfaceLight(sithSurface* surface)
 	float radius = fmax(surface->radius, 0.025f);
 
 	rdVector3 offset;
-	rdVector_Scale3(&offset, &surface->surfaceInfo.face.normal, radius * 0.015);
+	rdVector_Scale3(&offset, &surface->surfaceInfo.face.normal, radius * 0.3);
 
 	rdVector3 center;
 	rdVector_Add3(&center, &surface->center, &offset);
 
-	sithRender_aLights[sithRender_numLights].intensity = radius / rdCamera_pCurCamera->attenuationMin;
+	sithRender_aLights[sithRender_numLights].intensity = 1.0;// / rdCamera_pCurCamera->attenuationMin;
+	sithRender_aLights[sithRender_numLights].direction = surface->surfaceInfo.face.normal;
+	rdLight_SetAngles(&sithRender_aLights[sithRender_numLights], 0.0f, 90.0f);
 
-	rdCamera_AddLight(rdCamera_pCurCamera, &sithRender_aLights[sithRender_numLights], &center);
+	rdCamera_AddLightExplicitRadius(rdCamera_pCurCamera, &sithRender_aLights[sithRender_numLights], radius * 2.0, &center);
+	sithRender_aLights[sithRender_numLights].type |= 3; // spot
 	return ++sithRender_numLights;
 }
 
@@ -925,7 +928,7 @@ void sithRender_Draw()
 
 	rdDepthRange(0.05f, 1.0f);
 	rdSetGlowIntensity(0.4f);
-	rdSetOverbright(1.5f);
+	rdSetOverbright(1.8f);
 
 	_memset(sithWorld_pCurrentWorld->lightBuckets, 0, sizeof(uint64_t)*sithWorld_pCurrentWorld->numLightBuckets);
 
@@ -1205,7 +1208,20 @@ void sithRender_Clip(sithSector *sector, rdClipFrustum *frustumArg, float a3)
 				#ifdef RGB_THING_LIGHTS
 					sithRender_aLights[lightIdx].color = thing->lightColor;
 				#endif
-                    rdCamera_AddLight(rdCamera_pCurCamera, &sithRender_aLights[lightIdx], &thing->position);
+					if (thing->lightRadius > 0.0)
+					{
+						rdCamera_AddLightExplicitRadius(rdCamera_pCurCamera, &sithRender_aLights[lightIdx], thing->lightRadius, &thing->position);
+					}
+					else
+					{
+						rdCamera_AddLight(rdCamera_pCurCamera, &sithRender_aLights[lightIdx], &thing->position);
+					}
+					if (thing->lightAngle > 0.0)
+					{
+						sithRender_aLights[lightIdx].type |= 3;
+						sithRender_aLights[lightIdx].direction = thing->lookOrientation.lvec;
+						rdLight_SetAngles(&sithRender_aLights[lightIdx], thing->lightAngle * 0.1, thing->lightAngle);
+					}
                     lightIdx = ++sithRender_numLights;
                 }
 
@@ -2838,8 +2854,21 @@ void sithRender_UpdateLights(sithSector *sector, float prev, float dist, int dep
 #ifdef RGB_THING_LIGHTS
 					sithRender_aLights[sithRender_numLights].color = i->lightColor;
 #endif
-                    rdCamera_AddLight(rdCamera_pCurCamera, &sithRender_aLights[sithRender_numLights], &i->position);
-                    ++sithRender_numLights;
+					if (i->lightRadius > 0.0)
+					{
+						rdCamera_AddLightExplicitRadius(rdCamera_pCurCamera, &sithRender_aLights[sithRender_numLights], i->lightRadius, &i->position);
+					}
+					else
+					{
+						rdCamera_AddLight(rdCamera_pCurCamera, &sithRender_aLights[sithRender_numLights], &i->position);
+					}
+					if (i->lightAngle > 0.0)
+					{
+						sithRender_aLights[sithRender_numLights].type |= 3;
+						sithRender_aLights[sithRender_numLights].direction = i->lookOrientation.lvec;
+						rdLight_SetAngles(&sithRender_aLights[sithRender_numLights], i->lightAngle * 0.1, i->lightAngle);
+					}
+					++sithRender_numLights;
                 }
 
                 if ( (i->type == SITH_THING_ACTOR || i->type == SITH_THING_PLAYER) && sithRender_numLights < SITHREND_NUM_LIGHTS)
