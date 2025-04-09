@@ -161,6 +161,7 @@ int jkGuiSound_Show()
 #endif
         sithSoundMixer_UpdateMusicVolume(jkGuiSound_musicVolume);
         stdSound_SetMenuVolume(jkGuiSound_sfxVolume);
+		jkGuiRend_UpdateAudio();
     }
 
     return v1;

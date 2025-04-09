@@ -2692,13 +2692,13 @@ void jkGuiRend_UpdateAudio()
 				jkGuiRend_DsoundAmbienceHandle = NULL;
 			}
 			jkGuiRend_DsoundAmbienceHandle = newHandle;
-			stdSound_BufferSetVolume(newHandle, 0.5f);
+			stdSound_BufferSetVolume(newHandle, 0.1f);
 			stdSound_BufferPlay(newHandle, 1);
 		}
 	}
 	else
 	{
-		stdSound_BufferSetVolume(jkGuiRend_DsoundAmbienceHandle, 0.5f);
+		stdSound_BufferSetVolume(jkGuiRend_DsoundAmbienceHandle, 0.1f);
 		stdSound_BufferPlay(jkGuiRend_DsoundAmbienceHandle, 1);
 	}
 #endif
