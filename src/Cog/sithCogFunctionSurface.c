@@ -516,8 +516,12 @@ void sithCogFunctionSurface_GetSurfaceCenter(sithCog *ctx)
     v1 = sithCogExec_PopSurface(ctx);
     if ( v1 )
     {
+	#ifdef RENDER_DROID2
+		sithCogExec_PushVector3(ctx, &v1->center);
+	#else
         sithSurface_GetCenter(v1, &a2);
         sithCogExec_PushVector3(ctx, &a2);
+	#endif
     }
     else
     {
