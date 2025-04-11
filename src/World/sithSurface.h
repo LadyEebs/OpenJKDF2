@@ -139,6 +139,9 @@ void sithSurface_Sync();
 
 // Added
 void sithSurface_GetCenterRadius(sithSurface* surface, rdVector3* outCenter, float* outRadius);
+rdVector3* sithSurface_GetVertexPosition(sithSurface* surface, int i);
+void sithSurface_BuildTangentFrame(sithSurface* surface);
+void sithSurface_CalcLocalSize(sithSurface* surface);
 
 //static void (*sithSurface_Shutdown)() = (void*)sithSurface_Shutdown_ADDR;
 //static int (*sithSurface_Startup)() = (void*)sithSurface_Startup_ADDR;

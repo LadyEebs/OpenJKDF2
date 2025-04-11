@@ -22,15 +22,45 @@
 
 // todo: split XY and Z clusters so we can do XY | Z in the shader and reduce cluster build cost
 
+typedef enum
+{
+	CLUSTER_ITEM_SPHERE,
+	CLUSTER_ITEM_CONE,
+	CLUSTER_ITEM_BOX
+} rdCluster_ItemType;
+
+typedef struct
+{
+	float     angle;
+	rdVector3 apex;
+	rdVector3 direction;
+} rdCluster_ConeParams;
+
+typedef struct
+{
+	rdMatrix44 matrix;
+} rdCluster_BoxParams;
+
+typedef struct
+{
+	int       itemIndex;
+	int       type;
+	float     radius;
+	rdVector3 position;
+	union
+	{
+		rdCluster_ConeParams   coneParams;
+		rdCluster_BoxParams    boxParams;
+	};
+} rdCluster_Item;
+
 static int         rdroid_clustersDirty;								// clusters need rebuilding/refilling
 static int         rdroid_clusterFrustumFrame;							// current frame for clusters, any cluster not matching will have its bounds updated
 static int         rdroid_lastClusterFrustumFrame;						// last frame for clusters, will be updated to clusterFrustumFrame after building
 static rdCluster   rdroid_clusters[STD3D_CLUSTER_GRID_TOTAL_SIZE];		// per cluster data (bounds and frame count)
 static uint32_t    rdroid_clusterBits[STD3D_CLUSTER_GRID_TOTAL_SIZE];	// cluster bit sets
 
-#ifdef USE_JOBS
 static rdMatrix44* rdroid_clusterJobProjectionMat;
-#endif
 
 static uint32_t          rdroid_clusterLightOffset;
 static uint32_t          rdroid_numClusterLights;
@@ -71,6 +101,62 @@ void rdCluster_Clear()
 	rdCluster_ClearLights();
 	rdCluster_ClearOccluders();
 	rdCluster_ClearDecals();
+}
+
+float rdCluster_BuildAreaLightMatrix(rdClusterLight* pLight, rdVector3* position, rdMatrix44* mat, float* radius)
+{
+	if (pLight->type & 16)
+	{
+		const float width  = pLight->right.w + *radius * 2.0;
+		const float height = pLight->up.w + *radius * 2.0;
+		
+		rdVector_Scale3((rdVector3*)&mat->vA, (rdVector3*)&pLight->right, width);
+		mat->vA.w = 0.0f;
+
+		rdVector_Scale3((rdVector3*)&mat->vB, (rdVector3*)&pLight->direction_intensity, *radius * 2.0);
+		mat->vB.w = 0.0f;
+
+		rdVector_Scale3((rdVector3*)&mat->vC, (rdVector3*)&pLight->up, height);
+		mat->vC.w = 0.0f;
+
+		rdVector3 offset;
+		rdVector_Scale3(&offset, (rdVector3*)&pLight->direction_intensity, *radius * 0.5f);
+		rdVector_Add3((rdVector3*)&mat->vD, (rdVector3*)&pLight->position, (rdVector3*)&offset);
+		mat->vD.w = 1.0f;
+
+		rdVector_Copy3(position, (rdVector3*)&mat->vD);
+
+		float scaleX = rdVector_Dot3((rdVector3*)&mat->vA, (rdVector3*)&mat->vA);
+		float scaleY = rdVector_Dot3((rdVector3*)&mat->vB, (rdVector3*)&mat->vB);
+		float scaleZ = rdVector_Dot3((rdVector3*)&mat->vC, (rdVector3*)&mat->vC);
+
+		//*radius = fmax(width, fmax(height, *radius * 2.0));
+		float diagonal = stdMath_Sqrt(scaleX + scaleY + scaleZ);
+		*radius = diagonal / 2.0f;
+	}
+}
+
+// https://bartwronski.com/2017/04/13/cull-that-cone/
+void rdCluster_BoundingSphere(rdVector3* outPos, float* outRadius, rdVector3* origin, rdVector3* forward, float size, float angle)
+{
+	float s, c;
+	stdMath_SinCos(angle, &s, &c);
+	if (angle > 45.0)
+	{
+		float offset = c * size;
+		outPos->x = origin->x + offset * forward->x;
+		outPos->y = origin->y + offset * forward->y;
+		outPos->z = origin->z + offset * forward->z;
+		*outRadius = s * size;
+	}
+	else
+	{
+		float offset = size / (2.0f * c);
+		outPos->x = origin->x + offset * forward->x;
+		outPos->y = origin->y + offset * forward->y;
+		outPos->z = origin->z + offset * forward->z;
+		*outRadius = offset;
+	}
 }
 
 // clipping and clustering
@@ -122,12 +208,12 @@ static int rdCluster_ComputeClipRegion(const rdVector3* Center, float Radius, rd
 
 static int rdCluster_ComputeBoundingBox(const rdVector3* Center, float Radius, rdMatrix44* pProjection, float Near, rdVector4* Bounds)
 {
-	rdVector4 bounds;
+	rdVector4 bounds; 
 	int clipped = rdCluster_ComputeClipRegion(Center, Radius, pProjection, Near, &bounds);
 
-	Bounds->x = 0.5f * bounds.x + 0.5f;
+	Bounds->x = 0.5f *  bounds.x + 0.5f;
 	Bounds->y = 0.5f * -bounds.w + 0.5f;
-	Bounds->z = 0.5f * bounds.z + 0.5f;
+	Bounds->z = 0.5f *  bounds.z + 0.5f;
 	Bounds->w = 0.5f * -bounds.y + 0.5f;
 
 	return clipped;
@@ -158,8 +244,8 @@ static void rdCluster_BuildCluster(rdCluster* pCluster, int x, int y, int z, flo
 	rdCamera_GetFrustumRay(rdCamera_pCurCamera, &corners[7], u1, v1, z1);
 
 	// calculate the AABB of the cluster
-	rdVector_Set3(&pCluster->minb, 10000.0f, 10000.0f, 10000.0f);
-	rdVector_Set3(&pCluster->maxb, -10000.0f, -10000.0f, -10000.0f);
+	rdVector_Set3(&pCluster->minb, 1e+16f, 1e+16f, 1e+16f);
+	rdVector_Set3(&pCluster->maxb, -1e+16f, -1e+16f, -1e+16f);
 	for (int c = 0; c < 8; ++c)
 	{
 		pCluster->minb.x = fmin(pCluster->minb.x, corners[c].x);
@@ -171,7 +257,22 @@ static void rdCluster_BuildCluster(rdCluster* pCluster, int x, int y, int z, flo
 	}
 }
 
-static void rdCluster_AssignItemToClusters(int itemIndex, rdVector3* pPosition, float radius, rdMatrix44* pProjection, float znear, float zfar, rdMatrix44* boxMat)
+static int rdCluster_IntersectsCluster(rdCluster_Item* pItem, rdCluster* pCluster)
+{
+	int intersects;
+	switch (pItem->type)
+	{
+	case CLUSTER_ITEM_BOX:
+		return rdMath_IntersectAABB_OBB(&pCluster->minb, &pCluster->maxb, &pItem->boxParams.matrix);
+	case CLUSTER_ITEM_CONE:
+		return rdMath_IntersectAABB_Cone(&pCluster->minb, &pCluster->maxb, &pItem->coneParams.apex, &pItem->coneParams.direction, pItem->coneParams.angle, pItem->radius);
+	case CLUSTER_ITEM_SPHERE:
+	default:
+		return rdMath_IntersectAABB_Sphere(&pCluster->minb, &pCluster->maxb, &pItem->position,  pItem->radius);
+	}
+}
+
+static void rdCluster_AssignItemToClusters(rdCluster_Item* pItem, rdMatrix44* pProjection, float znear, float zfar)
 {
 	// scale and bias factor for non-linear cluster distribution
 	float sliceScalingFactor = (float)STD3D_CLUSTER_GRID_SIZE_Z / logf(zfar / znear);
@@ -179,12 +280,12 @@ static void rdCluster_AssignItemToClusters(int itemIndex, rdVector3* pPosition, 
 
 	// use a tight screen space bounding rect to determine which tiles the item needs to be assigned to
 	rdVector4 rect;
-	int clipped = rdCluster_ComputeBoundingBox(pPosition, radius, pProjection, znear, &rect); // todo: this seems to be a bit expensive, would it be better to use a naive box?
+	int clipped = rdCluster_ComputeBoundingBox(&pItem->position, pItem->radius, pProjection, znear, &rect); // todo: this seems to be a bit expensive, would it be better to use a naive box?
 	if (rect.x < rect.z && rect.y < rect.w)
 	{
 		// linear depth for near and far edges of the light
-		float zMin = fmax(0.0f, (pPosition->y - radius));
-		float zMax = fmax(0.0f, (pPosition->y + radius));
+		float zMin = fmax(0.0f, (pItem->position.y - pItem->radius));
+		float zMax = fmax(0.0f, (pItem->position.y + pItem->radius));
 
 		// non linear depth distribution
 		int zStartIndex = (int)floorf(fmax(0.0f, logf(zMin) * sliceScalingFactor + sliceBiasFactor));
@@ -225,24 +326,17 @@ static void rdCluster_AssignItemToClusters(int itemIndex, rdVector3* pPosition, 
 
 					// note: updating the cluster bounds is by far the most expensive part of this entire thing, avoid doing it!
 #ifndef USE_JOBS
-					if (pRenderPass->clusters[clusterID].lastUpdateFrame != pRenderPass->clusterFrustumFrame)
+					if (rdroid_lastClusterFrustumFrame != rdroid_clusterFrustumFrame)
 					{
-						rdCluster_BuildCluster(&pRenderPass->clusters[clusterID], x, y, z, znear, zfar);
-						pRenderPass->clusters[clusterID].lastUpdateFrame = pRenderPass->clusterFrustumFrame;
+						rdCluster_BuildCluster(&rdroid_clusters[clusterID], x, y, z, znear, zfar);
+						rdroid_clusters[clusterID].lastUpdateFrame = rdroid_clusterFrustumFrame;
 					}
 #endif
-
-					// todo: spotlight
-					int intersects;
-					if (boxMat)
-						intersects = rdMath_IntersectAABB_OBB(&rdroid_clusters[clusterID].minb, &rdroid_clusters[clusterID].maxb, boxMat);
-					else
-						intersects = rdMath_IntersectAABB_Sphere(&rdroid_clusters[clusterID].minb, &rdroid_clusters[clusterID].maxb, pPosition, radius);
-
+					int intersects = rdCluster_IntersectsCluster(pItem, &rdroid_clusters[clusterID]);
 					if (intersects)
 					{
-						const uint32_t bucket_index = itemIndex / 32;
-						const uint32_t bucket_place = itemIndex % 32;
+						const uint32_t bucket_index = pItem->itemIndex / 32;
+						const uint32_t bucket_place = pItem->itemIndex % 32;
 
 						// SDL doesn't have proper atomic bit operations so fucking do it ourselves I guess
 #ifdef USE_JOBS
@@ -260,9 +354,6 @@ static void rdCluster_AssignItemToClusters(int itemIndex, rdVector3* pPosition, 
 		}
 	}
 }
-
-
-#ifdef USE_JOBS
 
 static void rdCluster_BuildClustersJob(uint32_t jobIndex, uint32_t groupIndex)
 {
@@ -284,19 +375,35 @@ static void rdCluster_AssignLightsToClustersJob(uint32_t jobIndex, uint32_t grou
 {
 	if (jobIndex >= rdroid_numClusterLights)
 		return;
-
+		 
 	float znear = -rdroid_clusterJobProjectionMat->vD.z / (rdroid_clusterJobProjectionMat->vB.z + 1.0f);
 	float zfar = -rdroid_clusterJobProjectionMat->vD.z / (rdroid_clusterJobProjectionMat->vB.z - 1.0f);
 
-	rdCluster_AssignItemToClusters(
-		rdroid_clusterLightOffset + jobIndex,
-		(rdVector3*)&rdroid_clusterLights[jobIndex].position,
-		rdroid_clusterLights[jobIndex].falloffMin,
-		rdroid_clusterJobProjectionMat,
-		znear,
-		zfar,
-		NULL
-	);
+	rdCluster_Item item;
+	item.itemIndex = rdroid_clusterLightOffset + jobIndex;
+	item.radius    = rdroid_clusterLights[jobIndex].falloffMin;
+	rdVector_Copy4To3(&item.position, &rdroid_clusterLights[jobIndex].position);
+
+	if (rdroid_clusterLights[jobIndex].type == RD_LIGHT_SPOTLIGHT)
+	{ 
+		item.type = CLUSTER_ITEM_CONE;
+		item.coneParams.angle = rdroid_clusterLights[jobIndex].angleY;
+		item.coneParams.apex = item.position;
+		rdVector_Copy4To3(&item.coneParams.direction, &rdroid_clusterLights[jobIndex].direction_intensity);
+
+		rdCluster_BoundingSphere(&item.position, &item.radius, &item.coneParams.apex, &item.coneParams.direction, item.radius, item.coneParams.angle);
+	}
+	else if(rdroid_clusterLights[jobIndex].type == RD_LIGHT_RECTANGLE)
+	{
+		item.type = CLUSTER_ITEM_BOX;
+		rdCluster_BuildAreaLightMatrix(&rdroid_clusterLights[jobIndex], &item.position, &item.boxParams.matrix, &item.radius);
+	}
+	else
+	{
+		item.type = CLUSTER_ITEM_SPHERE;
+	}
+
+	rdCluster_AssignItemToClusters(&item, rdroid_clusterJobProjectionMat, znear, zfar);
 }
 
 static void rdCluster_AssignOccludersToClustersJob(uint32_t jobIndex, uint32_t groupIndex)
@@ -307,15 +414,13 @@ static void rdCluster_AssignOccludersToClustersJob(uint32_t jobIndex, uint32_t g
 	float znear = -rdroid_clusterJobProjectionMat->vD.z / (rdroid_clusterJobProjectionMat->vB.z + 1.0f);
 	float zfar = -rdroid_clusterJobProjectionMat->vD.z / (rdroid_clusterJobProjectionMat->vB.z - 1.0f);
 
-	rdCluster_AssignItemToClusters(
-		rdroid_clusterOccluderOffset + jobIndex,
-		(rdVector3*)&rdroid_clusterOccluders[jobIndex].position,
-		rdroid_clusterOccluders[jobIndex].position.w,
-		rdroid_clusterJobProjectionMat,
-		znear,
-		zfar,
-		NULL
-	);
+	rdCluster_Item item;
+	item.type = CLUSTER_ITEM_SPHERE;
+	item.itemIndex = rdroid_clusterOccluderOffset + jobIndex;
+	item.radius = rdroid_clusterOccluders[jobIndex].position.w;
+	rdVector_Copy4To3(&item.position, &rdroid_clusterOccluders[jobIndex].position);
+
+	rdCluster_AssignItemToClusters(&item, rdroid_clusterJobProjectionMat, znear, zfar);
 }
 
 void rdCluster_AssignDecalsToClustersJob(uint32_t jobIndex, uint32_t groupIndex)
@@ -326,19 +431,17 @@ void rdCluster_AssignDecalsToClustersJob(uint32_t jobIndex, uint32_t groupIndex)
 	float znear = -rdroid_clusterJobProjectionMat->vD.z / (rdroid_clusterJobProjectionMat->vB.z + 1.0f);
 	float zfar = -rdroid_clusterJobProjectionMat->vD.z / (rdroid_clusterJobProjectionMat->vB.z - 1.0f);
 
-	rdCluster_AssignItemToClusters(
-		rdroid_clusterDecalOffset + jobIndex,
-		(rdVector3*)&rdroid_clusterDecals[jobIndex].posRad,
-		rdroid_clusterDecals[jobIndex].posRad.w,
-		rdroid_clusterJobProjectionMat,
-		znear,
-		zfar,
-		&rdroid_clusterDecals[jobIndex].decalMatrix);
+	rdCluster_Item item;
+	item.type = CLUSTER_ITEM_BOX;
+	item.itemIndex = rdroid_clusterDecalOffset + jobIndex;
+	item.radius = rdroid_clusterDecals[jobIndex].posRad.w;
+	rdVector_Copy4To3(&item.position, &rdroid_clusterDecals[jobIndex].posRad);
+	item.boxParams.matrix = rdroid_clusterDecals[jobIndex].decalMatrix;
+
+	rdCluster_AssignItemToClusters(&item, rdroid_clusterJobProjectionMat, znear, zfar);
 }
 
-#endif
-
-int rdCluster_AddLight(rdLight* light, rdVector3* position, rdVector3* direction, float intensity)
+int rdCluster_AddLight(rdLight* light, rdVector3* position, rdVector3* direction, rdVector3* right, rdVector3* up, float width, float height, float intensity)
 {
 	if (rdroid_numClusterLights >= STD3D_CLUSTER_MAX_LIGHTS || !light->active)
 		return 0;
@@ -347,16 +450,15 @@ int rdCluster_AddLight(rdLight* light, rdVector3* position, rdVector3* direction
 
 	rdClusterLight* clusterLight = &rdroid_clusterLights[rdroid_numClusterLights++];
 	clusterLight->type = light->type;
-	clusterLight->position.x = position->x;
-	clusterLight->position.y = position->y;
-	clusterLight->position.z = position->z;
+	rdVector_Copy3To4(&clusterLight->position, position);
 
-	if (direction)
-	{
-		clusterLight->direction_intensity.x = direction->x;
-		clusterLight->direction_intensity.y = direction->y;
-		clusterLight->direction_intensity.z = direction->z;
-	}
+	rdVector_Copy3To4(&clusterLight->right, right);
+	clusterLight->right.w = width;
+
+	rdVector_Copy3To4(&clusterLight->up, up);
+	clusterLight->up.w = height;
+
+	rdVector_Copy3To4(&clusterLight->direction_intensity, direction);
 	clusterLight->direction_intensity.w = light->intensity;
 
 	clusterLight->color.x = light->color.x * intensity;
@@ -375,8 +477,24 @@ int rdCluster_AddLight(rdLight* light, rdVector3* position, rdVector3* direction
 	clusterLight->invFalloff = 1.0f / light->falloffMin;
 	clusterLight->falloffMin = light->falloffMin;
 	clusterLight->falloffMax = light->falloffMax;
+	clusterLight->falloffType = light->falloffModel;
 
 	return 1;
+}
+
+int rdCluster_AddPointLight(rdLight* light, rdVector3* position, float intensity)
+{
+	return rdCluster_AddLight(light, position, &rdroid_zeroVector3, &rdroid_zeroVector3, &rdroid_zeroVector3, 0.0f, 0.0f, intensity);
+}
+
+int rdCluster_AddSpotLight(rdLight* light, rdVector3* position, rdVector3* direction, float intensity)
+{
+	return rdCluster_AddLight(light, position, direction, &rdroid_zeroVector3, &rdroid_zeroVector3, 0.0f, 0.0f, intensity);
+}
+
+int rdCluster_AddRectangleLight(rdLight* light, rdVector3* position, rdVector3* direction, rdVector3* right, rdVector3* up, float width, float height, float intensity)
+{
+	return rdCluster_AddLight(light, position, direction, right, up, width, height, intensity);
 }
 
 int rdCluster_AddOccluder(rdVector3* position, float radius, rdVector3* verts)
@@ -387,9 +505,7 @@ int rdCluster_AddOccluder(rdVector3* position, float radius, rdVector3* verts)
 	rdroid_clustersDirty = 1;
 
 	rdClusterOccluder* occ = &rdroid_clusterOccluders[rdroid_numClusterOccluders++];
-	occ->position.x = position->x;
-	occ->position.y = position->y;
-	occ->position.z = position->z;
+	rdVector_Copy3To4(&occ->position, position);
 	occ->position.w = radius;
 	occ->invRadius = 1.0f / radius;
 
@@ -463,9 +579,7 @@ void rdCluster_Build(rdMatrix44* pProjection, uint32_t width, uint32_t height)
 		return;
 	}
 
-#ifdef USE_JOBS
 	rdroid_clusterJobProjectionMat = pProjection;
-#endif
 
 	rdroid_clustersDirty = 0;
 
@@ -509,19 +623,19 @@ void rdCluster_Build(rdMatrix44* pProjection, uint32_t width, uint32_t height)
 	memset(rdroid_clusterBits, 0, sizeof(rdroid_clusterBits));
 
 	// assign lights
-	rdoird_firstClusterLight = 0;
+	rdroid_clusterLightOffset = 0;
 	for (int i = 0; i < rdroid_numClusterLights; ++i)
-		rdCluster_AssignItemToClusters(rdoird_firstClusterLight + i, (rdVector3*)&rdroid_clusterLights[i].position, rdroid_clusterLights[i].falloffMin, pProjection, znear, zfar, NULL);
+		rdCluster_AssignLightsToClustersJob(i, 0);
 
 	// assign occluders
 	rdroid_clusterOccluderOffset = rdroid_clusterLightOffset + rdroid_numClusterLights;
 	for (int i = 0; i < rdroid_numClusterOccluders; ++i)
-		rdCluster_AssignItemToClusters(rdroid_clusterOccluderOffset + i, (rdVector3*)&rdroid_clusterOccluders[i].position, rdroid_clusterOccluders[i].position.w, pProjection, znear, zfar, NULL);
+		rdCluster_AssignOccludersToClustersJob(i, 0);
 
 	// assign decals
 	rdroid_clusterDecalOffset = rdroid_clusterOccluderOffset + rdroid_numClusterLights;
 	for (int i = 0; i < rdroid_numClusterDecals; ++i)
-		std3D_AssignItemToClusters(rdroid_clusterDecalOffset + i, (rdVector3*)&rdroid_clusterDecals[i].posRad, rdroid_clusterDecals[i].posRad.w, pProjection, znear, zfar, &rdroid_clusterDecals[i].decalMatrix);
+		rdCluster_AssignDecalsToClustersJob(i, 0);
 #endif
 
 	std3D_SendLightsToHardware(rdroid_clusterLights, rdroid_clusterLightOffset, rdroid_numClusterLights);

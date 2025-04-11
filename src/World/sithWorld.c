@@ -291,6 +291,16 @@ void sithWorld_ComputeSectorRGBAmbients(uint32_t jobIdx, uint32_t groupIdx)
 }
 #endif
 
+#if defined(JOB_SYSTEM) && defined(RENDER_DROID2)
+void sithWorld_PostLoadSurfaceJob(uint32_t jobIdx, uint32_t groupIdx)
+{
+	sithSurface* surface = &sithWorld_pLoading->surfaces[jobIdx];
+	sithSurface_GetCenterRadius(surface, &surface->center, &surface->radius);
+	sithSurface_BuildTangentFrame(surface);
+	sithSurface_CalcLocalSize(surface);
+ }
+#endif
+
 int SphereIntersectsOrInsideConvex(const sithSector* sector, const rdVector3* pos, float radius)
 {
 	int inside = 1; // Assume inside unless proven otherwise
@@ -381,9 +391,6 @@ int sithWorld_NewEntry(sithWorld *pWorld)
             _memset(v7, 0, sizeof(int) * pWorld->numVertices);
             for (int i = 0; i < pWorld->numSurfaces; i++)
             {
-#ifdef RENDER_DROID2
-				sithSurface_GetCenterRadius(&pWorld->surfaces[i], &pWorld->surfaces[i].center, &pWorld->surfaces[i].radius);
-#endif
                 adjoinIter = pWorld->surfaces[i].adjoin;
                 if ( adjoinIter )
                 {
@@ -445,6 +452,20 @@ int sithWorld_NewEntry(sithWorld *pWorld)
 			}
 #endif
 
+#ifdef RENDER_DROID2
+#if 0//def JOB_SYSTEM // crashes and null argument weirdness
+			stdJob_Dispatch(pWorld->numSurfaces, 16, sithWorld_PostLoadSurfaceJob);
+			stdJob_Wait();
+#else
+			for (int i = 0; i < pWorld->numSurfaces; i++)
+			{
+				sithSurface_GetCenterRadius(&pWorld->surfaces[i], &pWorld->surfaces[i].center, &pWorld->surfaces[i].radius);
+				sithSurface_BuildTangentFrame(&pWorld->surfaces[i]); 
+				sithSurface_CalcLocalSize(&pWorld->surfaces[i]);
+			}
+#endif
+#endif
+
 #ifdef RGB_AMBIENT
 			rdLight_InitSGBasis();
 
@@ -452,7 +473,7 @@ int sithWorld_NewEntry(sithWorld *pWorld)
 		#ifdef JOB_SYSTEM
 			stdJob_Dispatch(pWorld->numSectors, 16, sithWorld_ComputeSectorRGBAmbients);
 			stdJob_Wait();
-		#else
+#else
 			for (int i = 0; i < pWorld->numSectors; i++)
 			{
 				sithSector* sector = &pWorld->sectors[i];
@@ -460,6 +481,7 @@ int sithWorld_NewEntry(sithWorld *pWorld)
 			}
 		#endif
 #endif
+
             if ( !sithWorld_Verify(pWorld) )
                 return 0;
         }

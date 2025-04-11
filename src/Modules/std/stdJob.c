@@ -303,6 +303,12 @@ void stdJob_WaitForHandle(uint32_t handle)
 void stdJob_ExecuteGroup(void* param)
 {
 	stdJobGroupArgs* args = (stdJobGroupArgs*)param;
+	if (!args)
+	{
+		stdPrintf(std_pHS->errorPrint, ".\\General\\stdJob.c", __LINE__, "Null arguments for ExecutGroup\n");
+		exit(EXIT_FAILURE);		
+		return;
+	}
 
 	uint32_t groupJobOffset = args->groupIndex * args->groupSize;
 	uint32_t groupJobEnd = (groupJobOffset + args->groupSize > args->jobCount) ? args->jobCount : (groupJobOffset + args->groupSize);

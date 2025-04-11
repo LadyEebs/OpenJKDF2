@@ -138,13 +138,15 @@ struct light
 {
 	vec4  position;
 	vec4  direction_intensity;
+	vec4  right;
+	vec4  up;
 
 	vec4 color;
 
 	float radiusSqr;
 	uint lux_intensity;
 	float invFalloff;
-	uint pad1;
+	uint falloffType;
 	
 	int   type;
 	float falloffMin;

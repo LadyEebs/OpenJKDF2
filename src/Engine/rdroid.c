@@ -1127,20 +1127,47 @@ void rdSetShaderConstant4f(uint8_t idx, float x, float y, float z, float w)
 int rdAddLight(rdLight* pLight, rdVector3* pPosition)
 {
 	rdVector4 pos4;
-	rdVector_Copy3(&pos4, pPosition);
+	rdVector_Copy3((rdVector3*)&pos4, pPosition);
 	pos4.w = 1.0f;
 
 	rdVector4 viewPos;
 	rdMatrix_TransformPoint44(&viewPos, &pos4, &rdroid_matrices[RD_MATRIX_VIEW]);
 
-	rdVector4 dir4;
-	rdVector_Copy3(&dir4, &pLight->direction);
-	dir4.w = 0.0f;
+	if (pLight->type == RD_LIGHT_SPOTLIGHT)
+	{
+		rdVector4 dir4;
+		rdVector_Copy3((rdVector3*)&dir4, &pLight->direction);
+		dir4.w = 0.0f;
 
-	rdVector4 viewDir;
-	rdMatrix_TransformVector44(&viewDir, &dir4, &rdroid_matrices[RD_MATRIX_VIEW]);
+		rdVector4 viewDir;
+		rdMatrix_TransformVector44(&viewDir, &dir4, &rdroid_matrices[RD_MATRIX_VIEW]);
 
-	return rdCluster_AddLight(pLight, (rdVector3*)&viewPos, (rdVector3*)&viewDir, 1.0f / rdroid_lightingState.overbright);
+		return rdCluster_AddSpotLight(pLight, (rdVector3*)&viewPos, (rdVector3*)&viewDir, 1.0f / rdroid_lightingState.overbright);
+	}
+	else if (pLight->type == RD_LIGHT_RECTANGLE)
+	{
+		rdVector4 dir4;
+		rdVector_Copy3((rdVector3*)&dir4, &pLight->direction);
+		dir4.w = 0.0f;
+
+		rdVector4 viewDir;
+		rdMatrix_TransformVector44(&viewDir, &dir4, &rdroid_matrices[RD_MATRIX_VIEW]);
+		//rdVector_Normalize3Acc((rdVector3*)&dir4);
+
+		rdVector4 viewRight;
+		rdVector_Copy3((rdVector3*)&dir4, &pLight->right);
+		rdMatrix_TransformVector44(&viewRight, &dir4, &rdroid_matrices[RD_MATRIX_VIEW]);
+		//rdVector_Normalize3Acc((rdVector3*)&dir4);
+
+		rdVector4 viewUp;
+		rdVector_Copy3((rdVector3*)&dir4, &pLight->up);
+		rdMatrix_TransformVector44(&viewUp, &dir4, &rdroid_matrices[RD_MATRIX_VIEW]);
+		//rdVector_Normalize3Acc((rdVector3*)&dir4);
+
+		return rdCluster_AddRectangleLight(pLight, (rdVector3*)&viewPos, (rdVector3*)&viewDir, (rdVector3*)&viewRight, (rdVector3*)&viewUp, pLight->width, pLight->height, 1.0f / rdroid_lightingState.overbright);
+	}
+
+	return rdCluster_AddPointLight(pLight, (rdVector3*)&viewPos, 1.0f / rdroid_lightingState.overbright);
 }
 
 extern int jkPlayer_enableShadows;

@@ -474,9 +474,10 @@ int rdCamera_AddLightExplicitRadius(rdCamera* camera, rdLight* light, float radi
 		return 0;
 
 	camera->lights[camera->numLights] = light;
-	light->type = 8;
+	light->type = RD_LIGHT_POINTLIGHT;
 	light->falloffMin = radius;
 	light->falloffMax = radius;
+	light->falloffModel = RD_FALLOFF_QUADRATIC;
 
 	light->id = camera->numLights;
 	rdVector_Copy3(&camera->lightPositions[camera->numLights], lightPos);
@@ -495,6 +496,10 @@ int rdCamera_AddLight(rdCamera *camera, rdLight *light, rdVector3 *lightPos)
 
     camera->lights[camera->numLights] = light;
 
+	light->type = RD_LIGHT_POINTLIGHT;
+#ifdef RENDER_DROID2
+	light->falloffModel = RD_FALLOFF_DEFAULT;
+#endif
     light->id = camera->numLights;
     rdVector_Copy3(&camera->lightPositions[camera->numLights], lightPos);
     light->falloffMin = light->intensity / camera->attenuationMin;

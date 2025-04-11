@@ -828,25 +828,101 @@ void sithRender_RenderOccludersAndDecals()
 	}
 }
 
+int sithRender_AddSurfaceLightAt(sithSurface* surface, const rdVector3* pos, float radius, float intensity)
+{
+	rdMaterial_GetFillColor(&sithRender_aLights[sithRender_numLights].color, surface->surfaceInfo.face.material, surface->parent_sector->colormap, surface->surfaceInfo.face.wallCel, -1);
+	
+	rdVector3 offset;
+	rdVector_Scale3(&offset, &surface->surfaceInfo.face.normal, radius * 0.01);
+	
+	rdVector3 center;
+	rdVector_Add3(&center, pos, &offset);
+	
+	sithRender_aLights[sithRender_numLights].intensity = intensity;// / rdCamera_pCurCamera->attenuationMin;
+	sithRender_aLights[sithRender_numLights].direction = surface->surfaceInfo.face.normal;
+	rdLight_SetAngles(&sithRender_aLights[sithRender_numLights], 175.0f, 180.0f);
+	
+	rdCamera_AddLightExplicitRadius(rdCamera_pCurCamera, &sithRender_aLights[sithRender_numLights], radius, &center);
+	sithRender_aLights[sithRender_numLights].type = RD_LIGHT_SPOTLIGHT; // spot
+	return ++sithRender_numLights;
+}
+
 int sithRender_AddSurfaceLight(sithSurface* surface)
 {
 	rdMaterial_GetFillColor(&sithRender_aLights[sithRender_numLights].color, surface->surfaceInfo.face.material, surface->parent_sector->colormap, surface->surfaceInfo.face.wallCel, -1);
 
-	float radius = fmax(surface->radius, 0.025f);
-
+	//float radius = fmin(surface->localSize.x, surface->localSize.y) * 2.0 * M_PI;// fmax(surface->radius, 0.025f);
+	float radius = surface->radius * 2.0;
+	
 	rdVector3 offset;
-	rdVector_Scale3(&offset, &surface->surfaceInfo.face.normal, radius * 0.3);
-
+	rdVector_Scale3(&offset, &surface->surfaceInfo.face.normal, radius * 0.01);
+	
 	rdVector3 center;
 	rdVector_Add3(&center, &surface->center, &offset);
-
-	sithRender_aLights[sithRender_numLights].intensity = 1.0;// / rdCamera_pCurCamera->attenuationMin;
+	
+	sithRender_aLights[sithRender_numLights].intensity = 1.0;
+	rdCamera_AddLightExplicitRadius(rdCamera_pCurCamera, &sithRender_aLights[sithRender_numLights], radius, &center);
+	
+	sithRender_aLights[sithRender_numLights].type      = RD_LIGHT_RECTANGLE; // rectangle
+	sithRender_aLights[sithRender_numLights].width     = surface->localSize.x;
+	sithRender_aLights[sithRender_numLights].height    = surface->localSize.y;
+	sithRender_aLights[sithRender_numLights].right     = surface->tangent;
+	sithRender_aLights[sithRender_numLights].up        = surface->bitangent;
 	sithRender_aLights[sithRender_numLights].direction = surface->surfaceInfo.face.normal;
-	rdLight_SetAngles(&sithRender_aLights[sithRender_numLights], 0.0f, 90.0f);
-
-	rdCamera_AddLightExplicitRadius(rdCamera_pCurCamera, &sithRender_aLights[sithRender_numLights], radius * 2.0, &center);
-	sithRender_aLights[sithRender_numLights].type |= 3; // spot
+	
 	return ++sithRender_numLights;
+	
+	//float aspectX = stdMath_Floor(surface->localSize.x / surface->localSize.y);
+	//float aspectY = stdMath_Floor(surface->localSize.y / surface->localSize.x);
+	//
+	//if (aspectX == 1 && aspectY == 1)
+	//{
+	//	sithRender_AddSurfaceLightAt(surface, &surface->center, surface->radius * 2.0f, 1.0f);
+	//}
+	//else if (aspectX > aspectY)
+	//{
+	//	for (float i = -aspectX/2.0; i < aspectX/2.0; ++ i)
+	//	{
+	//		rdVector3 deltaStep;
+	//		rdVector_Scale3(&deltaStep, &surface->tangent, surface->localSize.x * 2.0f * i / aspectX);
+	//
+	//		rdVector3 pos;
+	//		rdVector_Add3(&pos, &surface->center, &deltaStep);
+	//
+	//		sithRender_AddSurfaceLightAt(surface, &pos, surface->localSize.y * M_PI, 1.0f);// / aspectX);
+	//	}
+	//}
+	//else
+	//{
+	//	for (float i = -aspectY / 2.0; i < aspectY / 2.0; ++i)
+	//	{
+	//		rdVector3 deltaStep;
+	//		rdVector_Scale3(&deltaStep, &surface->bitangent, surface->localSize.y * i / aspectY);
+	//
+	//		rdVector3 pos;
+	//		rdVector_Add3(&pos, &surface->center, &deltaStep);
+	//
+	//		sithRender_AddSurfaceLightAt(surface, &pos, surface->localSize.x * 2.0f * M_PI, 1.0f);// / aspectY);
+	//	}
+	//}
+	
+	return sithRender_numLights;
+
+	//float radius = fmax(surface->radius, 0.025f);
+	//
+	//rdVector3 offset;
+	//rdVector_Scale3(&offset, &surface->surfaceInfo.face.normal, radius * 0.01);
+	//
+	//rdVector3 center;
+	//rdVector_Add3(&center, &surface->center, &offset);
+	//
+	//sithRender_aLights[sithRender_numLights].intensity = 1.0;// / rdCamera_pCurCamera->attenuationMin;
+	//sithRender_aLights[sithRender_numLights].direction = surface->surfaceInfo.face.normal;
+	//rdLight_SetAngles(&sithRender_aLights[sithRender_numLights], 0.0f, 180.0f);
+	//
+	//rdCamera_AddLightExplicitRadius(rdCamera_pCurCamera, &sithRender_aLights[sithRender_numLights], radius * 2.0, &center);
+	//sithRender_aLights[sithRender_numLights].type = RD_LIGHT_SPOTLIGHT; // spot
+	//return ++sithRender_numLights;
 }
 
 #endif
@@ -1218,7 +1294,7 @@ void sithRender_Clip(sithSector *sector, rdClipFrustum *frustumArg, float a3)
 					}
 					if (thing->lightAngle > 0.0)
 					{
-						sithRender_aLights[lightIdx].type |= 3;
+						sithRender_aLights[lightIdx].type = RD_LIGHT_SPOTLIGHT;
 						sithRender_aLights[lightIdx].direction = thing->lookOrientation.lvec;
 						rdLight_SetAngles(&sithRender_aLights[lightIdx], thing->lightAngle * 0.1, thing->lightAngle);
 					}
@@ -2864,7 +2940,7 @@ void sithRender_UpdateLights(sithSector *sector, float prev, float dist, int dep
 					}
 					if (i->lightAngle > 0.0)
 					{
-						sithRender_aLights[sithRender_numLights].type |= 3;
+						sithRender_aLights[sithRender_numLights].type = RD_LIGHT_SPOTLIGHT;
 						sithRender_aLights[sithRender_numLights].direction = i->lookOrientation.lvec;
 						rdLight_SetAngles(&sithRender_aLights[sithRender_numLights], i->lightAngle * 0.1, i->lightAngle);
 					}

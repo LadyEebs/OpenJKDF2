@@ -25,5 +25,6 @@ int rdMath_IntersectLineSegments(const rdVector3* pStartA, const rdVector3* pEnd
 
 int rdMath_IntersectAABB_Sphere(rdVector3* minb, rdVector3* maxb, rdVector3* center, float radius);
 int rdMath_IntersectAABB_OBB(rdVector3* minb, rdVector3* maxb, const rdMatrix44* mat);
+int rdMath_IntersectAABB_Cone(rdVector3* minb, rdVector3* maxb, rdVector3* position, rdVector3* direction, float angle, float radius);
 
 #endif // _RDMATH_H

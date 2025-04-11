@@ -12,6 +12,14 @@ import "reg.gli"
 #ifndef LIGHTING_H
 #define LIGHTING_H
 
+#define RD_LIGHT_POINTLIGHT 2
+#define RD_LIGHT_SPOTLIGHT  3
+#define RD_LIGHT_RECTANGLE  4
+
+#define RD_FALLOFF_DEFAULT   0
+#define RD_FALLOFF_QUADRATIC 1
+#define RD_FALLOFF_JED       2
+
 // the long streaky lobe of GGX/blinn-phong is just way nicer than phong...
 //#define GGX
 
@@ -84,53 +92,89 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	vec3 lvec = lights[light_index].position.xyz - viewPos.xyz;
 	
 	float dotVector = dot(lvec, lvec);
+	float rcpLen    = fastRcpSqrtNR1(dotVector);
+	float len       = rcpLen * dotVector;
+	lvec            = lvec * rcpLen;
+
+	vec3 normal = unpackSnorm4x8(params.normal).xyz;
+	float ndotl = halfLambert( dot(normal.xyz, lvec) );
+
+	if (lights[light_index].type == RD_LIGHT_RECTANGLE)
+	{
+		// slightly smaller to give some padding
+		vec2 halfSize = vec2(lights[light_index].right.w, lights[light_index].up.w) * 0.49;
+		
+		vec3 center = lights[light_index].position.xyz;
+		vec3 front  = lights[light_index].direction_intensity.xyz;
+		vec3 right  = lights[light_index].right.xyz;
+		vec3 up     = lights[light_index].up.xyz;
+	
+		vec3 projection = projectOnPlane(viewPos, center, front);
+		vec3 dir        = projection.xyz - center.xyz;
+	
+		vec2 diagonal           = vec2(dot(dir, right), dot(dir, up));
+		vec2 nearest2D          = clamp(diagonal.xy, -halfSize, halfSize);
+		vec3 nearestPointInside = center.xyz + (right.xyz * nearest2D.x + (up.xyz * nearest2D.y));
+	
+		lvec      = nearestPointInside - viewPos;
+		dotVector = dot(lvec, lvec);
+		rcpLen    = fastRcpSqrtNR1(dotVector);
+		len       = rcpLen * dotVector;
+		lvec      = lvec * rcpLen;
+
+		ndotl = halfLambert( dot(normal.xyz, lvec) );
+		ndotl *= saturate(abs(dot(front, -lvec)));
+	}
+	
 	if (dotVector >= lights[light_index].radiusSqr)
 		return;
 
-	float rcpLen = fastRcpSqrtNR1(dotVector);
-	float len    = rcpLen * dotVector;
-	lvec         = lvec * rcpLen;
-
 	float intensity = lights[light_index].direction_intensity.w;
-	if((lights[light_index].type & 3) == 3)
+	if (lights[light_index].type == RD_LIGHT_SPOTLIGHT)
 	{
-		float angle = dot(lights[light_index].direction_intensity.xyz, lvec);
+		float angle = dot(-lights[light_index].direction_intensity.xyz, lvec);
 		if (angle <= lights[light_index].cosAngleY)
 			return;
 	
 		if (angle < lights[light_index].cosAngleX)
-            intensity *= saturate(1.0 - (lights[light_index].cosAngleX - angle) * lights[light_index].lux.x);
+            intensity *= 1.0 - saturate((lights[light_index].cosAngleX - angle) * lights[light_index].lux.x);
 	}
-
 	
-	if ((lights[light_index].type & 8) == 8) // quadratic falloff
+	if (lights[light_index].falloffType == RD_FALLOFF_QUADRATIC) // quadratic falloff
 	{
-		float falloff = saturate(1.0 - dotVector * (lights[light_index].invFalloff * lights[light_index].invFalloff));
+		//float falloff = 1.0 - saturate(dotVector * (lights[light_index].invFalloff * lights[light_index].invFalloff));
+		//intensity *= falloff * falloff;
 
-		intensity *= falloff * falloff;
-
-		//vec3 lightDist = lvec * lights[light_index].invFalloff;
-		//intensity *= saturate(1.0 - dot(lightDist, lightDi3st));
+		float s = saturate(dotVector * lights[light_index].invFalloff * lights[light_index].invFalloff);
+		float is = 1.0 - s;
+		
+		intensity *= (is * is) * rcp(lights[light_index].falloffMin * s + 1.0);
 	}
-	else if (lights[light_index].type > 0) 	// JK's original dynamic light attenuation model
-	{
-		// note it depends on scalar value matching whatever was used to calculate the intensity, it seems
-		const float scalar = 0.4; // todo: needs to come from rdCamera_pCurCamera->attenuationMin
-		intensity -= scalar * len;
-	}
-	else // jed attenuation for static lights
+	else if (lights[light_index].falloffType == RD_FALLOFF_JED) // jed attenuation for static lights
 	{
 		float range = 1.0 - len * lights[light_index].invFalloff;
 
 		//range *= range; // squared
 		intensity *= range * range; // gamma 2.0 compensation
 	}
+	else // JK's original dynamic light attenuation model (for things at least)
+	{
+		// note it depends on scalar value matching whatever was used to calculate the intensity, it seems
+		const float scalar = 0.4; // todo: needs to come from rdCamera_pCurCamera->attenuationMin
+		intensity -= scalar * len;
+
+		//if ( len > lights[light_index].falloffMax ) // from jones
+        //{
+        //    float drad  = lights[light_index].falloffMin - lights[light_index].falloffMax;
+        //    float atten = (len - lights[light_index].falloffMax) / drad;
+		//	intensity -= atten;
+        //}
+	}
 
 	if (intensity <= float(0.0))
 		return;
 
-	vec3 normal = unpackSnorm4x8(params.normal).xyz;
-	float lightMagnitude = halfLambert( dot(normal.xyz, lvec) ) * intensity;
+	float lightMagnitude = ndotl * intensity;
 	//float signedMagnitude = lightMagnitude;
 	//lightMagnitude = max(lightMagnitude, float(0.0)) * intensity;
 
@@ -198,6 +242,9 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 
 void calculate_lighting(inout light_result result, light_input params, uint cluster)
 {
+	//for (int i = 0; i < numLights; ++i)
+	//	calc_point_light(result, i, params);
+
 	uint s_first_item   = firstLight;
 	uint s_last_item    = s_first_item + numLights - 1u;
 	uint s_first_bucket = s_first_item >> 5u;

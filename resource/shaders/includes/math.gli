@@ -195,6 +195,22 @@ float luminance(vec3 c_rgb)
     return dot(c_rgb, vec3(0.2125, 0.7154, 0.0721));
 }
 
+vec3 projectOnPlane(vec3 p, vec3 pc, vec3 pn)
+{
+	float dist = dot(pn, p - pc);
+	return -dist * pn + p;
+}
+
+bool sideOfPlane(vec3 p, vec3 pc, vec3 pn)
+{
+	return (dot(p - pc, pn) >= 0.0);
+}
+
+vec3 linePlaneIntersect(vec3 lp, vec3 lv, vec3 pc, vec3 pn)
+{
+	return lv * (dot(pn, pc - lp) / dot(pn, lv)) + lp;
+}
+
 vec4 pow2(vec4 x)
 {
 	return x * x;

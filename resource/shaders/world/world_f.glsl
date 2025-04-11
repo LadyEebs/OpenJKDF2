@@ -11,6 +11,7 @@ import "texgen.gli"
 import "framebuffer.gli"
 import "reg.gli"
 import "vm.gli"
+import "debug.gli"
 
 uint get_cluster()
 {
@@ -157,6 +158,30 @@ void main(void)
 	outColor.rgb = saturate(outColor.rgb * invlightMult + (dither * ditherScale));
 
 	fragColor = subsample(outColor);
+
+	//float lightCount = 0.0;
+	//uint s_first_item   = firstLight;
+	//uint s_last_item    = s_first_item + numLights - 1u;
+	//uint s_first_bucket = s_first_item >> 5u;
+	//uint s_last_bucket  = min(s_last_item >> 5u, max(0u, CLUSTER_BUCKETS_PER_CLUSTER - 1u));
+	//for (uint s_bucket  = s_first_bucket; s_bucket <= s_last_bucket; ++s_bucket)
+	//{
+	//	uint bucket_bits = uint(texelFetch(clusterBuffer, int(get_cluster() + s_bucket)).x);
+	//	uint s_bucket_bits = scalarize_buckets_bits(bucket_bits);
+	//	while (s_bucket_bits != 0u)
+	//	{
+	//		uint s_bucket_bit_index = findLSB(s_bucket_bits);
+	//		uint s_light_index = (s_bucket << 5u) + s_bucket_bit_index;
+	//		s_bucket_bits ^= (1u << s_bucket_bit_index);
+	//
+	//		if (s_light_index >= s_first_item && s_light_index <= s_last_item)
+	//		{
+	//			lightCount += 1.0;
+	//		}
+	//	}
+	//}
+	//
+	//fragColor.rgb *= temperature(lightCount / 8.0);
 
 	// alpha testing
 #ifdef ALPHA_DISCARD

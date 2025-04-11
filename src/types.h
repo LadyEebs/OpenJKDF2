@@ -467,6 +467,20 @@ typedef struct rdQuat
 	float w;
 } rdQuat;
 
+typedef enum
+{
+	RD_LIGHT_POINTLIGHT = 2,
+	RD_LIGHT_SPOTLIGHT  = 3,
+	RD_LIGHT_RECTANGLE  = 4,
+} rdLightType;
+
+typedef enum
+{
+	RD_FALLOFF_DEFAULT   = 0,
+	RD_FALLOFF_QUADRATIC = 1,
+	RD_FALLOFF_JED       = 2,
+} rdLightFalloffType;
+
 typedef struct rdLight
 {
     uint32_t id;
@@ -478,6 +492,12 @@ typedef struct rdLight
 	rdVector3 color;
 #else
     uint32_t color;
+#endif
+#ifdef RENDER_DROID2
+	rdVector3 right;
+	rdVector3 up;
+	float width;
+	float height;
 #endif
 
 #ifdef JKM_LIGHTING
@@ -492,6 +512,9 @@ typedef struct rdLight
 #endif
     float falloffMin;
     float falloffMax;
+#ifdef RENDER_DROID2
+	int falloffModel;
+#endif
 } rdLight;
 
 
@@ -507,12 +530,14 @@ typedef struct rdClusterLight
 {
 	rdVector4 position;
 	rdVector4 direction_intensity;
+	rdVector4 right;
+	rdVector4 up;
 	rdVector4 color;
 
 	float     radiusSqr;
 	float     pad0;
 	float     invFalloff;
-	uint32_t  pad1;
+	uint32_t  falloffType;
 
 	int32_t   type;
 	float     falloffMin;
@@ -1864,6 +1889,9 @@ typedef struct sithSurface
 #ifdef RENDER_DROID2
 	float radius;
 	rdVector3 center;
+	rdVector3 tangent;
+	rdVector3 bitangent;
+	rdVector2 localSize;
 #endif
 } sithSurface;
 

@@ -1126,17 +1126,174 @@ void sithSurface_DetachThing(sithSurface *a1, rdVector3 *out)
     }
 }
 
+rdVector3* sithSurface_GetVertexPosition(sithSurface* surface, int i)
+{
+	return &sithWorld_pCurrentWorld->vertices[surface->surfaceInfo.face.vertexPosIdx[i]];
+}
+
+rdVector2* sithSurface_GetVertexUV(sithSurface* surface, int i)
+{
+	return &sithWorld_pCurrentWorld->vertexUVs[surface->surfaceInfo.face.vertexUVIdx[i]];
+}
+
+void sithSurface_ProjectPointOntoPlane(rdVector3* result, rdVector3* point, rdVector3* normal)
+{
+	float dotProd = rdVector_Dot3(point, normal);
+	rdVector_Scale3(result, normal, dotProd);
+	rdVector_Sub3(result, point, result); // result = P - (P . N) * N
+}
+
+void sithSurface_BuildTangentFrame(sithSurface* surface)
+{
+	//if (!surface->surfaceInfo.face.vertexUVIdx)
+	{
+		rdVector3* vertex = sithSurface_GetVertexPosition(surface, 0);
+		rdVector3* vertex2 = sithSurface_GetVertexPosition(surface, 1);
+		
+		rdVector_Sub3(&surface->tangent, vertex2, vertex);
+		rdVector_Normalize3Acc(&surface->tangent);
+		rdVector_Cross3(&surface->bitangent, &surface->surfaceInfo.face.normal, &surface->tangent);
+		return;
+	}
+
+	rdVector3* P0 = sithSurface_GetVertexPosition(surface, 0);
+	rdVector3* P1 = sithSurface_GetVertexPosition(surface, 1);
+	rdVector3* P2 = sithSurface_GetVertexPosition(surface, 2);
+
+	rdVector2* UV0 = sithSurface_GetVertexUV(surface, 0);
+	rdVector2* UV1 = sithSurface_GetVertexUV(surface, 1);
+	rdVector2* UV2 = sithSurface_GetVertexUV(surface, 2);
+
+	rdVector3 edge1, edge2;
+	rdVector_Sub3(&edge1, P1, P0);
+	rdVector_Sub3(&edge2, P2, P0);
+
+	float dU1 = UV1->x - UV0->x;
+	float dV1 = UV1->y - UV0->y;
+	float dU2 = UV2->x - UV0->x;
+	float dV2 = UV2->y - UV0->y;
+
+	float det = dU1 * dV2 - dU2 * dV1;
+	if (fabs(det) < 1e-6f)
+	{
+		rdVector3 fallbackUp = { 0, 0, 1 };
+		if (fabs(rdVector_Dot3(&fallbackUp, &surface->surfaceInfo.face.normal)) > 0.99f)
+			fallbackUp = (rdVector3){ 1, 0, 0 };
+
+		rdVector3 tmp;
+		rdVector_Cross3(&tmp, &fallbackUp, &surface->surfaceInfo.face.normal);
+		rdVector_Cross3(&surface->tangent, &surface->surfaceInfo.face.normal, &tmp);
+		rdVector_Normalize3Acc(&surface->tangent);
+
+		rdVector_Cross3(&surface->bitangent, &surface->surfaceInfo.face.normal, &surface->tangent);
+		rdVector_Normalize3Acc(&surface->bitangent);
+	}
+	else
+	{
+		float r = 1.0f / det;
+
+		surface->tangent.x = r * (dV2 * edge1.x - dV1 * edge2.x);
+		surface->tangent.y = r * (dV2 * edge1.y - dV1 * edge2.y);
+		surface->tangent.z = r * (dV2 * edge1.z - dV1 * edge2.z);
+		rdVector_Normalize3Acc(&surface->tangent);
+
+		surface->bitangent.x = r * (-dU2 * edge1.x + dU1 * edge2.x);
+		surface->bitangent.y = r * (-dU2 * edge1.y + dU1 * edge2.y);
+		surface->bitangent.z = r * (-dU2 * edge1.z + dU1 * edge2.z);
+		rdVector_Normalize3Acc(&surface->bitangent);
+	}
+
+	rdVector3 crossCheck;
+	rdVector_Cross3(&crossCheck, &surface->tangent, &surface->bitangent);
+	float handedness = rdVector_Dot3(&crossCheck, &surface->surfaceInfo.face.normal);
+	if (handedness < 0.0f)
+		rdVector_Scale3Acc(&surface->bitangent, -1.0f);
+}
+
+void sithSurface_CalcLocalSize(sithSurface* surface)
+{ 
+	rdVector3* vertex = sithSurface_GetVertexPosition(surface, 0);
+
+	rdVector2 min = {  1e+30,  1e+30 };
+	rdVector2 max = { -1e+30, -1e+30 };
+
+	for (uint32_t i = 1; i < surface->surfaceInfo.face.numVertices; ++i)
+	{
+		rdVector3* vertex2 = sithSurface_GetVertexPosition(surface, i);
+
+		rdVector3 delta;
+		rdVector_Sub3(&delta, vertex2, vertex);
+
+		float val  = rdVector_Dot3(&delta, &surface->tangent);
+		float val2 = rdVector_Dot3(&delta, &surface->bitangent);
+
+		min.x = fmin(min.x, val);
+		min.y = fmin(min.y, val2);
+		max.x = fmax(max.x, val);
+		max.y = fmax(max.y, val2);
+	}
+
+	rdVector_Sub2(&surface->localSize, &max, &min);
+}
+
+float sithSurface_TriangleArea(rdVector3* a, rdVector3* b, rdVector3* c)
+{
+	rdVector3 ab, ac;
+	rdVector_Sub3(&ab, b, a);
+	rdVector_Sub3(&ac, c, a);
+	rdVector3 crossProduct;
+	rdVector_Cross3(&crossProduct, &ab, &ac);
+	return 0.5f * sqrtf(rdVector_Dot3(&crossProduct, &crossProduct));
+}
+
 // todo: cache this it shouldn't change
 int sithSurface_GetCenter(sithSurface *surface, rdVector3 *out)
 {
     rdVector3 a1a; // [esp+14h] [ebp-18h] BYREF
     rdVector3 a2a; // [esp+20h] [ebp-Ch] BYREF
 
-    rdVector_Zero3(&a1a);
-    for (uint32_t i = 0; i < surface->surfaceInfo.face.numVertices; ++i )
-        rdVector_Add3Acc(&a1a, &sithWorld_pCurrentWorld->vertices[surface->surfaceInfo.face.vertexPosIdx[i]]);
+    //rdVector_Zero3(&a1a);
+    //for (uint32_t i = 0; i < surface->surfaceInfo.face.numVertices; ++i )
+    //    rdVector_Add3Acc(&a1a, &sithWorld_pCurrentWorld->vertices[surface->surfaceInfo.face.vertexPosIdx[i]]);
+	//
+    //rdVector_InvScale3(out, &a1a, (float)(unsigned int)surface->surfaceInfo.face.numVertices);
 
-    rdVector_InvScale3(out, &a1a, (float)(unsigned int)surface->surfaceInfo.face.numVertices);
+	// more accurate centroid
+	float totalArea = 0.0f;
+	rdVector3 centroid = { 0.0f, 0.0f, 0.0f };
+
+	rdVector3* v0 = sithSurface_GetVertexPosition(surface, 0);
+
+	for (int i = 0; i < surface->surfaceInfo.face.numVertices; i++)
+	{
+		int next = (i + 1) % surface->surfaceInfo.face.numVertices;
+		
+		rdVector3* v1 = sithSurface_GetVertexPosition(surface, i);
+		rdVector3* v2 = sithSurface_GetVertexPosition(surface, next);
+
+		float area = sithSurface_TriangleArea(v0, v1, v2);
+
+		// Compute the centroid of this triangle
+		rdVector3 triangleCentroid = {
+			(v0->x + v1->x + v2->x) / 3.0f,
+			(v0->y + v1->y + v2->y) / 3.0f,
+			(v0->z + v1->z + v2->z) / 3.0f
+		};
+
+		// Accumulate the weighted centroid
+		centroid.x += triangleCentroid.x * area;
+		centroid.y += triangleCentroid.y * area;
+		centroid.z += triangleCentroid.z * area;
+
+		totalArea += area;
+	}
+
+	// Normalize by total area to get the final centroid
+	centroid.x /= totalArea;
+	centroid.y /= totalArea;
+	centroid.z /= totalArea;
+
+	surface->center = centroid;
 
     if ( !sithIntersect_IsSphereInSector(out, 0.0, surface->parent_sector) )
     {

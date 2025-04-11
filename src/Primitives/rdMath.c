@@ -284,3 +284,30 @@ int rdMath_IntersectAABB_OBB(rdVector3* minb, rdVector3* maxb, const rdMatrix44*
 		(minb->y <= obb_maxb.y && maxb->y >= obb_minb.y) &&
 		(minb->z <= obb_maxb.z && maxb->z >= obb_minb.z);
 }
+
+
+int rdMath_IntersectAABB_Cone(rdVector3* minb, rdVector3* maxb, rdVector3* position, rdVector3* direction, float angle, float radius)
+{
+	rdVector3 diag;
+	rdVector_Sub3(&diag, maxb, minb);
+	float sphereRadius = rdVector_Len3(&diag) * 0.5f;
+
+	rdVector3 center;
+	rdVector_Add3(&center, minb, maxb);
+	rdVector_Scale3Acc(&center, 0.5f);
+
+	rdVector3 v;
+	rdVector_Sub3(&v, &center, position);
+
+	float lenSq = rdVector_Dot3(&v, &v);
+	float v1Len = rdVector_Dot3(&v, direction);
+
+	float s, c;
+	stdMath_SinCos(angle, &s, &c);
+
+	float distanceClosestPoint = c * stdMath_Sqrt(lenSq - v1Len * v1Len) - v1Len * s;
+	int angleCull = distanceClosestPoint > sphereRadius;
+	int frontCull = v1Len > sphereRadius + radius;
+	int backCull = v1Len < -sphereRadius;
+	return !(angleCull || frontCull || backCull);
+}
