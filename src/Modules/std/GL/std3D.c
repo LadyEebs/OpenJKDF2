@@ -4203,10 +4203,15 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 		if ((*vbufIter)->format.format.bpp == 32)
 		{
 			glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-			if (!is_alpha_tex)
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image_8bpp);
-			else
+			//if (!is_alpha_tex)
+			//	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image_8bpp);
+			//else
 				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_8bpp);
+		}
+		else if ((*vbufIter)->format.format.bpp == 24)
+		{
+			glPixelStorei(GL_UNPACK_ALIGNMENT, 3);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image_8bpp);
 		}
 		else
 		{
@@ -4238,10 +4243,15 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
 			if ((*vbufIter)->format.format.bpp == 32)
 			{
 				glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-				if (!is_alpha_tex)
-					glTexImage2D(GL_TEXTURE_2D, mip, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image_8bpp);
-				else
+				//if (!is_alpha_tex)
+				//	glTexImage2D(GL_TEXTURE_2D, mip, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image_8bpp);
+				//else
 					glTexImage2D(GL_TEXTURE_2D, mip, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_8bpp);
+			}
+			else if ((*vbufIter)->format.format.bpp == 24)
+			{
+				glPixelStorei(GL_UNPACK_ALIGNMENT, 3);
+				glTexImage2D(GL_TEXTURE_2D, mip, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image_8bpp);
 			}
 			else
 			{
