@@ -105,7 +105,7 @@ void rdCluster_Clear()
 
 float rdCluster_BuildAreaLightMatrix(rdClusterLight* pLight, rdVector3* position, rdMatrix44* mat, float* radius)
 {
-	if (pLight->type & 16)
+	if (pLight->type == RD_LIGHT_RECTANGLE)
 	{
 		const float width  = pLight->right.w + *radius * 2.0;
 		const float height = pLight->up.w + *radius * 2.0;
