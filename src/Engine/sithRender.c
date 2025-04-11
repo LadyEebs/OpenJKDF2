@@ -851,16 +851,16 @@ int sithRender_AddSurfaceLight(sithSurface* surface)
 {
 	rdMaterial_GetFillColor(&sithRender_aLights[sithRender_numLights].color, surface->surfaceInfo.face.material, surface->parent_sector->colormap, surface->surfaceInfo.face.wallCel, -1);
 
-	//float radius = fmin(surface->localSize.x, surface->localSize.y) * 2.0 * M_PI;// fmax(surface->radius, 0.025f);
-	float radius = surface->radius * 2.0;
+	float radius = fmin(surface->localSize.x, surface->localSize.y) * 2.0 * M_PI;// fmax(surface->radius, 0.025f);
+	//float radius = surface->radius * 2.0;
 	
 	rdVector3 offset;
-	rdVector_Scale3(&offset, &surface->surfaceInfo.face.normal, radius * 0.01);
+	rdVector_Scale3(&offset, &surface->surfaceInfo.face.normal, radius * 0.001f);
 	
 	rdVector3 center;
 	rdVector_Add3(&center, &surface->center, &offset);
 	
-	sithRender_aLights[sithRender_numLights].intensity = 1.0;
+	sithRender_aLights[sithRender_numLights].intensity = 2.0;
 	rdCamera_AddLightExplicitRadius(rdCamera_pCurCamera, &sithRender_aLights[sithRender_numLights], radius, &center);
 	
 	sithRender_aLights[sithRender_numLights].type      = RD_LIGHT_RECTANGLE; // rectangle
