@@ -89,9 +89,9 @@ uint64_t rdCache_GetSortKey(std3D_DrawCall* pDrawCall)
 	sortKey |= pDrawCall->state.stateBits.data & 0xFFFFFFFF;
 	sortKey |= ((uint64_t)textureID & 0xFFFF) << 32ull;
 	sortKey |= ((uint64_t)pDrawCall->shaderID & 0x4) << 48ull;
-	sortKey |= ((uint64_t)pDrawCall->state.header.sortOrder & 0xF) << 52ull;
 	if (pDrawCall->state.shaderState.shader)
-		sortKey |= ((uint64_t)pDrawCall->state.shaderState.shader->shaderid & 0xFF) << 56ull;
+		sortKey |= ((uint64_t)pDrawCall->state.shaderState.shader->shaderid & 0xFF) << 52ull;
+	sortKey |= ((uint64_t)pDrawCall->state.header.sortOrder & 0xF) << 60ull;
 
 	return sortKey;
 }
