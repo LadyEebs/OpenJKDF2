@@ -502,12 +502,12 @@ void sithConstraint_TickConstraints(sithThing* pThing, float deltaSeconds)
 	stdJob_Wait();
 #endif
 
-	int iterations = 2; // 2 iterations by default
+	int iterations = 5; // 5 iterations by default
 	if ((pThing->isVisible + 1) == bShowInvisibleThings) // thing is visible, use more iterations
 	{
 		// reduce iteration count by distance
 		float dist = rdVector_Dist3(&pThing->position, &sithCamera_currentCamera->vec3_1);
-		iterations = 10 - stdMath_Clamp(dist, 0.0f, 5.0f);
+		iterations = 15 - stdMath_Clamp(dist, 0.0f, 10.0f);
 	}
 
 	sithConstraint_SatisfyConstraints(pThing, iterations, deltaSeconds);
