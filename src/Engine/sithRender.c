@@ -3147,7 +3147,7 @@ void sithRender_RenderThings()
     rdSetVertexColorMode(0);
 
 #ifdef RENDER_DROID2
-	rdSortOrder(1);
+	rdSortOrder(0);//1);
 	rdSetDecalMode(RD_DECALS_DISABLED);
 #endif
 
