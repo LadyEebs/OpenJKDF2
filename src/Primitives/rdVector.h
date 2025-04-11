@@ -147,5 +147,7 @@ int rdVector_Compare4(const rdVector4* a, const rdVector4* b);
 void rdVector_ToPYR(rdVector3* pyr, const rdVector3* v);
 void rdVector_FromPYR(rdVector3* v, const rdVector3* pyr);
 void rdVector_Perpendicular3(rdVector3* perp, const rdVector3* v);
+void rdVector_Copy3To4(rdVector4* out, rdVector3* in);
+void rdVector_Copy4To3(rdVector3* out, rdVector4* in);
 
 #endif // _RDVECTOR_H

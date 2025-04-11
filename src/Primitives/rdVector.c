@@ -793,3 +793,17 @@ void rdVector_Perpendicular3(rdVector3* perp, const rdVector3* v)
 	rdVector_Cross3(perp, v, &arbitraryVec);
 	rdVector_Normalize3Acc(perp);
 }
+
+void rdVector_Copy3To4(rdVector4* out, rdVector3* in)
+{
+	out->x = in->x;
+	out->y = in->y;
+	out->z = in->z;
+}
+
+void rdVector_Copy4To3(rdVector3* out, rdVector4* in)
+{
+	out->x = in->x;
+	out->y = in->y;
+	out->z = in->z;
+}
