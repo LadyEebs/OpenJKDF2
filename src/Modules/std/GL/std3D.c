@@ -2592,7 +2592,7 @@ void std3D_DrawMenuSubrect(float x, float y, float w, float h, float dstX, float
 
     GL_tmpVertices[GL_tmpVerticesAmt+0].x = dstX;
     GL_tmpVertices[GL_tmpVerticesAmt+0].y = dstY;
-    GL_tmpVertices[GL_tmpVerticesAmt+0].z = 0.0;
+    GL_tmpVertices[GL_tmpVerticesAmt+0].z = 0.5f;
     GL_tmpVertices[GL_tmpVerticesAmt+0].tu = u1;
     GL_tmpVertices[GL_tmpVerticesAmt+0].tv = v1;
     *(uint32_t*)&GL_tmpVertices[GL_tmpVerticesAmt+0].nx = 0;
@@ -2601,7 +2601,7 @@ void std3D_DrawMenuSubrect(float x, float y, float w, float h, float dstX, float
     
     GL_tmpVertices[GL_tmpVerticesAmt+1].x = dstX;
     GL_tmpVertices[GL_tmpVerticesAmt+1].y = dstY + (scale * h_dst);
-    GL_tmpVertices[GL_tmpVerticesAmt+1].z = 0.0;
+    GL_tmpVertices[GL_tmpVerticesAmt+1].z = 0.5f;
     GL_tmpVertices[GL_tmpVerticesAmt+1].tu = u1;
     GL_tmpVertices[GL_tmpVerticesAmt+1].tv = v2;
     *(uint32_t*)&GL_tmpVertices[GL_tmpVerticesAmt+1].nx = 0;
@@ -2610,7 +2610,7 @@ void std3D_DrawMenuSubrect(float x, float y, float w, float h, float dstX, float
     
     GL_tmpVertices[GL_tmpVerticesAmt+2].x = dstX + (scale * w_dst);
     GL_tmpVertices[GL_tmpVerticesAmt+2].y = dstY + (scale * h_dst);
-    GL_tmpVertices[GL_tmpVerticesAmt+2].z = 0.0;
+    GL_tmpVertices[GL_tmpVerticesAmt+2].z = 0.5f;
     GL_tmpVertices[GL_tmpVerticesAmt+2].tu = u2;
     GL_tmpVertices[GL_tmpVerticesAmt+2].tv = v2;
     *(uint32_t*)&GL_tmpVertices[GL_tmpVerticesAmt+2].nx = 0;
@@ -2619,7 +2619,7 @@ void std3D_DrawMenuSubrect(float x, float y, float w, float h, float dstX, float
     
     GL_tmpVertices[GL_tmpVerticesAmt+3].x = dstX + (scale * w_dst);
     GL_tmpVertices[GL_tmpVerticesAmt+3].y = dstY;
-    GL_tmpVertices[GL_tmpVerticesAmt+3].z = 0.0;
+    GL_tmpVertices[GL_tmpVerticesAmt+3].z = 0.5f;
     GL_tmpVertices[GL_tmpVerticesAmt+3].tu = u2;
     GL_tmpVertices[GL_tmpVerticesAmt+3].tv = v1;
     *(uint32_t*)&GL_tmpVertices[GL_tmpVerticesAmt+3].nx = 0;
@@ -2666,7 +2666,7 @@ void std3D_DrawMenuSubrect2(float x, float y, float w, float h, float dstX, floa
 
     GL_tmpVertices[GL_tmpVerticesAmt+0].x = dstX;
     GL_tmpVertices[GL_tmpVerticesAmt+0].y = dstY;
-    GL_tmpVertices[GL_tmpVerticesAmt+0].z = 0.0;
+    GL_tmpVertices[GL_tmpVerticesAmt+0].z = 0.5f;
     GL_tmpVertices[GL_tmpVerticesAmt+0].tu = u1;
     GL_tmpVertices[GL_tmpVerticesAmt+0].tv = v1;
     *(uint32_t*)&GL_tmpVertices[GL_tmpVerticesAmt+0].nx = 0;
@@ -2675,7 +2675,7 @@ void std3D_DrawMenuSubrect2(float x, float y, float w, float h, float dstX, floa
     
     GL_tmpVertices[GL_tmpVerticesAmt+1].x = dstX;
     GL_tmpVertices[GL_tmpVerticesAmt+1].y = dstY + (scale * h_dst);
-    GL_tmpVertices[GL_tmpVerticesAmt+1].z = 0.0;
+    GL_tmpVertices[GL_tmpVerticesAmt+1].z = 0.5f;
     GL_tmpVertices[GL_tmpVerticesAmt+1].tu = u1;
     GL_tmpVertices[GL_tmpVerticesAmt+1].tv = v2;
     *(uint32_t*)&GL_tmpVertices[GL_tmpVerticesAmt+1].nx = 0;
@@ -2684,7 +2684,7 @@ void std3D_DrawMenuSubrect2(float x, float y, float w, float h, float dstX, floa
     
     GL_tmpVertices[GL_tmpVerticesAmt+2].x = dstX + (scale * w_dst);
     GL_tmpVertices[GL_tmpVerticesAmt+2].y = dstY + (scale * h_dst);
-    GL_tmpVertices[GL_tmpVerticesAmt+2].z = 0.0;
+    GL_tmpVertices[GL_tmpVerticesAmt+2].z = 0.5f;
     GL_tmpVertices[GL_tmpVerticesAmt+2].tu = u2;
     GL_tmpVertices[GL_tmpVerticesAmt+2].tv = v2;
     *(uint32_t*)&GL_tmpVertices[GL_tmpVerticesAmt+2].nx = 0;
@@ -2693,7 +2693,7 @@ void std3D_DrawMenuSubrect2(float x, float y, float w, float h, float dstX, floa
     
     GL_tmpVertices[GL_tmpVerticesAmt+3].x = dstX + (scale * w_dst);
     GL_tmpVertices[GL_tmpVerticesAmt+3].y = dstY;
-    GL_tmpVertices[GL_tmpVerticesAmt+3].z = 0.0;
+    GL_tmpVertices[GL_tmpVerticesAmt+3].z = 0.5f;
     GL_tmpVertices[GL_tmpVerticesAmt+3].tu = u2;
     GL_tmpVertices[GL_tmpVerticesAmt+3].tv = v1;
     *(uint32_t*)&GL_tmpVertices[GL_tmpVerticesAmt+3].nx = 0;
@@ -3033,7 +3033,7 @@ void std3D_DrawMenu()
 
 		 GL_tmpVertices[0].x = menu_x;
         GL_tmpVertices[0].y = 0.0;
-        GL_tmpVertices[0].z = 0.0;
+        GL_tmpVertices[0].z = 0.5f;
         GL_tmpVertices[0].tu = 0.0;
         GL_tmpVertices[0].tv = 0.0;
         *(uint32_t*)&GL_tmpVertices[0].nx = 0;
@@ -3042,7 +3042,7 @@ void std3D_DrawMenu()
         
         GL_tmpVertices[1].x = menu_x;
         GL_tmpVertices[1].y = menu_h;
-        GL_tmpVertices[1].z = 0.0;
+        GL_tmpVertices[1].z = 0.5f;
         GL_tmpVertices[1].tu = 0.0;
         GL_tmpVertices[1].tv = menu_v;
         *(uint32_t*)&GL_tmpVertices[1].nx = 0;
@@ -3051,7 +3051,7 @@ void std3D_DrawMenu()
         
         GL_tmpVertices[2].x = menu_x + menu_w;
         GL_tmpVertices[2].y = menu_h;
-        GL_tmpVertices[2].z = 0.0;
+        GL_tmpVertices[2].z = 0.5f;
         GL_tmpVertices[2].tu = menu_u;
         GL_tmpVertices[2].tv = menu_v;
         *(uint32_t*)&GL_tmpVertices[2].nx = 0;
@@ -3060,7 +3060,7 @@ void std3D_DrawMenu()
         
         GL_tmpVertices[3].x = menu_x + menu_w;
         GL_tmpVertices[3].y = 0.0;
-        GL_tmpVertices[3].z = 0.0;
+        GL_tmpVertices[3].z = 0.5f;
         GL_tmpVertices[3].tu = menu_u;
         GL_tmpVertices[3].tv = 0.0;
         *(uint32_t*)&GL_tmpVertices[3].nx = 0;
@@ -3520,7 +3520,7 @@ void std3D_DrawUIBitmapRGBAZ(stdBitmap* pBmp, int mipIdx, float dstX, float dstY
 
 void std3D_DrawUIBitmapRGBA(stdBitmap* pBmp, int mipIdx, float dstX, float dstY, rdRect* srcRect, float scaleX, float scaleY, int bAlphaOverwrite, uint8_t color_r, uint8_t color_g, uint8_t color_b, uint8_t color_a)
 {
-	std3D_DrawUIBitmapRGBAZ(pBmp, mipIdx, dstX, dstY, srcRect, scaleX, scaleY, bAlphaOverwrite, color_r, color_g, color_b, color_a, 0.0f);
+	std3D_DrawUIBitmapRGBAZ(pBmp, mipIdx, dstX, dstY, srcRect, scaleX, scaleY, bAlphaOverwrite, color_r, color_g, color_b, color_a, 0.5f);
 }
 
 void std3D_DrawUIBitmap(stdBitmap* pBmp, int mipIdx, float dstX, float dstY, rdRect* srcRect, float scale, int bAlphaOverwrite)

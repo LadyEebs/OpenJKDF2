@@ -1254,7 +1254,7 @@ LABEL_24:
                 if (a2->monospaceW && a5a.width < a2->monospaceW) {
                     shift = (a2->monospaceW - a5a.width)/2;
                 }
-                std3D_DrawUIBitmap(a2->bitmap, 0, v9+shift, blit_y, &a5a, scale, alpha_maybe);
+                std3D_DrawUIBitmapZ(a2->bitmap, 0, v9+shift, blit_y, &a5a, scale, scale, alpha_maybe, 0.1f);
                 //stdDisplay_VBufferCopy(a1, v10, v9, blit_y, &a5a, alpha_maybe);
                 v14 = a5a.width + a2->marginY;
                 goto LABEL_29;

@@ -246,10 +246,10 @@ void jkQuakeConsole_Render()
         float scaleX = screenW / jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->mipSurfaces[0]->format.width;
         float scaleY = screenH / jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->mipSurfaces[0]->format.height;
         rdRect srcRect = {0,20,jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->mipSurfaces[0]->format.width, jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->mipSurfaces[0]->format.height*0.5};
-        std3D_DrawUIBitmapRGBA(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN], 0, 0.0, realShadeY, &srcRect, scaleX, scaleY, 0, 80, 80, 80, 192);
+        std3D_DrawUIBitmapRGBAZ(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN], 0, 0.0, realShadeY, &srcRect, scaleX, scaleY, 0, 80, 80, 80, 192, 0.3f);
 
         rdRect srcRect2 = {0,jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->mipSurfaces[0]->format.height-4, 1, 2};
-        std3D_DrawUIBitmapRGBA(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN], 0, 0.0, realShadeBottom, &srcRect2, (float)screenW, scaleY, 0, 255, 255, 255, 255);
+        std3D_DrawUIBitmapRGBAZ(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN], 0, 0.0, realShadeBottom, &srcRect2, (float)screenW, scaleY, 0, 255, 255, 255, 255, 0.3f);
     }
     else {
         rdRect rect = {0, realShadeY, screenW, screenH / 2};
