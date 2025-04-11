@@ -26,9 +26,11 @@ uint get_cluster_z_index(float screen_depth)
 uint compute_cluster_index(vec2 pixel_pos, float screen_depth)
 {
 	uint z_index = get_cluster_z_index(screen_depth);
-    uvec3 indices = uvec3(uvec2(pixel_pos.xy / clusterTileSizes.xy), z_index);
-    uint cluster = (indices.z * CLUSTER_GRID_SIZE_X) * CLUSTER_GRID_SIZE_Y + (indices.y * CLUSTER_GRID_SIZE_X + indices.x);
-    return cluster;
+	uvec3 indices = uvec3(uvec2(pixel_pos.xy / clusterTileSizes.xy), z_index);
+	 indices = clamp(indices, uvec3(0), uvec3(CLUSTER_GRID_SIZE_X, CLUSTER_GRID_SIZE_Y, CLUSTER_GRID_SIZE_Z)-1);
+  
+	uint cluster = (indices.z * CLUSTER_GRID_SIZE_X) * CLUSTER_GRID_SIZE_Y + (indices.y * CLUSTER_GRID_SIZE_X + indices.x);
+	return cluster;
 }
 
 uint scalarize_buckets_bits(uint bucket_bits)
