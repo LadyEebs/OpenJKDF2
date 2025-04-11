@@ -105,35 +105,32 @@ void rdCluster_Clear()
 
 float rdCluster_BuildAreaLightMatrix(rdClusterLight* pLight, rdVector3* position, rdMatrix44* mat, float* radius)
 {
-	if (pLight->type == RD_LIGHT_RECTANGLE)
-	{
-		const float width  = pLight->right.w + *radius * 2.0;
-		const float height = pLight->up.w + *radius * 2.0;
+	const float width  = pLight->right.w + *radius * 2.0;
+	const float height = pLight->up.w + *radius * 2.0;
 		
-		rdVector_Scale3((rdVector3*)&mat->vA, (rdVector3*)&pLight->right, width);
-		mat->vA.w = 0.0f;
+	rdVector_Scale3((rdVector3*)&mat->vA, (rdVector3*)&pLight->right, width);
+	mat->vA.w = 0.0f;
 
-		rdVector_Scale3((rdVector3*)&mat->vB, (rdVector3*)&pLight->direction_intensity, *radius * 2.0);
-		mat->vB.w = 0.0f;
+	rdVector_Scale3((rdVector3*)&mat->vB, (rdVector3*)&pLight->direction_intensity, *radius * 2.0);
+	mat->vB.w = 0.0f;
 
-		rdVector_Scale3((rdVector3*)&mat->vC, (rdVector3*)&pLight->up, height);
-		mat->vC.w = 0.0f;
+	rdVector_Scale3((rdVector3*)&mat->vC, (rdVector3*)&pLight->up, height);
+	mat->vC.w = 0.0f;
 
-		rdVector3 offset;
-		rdVector_Scale3(&offset, (rdVector3*)&pLight->direction_intensity, *radius * 0.5f);
-		rdVector_Add3((rdVector3*)&mat->vD, (rdVector3*)&pLight->position, (rdVector3*)&offset);
-		mat->vD.w = 1.0f;
+	rdVector3 offset;
+	rdVector_Scale3(&offset, (rdVector3*)&pLight->direction_intensity, *radius * 0.5f);
+	rdVector_Add3((rdVector3*)&mat->vD, (rdVector3*)&pLight->position, (rdVector3*)&offset);
+	mat->vD.w = 1.0f;
 
-		rdVector_Copy3(position, (rdVector3*)&mat->vD);
+	rdVector_Copy3(position, (rdVector3*)&mat->vD);
 
-		float scaleX = rdVector_Dot3((rdVector3*)&mat->vA, (rdVector3*)&mat->vA);
-		float scaleY = rdVector_Dot3((rdVector3*)&mat->vB, (rdVector3*)&mat->vB);
-		float scaleZ = rdVector_Dot3((rdVector3*)&mat->vC, (rdVector3*)&mat->vC);
+	float scaleX = rdVector_Dot3((rdVector3*)&mat->vA, (rdVector3*)&mat->vA);
+	float scaleY = rdVector_Dot3((rdVector3*)&mat->vB, (rdVector3*)&mat->vB);
+	float scaleZ = rdVector_Dot3((rdVector3*)&mat->vC, (rdVector3*)&mat->vC);
 
-		//*radius = fmax(width, fmax(height, *radius * 2.0));
-		float diagonal = stdMath_Sqrt(scaleX + scaleY + scaleZ);
-		*radius = diagonal / 2.0f;
-	}
+	//*radius = fmax(width, fmax(height, *radius * 2.0));
+	float diagonal = stdMath_Sqrt(scaleX + scaleY + scaleZ);
+	*radius = diagonal / 2.0f;
 }
 
 // https://bartwronski.com/2017/04/13/cull-that-cone/
