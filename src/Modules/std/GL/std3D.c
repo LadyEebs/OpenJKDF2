@@ -5790,7 +5790,8 @@ void std3D_SetTextureState(std3D_worldStage* pStage, std3D_DrawCallState* pState
 	rdVector_Set4(&tex.uv_offset[3], pTexState->texOffset[3].x, pTexState->texOffset[3].y, 0, 0);
 	rdVector_Set4(&tex.texgen_params, pTexState->texGenParams.x, pTexState->texGenParams.y, pTexState->texGenParams.z, pTexState->texGenParams.w);
 
-	if(pTexture)
+	extern int jkPlayer_showLight;
+	if(pTexture && !jkPlayer_showLight)
 	{
 		int tex_id = pTexture->texture_id ? pTexture->texture_id : blank_tex_white;
 		glActiveTexture(GL_TEXTURE0 + TEX_SLOT_DIFFUSE);
@@ -5862,7 +5863,7 @@ void std3D_SetTextureState(std3D_worldStage* pStage, std3D_DrawCallState* pState
 		glBindTexture(GL_TEXTURE_2D, blank_tex_white);
 		glActiveTexture(GL_TEXTURE0);
 
-		tex.tex_mode = TEX_MODE_TEST;
+	//	tex.tex_mode = TEX_MODE_TEST;
 		rdVector_Set2(&tex.texsize, 1, 1);
 	}
 
