@@ -853,19 +853,20 @@ int sithRender_AddSurfaceLight(sithSurface* surface)
 
 	float radius = fmin(surface->localSize.x, surface->localSize.y) * 2.0 * M_PI;// fmax(surface->radius, 0.025f);
 	//float radius = surface->radius * 2.0;
-	
+	//float radius = stdMath_Sqrt(surface->localSize.x * surface->localSize.x + surface->localSize.y * surface->localSize.y) * 2.0;
+
 	rdVector3 offset;
 	rdVector_Scale3(&offset, &surface->surfaceInfo.face.normal, radius * 0.001f);
 	
 	rdVector3 center;
 	rdVector_Add3(&center, &surface->center, &offset);
 	
-	sithRender_aLights[sithRender_numLights].intensity = 2.0;
+	sithRender_aLights[sithRender_numLights].intensity = 1.5;
 	rdCamera_AddLightExplicitRadius(rdCamera_pCurCamera, &sithRender_aLights[sithRender_numLights], radius, &center);
 	
 	sithRender_aLights[sithRender_numLights].type      = RD_LIGHT_RECTANGLE; // rectangle
-	sithRender_aLights[sithRender_numLights].width     = surface->localSize.x;
-	sithRender_aLights[sithRender_numLights].height    = surface->localSize.y;
+	sithRender_aLights[sithRender_numLights].width     = surface->localSize.x - 0.05f;
+	sithRender_aLights[sithRender_numLights].height    = surface->localSize.y - 0.05f;
 	sithRender_aLights[sithRender_numLights].right     = surface->tangent;
 	sithRender_aLights[sithRender_numLights].up        = surface->bitangent;
 	sithRender_aLights[sithRender_numLights].direction = surface->surfaceInfo.face.normal;

@@ -20,7 +20,7 @@ uint get_cluster()
 }
 
 // packs light results into color0 and color1
-void calc_light()
+float calc_light()
 {
 	v[0] = 0;
 	v[1] = 0;
@@ -91,7 +91,11 @@ void calc_light()
 
 		v[0] = (v[0] & 0xFF000000) | (v0 & 0x00FFFFFF);
 		v[1] = (v[1] & 0xFF000000) | (v1 & 0x00FFFFFF);
+		
+		return result.cost;
 	} // lightMode < 2
+
+	return 0.0;
 }
 
 layout(location = 0) out vec4 fragColor;
@@ -124,7 +128,7 @@ void main(void)
 		tr[i] = packTexcoordRegister(fetch_vtx_uv(i));
 
 	// calculate lighting
-	calc_light();
+	float cost = calc_light();
 
 	// run the combiner stage
 	run_vm();
@@ -159,29 +163,8 @@ void main(void)
 
 	fragColor = subsample(outColor);
 
-	//float lightCount = 0.0;
-	//uint s_first_item   = firstLight;
-	//uint s_last_item    = s_first_item + numLights - 1u;
-	//uint s_first_bucket = s_first_item >> 5u;
-	//uint s_last_bucket  = min(s_last_item >> 5u, max(0u, CLUSTER_BUCKETS_PER_CLUSTER - 1u));
-	//for (uint s_bucket  = s_first_bucket; s_bucket <= s_last_bucket; ++s_bucket)
-	//{
-	//	uint bucket_bits = uint(texelFetch(clusterBuffer, int(get_cluster() + s_bucket)).x);
-	//	uint s_bucket_bits = scalarize_buckets_bits(bucket_bits);
-	//	while (s_bucket_bits != 0u)
-	//	{
-	//		uint s_bucket_bit_index = findLSB(s_bucket_bits);
-	//		uint s_light_index = (s_bucket << 5u) + s_bucket_bit_index;
-	//		s_bucket_bits ^= (1u << s_bucket_bit_index);
-	//
-	//		if (s_light_index >= s_first_item && s_light_index <= s_last_item)
-	//		{
-	//			lightCount += 1.0;
-	//		}
-	//	}
-	//}
-	//
-	//fragColor.rgb *= temperature(lightCount / 8.0);
+	
+	//fragColor.rgb = temperature(cost / 8.0);
 
 	// alpha testing
 #ifdef ALPHA_DISCARD

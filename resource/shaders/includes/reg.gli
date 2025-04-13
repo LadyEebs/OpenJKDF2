@@ -34,9 +34,14 @@ uvec2 packVPOS(vec4 v)
 	return uvec2( packHalf2x16(v.xy), packHalf2x16(v.zw) );
 }
 
+vec4 unpackVPOS(uvec2 p)
+{
+	return vec4( unpackHalf2x16(p.x).xy, unpackHalf2x16(p.y).xy );
+}
+
 vec4 readVPOS()
 {
-	return vec4( unpackHalf2x16(vpos.x).xy, unpackHalf2x16(vpos.y).xy );
+	return unpackVPOS( vpos );
 }
 
 

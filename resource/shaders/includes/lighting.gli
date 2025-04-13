@@ -20,6 +20,8 @@ import "reg.gli"
 #define RD_FALLOFF_QUADRATIC 1
 #define RD_FALLOFF_JED       2
 
+#define EARLY_THRESHOLD (1.0/255.0)
+
 // the long streaky lobe of GGX/blinn-phong is just way nicer than phong...
 //#define GGX
 
@@ -28,6 +30,9 @@ struct light_result
 	// r11g11b10f accumulators
 	uint diffuse;
 	uint specular;
+
+	// debug
+	float cost;
 };
 
 uint calc_spec_c(float a)
@@ -80,101 +85,177 @@ vec3 fresnel_approx(vec3 f0, float costh)
 	return f0 + (1.0 - f0) * exp2(-8.35 * costh);
 }
 
-float halfLambert(float NdotL)
+float halfLambert(vec3 normal, vec3 lvec)
 {
-	NdotL = NdotL * 0.5 + 0.5;
-	return NdotL * NdotL;
+	//return saturate(dot(normal, lvec));
+	float ndotl = dot(normal, lvec) * 0.5 + 0.5;
+	return saturate(ndotl * ndotl);
+}
+
+bool broadcast(bool value)
+{
+#ifdef GL_KHR_shader_subgroup_vote
+	return subgroupAll(value);
+#else
+	return value;
+#endif
+}
+
+struct light_data
+{
+	vec3   lvec;
+	float  rcpLen;
+	float  len;
+	float  lenSq;
+};
+
+light_data calc_light_data(vec3 light, vec3 pos)
+{
+	// normalize the light factoring out common subexpressions
+	light_data data;
+	data.lvec   = light.xyz - pos.xyz;
+	data.lenSq  = dot(data.lvec, data.lvec);
+	data.rcpLen = fastRcpSqrtNR1(data.lenSq);
+	data.len    = data.rcpLen * data.lenSq;
+	data.lvec   = data.lvec * data.rcpLen;
+	return data;
+}
+
+light_data calc_point_light_data(uint light_index, light_input params)
+{
+	const vec3 lightPos = lights[light_index].position.xyz;
+	vec3 viewPos = readVPOS().xyz;
+	return calc_light_data(lightPos, viewPos);
+}
+
+light_data calc_rect_light_data(uint light_index, light_input params)
+{
+	// slightly smaller to give some padding
+	const vec2 halfSize = vec2(lights[light_index].right.w, lights[light_index].up.w) * 0.5;
+		
+	const vec3 center = lights[light_index].position.xyz;
+	const vec3 front  = lights[light_index].direction_intensity.xyz;
+	const vec3 right  = lights[light_index].right.xyz;
+	const vec3 up     = lights[light_index].up.xyz;
+
+	vec3 viewPos    = readVPOS().xyz;
+	vec3 projection = -dot(front, viewPos - center) * front + viewPos;
+	vec3 dir        = projection.xyz - center.xyz;
+	
+	vec2 diagonal           = vec2(dot(dir, right), dot(dir, up));
+	vec2 nearest2D          = clamp(diagonal.xy, -halfSize, halfSize);
+	vec3 nearestPointInside = center.xyz + (right.xyz * nearest2D.x + (up.xyz * nearest2D.y));
+		
+	return calc_light_data(nearestPointInside, viewPos);
+}
+
+float calc_light_intensity(uint light_index, light_data data)
+{
+	float intensity = lights[light_index].direction_intensity.w;
+	if (lights[light_index].type > RD_LIGHT_POINTLIGHT)
+	{
+		const vec3 lightDir = lights[light_index].direction_intensity.xyz;
+		if(lights[light_index].type == RD_LIGHT_RECTANGLE)
+		{
+			// wrap the facing contribution so that we get a little bit of self illumination
+			intensity *= saturate(dot(lightDir, -data.lvec));
+		}
+		else if (lights[light_index].type == RD_LIGHT_SPOTLIGHT)
+		{
+			const float cosAngleY = lights[light_index].cosAngleY;
+			const float cosAngleX = lights[light_index].cosAngleX;
+			const float lux       = lights[light_index].lux;
+
+			float angle = dot(-lightDir, data.lvec);
+
+			if (broadcast(angle <= cosAngleY))
+				return 0.0;
+
+			if (angle < cosAngleX)
+				intensity *= saturate(-(cosAngleX - angle) * lux + 1.0);
+		}
+	}
+	return intensity;
+}
+
+float calc_quadratic_atten(uint light_index, light_data data)
+{
+	const float sqInv = lights[light_index].invFalloff * lights[light_index].invFalloff;
+
+	//float falloff = saturate(-data.lenSq * sqInv + 1.0);
+	//return falloff * falloff;
+
+	float s = saturate(data.lenSq * sqInv);
+	float is = 1.0 - s;
+		
+	return (is * is) * fastRcpNR0(lights[light_index].falloffMin * s + 1.0);
+}
+
+float calc_jed_atten(uint light_index, light_data data)
+{
+	const float invFalloff = lights[light_index].invFalloff;
+	float atten = -data.len * invFalloff + 1.0;
+	return atten * atten;
+}
+
+// this atten is subtractive, not multiplicative
+float calc_default_atten(uint light_index, light_data data)
+{
+	// note it depends on scalar value matching whatever was used to calculate the intensity, it seems
+	const float scalar = 0.4; // todo: needs to come from rdCamera_pCurCamera->attenuationMin
+	return scalar * data.len;
+
+	//if ( len > lights[light_index].falloffMax ) // from jones
+    //{
+    //    float drad  = lights[light_index].falloffMin - lights[light_index].falloffMax;
+    //    float atten = (data.len - lights[light_index].falloffMax) / drad;
+	//	return atten;
+    //}
 }
 
 void calc_point_light(inout light_result result, uint light_index, light_input params)
 {
-	vec3 viewPos = 	vec4( unpackHalf2x16(params.pos.x).xy, unpackHalf2x16(params.pos.y).xy ).xyz;
-	vec3 lvec = lights[light_index].position.xyz - viewPos.xyz;
-	
-	float dotVector = dot(lvec, lvec);
-	float rcpLen    = fastRcpSqrtNR1(dotVector);
-	float len       = rcpLen * dotVector;
-	lvec            = lvec * rcpLen;
+	light_data data;
+	switch (lights[light_index].type)
+	{
+	case RD_LIGHT_RECTANGLE:
+		data = calc_rect_light_data(light_index, params);
+		break;
+	default:
+		data = calc_point_light_data(light_index, params);
+		break;
+	}
+
+	if (broadcast(data.lenSq >= lights[light_index].radiusSqr))
+		return;
 
 	vec3 normal = unpackSnorm4x8(params.normal).xyz;
-	float ndotl = halfLambert( dot(normal.xyz, lvec) );
-
-	if (lights[light_index].type == RD_LIGHT_RECTANGLE)
-	{
-		// slightly smaller to give some padding
-		vec2 halfSize = vec2(lights[light_index].right.w, lights[light_index].up.w) * 0.49;
-		
-		vec3 center = lights[light_index].position.xyz;
-		vec3 front  = lights[light_index].direction_intensity.xyz;
-		vec3 right  = lights[light_index].right.xyz;
-		vec3 up     = lights[light_index].up.xyz;
-	
-		vec3 projection = projectOnPlane(viewPos, center, front);
-		vec3 dir        = projection.xyz - center.xyz;
-	
-		vec2 diagonal           = vec2(dot(dir, right), dot(dir, up));
-		vec2 nearest2D          = clamp(diagonal.xy, -halfSize, halfSize);
-		vec3 nearestPointInside = center.xyz + (right.xyz * nearest2D.x + (up.xyz * nearest2D.y));
-	
-		lvec      = nearestPointInside - viewPos;
-		dotVector = dot(lvec, lvec);
-		rcpLen    = fastRcpSqrtNR1(dotVector);
-		len       = rcpLen * dotVector;
-		lvec      = lvec * rcpLen;
-
-		ndotl = halfLambert( dot(normal.xyz, lvec) );
-		ndotl *= saturate(dot(front, -lvec));
-	}
-	
-	if (dotVector >= lights[light_index].radiusSqr)
+	float ndotl = halfLambert( normal.xyz, data.lvec.xyz );
+	if (broadcast(ndotl < EARLY_THRESHOLD))
 		return;
 
-	float intensity = lights[light_index].direction_intensity.w;
-	if (lights[light_index].type == RD_LIGHT_SPOTLIGHT)
-	{
-		float angle = dot(-lights[light_index].direction_intensity.xyz, lvec);
-		if (angle <= lights[light_index].cosAngleY)
-			return;
-	
-		if (angle < lights[light_index].cosAngleX)
-            intensity *= 1.0 - saturate((lights[light_index].cosAngleX - angle) * lights[light_index].lux.x);
-	}
-	
-	if (lights[light_index].falloffType == RD_FALLOFF_QUADRATIC) // quadratic falloff
-	{
-		//float falloff = 1.0 - saturate(dotVector * (lights[light_index].invFalloff * lights[light_index].invFalloff));
-		//intensity *= falloff * falloff;
-
-		float s = saturate(dotVector * lights[light_index].invFalloff * lights[light_index].invFalloff);
-		float is = 1.0 - s;
-		
-		intensity *= (is * is) * rcp(lights[light_index].falloffMin * s + 1.0);
-	}
-	else if (lights[light_index].falloffType == RD_FALLOFF_JED) // jed attenuation for static lights
-	{
-		float range = 1.0 - len * lights[light_index].invFalloff;
-
-		//range *= range; // squared
-		intensity *= range * range; // gamma 2.0 compensation
-	}
-	else // JK's original dynamic light attenuation model (for things at least)
-	{
-		// note it depends on scalar value matching whatever was used to calculate the intensity, it seems
-		const float scalar = 0.4; // todo: needs to come from rdCamera_pCurCamera->attenuationMin
-		intensity -= scalar * len;
-
-		//if ( len > lights[light_index].falloffMax ) // from jones
-        //{
-        //    float drad  = lights[light_index].falloffMin - lights[light_index].falloffMax;
-        //    float atten = (len - lights[light_index].falloffMax) / drad;
-		//	intensity -= atten;
-        //}
-	}
-
-	if (intensity <= float(0.0))
+	float intensity = calc_light_intensity(light_index, data);	
+	if (broadcast(intensity < EARLY_THRESHOLD))
 		return;
 
-	float lightMagnitude = ndotl * intensity;
+	// attenuation
+	switch(lights[light_index].falloffType)
+	{
+	case RD_FALLOFF_QUADRATIC:
+		intensity *= calc_quadratic_atten(light_index, data);
+		break;
+	case RD_FALLOFF_JED:
+		intensity *= calc_jed_atten(light_index, data);
+		break;
+	default:
+		intensity -= calc_default_atten(light_index, data);
+		break;
+	}
+
+	if (broadcast(intensity < EARLY_THRESHOLD))
+		return;
+
+	float lightMagnitude = max(0.0, ndotl * intensity);
 	//float signedMagnitude = lightMagnitude;
 	//lightMagnitude = max(lightMagnitude, float(0.0)) * intensity;
 
@@ -187,12 +268,12 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	//	cd.xyz += fillColor.rgb * sss * (0.2 * intensity);
 	//}
 	//else
-	//if(signedMagnitude <= 0.0)
+	//if(signedMagnitude < EARLY_THRESHOLD)
 	//{
 	//	return;
 	//}
 
-	vec3 lightColor = lights[light_index].color.xyz;
+	vec3 lightColor = lights[light_index].color.rgb;
 	if (lights[light_index].type > 0)
 	{
 	 	result.diffuse = packF2x11_1x10(cd.rgb * lightColor.rgb + (unpackF2x11_1x10(result.diffuse)));
@@ -200,8 +281,10 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	}
 	else
 	{
-		lightColor *= vec3(unpackUnorm4x8(params.tint).rgb);
+		lightColor *= unpackUnorm4x8(params.tint).rgb;
 	}
+
+	result.cost += 1.0;
 
 #ifdef WORLD
 	if (lightMode > 3)
@@ -222,7 +305,7 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 
 		vec3 reflected = unpackSnorm4x8(params.reflected).xyz;
 
-		float rdotv = dot(reflected, lvec);
+		float rdotv = dot(reflected, data.lvec);
 		float     d = (rdotv * rdotv) * coeffs.y + 1.00001;
 				  d = coeffs.x * fastRcpNR1(d * d);
 	#else
@@ -231,12 +314,13 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 		// approximated energy conserving phong lobe, fresnel and spec color must be applied at the end with env_brdf
 		vec3 reflected = unpackSnorm4x8(params.reflected).xyz;
 
-		float rdotv  = dot(reflected, lvec);
+		float rdotv  = dot(reflected, data.lvec);
 		float d      = coeffs.x * fastExp2( coeffs.y * rdotv + (-coeffs.y) );
 	#endif
 
 		result.specular = packF2x11_1x10((lightMagnitude * d) * lightColor.rgb + (unpackF2x11_1x10(result.specular)));
 		//result.specular = lightColor.rgb * vec3(lightMagnitude * d) + result.specular;
+		result.cost += 0.25;
 	}
 }
 
@@ -262,6 +346,12 @@ void calculate_lighting(inout light_result result, light_input params, uint clus
 			if (s_light_index >= s_first_item && s_light_index <= s_last_item)
 			{
 				calc_point_light(result, s_light_index, params);
+				
+				//if (result.diffuse >= maxLight)
+				//{
+				//	s_bucket = CLUSTER_BUCKETS_PER_CLUSTER;
+				//	break;
+				//}
 			}
 			else if (s_light_index > s_last_item)
 			{
