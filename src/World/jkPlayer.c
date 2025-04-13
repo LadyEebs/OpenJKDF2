@@ -61,6 +61,7 @@ float jkPlayer_ssaaMultiple = 1.0;
 float jkPlayer_gamma = 1.0;
 int jkPlayer_lodBias = 0;
 int jkPlayer_mipBias = 0;
+float jkPlayer_overbright = 2.0;
 int jkPlayer_showLight = 0;
 int jkPlayer_showThingInfo = 0;
 int jkPlayer_bEnableJkgm = 1;
@@ -221,6 +222,7 @@ int jkPlayer_aMotsFpBins[74] =
 void jkPlayer_StartupVars()
 {
 	// todo: move all the render stuff elsewhere
+	sithCvar_RegisterFlex("r_overbright",               2.0,                        &jkPlayer_overbright,               CVARFLAG_LOCAL);
 	sithCvar_RegisterInt("r_showlight",                 0,                          &jkPlayer_showLight,                CVARFLAG_LOCAL);
 	sithCvar_RegisterInt("r_fov",                       90,                         &jkPlayer_fov,                      CVARFLAG_LOCAL);
     sithCvar_RegisterBool("r_fovIsVertical",            1,                          &jkPlayer_fovIsVertical,            CVARFLAG_LOCAL);

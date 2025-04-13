@@ -1004,7 +1004,9 @@ void sithRender_Draw()
 
 	rdDepthRange(0.05f, 1.0f);
 	rdSetGlowIntensity(0.4f);
-	rdSetOverbright(1.8f);
+
+	extern float jkPlayer_overbright;
+	rdSetOverbright(jkPlayer_overbright);
 
 	_memset(sithWorld_pCurrentWorld->lightBuckets, 0, sizeof(uint64_t)*sithWorld_pCurrentWorld->numLightBuckets);
 

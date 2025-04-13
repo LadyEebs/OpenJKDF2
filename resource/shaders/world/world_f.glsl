@@ -133,7 +133,7 @@ void main(void)
 	apply_decals(get_cluster());
 
 	// unpack color and do fog and whatever else
-	vec4 outColor = unpackUnorm4x8(r[0]); // unpack r0
+	vec4 outColor = unpackUnorm4x8(r[0]) * invlightMult; // unpack r0
 
 	float dither = dither_value_float(uvec2(gl_FragCoord.xy));
 
@@ -155,7 +155,7 @@ void main(void)
 
 	// todo: make ditherMode a per-rt thing
 	// dither the output if needed
-	outColor.rgb = saturate(outColor.rgb * invlightMult + (dither * ditherScale));
+	outColor.rgb = (outColor.rgb + (dither * ditherScale));
 
 	fragColor = subsample(outColor);
 
