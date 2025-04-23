@@ -1142,7 +1142,7 @@ int rdAddLight(rdLight* pLight, rdVector3* pPosition)
 		rdVector4 viewDir;
 		rdMatrix_TransformVector44(&viewDir, &dir4, &rdroid_matrices[RD_MATRIX_VIEW]);
 
-		return rdCluster_AddSpotLight(pLight, (rdVector3*)&viewPos, (rdVector3*)&viewDir, 1.0f / rdroid_lightingState.overbright);
+		return rdCluster_AddSpotLight(pLight, (rdVector3*)&viewPos, (rdVector3*)&viewDir, pLight->width, 1.0f / rdroid_lightingState.overbright);
 	}
 	else if (pLight->type == RD_LIGHT_RECTANGLE)
 	{

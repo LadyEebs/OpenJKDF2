@@ -388,6 +388,10 @@ static void rdCluster_AssignLightsToClustersJob(uint32_t jobIndex, uint32_t grou
 		item.coneParams.apex = item.position;
 		rdVector_Copy4To3(&item.coneParams.direction, &rdroid_clusterLights[jobIndex].direction_intensity);
 
+		// push the apex back by the size of the light so that we encapsulate the entire light
+		rdVector_MultAcc3(&item.coneParams.apex, &item.coneParams.direction, -rdroid_clusterLights[jobIndex].right.w);
+		item.radius += rdroid_clusterLights[jobIndex].right.w; // add the size to the radius
+
 		rdCluster_BoundingSphere(&item.position, &item.radius, &item.coneParams.apex, &item.coneParams.direction, item.radius, item.coneParams.angle);
 	}
 	else if(rdroid_clusterLights[jobIndex].type == RD_LIGHT_RECTANGLE)
@@ -484,9 +488,9 @@ int rdCluster_AddPointLight(rdLight* light, rdVector3* position, float intensity
 	return rdCluster_AddLight(light, position, &rdroid_zeroVector3, &rdroid_zeroVector3, &rdroid_zeroVector3, 0.0f, 0.0f, intensity);
 }
 
-int rdCluster_AddSpotLight(rdLight* light, rdVector3* position, rdVector3* direction, float intensity)
+int rdCluster_AddSpotLight(rdLight* light, rdVector3* position, rdVector3* direction, float size, float intensity)
 {
-	return rdCluster_AddLight(light, position, direction, &rdroid_zeroVector3, &rdroid_zeroVector3, 0.0f, 0.0f, intensity);
+	return rdCluster_AddLight(light, position, direction, &rdroid_zeroVector3, &rdroid_zeroVector3, size, size, intensity);
 }
 
 int rdCluster_AddRectangleLight(rdLight* light, rdVector3* position, rdVector3* direction, rdVector3* right, rdVector3* up, float width, float height, float intensity)

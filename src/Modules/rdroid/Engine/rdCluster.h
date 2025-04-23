@@ -9,7 +9,7 @@ void rdCluster_Clear();
 
 //int rdCluster_AddLight(rdLight* light, rdVector3* position, rdVector3* direction, float intensity);
 int rdCluster_AddPointLight(rdLight* light, rdVector3* position, float intensity);
-int rdCluster_AddSpotLight(rdLight* light, rdVector3* position, rdVector3* direction, float intensity);
+int rdCluster_AddSpotLight(rdLight* light, rdVector3* position, rdVector3* direction, float size, float intensity);
 int rdCluster_AddRectangleLight(rdLight* light, rdVector3* position, rdVector3* direction, rdVector3* right, rdVector3* up, float width, float height, float intensity);
 
 int rdCluster_AddOccluder(rdVector3* position, float radius, rdVector3* verts);

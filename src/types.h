@@ -3486,6 +3486,7 @@ typedef struct sithThing
 #ifdef RENDER_DROID2
 	float lightRadius;
 	float lightAngle;
+	float lightSize;
 #endif
 #endif
     float lightMin;

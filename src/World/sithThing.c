@@ -106,6 +106,7 @@ const char* sithThing_aParams[NUM_THING_PARAMS] = {
 	#ifdef RENDER_DROID2
 	"lightradius",
 	"lightangle",
+	"lightSize",
 	#endif
 #endif
     "attach",
@@ -1947,6 +1948,10 @@ int sithThing_LoadThingParam(stdConffileArg *arg, sithThing* pThing, int param)
 			break;
 		case THINGPARAM_LIGHTANGLE:
 			pThing->lightAngle = _atof(arg->value);
+			result = 1;
+			break;
+		case THINGPARAM_LIGHTSIZE:
+			pThing->lightSize = _atof(arg->value);
 			result = 1;
 			break;
 #endif

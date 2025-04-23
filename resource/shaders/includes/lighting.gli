@@ -128,6 +128,41 @@ light_data calc_point_light_data(uint light_index, light_input params)
 	return calc_light_data(lightPos, viewPos);
 }
 
+vec3 snapDisc(vec3 q, vec3 dpos, float drad, vec3 ddir)
+{
+    vec3 to = q - dpos;
+    to -= dot(to, ddir) * ddir;
+    return saturate(drad / length(to + 1e-7)) * to + dpos;
+}
+
+light_data calc_spot_light_data(uint light_index, light_input params)
+{
+	const float discRadius = lights[light_index].right.w * 0.5; 
+	const  vec3 center     = lights[light_index].position.xyz;
+	const  vec3 front      = lights[light_index].direction_intensity.xyz;
+
+	vec3 viewPos      = readVPOS().xyz;
+	vec3 closestPoint = center;
+
+	if (discRadius > 0.0)
+	{
+		vec3 toCenter = viewPos - center;
+		vec3 projection = viewPos - dot(toCenter, front) * front;
+		vec3 fromCenter = projection - center;
+		float dist2 = dot(fromCenter, fromCenter);
+		if (dist2 > discRadius * discRadius)
+		{
+			fromCenter *= discRadius / sqrt(dist2);
+			closestPoint = center + fromCenter;
+		}
+		else
+		{
+			closestPoint = projection;
+		}
+	}	
+	return calc_light_data(closestPoint, viewPos);
+}
+
 light_data calc_rect_light_data(uint light_index, light_input params)
 {
 	// slightly smaller to give some padding
@@ -220,6 +255,9 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 	{
 	case RD_LIGHT_RECTANGLE:
 		data = calc_rect_light_data(light_index, params);
+		break;
+	case RD_LIGHT_SPOTLIGHT:
+		data = calc_spot_light_data(light_index, params);
 		break;
 	default:
 		data = calc_point_light_data(light_index, params);
