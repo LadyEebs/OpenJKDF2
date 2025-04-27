@@ -1663,6 +1663,7 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 	extern int jkPlayer_bEnableJkgm;
 	extern rdShader* sithRender_jkgmShader;
 	extern rdShader* sithRender_defaultShader;
+	extern rdShader* sithRender_specularShader;
 	extern rdShader* sithRender_scopeShader;
 	if (jkPlayer_bEnableJkgm
 			 && face->material->textures
@@ -1673,6 +1674,10 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 	else if(face->geometryMode == 5)
 	{
 		rdSetShader(sithRender_scopeShader);
+	}
+	else if (lightingMode == RD_LIGHTMODE_SPECULAR)
+	{
+		rdSetShader(sithRender_specularShader);
 	}
 	else
 	{
