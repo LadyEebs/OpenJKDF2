@@ -25,7 +25,7 @@ float calc_light()
 	v[0] = 0;
 	v[1] = 0;
 
-	vec3 normal    = unpackSnorm4x8(vnorm).xyz;
+	vec3 normal    = normalize(unpackSnorm4x8(vnorm).xyz);
 	vec3 viewPos   = readVPOS().xyz;
 	vec3 view      = normalize(-viewPos.xyz);
 	vec3 reflected = reflect(-view, normal);

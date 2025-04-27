@@ -266,8 +266,8 @@ void calc_point_light(inout light_result result, uint light_index, light_input p
 
 	if (broadcast(data.lenSq >= lights[light_index].radiusSqr))
 		return;
-
-	vec3 normal = unpackSnorm4x8(params.normal).xyz;
+		
+	vec3 normal = normalize(unpackSnorm4x8(params.normal).xyz);
 	float ndotl = halfLambert( normal.xyz, data.lvec.xyz );
 	if (broadcast(ndotl < EARLY_THRESHOLD))
 		return;
