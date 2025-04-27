@@ -88,6 +88,7 @@ rdAmbientFlags_t sithRender_aoFlags = 0;
 uint32_t sithRender_numStaticLights = 0;
 
 rdShader* sithRender_defaultShader = NULL;
+rdShader* sithRender_specularShader = NULL;
 rdShader* sithRender_horizonSky = NULL;
 rdShader* sithRender_ceilingSky = NULL;
 rdShader* sithRender_jkgmShader = NULL;
@@ -500,6 +501,7 @@ int sithRender_Open()
 
 #ifdef RENDER_DROID2
 	sithRender_defaultShader = sithShader_LoadEntry("default.asm");
+	sithRender_specularShader = sithShader_LoadEntry("specular.asm");
 	sithRender_horizonSky = sithShader_LoadEntry("horizonsky.asm");
 	sithRender_ceilingSky = sithShader_LoadEntry("ceilingsky.asm");
 	sithRender_jkgmShader = sithShader_LoadEntry("jkgm.asm");
@@ -556,6 +558,7 @@ void sithRender_Close()
 
 #ifdef RENDER_DROID2
 	sithRender_defaultShader = 0;
+	sithRender_specularShader = 0;
 	sithRender_horizonSky = 0;
 	sithRender_ceilingSky = 0;
 	sithRender_jkgmShader = 0;
@@ -1300,6 +1303,7 @@ void sithRender_Clip(sithSector *sector, rdClipFrustum *frustumArg, float a3)
 						sithRender_aLights[lightIdx].type = RD_LIGHT_SPOTLIGHT;
 						sithRender_aLights[lightIdx].direction = thing->lookOrientation.lvec;
 						rdLight_SetAngles(&sithRender_aLights[lightIdx], thing->lightAngle * 0.1, thing->lightAngle);
+						sithRender_aLights[lightIdx].width = thing->lightSize;
 					}
                     lightIdx = ++sithRender_numLights;
                 }
@@ -1569,44 +1573,6 @@ void sithRender_DrawSurface(sithSurface* surface)
 		h = (float)(surface->surfaceInfo.face.material->textures[0].height_minus_1 + 1);
 	}
 
-	int isWater = 0;
-	if (surface->adjoin && (surface->parent_sector->flags & SITH_SECTOR_UNDERWATER || surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER))
-		isWater = 1;
-	//else if (!(surface->parent_sector->flags & SITH_SECTOR_UNDERWATER) && (surface->surfaceFlags & SITH_SURFACE_WATER || surface->surfaceFlags & SITH_SURFACE_PUDDLE || surface->surfaceFlags & SITH_SURFACE_VERYDEEPWATER))
-		//isWater = 1;
-
-	if (isWater)
-	{
-		rdSetShader(sithRender_waterShader);
-	}
-	else if (surface->surfaceFlags & SITH_SURFACE_HORIZON_SKY)
-	{
-		rdSetShader(sithRender_horizonSky);
-		rdSetShaderConstant4f(0, sithSector_flt_8553C0, sithSector_flt_8553C8, sithSector_flt_8553F4, 0);
-		rdSetShaderConstant4f(1, (sithWorld_pCurrentWorld->horizontalSkyOffs.x + sithSector_flt_8553B8) / w, (sithWorld_pCurrentWorld->horizontalSkyOffs.y + sithSector_flt_8553C4) / h, 0, 0);
-	}
-	else if (surface->surfaceFlags & SITH_SURFACE_CEILING_SKY)
-	{
-		extern rdVector3 sithSector_ceilingSkyNormal;
-		extern float sithSector_ceilingDot;
-
-		rdSetShader(sithRender_ceilingSky);
-		rdSetShaderConstant4f(0, sithSector_ceilingSkyNormal.x, sithSector_ceilingSkyNormal.y, sithSector_ceilingSkyNormal.z, sithSector_ceilingDot);
-		rdSetShaderConstant4f(1, sithWorld_pCurrentWorld->ceilingSkyOffs.x / w, sithWorld_pCurrentWorld->ceilingSkyOffs.y / h, 0, 0);
-	}
-	else if (jkPlayer_bEnableJkgm
-		&& surface->surfaceInfo.face.material->textures
-		&& surface->surfaceInfo.face.material->textures->has_jkgm_override)
-	{
-		rdSetShader(sithRender_jkgmShader);
-	}
-	else
-	{
-		rdSetShader(sithRender_defaultShader);
-	}
-
-	int wallCel = surface->surfaceInfo.face.wallCel;
-	rdBindMaterial(surface->surfaceInfo.face.material, wallCel);
 
 	int geoMode;
 	if ((surface->surfaceFlags & (SITH_SURFACE_HORIZON_SKY | SITH_SURFACE_CEILING_SKY)) != 0)
@@ -1646,6 +1612,49 @@ void sithRender_DrawSurface(sithSurface* surface)
 		lightMode = RD_LIGHTMODE_FULLYLIT;
 
 	rdSetLightMode(lightMode);
+
+	int isWater = 0;
+	if (surface->adjoin && (surface->parent_sector->flags & SITH_SECTOR_UNDERWATER || surface->adjoin->sector->flags & SITH_SECTOR_UNDERWATER))
+		isWater = 1;
+	//else if (!(surface->parent_sector->flags & SITH_SECTOR_UNDERWATER) && (surface->surfaceFlags & SITH_SURFACE_WATER || surface->surfaceFlags & SITH_SURFACE_PUDDLE || surface->surfaceFlags & SITH_SURFACE_VERYDEEPWATER))
+		//isWater = 1;
+
+	if (isWater)
+	{
+		rdSetShader(sithRender_waterShader);
+	}
+	else if (surface->surfaceFlags & SITH_SURFACE_HORIZON_SKY)
+	{
+		rdSetShader(sithRender_horizonSky);
+		rdSetShaderConstant4f(0, sithSector_flt_8553C0, sithSector_flt_8553C8, sithSector_flt_8553F4, 0);
+		rdSetShaderConstant4f(1, (sithWorld_pCurrentWorld->horizontalSkyOffs.x + sithSector_flt_8553B8) / w, (sithWorld_pCurrentWorld->horizontalSkyOffs.y + sithSector_flt_8553C4) / h, 0, 0);
+	}
+	else if (surface->surfaceFlags & SITH_SURFACE_CEILING_SKY)
+	{
+		extern rdVector3 sithSector_ceilingSkyNormal;
+		extern float sithSector_ceilingDot;
+
+		rdSetShader(sithRender_ceilingSky);
+		rdSetShaderConstant4f(0, sithSector_ceilingSkyNormal.x, sithSector_ceilingSkyNormal.y, sithSector_ceilingSkyNormal.z, sithSector_ceilingDot);
+		rdSetShaderConstant4f(1, sithWorld_pCurrentWorld->ceilingSkyOffs.x / w, sithWorld_pCurrentWorld->ceilingSkyOffs.y / h, 0, 0);
+	}
+	else if (jkPlayer_bEnableJkgm
+		&& surface->surfaceInfo.face.material->textures
+		&& surface->surfaceInfo.face.material->textures->has_jkgm_override)
+	{
+		rdSetShader(sithRender_jkgmShader);
+	}
+	else if(lightMode == RD_LIGHTMODE_SPECULAR)
+	{
+		rdSetShader(sithRender_specularShader);
+	}
+	else
+	{
+		rdSetShader(sithRender_defaultShader);
+	}
+
+	int wallCel = surface->surfaceInfo.face.wallCel;
+	rdBindMaterial(surface->surfaceInfo.face.material, wallCel);
 
 	if (sithRender_lightingIRMode)
 	{
@@ -2945,6 +2954,7 @@ void sithRender_UpdateLights(sithSector *sector, float prev, float dist, int dep
 					{
 						sithRender_aLights[sithRender_numLights].type = RD_LIGHT_SPOTLIGHT;
 						sithRender_aLights[sithRender_numLights].direction = i->lookOrientation.lvec;
+						sithRender_aLights[sithRender_numLights].width = i->lightSize;
 						rdLight_SetAngles(&sithRender_aLights[sithRender_numLights], i->lightAngle * 0.1, i->lightAngle);
 					}
 					++sithRender_numLights;
