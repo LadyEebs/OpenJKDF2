@@ -100,14 +100,17 @@ int sithGamesave_LoadEntry(char *fpath)
     stdConffile_Read(&header, sizeof(sithGamesave_Header));
 
     if (!Main_bMotsCompat) {
-        if ( header.version != 6 )
-        goto load_fail;
+        if ( header.version != JK_SAVE_VERSION && header.version != OPENJKDF2_SAVE_VERSION)
+			goto load_fail;
+
+		if (header.version == JK_SAVE_VERSION)
+			bIsOutdatedSave = 1;
     }
     else {
-        if ( header.version != 6 && header.version != 0x7D6)
+        if ( header.version != JK_SAVE_VERSION && header.version != MOTS_SAVE_VERSION && header.version != OPENJKDF2_SAVE_VERSION)
             goto load_fail;
          
-        if ( header.version == 6) {
+        if ( header.version == JK_SAVE_VERSION || header.version == MOTS_SAVE_VERSION) {
             bIsOutdatedSave = 1;
         }
     }
@@ -213,7 +216,7 @@ skip_free_things:
         memset(&sithComm_netMsgTmp, 0, sizeof(sithComm_netMsgTmp));
 
         // TODO
-        if (sithComm_version == 0x7D6) {
+        if (sithComm_version == MOTS_SAVE_VERSION || sithComm_version == OPENJKDF2_SAVE_VERSION) {
             int32_t tmp = 0;
             if ( !stdConffile_Read(&tmp, sizeof(tmp)) )
             {

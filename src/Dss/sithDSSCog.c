@@ -17,7 +17,12 @@ int sithDSSCog_SendSendTrigger(sithCog *a1, int a2, int a3, int a4, int a5, int 
 
     NETMSG_PUSHS32(a7);
     v12 = 1;
-    NETMSG_PUSHS16(a1 ? a1->selfCog : -1);
+	if (sithComm_version == OPENJKDF2_SAVE_VERSION) {
+		NETMSG_PUSHS32(a1 ? a1->selfCog : -1);
+	}
+	else {
+		NETMSG_PUSHS16(a1 ? a1->selfCog : -1);
+	}
     NETMSG_PUSHU8(a3);
     NETMSG_PUSHU8(a5);
 
@@ -71,7 +76,7 @@ int sithDSSCog_ProcessSendTrigger(sithCogMsg *in_netMsg)
     NETMSG_IN_START(in_netMsg);
 
     linkId = NETMSG_POPS32();
-    cog = sithCog_GetByIdx(NETMSG_POPS16());
+    cog = sithCog_GetByIdx(sithComm_version == OPENJKDF2_SAVE_VERSION ? NETMSG_POPS32() : NETMSG_POPS16());
     senderType = NETMSG_POPU8();
     sourceType = NETMSG_POPU8();
     senderIdx = NETMSG_POPS32();

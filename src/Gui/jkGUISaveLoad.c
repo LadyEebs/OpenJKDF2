@@ -222,7 +222,7 @@ void jkGuiSaveLoad_PopulateList()
                 v2 = pHS->fileOpen(path, "rb");
                 if ( v2 )
                 {
-                    if ( pHS->fileRead(v2, &saveHeader, sizeof(sithGamesave_Header)) == sizeof(sithGamesave_Header) && (saveHeader.version == 6 || saveHeader.version == 0x7D6) ) // MOTS altered: 6 -> 0x7D6
+                    if ( pHS->fileRead(v2, &saveHeader, sizeof(sithGamesave_Header)) == sizeof(sithGamesave_Header) && (saveHeader.version == JK_SAVE_VERSION || saveHeader.version == MOTS_SAVE_VERSION || saveHeader.version == OPENJKDF2_SAVE_VERSION) ) // MOTS altered: 6 -> 0x7D6
                     {
                         v3 = __wcschr(saveHeader.saveName, U'~');
                         v4 = v3;

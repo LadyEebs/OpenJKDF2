@@ -875,7 +875,7 @@ void sithDSS_SendMisc(int sendto_id, int mpFlags)
     NETMSG_PUSHU32(sithPlayer_pLocalPlayer->curWeapon);
     NETMSG_PUSHU32(sithPlayer_pLocalPlayer->curPower);
 
-    for (int i = 0; i < ((sithComm_version == 0x7D6) ? 32 : 20); i++)
+    for (int i = 0; i < ((sithComm_version == MOTS_SAVE_VERSION || sithComm_version == OPENJKDF2_SAVE_VERSION) ? 32 : 20); i++)
     {
         NETMSG_PUSHU32(sithInventory_powerKeybinds[i].idk);
     }
@@ -943,7 +943,7 @@ int sithDSS_ProcessMisc(sithCogMsg *msg)
     sithPlayer_pLocalPlayer->curWeapon = NETMSG_POPU32();
     sithPlayer_pLocalPlayer->curPower = NETMSG_POPU32();
 
-    for (int i = 0; i < ((sithComm_version == 0x7D6) ? 32 : 20); i++)
+    for (int i = 0; i < ((sithComm_version == MOTS_SAVE_VERSION || sithComm_version == OPENJKDF2_SAVE_VERSION) ? 32 : 20); i++)
     {
         sithInventory_powerKeybinds[i].idk = NETMSG_POPU32();
     }

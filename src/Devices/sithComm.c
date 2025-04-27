@@ -8,7 +8,7 @@
 #include "jk.h"
 
 int sithComm_009a1160 = 0;
-int sithComm_version = 6;
+int sithComm_version = OPENJKDF2_SAVE_VERSION;//JK_SAVE_VERSION;
 
 // MOTS altered
 int sithComm_Startup()
@@ -68,7 +68,7 @@ int sithComm_Startup()
 
     // Added: clean reset
     sithComm_009a1160 = 0;
-    sithComm_version = 6;
+    sithComm_version = OPENJKDF2_SAVE_VERSION;//JK_SAVE_VERSION;
 
     sithComm_bInit = 1;
     return 1;
@@ -81,7 +81,7 @@ void sithComm_Shutdown()
 
     // Added: clean reset
     sithComm_009a1160 = 0;
-    sithComm_version = 6;
+    sithComm_version = OPENJKDF2_SAVE_VERSION;//JK_SAVE_VERSION;
 }
 
 void sithComm_SetMsgFunc(int msgid, void *func)
@@ -196,7 +196,7 @@ LABEL_35:
 void sithComm_FileWrite(sithCogMsg* ctx)
 {
     // Added: multiple version handling
-    if (sithComm_version == 0x7D6) {
+    if (sithComm_version == MOTS_SAVE_VERSION || sithComm_version == OPENJKDF2_SAVE_VERSION) {
         stdConffile_Write((const char*)&sithComm_009a1160, sizeof(sithComm_009a1160));
     }
     stdConffile_Write((const char*)&ctx->netMsg.cogMsgId, sizeof(int));

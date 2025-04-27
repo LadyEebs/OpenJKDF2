@@ -44,6 +44,10 @@ void sithDSSThing_SendPos(sithThing *pThing, int sendto_id, int bSync)
             if ( !pThing->attach_flags )
             {
                 NETMSG_PUSHVEC3(pThing->physicsParams.angVel);
+			#ifdef PUPPET_PHYSICS
+				if (sithComm_version == OPENJKDF2_SAVE_VERSION)
+					NETMSG_PUSHVEC3(pThing->physicsParams.rotVel);
+			#endif
             }
         }
         if ( pThing->type == SITH_THING_PLAYER )
@@ -98,6 +102,10 @@ int sithDSSThing_ProcessPos(sithCogMsg *msg)
         else
         {
             pThing->physicsParams.angVel = NETMSG_POPVEC3();
+#ifdef PUPPET_PHYSICS
+			if (sithComm_version == OPENJKDF2_SAVE_VERSION)
+				pThing->physicsParams.rotVel = NETMSG_POPVEC3();
+#endif
         }
         sithDSSThing_TransitionMovingThing(pThing, &pos, pSector);
     }
@@ -155,9 +163,17 @@ void sithDSSThing_SendSyncThing(sithThing *pThing, int sendto_id, int mpFlags)
         NETMSG_PUSHS16(pThing->puppet->field_4);
     }
     NETMSG_PUSHS32(pThing->light);
+	if (sithComm_version == OPENJKDF2_SAVE_VERSION)
+	{
 #ifdef RGB_THING_LIGHTS
-	NETMSG_PUSHVEC3(pThing->lightColor);
+		NETMSG_PUSHVEC3(pThing->lightColor);
+#ifdef RENDER_DROID2
+		NETMSG_PUSHF32(pThing->lightRadius);
+		NETMSG_PUSHF32(pThing->lightAngle);
+		NETMSG_PUSHF32(pThing->lightSize);
 #endif
+#endif
+	}
     switch ( pThing->type )
     {
         case SITH_THING_ACTOR:
@@ -262,9 +278,17 @@ int sithDSSThing_ProcessSyncThing(sithCogMsg *msg)
     }
 
     pThing->light = NETMSG_POPF32();
+	if (sithComm_version == OPENJKDF2_SAVE_VERSION)
+	{
 #ifdef RGB_THING_LIGHTS
-	pThing->lightColor = NETMSG_POPVEC3();
+		pThing->lightColor = NETMSG_POPVEC3();
+#ifdef RENDER_DROID2
+		pThing->lightRadius = NETMSG_POPF32();
+		pThing->lightAngle = NETMSG_POPF32();
+		pThing->lightSize = NETMSG_POPF32();
 #endif
+#endif
+	}
     switch ( pThing->type )
     {
         case SITH_THING_ACTOR:
@@ -304,7 +328,12 @@ void sithDSSThing_SendPlaySound(sithThing *followThing, rdVector3 *pos, sithSoun
     NETMSG_PUSHU32(flags);
     NETMSG_PUSHF32(volume);
     NETMSG_PUSHF32(a5);
-    NETMSG_PUSHU16(sound->id);
+	if (sithComm_version == OPENJKDF2_SAVE_VERSION) {
+		NETMSG_PUSHS32(sound->id);
+	}
+	else {
+		NETMSG_PUSHS16(sound->id);
+	}
     if ( (flags & SITHSOUNDFLAG_FOLLOWSTHING) == 0 )
     {
         if ( (flags & SITHSOUNDFLAG_ABSOLUTE) != 0 )
@@ -332,7 +361,7 @@ int sithDSSThing_ProcessPlaySound(sithCogMsg *msg)
     int flags = NETMSG_POPU32();
     float volume = NETMSG_POPF32();
     float a5 = NETMSG_POPF32();
-    int16_t soundIdx = NETMSG_POPS16();
+    int soundIdx = (sithComm_version == OPENJKDF2_SAVE_VERSION) ? NETMSG_POPS32() : NETMSG_POPS16();
     sithSound* sound = sithSound_GetFromIdx(soundIdx);
 
     if (!sound)
@@ -607,16 +636,31 @@ void sithDSSThing_SendFireProjectile(sithThing *pWeapon, sithThing *pProjectile,
     
     int16_t v12 = -1;
     if ( pProjectile ) {
-        NETMSG_PUSHS16(pProjectile->thingIdx);
+		if (sithComm_version == OPENJKDF2_SAVE_VERSION) {
+			NETMSG_PUSHS32(pProjectile->thingIdx);
+		}
+		else {
+			NETMSG_PUSHS16(pProjectile->thingIdx);
+		}
     }
     else {
-        NETMSG_PUSHS16(-1);
-    }
+		if (sithComm_version == OPENJKDF2_SAVE_VERSION) {
+			NETMSG_PUSHS32(-1);
+		}
+		else {
+			NETMSG_PUSHS16(-1);
+		}
+	}
     if ( pFireSound ) {
         v12 = pFireSound->id;
     }
 
-    NETMSG_PUSHS16(v12);
+	if (sithComm_version == OPENJKDF2_SAVE_VERSION){
+		NETMSG_PUSHS32(v12);
+	}
+	else {
+		NETMSG_PUSHS16(v12);
+	}
     NETMSG_PUSHS16(anim);
     NETMSG_PUSHVEC3(*pAimError);
     NETMSG_PUSHVEC3(*pFireOffset);
@@ -648,9 +692,8 @@ int sithDSSThing_ProcessFireProjectile(sithCogMsg *msg)
     if ( pThing )
     {
         int16_t scaleFlags = NETMSG_POPS16();
-        int16_t templateIdx = NETMSG_POPS16();
-        sithThing* pTemplate = sithTemplate_GetEntryByIdx(templateIdx);
-        sithSound* pSound = sithSound_GetFromIdx(NETMSG_POPS16());
+        sithThing* pTemplate = sithTemplate_GetEntryByIdx((sithComm_version == OPENJKDF2_SAVE_VERSION) ? NETMSG_POPS32() : NETMSG_POPS16());
+        sithSound* pSound = sithSound_GetFromIdx((sithComm_version == OPENJKDF2_SAVE_VERSION) ? NETMSG_POPS32() : NETMSG_POPS16());
         int anim = NETMSG_POPS16();
         rdVector3 aimError = NETMSG_POPVEC3();
         rdVector3 fireOffset = NETMSG_POPVEC3();
@@ -687,8 +730,8 @@ int sithDSSThing_ProcessMOTSNew2(sithCogMsg *msg)
     if ( pThing )
     {
         int16_t scaleFlags = NETMSG_POPS16();
-        sithThing* pTemplate = sithTemplate_GetEntryByIdx(NETMSG_POPS16());
-        sithSound* pSound = sithSound_GetFromIdx(NETMSG_POPS16());
+        sithThing* pTemplate = sithTemplate_GetEntryByIdx((sithComm_version == OPENJKDF2_SAVE_VERSION) ? NETMSG_POPS32() : NETMSG_POPS16());
+        sithSound* pSound = sithSound_GetFromIdx((sithComm_version == OPENJKDF2_SAVE_VERSION) ? NETMSG_POPS32() : NETMSG_POPS16());
         int anim = NETMSG_POPS16();
         rdVector3 aimError = NETMSG_POPVEC3();
         rdVector3 fireOffset = NETMSG_POPVEC3();
@@ -813,7 +856,12 @@ void sithDSSThing_SendFullDesc(sithThing *thing, int sendto_id, int mpFlags)
     NETMSG_PUSHS16(thing->type);
     if ( thing->type )
     {
-        NETMSG_PUSHS16(thing->templateBase->thingIdx);
+		if (sithComm_version == OPENJKDF2_SAVE_VERSION) {
+			NETMSG_PUSHS32(thing->templateBase->thingIdx);
+		}
+		else {
+			NETMSG_PUSHS16(thing->templateBase->thingIdx);
+		}
         NETMSG_PUSHS32(thing->signature);
         NETMSG_PUSHS32(thing->thing_id);
         NETMSG_PUSHVEC3(thing->position);
@@ -836,25 +884,57 @@ void sithDSSThing_SendFullDesc(sithThing *thing, int sendto_id, int mpFlags)
         NETMSG_PUSHS16(thing->collide);
         NETMSG_PUSHF32(thing->collideSize);
         NETMSG_PUSHF32(thing->light);
+		if (sithComm_version == OPENJKDF2_SAVE_VERSION)
+		{
+#ifdef RGB_THING_LIGHTS
+			NETMSG_PUSHVEC3(thing->lightColor);
+#ifdef RENDER_DROID2
+			NETMSG_PUSHF32(thing->lightRadius);
+			NETMSG_PUSHF32(thing->lightAngle);
+			NETMSG_PUSHF32(thing->lightSize);
+#endif
+#endif
+		}
         NETMSG_PUSHU32(thing->jkFlags);
         if ( (thing->thingflags & SITH_TF_CAPTURED) != 0 )
         {
             if ( thing->class_cog ) {
-                NETMSG_PUSHS16(thing->class_cog->selfCog);
+				if (sithComm_version == OPENJKDF2_SAVE_VERSION) {
+					NETMSG_PUSHS32(thing->class_cog->selfCog);
+				}
+				else {
+					NETMSG_PUSHS16(thing->class_cog->selfCog);
+				}
             }
             else {
-                NETMSG_PUSHS16(-1);
+				if (sithComm_version == OPENJKDF2_SAVE_VERSION) {
+					NETMSG_PUSHS32(-1);
+				}
+				else {
+					NETMSG_PUSHS16(-1);
+				}
             }
+
             if ( thing->capture_cog ) {
-                NETMSG_PUSHS16(thing->capture_cog->selfCog);
+				if (sithComm_version == OPENJKDF2_SAVE_VERSION) {
+					NETMSG_PUSHS32(thing->capture_cog->selfCog);
+				}
+				else {
+					NETMSG_PUSHS16(thing->capture_cog->selfCog);
+				}
             }
             else {
-                NETMSG_PUSHS16(-1);
+				if (sithComm_version == OPENJKDF2_SAVE_VERSION) {
+					NETMSG_PUSHS32(-1);
+				}
+				else {
+					NETMSG_PUSHS16(-1);
+				}
             }
         }
 
         // MOTS added
-        if (sithComm_version == 0x7D6 && thing->rdthing.type == RD_THINGTYPE_MODEL) {
+        if ((sithComm_version == MOTS_SAVE_VERSION || sithComm_version == OPENJKDF2_SAVE_VERSION) && thing->rdthing.type == RD_THINGTYPE_MODEL) {
             rdModel3* model = thing->rdthing.model3;
             if (thing->unk && model) 
             {
@@ -912,7 +992,7 @@ void sithDSSThing_SendFullDesc(sithThing *thing, int sendto_id, int mpFlags)
                 {
                     NETMSG_PUSHS32(-1);
                 }
-                if (sithComm_version == 0x7D6) {
+                if (sithComm_version == MOTS_SAVE_VERSION || sithComm_version == OPENJKDF2_SAVE_VERSION) {
                     if (thing->actorParams.templateWeapon) {
                         NETMSG_PUSHS16(1);
                     }
@@ -937,6 +1017,12 @@ void sithDSSThing_SendFullDesc(sithThing *thing, int sendto_id, int mpFlags)
             NETMSG_PUSHU32(thing->physicsParams.physflags);
             NETMSG_PUSHVEC3(thing->physicsParams.vel);
             NETMSG_PUSHVEC3(thing->physicsParams.angVel);
+			if (sithComm_version == OPENJKDF2_SAVE_VERSION)
+			{
+		#ifdef PUPPET_PHYSICS
+				NETMSG_PUSHVEC3(thing->physicsParams.rotVel);
+		#endif
+			}
         }
         else if ( thing->moveType == SITH_MT_PATH )
         {
@@ -1002,7 +1088,7 @@ int sithDSSThing_ProcessFullDesc(sithCogMsg *msg)
 
     thing = &sithWorld_pCurrentWorld->things[thingIdx];
     sithThing_DoesRdThingInit(thing);
-    v8 = NETMSG_POPS16();
+    v8 = (sithComm_version == OPENJKDF2_SAVE_VERSION) ? NETMSG_POPS32() : NETMSG_POPS16();
 
     if ( v8 >= sithWorld_pCurrentWorld->numTemplatesLoaded )
         return 0;
@@ -1032,16 +1118,27 @@ int sithDSSThing_ProcessFullDesc(sithCogMsg *msg)
     thing->collide = NETMSG_POPS16();
     thing->collideSize = NETMSG_POPF32();
     thing->light = NETMSG_POPF32();
+	if (sithComm_version == OPENJKDF2_SAVE_VERSION)
+	{
+#ifdef RGB_THING_LIGHTS
+		thing->lightColor = NETMSG_POPVEC3();
+#ifdef RENDER_DROID2
+		thing->lightRadius = NETMSG_POPF32();
+		thing->lightAngle = NETMSG_POPF32();
+		thing->lightSize = NETMSG_POPF32();
+#endif
+#endif
+	}
     thing->jkFlags = NETMSG_POPU32();
 
     if ( thing->thingflags & SITH_TF_CAPTURED )
     {
-        thing->class_cog = sithCog_GetByIdx(NETMSG_POPS16());
-        thing->capture_cog = sithCog_GetByIdx(NETMSG_POPS16());
+        thing->class_cog = sithCog_GetByIdx((sithComm_version == OPENJKDF2_SAVE_VERSION) ? NETMSG_POPS32() : NETMSG_POPS16());
+        thing->capture_cog = sithCog_GetByIdx((sithComm_version == OPENJKDF2_SAVE_VERSION) ? NETMSG_POPS32() : NETMSG_POPS16());
     }
 
     // MOTS added
-    if (sithComm_version == 0x7D6 && thing->rdthing.type == RD_THINGTYPE_MODEL) {
+    if ((sithComm_version == MOTS_SAVE_VERSION || sithComm_version == OPENJKDF2_SAVE_VERSION) && thing->rdthing.type == RD_THINGTYPE_MODEL) {
         thing->unk = NETMSG_POPS16();
 
         rdModel3* model = thing->rdthing.model3;
@@ -1091,7 +1188,7 @@ int sithDSSThing_ProcessFullDesc(sithCogMsg *msg)
             }
 
             // MOTS added
-            if (sithComm_version == 0x7D6) {
+            if (sithComm_version == MOTS_SAVE_VERSION || sithComm_version == OPENJKDF2_SAVE_VERSION) {
                 if (!NETMSG_POPS16()) {
                     thing->actorParams.templateWeapon = NULL;
                 }
@@ -1113,6 +1210,12 @@ int sithDSSThing_ProcessFullDesc(sithCogMsg *msg)
         thing->physicsParams.physflags = NETMSG_POPU32();
         thing->physicsParams.vel = NETMSG_POPVEC3();
         thing->physicsParams.angVel = NETMSG_POPVEC3();
+		if (sithComm_version == OPENJKDF2_SAVE_VERSION)
+		{
+#ifdef PUPPET_PHYSICS
+			thing->physicsParams.rotVel = NETMSG_POPVEC3();
+#endif
+		}
     }
     else if ( thing->moveType == SITH_MT_PATH )
     {
@@ -1395,7 +1498,12 @@ void sithDSSThing_SendCreateThing(sithThing *pTemplate, sithThing *pThing, sithT
 {
     NETMSG_START;
 
-    NETMSG_PUSHS16(pTemplate->thingIdx);
+	if (sithComm_version == OPENJKDF2_SAVE_VERSION) {
+		NETMSG_PUSHS32(pTemplate->thingIdx);
+	}
+	else {
+		NETMSG_PUSHS16(pTemplate->thingIdx);
+	}
     if ( pThing2 )
     {
         NETMSG_PUSHS32(pThing2->thing_id);
@@ -1420,7 +1528,7 @@ int sithDSSThing_ProcessCreateThing(sithCogMsg *msg)
     NETMSG_IN_START(msg);
 
     sithThing* pCreated = NULL;
-    sithThing* pThing = sithTemplate_GetEntryByIdx(NETMSG_POPS16());
+    sithThing* pThing = sithTemplate_GetEntryByIdx((sithComm_version == OPENJKDF2_SAVE_VERSION) ? NETMSG_POPS32() : NETMSG_POPS16());
     if ( pThing )
     {
         int pThing2Id = NETMSG_POPS32();
@@ -1512,7 +1620,7 @@ int sithDSSThing_ProcessMOTSNew1(sithCogMsg *msg)
 
     NETMSG_IN_START(msg);
 
-    psVar1 = sithTemplate_GetEntryByIdx(NETMSG_POPS16());
+    psVar1 = sithTemplate_GetEntryByIdx((sithComm_version == OPENJKDF2_SAVE_VERSION) ? NETMSG_POPS32() : NETMSG_POPS16());
     if (psVar1 == NULL) 
     {
         return 0;
