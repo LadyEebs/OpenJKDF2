@@ -254,6 +254,8 @@ struct LobbySystem
 			break;
 		case k_EChatMemberStateChangeKicked:
 		case k_EChatMemberStateChangeBanned:
+			sithMulti_SendQuit(update->m_ulSteamIDUserChanged);
+			break;
 		default:
 			break;
 		}
