@@ -245,6 +245,9 @@ void jkGuiRend_PaintBg(jkGuiMenu* menu)
 #ifdef MENU_16BIT
 	if (menu->bkBm16)
 	{
+		for (int i = 0; i < menu->bkBm16->numMips; i++)
+			std3D_AddBitmapToTextureCache(menu->bkBm16, i, !(menu->bkBm16->palFmt & 1), 0);
+			
 		stdDisplay_VBufferFill(jkGuiRend_menuBuffer, 0, 0);
 
 		float screenW = Video_menuBuffer.format.width;
