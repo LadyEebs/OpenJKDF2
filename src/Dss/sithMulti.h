@@ -93,6 +93,9 @@ rdVector3 _readingOutV3; rdVector3i _readingOutV3i; rdMatrix34 _readingOutM34;
 
 extern int jkGuiNetHost_bIsDedicated;
 
+// Added: co-op
+extern int sithMulti_lastCheckpoint;
+
 void sithMulti_SetHandleridk(sithMultiHandler_t a1);
 void sithMulti_SendChat(char *pStr, int arg0, int arg1);
 void sithMulti_ProcessScore();
@@ -123,6 +126,8 @@ int sithMulti_ProcessJoinRequest(sithCogMsg *msg);
 void sithMulti_HandleTimeLimit(int deltaMs);
 uint32_t sithMulti_IterPlayersnothingidk(int net_id);
 int sithMulti_SendPing(int sendtoId);
+// Added: co-op
+void sithMulti_CheckForCheckpointUpdate(sithSector* sector);
 
 //static void (*sithMulti_Startup)() = (void*)sithMulti_Startup_ADDR;
 //static void (*sithMulti_FreeThing)(int a1) = (void*)sithMulti_FreeThing_ADDR;

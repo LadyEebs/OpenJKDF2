@@ -842,6 +842,8 @@ uint32_t sithWorld_CalcChecksum(sithWorld *pWorld, uint32_t seed)
 
 int sithWorld_Initialize()
 {
+	extern int sithMulti_lastCheckpoint;
+	sithMulti_lastCheckpoint = 0; // Added: co-op
     for (int i = 1; i < jkPlayer_maxPlayers; i++)
     {
         sithPlayer_Startup(i);

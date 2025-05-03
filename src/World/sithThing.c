@@ -903,6 +903,8 @@ void sithThing_EnterSector(sithThing* pThing, sithSector *sector, int a3, int a4
 
     if (pThing == sithPlayer_pLocalPlayerThing) {
         //jk_printf("OpenJKDF2: Enter sector %p, idx %d\n", sector, sector ? sector->id : -1);
+		if (sithNet_MultiModeFlags & MULTIMODEFLAG_COOP)
+			sithMulti_CheckForCheckpointUpdate(sector);
     }
 
     // Added: Check that sector is non-null

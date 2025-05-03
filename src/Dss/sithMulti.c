@@ -23,6 +23,9 @@
 #include "Devices/sithComm.h"
 #include "stdPlatform.h"
 
+// Added: co-op
+int sithMulti_lastCheckpoint = 0;
+
 #define sithMulti_infoPrintf(fmt, ...) stdPlatform_Printf(fmt, ##__VA_ARGS__)
 #define sithMulti_verbosePrintf(fmt, ...) if (Main_bVerboseNetworking) \
     { \
@@ -277,7 +280,7 @@ int sithMulti_GetSpawnIdx(sithThing *pPlayerThing)
 
     // Added: Spawn at start in co-op.
     if (sithNet_MultiModeFlags & MULTIMODEFLAG_COOP) {
-        return 0;
+        return sithMulti_lastCheckpoint;
     }
 
     // Added: zero out v12
@@ -1465,4 +1468,17 @@ int sithMulti_SendPing(int sendtoId)
     sithComm_netMsgTmp.netMsg.flag_maybe = 0;
     sithComm_netMsgTmp.netMsg.cogMsgId = DSS_PING;
     return sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, sendtoId, 1, 0);
+}
+
+// Added: co-op
+void sithMulti_CheckForCheckpointUpdate(sithSector* sector)
+{
+	for (int i = 0; i < jkPlayer_maxPlayers; ++i)
+	{
+		if (jkPlayer_playerInfos[i].pSpawnSector == sector)
+		{
+			sithMulti_lastCheckpoint = i;
+			break;
+		}
+	}
 }
