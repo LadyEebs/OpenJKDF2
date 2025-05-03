@@ -132,7 +132,7 @@
 #endif
 
 // If I ever do demo recording, add it here
-#define NEEDS_STEPPED_PHYS (!jkPlayer_bJankyPhysics || sithNet_isMulti)
+#define NEEDS_STEPPED_PHYS 0//(!jkPlayer_bJankyPhysics || sithNet_isMulti)
 
 // Settings for stepped physics
 #define TARGET_PHYSTICK_FPS (sithNet_isMulti ? (sithNet_tickrate < 100 ? 150.0 : 50.0) : 150.0)
@@ -270,7 +270,8 @@
 #endif
 
 // Run game physics at a fixed timestep
-#define FIXED_TIMESTEP_PHYS
+// todo: disabled for now, causes a lot of stuttering esp with high framerates, need to add some control interpolation or something
+//#define FIXED_TIMESTEP_PHYS
 
 // Backport MOTS RGB lighting and bone changes
 #ifdef QOL_IMPROVEMENTS
