@@ -120,9 +120,9 @@ int jkDSS_idk4()
                 sithComm_netMsgTmp.netMsg.flag_maybe = 0;
                 sithComm_netMsgTmp.netMsg.cogMsgId = DSS_ENDLEVEL;
                 sithComm_netMsgTmp.netMsg.msg_size = 4;
-                sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 255, 1);
-                sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 255, 1);
-                sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 255, 1);
+                sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 255, 1);
+                sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 255, 1);
+                sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 255, 1);
                 sithMulti_EndLevel(sithTime_curMs + MULTI_NEXTLEVEL_DELAY_MS, 1);
             }
         }
@@ -192,7 +192,7 @@ void jkDSS_playerconfig_idksync()
         
         NETMSG_END(DSS_HUDTARGET);
         
-        sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 4, 1);
+        sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 4, 1);
     }
 }
 
@@ -303,7 +303,7 @@ void jkDSS_SendSetSaberInfoMots(sithThing *thing, int personality)
 
     NETMSG_END(DSS_SABERINFO2);
     
-    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 255, 1);
+    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 255, 1);
 }
 
 // MOTS altered
@@ -395,7 +395,7 @@ void jkDSS_SendSetSaberInfo(sithThing *thing)
 
     NETMSG_END(DSS_SABERINFO2);
     
-    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 255, 1);
+    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 255, 1);
 }
 
 // MOTS altered
@@ -475,7 +475,7 @@ void jkDSS_SendJKEnableSaber(sithThing *pPlayerThing)
 
     NETMSG_END(DSS_JKENABLESABER);
 
-    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 255, 0);
+    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 255, 0);
 }
 
 int jkDSS_ProcessJKEnableSaber(sithCogMsg *msg)
@@ -586,7 +586,7 @@ void jkDSS_SendSetSaberInfo2(sithThing *thing)
     
     NETMSG_END(DSS_SABERINFO3);
     
-    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 255, 1);
+    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 255, 1);
 }
 
 // MOTS altered
@@ -704,7 +704,7 @@ void jkDSS_SendJKSetWeaponMesh(sithThing *pPlayerThing)
 
     NETMSG_END(DSS_JKSETWEAPONMESH);
 
-    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 255, 1);
+    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 255, 1);
 }
 
 // MOTS altered
@@ -762,7 +762,7 @@ int jkDSS_SendHudTarget()
 
     NETMSG_END(DSS_HUDTARGET);
 
-    return sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 4, 1);
+    return sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 4, 1);
 }
 
 int jkDSS_ProcessHudTarget(sithCogMsg *msg)
@@ -821,7 +821,7 @@ void jkDSS_Sendx32(jkPlayerInfo *playerInfo)
 
     NETMSG_END(DSS_ID_32);
     
-    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 255, 1);
+    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 255, 1);
 }
 
 int jkDSS_Processx32(sithCogMsg *msg)
@@ -879,7 +879,7 @@ int jkDSS_Sendx33(sithThing* pThing, rdKeyframe* pKeyframe, int a3, int16_t a4)
 
     NETMSG_END(DSS_ID_33);
 
-    return sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 2, 1);
+    return sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 2, 1);
 }
 
 // Unused?
@@ -967,7 +967,7 @@ int jkDSS_Sendx36()
 
     NETMSG_END(DSS_ID_36);
 
-    return sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 4, 1);
+    return sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 4, 1);
 }
 
 // MOTS altered
@@ -1013,7 +1013,7 @@ int jkDSS_Processx36_setwaggle(sithCogMsg *msg)
 
 void jkDSS_SendJKPrintUniString(int a1, unsigned int a2)
 {
-    int v2; // eax
+    DPID v2; // eax
 
     NETMSG_START;
 
@@ -1022,7 +1022,7 @@ void jkDSS_SendJKPrintUniString(int a1, unsigned int a2)
     
     if ( (a2 & 0x80000000) != 0 )
     {
-        v2 = -1;
+        v2 = INVALID_DPID;
 LABEL_6:
         NETMSG_END(DSS_JKPRINTUNISTRING);
 
@@ -1067,9 +1067,9 @@ void jkDSS_SendEndLevel()
     NETMSG_END(DSS_ENDLEVEL);
 
     // lol
-    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 255, 1);
-    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 255, 1);
-    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 255, 1);
+    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 255, 1);
+    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 255, 1);
+    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 255, 1);
     sithMulti_EndLevel(sithTime_curMs + 10000, 1);
 }
 

@@ -57,7 +57,7 @@ void sithMulti_SendChat(char *pStr, int arg0, int arg1)
 
     NETMSG_END(DSS_CHAT);
 
-    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 1, 1);
+    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 1, 1);
 }
 
 // MOTS altered
@@ -89,7 +89,7 @@ int sithMulti_ProcessChat(sithCogMsg *msg)
 HRESULT sithMulti_CreatePlayer(const wchar_t *a1, const wchar_t *a2, const char *a3, const char *a4, int maxPlayers, int sessionFlags, int multiModeFlags, int rate, int maxRank)
 {
     HRESULT result; // eax
-    jkMultiEntry multiEntry; // [esp+Ch] [ebp-F0h] BYREF
+    stdCommSession multiEntry; // [esp+Ch] [ebp-F0h] BYREF
 
     _memset(&multiEntry, 0, sizeof(multiEntry));
     stdString_SafeWStrCopy(multiEntry.serverName, a1, 0x20);
@@ -251,7 +251,7 @@ void sithMulti_Shutdown()
     stdComm_CloseConnection();
 }
 
-int sithMulti_SendJoinRequest(int sendto_id)
+int sithMulti_SendJoinRequest(DPID sendto_id)
 {
     NETMSG_START;
 
@@ -448,7 +448,7 @@ void sithMulti_ProcessScore()
             {
                 if ( jkPlayer_playerInfos[i].score >= sithNet_scorelimit ) {
                     score_limit_met = 1;
-                    sithMulti_infoPrintf("Player score limit met by player %d (netid %u), %u pts of %u\n", i, jkPlayer_playerInfos[i].net_id, jkPlayer_playerInfos[i].score, sithNet_scorelimit);
+                    sithMulti_infoPrintf("Player score limit met by player %d (netid %llu), %u pts of %u\n", i, jkPlayer_playerInfos[i].net_id, jkPlayer_playerInfos[i].score, sithNet_scorelimit);
                 }
             }
         }
@@ -471,7 +471,7 @@ void sithMulti_ProcessScore()
             NETMSG_PUSHSTR(std_genBuffer, v10);
             NETMSG_END(DSS_CHAT);
 
-            sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 1, 1);
+            sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 1, 1);
 
             sithMulti_bTimelimitMet = 1;
             sithNet_MultiModeFlags &= ~MULTIMODEFLAG_TIMELIMIT;
@@ -488,19 +488,23 @@ void sithMulti_EndLevel(unsigned int waitMs, int type)
     }
 }
 
-void sithMulti_SendWelcome(int a1, int playerIdx, int sendtoId)
+void sithMulti_SendWelcome(DPID a1, int playerIdx, DPID sendtoId)
 {
     NETMSG_START;
 
     NETMSG_PUSHS32(playerIdx);
-    NETMSG_PUSHS32(a1);
+#ifdef PLATFORM_STEAM
+    NETMSG_PUSHU64(a1);
+#else
+	NETMSG_PUSHS32(a1);
+#endif
     NETMSG_PUSHWSTR(jkPlayer_playerInfos[playerIdx].player_name, 0x10);
     NETMSG_END(DSS_WELCOME);
 
     sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, sendtoId, 1, 1);
 }
 
-void sithMulti_SendQuit(int idx)
+void sithMulti_SendQuit(DPID idx)
 {
     if (!sithNet_isServer) return;
 
@@ -573,7 +577,7 @@ int sithMulti_LobbyMessage()
 int sithMulti_ProcessJoinLeave(sithCogMsg *msg)
 {
     int v1; // edi
-    int v2; // ebx
+	DPID v2; // ebx
     int v4; // ecx
     int v5; // edx
     sithPlayerInfo* v6; // eax
@@ -583,8 +587,12 @@ int sithMulti_ProcessJoinLeave(sithCogMsg *msg)
     NETMSG_IN_START(msg);
 
     v1 = NETMSG_POPS32();
+#ifdef PLATFORM_STEAM
+	v2 = NETMSG_POPU64();
+#else
     v2 = NETMSG_POPS32();
-    NETMSG_POPWSTR(jkPlayer_playerInfos[v1].player_name, 0x10);
+#endif
+	NETMSG_POPWSTR(jkPlayer_playerInfos[v1].player_name, 0x10);
 
     sithMulti_verbosePrintf("sithMulti_ProcessJoinLeave %x %x %x\n", v1, v2, stdComm_dplayIdSelf);
 
@@ -601,7 +609,7 @@ int sithMulti_ProcessJoinLeave(sithCogMsg *msg)
                 sithCog_SendSimpleMessageToAll(SITH_MESSAGE_JOIN, 3, jkPlayer_playerInfos[v1].playerThing->thingIdx, 0, v1);
             if ( sithMulti_handlerIdk )
                 sithMulti_handlerIdk();
-            sithDSSThing_SendSyncThing(sithPlayer_pLocalPlayerThing, -1, 255);
+            sithDSSThing_SendSyncThing(sithPlayer_pLocalPlayerThing, INVALID_DPID, 255);
             if ( sithNet_isServer )
                 sithNet_bSyncScores = 1;
         }
@@ -723,7 +731,7 @@ int sithMulti_ServerLeft(int a, sithEventInfo* b)
 {
     unsigned int v0; // edi
     sithPlayerInfo* v1; // esi
-    int v2; // eax
+	DPID v2; // eax
     wchar_t *v3; // eax
     wchar_t *v4; // eax
     wchar_t *v6; // eax
@@ -731,7 +739,7 @@ int sithMulti_ServerLeft(int a, sithEventInfo* b)
     wchar_t a1[128]; // [esp+10h] [ebp-100h] BYREF
 
     if ( sithWorld_pCurrentWorld && sithPlayer_pLocalPlayerThing && (g_submodeFlags & 8) == 0 )
-        sithDSSThing_SendPos(sithPlayer_pLocalPlayerThing, -1, 0);
+        sithDSSThing_SendPos(sithPlayer_pLocalPlayerThing, INVALID_DPID, 0);
     if ( sithNet_isServer )
     {
         v0 = 1;
@@ -809,15 +817,19 @@ int sithMulti_ServerLeft(int a, sithEventInfo* b)
     return 1;
 }
 
-void sithMulti_SendLeaveJoin(int sendtoId, int bSync)
+void sithMulti_SendLeaveJoin(DPID sendtoId, int bSync)
 {
     char v15[32]; // [esp+10h] [ebp-20h] BYREF
 
     NETMSG_START;
 
     NETMSG_PUSHS32(sithNet_MultiModeFlags);
+#ifdef PLATFORM_STEAM
+	NETMSG_PUSHU64(sithNet_serverNetId);
+#else
     NETMSG_PUSHS32(sithNet_serverNetId);
-    NETMSG_PUSHS16(jkPlayer_maxPlayers)
+#endif
+	NETMSG_PUSHS16(jkPlayer_maxPlayers)
 
     for (int i = 0; i < jkPlayer_maxPlayers; i++)
     {
@@ -825,7 +837,11 @@ void sithMulti_SendLeaveJoin(int sendtoId, int bSync)
         NETMSG_PUSHS32((sithNet_isServer && jkGuiNetHost_bIsDedicated && !i) ? v6->flags & ~2 : v6->flags);
         if ( (v6->flags & 4) != 0 )
         {
+#ifdef PLATFORM_STEAM
+			NETMSG_PUSHU64(v6->net_id);
+#else
             NETMSG_PUSHS32(v6->net_id);
+#endif
 
             stdString_WcharToChar(v15, v6->player_name, 15);
             v15[15] = 0;
@@ -858,7 +874,6 @@ int sithMulti_ProcessLeaveJoin(sithCogMsg *msg)
     uint32_t v4; // eax
     sithPlayerInfo* v6; // edi
     int v7; // ecx
-    int v8; // eax
     wchar_t *v10; // eax
     wchar_t *v12; // eax
     wchar_t *v13; // eax
@@ -874,8 +889,12 @@ int sithMulti_ProcessLeaveJoin(sithCogMsg *msg)
     v1 = stdPlatform_GetTimeMsec();
     v2 = NETMSG_POPS32();
     sithNet_dword_8C4BA8 = v1;
+#ifdef PLATFORM_STEAM
+	sithNet_serverNetId = NETMSG_POPU64();
+#else
     sithNet_serverNetId = NETMSG_POPS32();
-    v3 = 0;
+#endif`
+	v3 = 0;
     v4 = NETMSG_POPS16();
 
     sithNet_MultiModeFlags = v2;
@@ -887,8 +906,11 @@ int sithMulti_ProcessLeaveJoin(sithCogMsg *msg)
         v6->flags = NETMSG_POPS32();
         if ( (v6->flags & 4) != 0 )
         {
-            v8 = NETMSG_POPS32();
-            v6->net_id = v8;
+#ifdef PLATFORM_STEAM
+			v6->net_id = NETMSG_POPU64();
+#else
+			v6->net_id = NETMSG_POPS32();
+#endif
             if ( (v6->flags & 1) == 0 || (v7 & 1) != 0 || (g_submodeFlags & 8) != 0 )
             {
                 if ( !v6->net_id && (v7 & 1) != 0 && (g_submodeFlags & 8) == 0 )
@@ -925,7 +947,7 @@ int sithMulti_ProcessLeaveJoin(sithCogMsg *msg)
                     sithCog_SendSimpleMessageToAll(SITH_MESSAGE_JOIN, 3, v6->playerThing->thingIdx, 0, v3);
                 if ( sithMulti_handlerIdk )
                     sithMulti_handlerIdk();
-                sithDSSThing_SendSyncThing(sithPlayer_pLocalPlayerThing, -1, 255);
+                sithDSSThing_SendSyncThing(sithPlayer_pLocalPlayerThing, INVALID_DPID, 255);
             }
             NETMSG_POPSTR(a2, 0x10);
 
@@ -948,7 +970,7 @@ int sithMulti_ProcessLeaveJoin(sithCogMsg *msg)
     return 1;
 }
 
-void sithMulti_sub_4CA470(int a1)
+void sithMulti_sub_4CA470(DPID a1)
 {
     uint32_t v1; // eax
     sithPlayerInfo* v2; // ecx
@@ -1040,7 +1062,6 @@ void sithMulti_InitTick(unsigned int tickrate)
 
 int sithMulti_ProcessJoinRequest(sithCogMsg *msg)
 {
-    int v1; // esi
     uint32_t v3; // eax
     sithPlayerInfo* v4; // ecx
     uint32_t v5; // ecx
@@ -1053,13 +1074,13 @@ int sithMulti_ProcessJoinRequest(sithCogMsg *msg)
 
     NETMSG_IN_START(msg);
 
-    v1 = msg->netMsg.thingIdx;
+	DPID v1 = msg->netMsg.thingIdx;
 
     if ( stdComm_bIsServer && v1 )
     {
         NETMSG_POPSTR(v11, 32);
 
-        sithMulti_verbosePrintf("sithMulti_ProcessJoinRequest, id %x map %s\n", v1, v11);
+        sithMulti_verbosePrintf("sithMulti_ProcessJoinRequest, id %llu map %s\n", v1, v11);
 
         if ( __strcmpi(v11, sithWorld_pCurrentWorld->map_jkl_fname) )
         {
@@ -1190,7 +1211,7 @@ int sithMulti_ProcessJoinRequest(sithCogMsg *msg)
     return 1;
 }
 
-void stdComm_cogMsg_SendEnumPlayers(int sendtoId)
+void stdComm_cogMsg_SendEnumPlayers(DPID sendtoId)
 {
     NETMSG_START_2;
 
@@ -1201,7 +1222,11 @@ void stdComm_cogMsg_SendEnumPlayers(int sendtoId)
 
     for (int i = 0; i < DirectPlay_numPlayers; i++)
     {
-        NETMSG_PUSHS32(DirectPlay_aPlayers[i].dpId)
+	#ifdef PLATFORM_STEAM
+		NETMSG_PUSHU64(DirectPlay_aPlayers[i].dpId);
+	#else
+        NETMSG_PUSHS32(DirectPlay_aPlayers[i].dpId);
+	#endif
     }
 
     NETMSG_END_2(DSS_ENUMPLAYERS);
@@ -1233,7 +1258,11 @@ LABEL_11:
         }
         while ( 1 )
         {
-            v3 = NETMSG_POPS32();
+#ifdef PLATFORM_STEAM
+            v3 = NETMSG_POPU64();
+#else
+			v3 = NETMSG_POPS32();
+#endif
             for (v4 = 0; v4 < DirectPlay_numPlayers; v4++)
             {
                 v5 = &DirectPlay_aPlayers[v4];
@@ -1284,7 +1313,7 @@ void sithMulti_HandleTimeLimit(int deltaMs)
         if ( sithNet_bSyncScores )
         {
             sithNet_bSyncScores = 0;
-            sithMulti_SendLeaveJoin(-1, 0);
+            sithMulti_SendLeaveJoin(INVALID_DPID, 0);
         }
         if ( (sithNet_MultiModeFlags & MULTIMODEFLAG_TIMELIMIT) != 0 && sithTime_curMs > sithNet_multiplayer_timelimit )
         {
@@ -1304,7 +1333,7 @@ void sithMulti_HandleTimeLimit(int deltaMs)
             NETMSG_PUSHSTR(std_genBuffer, v2);
             NETMSG_END(DSS_CHAT);
 
-            sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 1, 1);
+            sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 1, 1);
             sithMulti_bTimelimitMet = 1;
             sithNet_MultiModeFlags &= ~MULTIMODEFLAG_TIMELIMIT;
         }
@@ -1401,7 +1430,7 @@ void sithMulti_HandleTimeLimit(int deltaMs)
                                         if (v14->rdthing.puppet)
                                             sithDSS_SendSyncPuppet(v14, sithMulti_sendto_id, 255);
                                     }
-									break; // Weird?
+									//break; // Weird?
                                 }
                             }
                         }
@@ -1444,7 +1473,7 @@ void sithMulti_HandleTimeLimit(int deltaMs)
     }
 }
 
-uint32_t sithMulti_IterPlayersnothingidk(int net_id)
+uint32_t sithMulti_IterPlayersnothingidk(DPID net_id)
 {
     uint32_t result; // eax
     sithPlayerInfo* i; // ecx
@@ -1460,7 +1489,7 @@ uint32_t sithMulti_IterPlayersnothingidk(int net_id)
     return result;
 }
 
-int sithMulti_SendPing(int sendtoId)
+int sithMulti_SendPing(DPID sendtoId)
 {
     sithMulti_dword_832654 = sithTime_curMs;
     sithComm_netMsgTmp.pktData[0] = sithTime_curMs;

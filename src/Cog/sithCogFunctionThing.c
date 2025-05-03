@@ -979,7 +979,7 @@ void sithCogFunctionThing_DetachThing(sithCog *ctx)
         sithThing_DetachThing(pThing);
         if (COG_SHOULD_SYNC(ctx))
         {
-            sithDSSThing_SendSyncThingAttachment(pThing, -1, 255, 1);
+            sithDSSThing_SendSyncThingAttachment(pThing, INVALID_DPID, 255, 1);
         }
     }
 }
@@ -1003,7 +1003,7 @@ void sithCogFunctionThing_AttachThingToSurf(sithCog *ctx)
         sithThing_AttachToSurface(pThing, surface, 1);
         if (COG_SHOULD_SYNC(ctx))
         {
-            sithDSSThing_SendSyncThingAttachment(pThing, -1, 255, 1);
+            sithDSSThing_SendSyncThingAttachment(pThing, INVALID_DPID, 255, 1);
         }
     }
 }
@@ -1018,7 +1018,7 @@ void sithCogFunctionThing_AttachThingToThing(sithCog *ctx)
         sithThing_AttachThing(pThing, attached);
         if (COG_SHOULD_SYNC(ctx))
         {
-            sithDSSThing_SendSyncThingAttachment(pThing, -1, 255, 1);
+            sithDSSThing_SendSyncThingAttachment(pThing, INVALID_DPID, 255, 1);
         }
     }
 }
@@ -1036,7 +1036,7 @@ void sithCogFunctionThing_AttachThingToThingEx(sithCog *ctx)
 
         if (COG_SHOULD_SYNC(ctx))
         {
-            sithDSSThing_SendSyncThingAttachment(pThing, -1, 255, 1);
+            sithDSSThing_SendSyncThingAttachment(pThing, INVALID_DPID, 255, 1);
         }
     }
 }
@@ -2307,7 +2307,7 @@ void sithCogFunctionThing_SetThingAttachFlags(sithCog *ctx)
 
         if (COG_SHOULD_SYNC(ctx))
         {
-            sithDSSThing_SendSyncThingAttachment(pThing, -1, 255, 1);
+            sithDSSThing_SendSyncThingAttachment(pThing, INVALID_DPID, 255, 1);
         }
     }
 }
@@ -2323,7 +2323,7 @@ void sithCogFunctionThing_ClearThingAttachFlags(sithCog *ctx)
 
         if (COG_SHOULD_SYNC(ctx))
         {
-            sithDSSThing_SendSyncThingAttachment(pThing, -1, 255, 1);
+            sithDSSThing_SendSyncThingAttachment(pThing, INVALID_DPID, 255, 1);
         }
     }
 }
@@ -2619,7 +2619,7 @@ void sithCogFunctionThing_SyncThingAttachment(sithCog *ctx)
     sithThing* pThing = sithCogExec_PopThing(ctx);
 
     if (pThing)
-        sithDSSThing_SendSyncThingAttachment(pThing, -1, 255, 0);
+        sithDSSThing_SendSyncThingAttachment(pThing, INVALID_DPID, 255, 0);
 }
 
 void sithCogFunctionThing_SyncThingState(sithCog *ctx)

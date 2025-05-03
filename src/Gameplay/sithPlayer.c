@@ -395,7 +395,7 @@ void sithPlayer_HandleSentDeathPkt(sithThing *thing)
     v1 = thing->actorParams.playerinfo;
 
     if ( thing == sithPlayer_pLocalPlayerThing)
-        sithDSSThing_SendDeath(thing, thing, 1, -1, 255);
+        sithDSSThing_SendDeath(thing, thing, 1, INVALID_DPID, 255);
 
     if ( (thing->thingflags & SITH_TF_CAPTURED) == 0
       || (sithCog_SendMessageFromThingEx(thing, thing, SITH_MESSAGE_KILLED, 0, -1, 0, 0), (thing->thingflags & SITH_TF_WILLBEREMOVED) == 0) )
@@ -499,7 +499,7 @@ void sithPlayer_sub_4C8910(unsigned int idx)
     }
 }
 
-int sithPlayer_sub_4C87C0(int idx, int netId)
+int sithPlayer_sub_4C87C0(int idx, DPID netId)
 {
     if ( !jkPlayer_playerInfos[idx].playerThing )
         return 0;
@@ -507,7 +507,7 @@ int sithPlayer_sub_4C87C0(int idx, int netId)
     jkPlayer_playerInfos[idx].net_id = netId;
     jkPlayer_playerInfos[idx].playerThing->thingflags &= ~SITH_TF_DISABLED;
 
-    //jkPlayer_playerInfos[idx].playerThing->controlType = SITH_CT_10; // TODO: WHY IS THIS NEEDED?
+    jkPlayer_playerInfos[idx].playerThing->controlType = SITH_CT_10; // TODO: WHY IS THIS NEEDED?
 
     return 1;
 }
@@ -568,12 +568,12 @@ void sithPlayer_debug_ToNextCheckpoint(sithThing *player)
             sithWeapon_SyncPuppet(player);
             sithCog_SendSimpleMessageToAll(SITH_MESSAGE_NEWPLAYER, SENDERTYPE_THING, player->thingIdx, SENDERTYPE_THING, player->thingIdx);
             if ( sithComm_multiplayerFlags )
-                sithDSSThing_SendSyncThing(player, -1, 255);
+                sithDSSThing_SendSyncThing(player, INVALID_DPID, 255);
         }
     }
 }
 
-uint32_t sithPlayer_ThingIdxToPlayerIdx(int thingIdx)
+uint32_t sithPlayer_ThingIdxToPlayerIdx(DPID thingIdx)
 {
     if ( !thingIdx )
         return -1;

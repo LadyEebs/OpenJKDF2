@@ -1277,7 +1277,7 @@ void sithCogFunction_SendTrigger(sithCog *ctx)
             arg1,
             arg2,
             arg3,
-            -1);
+			INVALID_DPID);
         sithCog_SendMessageToAll(SITH_MESSAGE_TRIGGER, SENDERTYPE_THING, sithPlayer_pLocalPlayerThing->thingIdx, 0, sourceType, arg0, arg1, arg2, arg3);
     }
 }

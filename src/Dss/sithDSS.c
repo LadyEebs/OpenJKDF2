@@ -94,7 +94,7 @@ const char* sithDSS_IdToStr(int id)
     return strs[id];
 }
 
-void sithDSS_SendSurfaceStatus(sithSurface *surface, int sendto_id, int mpFlags)
+void sithDSS_SendSurfaceStatus(sithSurface *surface, DPID sendto_id, int mpFlags)
 {
     NETMSG_START;
 
@@ -159,7 +159,7 @@ int sithDSS_ProcessSurfaceStatus(sithCogMsg *msg)
     return 1;
 }
 
-void sithDSS_SendSectorStatus(sithSector *sector, int sendto_id, int mpFlags)
+void sithDSS_SendSectorStatus(sithSector *sector, DPID sendto_id, int mpFlags)
 {
     NETMSG_START;
 
@@ -236,7 +236,7 @@ LABEL_11:
     return 1;
 }
 
-void sithDSS_SendSectorFlags(sithSector *pSector, int sendto_id, int mpFlags)
+void sithDSS_SendSectorFlags(sithSector *pSector, DPID sendto_id, int mpFlags)
 {
     NETMSG_START;
 
@@ -282,7 +282,7 @@ int sithDSS_ProcessSectorFlags(sithCogMsg *msg)
     return 0;
 }
 
-void sithDSS_SendAIStatus(sithActor *actor, int sendto_id, int idx)
+void sithDSS_SendAIStatus(sithActor *actor, DPID sendto_id, int idx)
 {    
     NETMSG_START;
 
@@ -439,7 +439,7 @@ int sithDSS_ProcessAIStatus(sithCogMsg *msg)
     return 1;
 }
 
-void sithDSS_SendInventory(sithThing *thing, int binIdx, int sendto_id, int mpFlags)
+void sithDSS_SendInventory(sithThing *thing, int binIdx, DPID sendto_id, int mpFlags)
 {
     if ( thing->type == SITH_THING_PLAYER || thing->type == SITH_THING_ACTOR )
     {
@@ -508,7 +508,7 @@ int sithDSS_ProcessInventory(sithCogMsg *msg)
     return 1;
 }
 
-void sithDSS_SendSurface(rdSurface *surface, int sendto_id, int mpFlags)
+void sithDSS_SendSurface(rdSurface *surface, DPID sendto_id, int mpFlags)
 {
     NETMSG_START;
 
@@ -626,7 +626,7 @@ int sithDSS_ProcessSurface(sithCogMsg *msg)
     return 1;
 }
 
-void sithDSS_SendSyncEvents(sithEvent *timer, int sendto_id, int mpFlags)
+void sithDSS_SendSyncEvents(sithEvent *timer, DPID sendto_id, int mpFlags)
 {
     NETMSG_START;
 
@@ -660,7 +660,7 @@ int sithDSS_ProcessSyncEvents(sithCogMsg *msg)
     return 1;
 }
 
-void sithDSS_SendSyncPalEffects(int sendto_id, int mpFlags)
+void sithDSS_SendSyncPalEffects(DPID sendto_id, int mpFlags)
 {
     NETMSG_START;
 
@@ -735,7 +735,7 @@ int sithDSS_ProcessSyncPalEffects(sithCogMsg *msg)
     return 1;
 }
 
-void sithDSS_SendSyncCameras(int sendto_id, int mpFlags)
+void sithDSS_SendSyncCameras(DPID sendto_id, int mpFlags)
 {
     NETMSG_START;
 
@@ -848,7 +848,7 @@ int sithDSS_ProcessSyncCameras(sithCogMsg *msg)
 }
 
 // MOTS altered
-void sithDSS_SendMisc(int sendto_id, int mpFlags)
+void sithDSS_SendMisc(DPID sendto_id, int mpFlags)
 {
     NETMSG_START;
 
@@ -982,7 +982,7 @@ int sithDSS_ProcessMisc(sithCogMsg *msg)
     return 1;
 }
 
-void sithDSS_SendSyncPuppet(sithThing *thing, int sendto_id, int mpFlags)
+void sithDSS_SendSyncPuppet(sithThing *thing, DPID sendto_id, int mpFlags)
 {
     NETMSG_START;
 

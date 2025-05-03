@@ -7,7 +7,7 @@
 #include "Devices/sithComm.h"
 #include "Main/Main.h"
 
-int sithDSSCog_SendSendTrigger(sithCog *a1, int a2, int a3, int a4, int a5, int a6, int a7, float param0, float param1, float param2, float param3, int a11)
+int sithDSSCog_SendSendTrigger(sithCog *a1, int a2, int a3, int a4, int a5, int a6, int a7, float param0, float param1, float param2, float param3, DPID a11)
 {
     int v12; // edi
     sithThing *v13; // eax
@@ -114,7 +114,7 @@ int sithDSSCog_ProcessSendTrigger(sithCogMsg *in_netMsg)
     return 1;
 }
 
-int sithDSSCog_SendSyncCog(sithCog *cog, int sendto_id, int mpFlags)
+int sithDSSCog_SendSyncCog(sithCog *cog, DPID sendto_id, int mpFlags)
 {
     sithCogSymboltable *v13; // ebp
     

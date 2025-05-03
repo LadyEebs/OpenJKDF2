@@ -282,3 +282,111 @@ void stdBitmap_Free(stdBitmap *pBitmap)
     std_pHS->free(pBitmap);
     //stdPrintf(std_pHS->debugPrint, ".\\General\\stdBitmap.c", 322, "Bitmap successfully freed.\n", 0, 0, 0, 0);
 }
+
+/*
+stdBitmap* stdBitmap_NewEntryFromRGBA(uint8_t* pixels, uint32_t width, uint32_t height, int bCreateDDrawSurface, int gpuMem)
+{
+	int palFmt; // ebp
+	int numMips_; // edx
+	unsigned int vbufAllocSize; // esi
+	stdVBuffer** vbufAlloc; // edi
+	int v12; // eax
+	stdVBuffer* surface; // esi
+	char* lockAlloc; // ebp
+	size_t v15; // edi
+	unsigned int i; // ebx
+	void* palette_map; // eax
+	int v18; // [esp+10h] [ebp-DCh]
+	int mipCount; // [esp+10h] [ebp-DCh]
+	int numMips; // [esp+14h] [ebp-D8h]
+	unsigned int v21[2]; // [esp+18h] [ebp-D4h] BYREF
+
+	stdVBufferTexFmt vbufTexFmt; // [esp+A0h] [ebp-4Ch] BYREF
+
+	rdTexformat format;
+	format.bpp = 32;
+	format.colorMode = 2;
+	format.r_bits = 8;
+	format.g_bits = 8;
+	format.b_bits = 8;
+	format.r_shift = 0;
+	format.g_shift = 8;
+	format.b_shift = 16;
+	format.r_bitdiff = 0;
+	format.g_bitdiff = 0;
+	format.b_bitdiff = 0;
+	format.unk_40 = 8;
+	format.unk_44 = 24;
+	format.unk_48 = 0;
+
+	palFmt = 0;
+	numMips_ = 1;
+
+	stdBitmap* out = (stdBitmap*)std_pHS->alloc(sizeof(stdBitmap));
+	if (!out)
+	{
+		stdPrintf(std_pHS->errorPrint, ".\\General\\stdBitmap.c", 103, "Error: Unable to allocate memory for bitmap.\n", 0, 0, 0, 0);
+		return NULL;
+	}
+	_memset(out, 0, sizeof(stdBitmap));
+	vbufAllocSize = 4 * numMips_;
+	numMips = numMips_;
+	vbufAlloc = (stdVBuffer**)std_pHS->alloc(sizeof(stdVBuffer*) * numMips_);
+	out->mipSurfaces = vbufAlloc;
+	if (vbufAlloc)
+	{
+		_memset(vbufAlloc, 0, vbufAllocSize);
+		out->field_20 =0;// v18;
+		_memcpy(&out->format, &format, sizeof(out->format));
+		out->palFmt = palFmt;
+		out->numMips = numMips;
+		out->palette = 0;
+	}
+	else
+	{
+		stdPrintf(std_pHS->messagePrint, ".\\General\\stdBitmap.c", 843, "Ran out of memory trying allocate bitmap.\n", 0, 0, 0, 0);
+	}
+	out->colorkey = 0;
+	out->xPos = 0;
+	out->yPos = 0;
+	_memset(&vbufTexFmt, 0, sizeof(vbufTexFmt));
+	{
+		vbufTexFmt.height = height;
+		vbufTexFmt.width = width;
+
+		_memcpy(&vbufTexFmt.format, &out->format, sizeof(vbufTexFmt.format));
+
+		surface = stdDisplay_VBufferNew(&vbufTexFmt, bCreateDDrawSurface, gpuMem, 0);
+		if (!surface)
+		{
+			stdPrintf(std_pHS->errorPrint, ".\\General\\stdBitmap.c", 297, "Error: Out of memory trying to create bitmap.\n", 0, 0, 0, 0);
+			std_pHS->free(out);
+			return NULL;
+		}
+
+		out->mipSurfaces[0] = surface;
+		stdDisplay_VBufferLock(surface);
+		lockAlloc = surface->surface_lock_alloc;
+		memcpy(lockAlloc, pixels, sizeof(uint32_t) * width * height);
+		stdDisplay_VBufferUnlock(surface);
+		if ((out->palFmt & 1) != 0)
+			stdDisplay_VBufferSetColorKey(surface, out->colorkey);
+	}
+
+#ifdef SDL2_RENDER
+	out->aTextureIds = (uint32_t*)std_pHS->alloc(out->numMips * sizeof(uint32_t));
+	out->abLoadedToGPU = (int*)std_pHS->alloc(out->numMips * sizeof(int));
+	out->paDataDepthConverted = (void**)std_pHS->alloc(out->numMips * sizeof(void*));
+
+	memset(out->aTextureIds, 0, (out->numMips * sizeof(uint32_t)));
+	memset(out->abLoadedToGPU, 0, (out->numMips * sizeof(int)));
+	memset(out->paDataDepthConverted, 0, (out->numMips * sizeof(void*)));
+	for (int i = 0; i < out->numMips; i++)
+	{
+		std3D_AddBitmapToTextureCache(out, i, !(out->palFmt & 1), 0);
+	}
+#endif
+
+	return out;
+}
+*/

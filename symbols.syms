@@ -234,7 +234,7 @@ sithMulti_multiplayerTimelimit 0x0083261C int
 sithNet_isMulti 0x00832624 int
 sithNet_isServer 0x00832628 int
 sithMulti_bTimelimitMet 0x00832638 int
-sithNet_serverNetId 0x008C4BA4 int
+sithNet_serverNetId 0x008C4BA4 DPID
 sithNet_things 0x008326AC int[SITH_MAX_THINGS]
 sithNet_thingsIdx 0x008330F0 int
 sithNet_syncIdx 0x008330F4 int
@@ -242,11 +242,11 @@ sithNet_aSyncFlags 0x008330B0 int[SITH_MAX_SYNC_THINGS]
 sithNet_aSyncThings 0x00832668 sithThing*[SITH_MAX_SYNC_THINGS]
 sithNet_tickrate 0x005490D4 int = 180
 sithNet_dword_8C4BA8 0x008C4BA8 int
-sithNet_dword_83262C 0x0083262C int
+sithNet_dword_83262C 0x0083262C DPID
 sithMulti_leaveJoinType 0x0083263C int
 sithNet_checksum 0x00832630 int
 sithNet_bNeedsFullThingSyncForLeaveJoin 0x00832640 int
-sithMulti_sendto_id 0x00832644 int
+sithMulti_sendto_id 0x00832644 DPID
 sithNet_bSyncScores 0x00832648 int
 sithNet_dword_832620 0x00832620 int
 
@@ -337,7 +337,7 @@ stdComm_dword_8321F8 0x008321F8 int
 stdComm_bInitted 0x008321D8 int
 stdComm_dword_8321F0 0x008321F0 int
 stdComm_dword_8321F4 0x008321F4 int
-stdComm_dplayIdSelf 0x008321EC int
+//stdComm_dplayIdSelf 0x008321EC int
 stdComm_dword_832204 0x00832204 int
 stdComm_dword_832208 0x00832208 int
 stdComm_currentBigSyncStage 0x0083220C int
@@ -825,7 +825,7 @@ jkGuiNetHost_gameName 0x0086047C wchar_t[32]
 jkGuiMultiplayer_checksumSeed 0x00832634 int
 jkGuiMultiplayer_dword_5564EC 0x005564EC int
 jkGuiMultiplayer_dword_5564E8 0x005564E8 int
-jkGuiMultiplayer_multiEntry 0x00556050 jkMultiEntry
+jkGuiMultiplayer_multiEntry 0x00556050 stdCommSession
 jkGuiMultiplayer_dword_5564F0 0x005564F0 int
 
 g_hInstance 0x00855DEC HINSTANCE
@@ -892,8 +892,8 @@ dplay_dword_55D61C 0x0055D61C int
 jkGui_guid_556040 0x00556040 GUID_idk
 jkGuiMultiplayer_numConnections 0x00865020 int
 jkGuiMultiplayer_aConnections 0x008620A0 sith_dplay_connection[32]
-jkGuiMultiplayer_aEntries 0x00863220 jkMultiEntry[32]
-jkGuiMultiplayer_stru_556168 0x00556168 jkMultiEntry2
+//jkGuiMultiplayer_aEntries 0x00863220 stdCommSession[32]
+jkGuiMultiplayer_stru_556168 0x00556168 stdCommSession2
 jkGuiMultiplayer_mpcInfo 0x008591E0 jkPlayerMpcInfo
 jkGuiMultiplayer_stru_5564A8 0x005564A8 Darray
 

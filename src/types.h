@@ -136,10 +136,14 @@ typedef uint32_t size_t;
 #define ARRAY_SIZE(a) ((sizeof a)/(sizeof a[0]))
 #endif
 
+#ifdef PLATFORM_STEAM
+typedef uint64_t GUID_idk;
+#else
 typedef struct GUID_idk
 {
     uint32_t a,b,c,d;
 } GUID_idk;
+#endif
 
 #if defined(PLAT_MISSING_WIN32)
 #define __stdcall
@@ -1391,6 +1395,14 @@ typedef struct rdColor24
     uint8_t b;
 } rdColor24;
 
+typedef struct rdColor32
+{
+	uint8_t r;
+	uint8_t g;
+	uint8_t b;
+	uint8_t a;
+} rdColor32;
+
 typedef struct rdColormap
 {
     char colormap_fname[32];
@@ -2100,16 +2112,26 @@ typedef struct stdConsole
 
 // sithCogVM
 
+
+
+#ifdef PLATFORM_STEAM
+#define INVALID_DPID -1ull//0
+typedef uint64_t DPID;
+#else
+#define INVALID_DPID -1
+typedef uint32_t DPID;
+#endif
+
 typedef struct net_msg
 {
     uint32_t timeMs;
     uint32_t flag_maybe;
     uint32_t field_8;
-    uint32_t field_C;
-    uint32_t timeMs2;
+    DPID field_C;   
+	uint32_t timeMs2;
     uint32_t field_14;
     uint32_t field_18;
-    uint32_t thingIdx;
+	DPID thingIdx;
     uint32_t msg_size;
     uint16_t cogMsgId;
     uint16_t msgId;
@@ -2117,7 +2139,7 @@ typedef struct net_msg
 
 typedef struct sithCogMsg_Pair
 {
-    uint32_t thingIdx;
+	DPID thingIdx;
     uint32_t msgId;
 } sithCogMsg_Pair;
 
@@ -2819,7 +2841,7 @@ typedef struct sithPlayerInfo
     wchar_t multi_name[32];
 #endif
     uint32_t flags;
-    uint32_t net_id;
+	DPID net_id;
 
 #ifdef DW_TYPES
     sithItemInfo iteminfo[32];
@@ -3679,6 +3701,10 @@ typedef struct jkGuiElement
     jkGuiTexInfo texInfo;
     int clickShortcutScancode;
 
+	// added
+	jkGuiEventHandlerFunc_t eventFuncOverride;
+
+
 // Added: Allow soft-resetting of these fields easily
 #ifdef QOL_IMPROVEMENTS
     union
@@ -3707,6 +3733,7 @@ typedef struct jkGuiElement
         const wchar_t* wHintTextAlloced;
     };
 #endif
+
 } jkGuiElement;
 
 typedef struct jkGuiStringEntry
@@ -3924,7 +3951,7 @@ typedef struct sith_dplay_connection
 } sith_dplay_connection;
 
 #pragma pack(push, 4)
-typedef struct jkMultiEntry
+typedef struct stdCommSession
 {
     GUID_idk guidInstance;
     int maxPlayers;
@@ -3939,18 +3966,18 @@ typedef struct jkMultiEntry
     int multiModeFlags;
     int tickRateMs;
     int maxRank;
-} jkMultiEntry;
+} stdCommSession;
 #pragma pack(pop)
 
-typedef struct jkMultiEntry2
+typedef struct stdCommSession2
 {
     wchar_t field_0[128];
     wchar_t field_100[128];
     char field_200[256];
     char field_300[256];
-} jkMultiEntry2;
+} stdCommSession2;
 
-typedef struct jkMultiEntry3
+typedef struct stdCommSession3
 {
     int field_0;
     wchar_t serverName[32];
@@ -3964,9 +3991,9 @@ typedef struct jkMultiEntry3
     int timeLimit;
     int scoreLimit;
     int tickRateMs;
-} jkMultiEntry3;
+} stdCommSession3;
 
-typedef struct jkMultiEntry4
+typedef struct stdCommSession4
 {
     char episodeGobName[32];
     char mapJklFname[32];
@@ -3996,7 +4023,7 @@ typedef struct jkMultiEntry4
     int field_9C;
     wchar_t sessionName[32];
     int tickRateMs;
-} jkMultiEntry4;
+} stdCommSession4;
 
 typedef struct stdControlKeyInfoEntry
 {
@@ -4102,8 +4129,23 @@ typedef struct sithDplayPlayer
     int field_84;
     int field_88;
     int field_8C;
+#ifdef PLATFORM_STEAM
+	uint64_t dpId;
+#else
     int dpId;
+#endif
 } sithDplayPlayer;
+
+#ifdef PLATFORM_STEAM
+typedef struct stdComm_Friend
+{
+	wchar_t      name[32];
+	uint32_t     state;
+	uint64_t     dpId;
+	//stdBitmap*   thumbnail;
+	stdVBuffer*  thumbnail;
+} stdComm_Friend;
+#endif
 
 typedef wchar_t* LPWSTR;
 
@@ -4123,7 +4165,6 @@ typedef struct DPNAME
   };
 } DPNAME;
 
-typedef uint32_t DPID;
 typedef uint32_t *LPDPID;
 typedef const DPNAME *LPCDPNAME;
 

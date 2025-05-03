@@ -90,7 +90,7 @@ void sithComm_SetMsgFunc(int msgid, void *func)
 }
 
 // MOTS altered
-int sithComm_SendMsgToPlayer(sithCogMsg *msg, int a2, int mpFlags, int a4)
+int sithComm_SendMsgToPlayer(sithCogMsg *msg, DPID a2, int mpFlags, int a4)
 {
     char multiplayerFlags; // bl
     unsigned int curMs; // esi
@@ -109,7 +109,7 @@ int sithComm_SendMsgToPlayer(sithCogMsg *msg, int a2, int mpFlags, int a4)
     if (!multiplayerFlags)
         return 1;
     curMs = sithTime_curMs;
-    msg->netMsg.thingIdx = playerThingIdx;
+    msg->netMsg.thingIdx = jkPlayer_playerInfos[playerThingIdx].net_id;// playerThingIdx;
     msg->netMsg.timeMs = curMs;
     if ( (multiplayerFlags & 1) != 0 )
     {
@@ -126,11 +126,13 @@ int sithComm_SendMsgToPlayer(sithCogMsg *msg, int a2, int mpFlags, int a4)
             msg->netMsg.field_14 = 0;
             for (int i = 0; i < jkPlayer_maxPlayers; i++)
             {
-                if ( i != playerThingIdx && (jkPlayer_playerInfos[i].net_id == a2 || (a2 == -1 || !a2) && (jkPlayer_playerInfos[i].flags & 1) != 0) )
+                if ( i != playerThingIdx && (jkPlayer_playerInfos[i].net_id == a2 || (a2 == INVALID_DPID || !a2) && (jkPlayer_playerInfos[i].flags & 1) != 0) )
                     msg->netMsg.field_14 |= 1 << i;
+				#ifndef PLATFORM_STEAM
                 if (!i && i != playerThingIdx) {
                     msg->netMsg.field_14 |= 1 << i; // Added: Dedicated server hax
                 }
+				#endif
             }
             if ( !msg->netMsg.field_14 )
                 goto LABEL_35;

@@ -17,17 +17,24 @@
 #include "Platform/wuRegistry.h"
 #include "General/stdString.h"
 #include "Devices/sithComm.h"
+#ifdef PLATFORM_STEAM
+#include "JK/GUI/jkGUIMultiFriends.h"
+#include "JK/GUI/jkGUIMultiLobby.h"
+#endif
 
 static int jkGuiMultiplayer_bInitted = 0;
 static int jkGuiMultiplayer_aElements2_aIdk[2] = {0xd, 0xe};
 static int jkGuiMultiplayer_aElements3_aIdk[2] = {0xd, 0xe};
 
-static jkGuiElement jkGuiMultiplayer_aElements[6] = {
+static jkGuiElement jkGuiMultiplayer_aElements[] = {
     {ELEMENT_TEXT,  0,  6, "GUI_MULTIPLAYER",  3, {0x4, 20, 0x258, 0x28},  1,  0,  0,  0,  0,  0, {0},  0},
     {ELEMENT_TEXTBUTTON, 0x64,  2, "GUI_JOINGAME",  3, {0x50, 0x50, 0xC8, 0x28},  1,  0,  0,  0,  0,  0, {0},  0},
     {ELEMENT_TEXTBUTTON, 0x65,  2, "GUI_STARTGAME",  3, {0x168, 0x50, 0xC8, 0x28},  1,  0,  0,  0,  0,  0, {0},  0},
     {ELEMENT_TEXTBUTTON, 0x66,  2, "GUI_MULTIPLAYER_CHARACTERS",  3, {170, 0x78, 300, 0x28},  1,  0,  0,  0,  0,  0, {0},  0},
     {ELEMENT_TEXTBUTTON, -1,  2, "GUI_CANCEL",  3, {20, 0x1AE, 0xC8, 0x28},  1,  0,  0,  0,  0,  0, {0},  0},
+#ifdef PLATFORM_STEAM
+	//{ELEMENT_TEXTBUTTON, 0x67,  2, "GUIEXT_FRIENDS",  3, {0x1A4, 0x1AE, 0xC8, 0x28},  1,  0,  0,  0,  0,  0, {0},  0},
+#endif
     {ELEMENT_END,  0,  0,  0,  0, {0},  0,  0,  0,  0,  0,  0, {0},  0},
 };
 
@@ -58,7 +65,7 @@ static jkGuiElement jkGuiMultiplayer_aElements3[13] = {
     {ELEMENT_TEXT,  0,  0, jkGuiMultiplayer_stru_556168.field_200,  3, {0x32, 0x17C, 0x21C, 20},  1,  0,  0,  0,  0,  0, {0},  0},
     {ELEMENT_TEXTBUTTON,  1,  2, "GUI_OK",  3, {0x1A4, 0x1AE, 0xC8, 0x28},  1,  0,  0,  0,  0,  0, {0},  0},
     {ELEMENT_TEXTBUTTON, -1,  2, "GUI_CANCEL",  3, {20, 0x1AE, 0xC8, 0x28},  1,  0,  0,  0,  0,  0, {0},  0},
-#ifdef QOL_IMPROVEMENTS
+#if defined(QOL_IMPROVEMENTS) && !defined(PLATFORM_STEAM)
     { ELEMENT_TEXTBOX, 0, 0, NULL, 255, { 170, 280, 320, 20 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
 #endif
     {ELEMENT_END,  0,  0,  0,  0, {0},  0,  0,  0,  0,  0,  0, {0},  0},
@@ -93,8 +100,8 @@ void jkGuiMultiplayer_Startup()
 #endif
     jkGuiMultiplayer_bInitted = 1;
 
-#ifdef QOL_IMPROVEMENTS
-    wuRegistry_GetWString("lastConnectedHost", jkGuiMultiplayer_ipText, 0x100, L"127.0.0.1");
+#if defined(QOL_IMPROVEMENTS) && !defined(PLATFORM_STEAM)
+	wuRegistry_GetWString("lastConnectedHost", jkGuiMultiplayer_ipText, 0x100, L"127.0.0.1");
     jkGuiMultiplayer_aElements3[11].wstr = jkGuiMultiplayer_ipText;
     jkGuiMultiplayer_aElements3[11].selectedTextEntry = 255;
 #endif
@@ -147,8 +154,8 @@ int jkGuiMultiplayer_Show()
     wchar_t *v31; // [esp-4h] [ebp-268h]
     Darray array; // [esp+10h] [ebp-254h] BYREF
     Darray a1; // [esp+28h] [ebp-23Ch] BYREF
-    jkMultiEntry3 v34; // [esp+40h] [ebp-224h] BYREF
-    jkMultiEntry4 v35; // [esp+180h] [ebp-E4h] BYREF
+    stdCommSession3 v34; // [esp+40h] [ebp-224h] BYREF
+    stdCommSession4 v35; // [esp+180h] [ebp-E4h] BYREF
 
 LABEL_1:
     while ( 2 )
@@ -165,23 +172,45 @@ LABEL_1:
                     jkGuiRend_DarrayNewStr(&a1, 4, 1);
                     jkGuiRend_DarrayFreeEntry(&a1);
                     v1 = 0;
-                    if ( jkGuiMultiplayer_numConnections )
-                    {
-                        v2 = jkGuiMultiplayer_aConnections;
-                        do
-                        {
-                            jkGuiRend_DarrayReallocStr(&a1, v2->name, 0);
-                            ++v1;
-                            ++v2;
-                        }
-                        while ( v1 < jkGuiMultiplayer_numConnections );
-                    }
-                    jkGuiRend_AddStringEntry(&a1, 0, 0);
-                    jkGuiRend_SetClickableString(&jkGuiMultiplayer_aElements2[3], &a1);
-                    jkGuiMultiplayer_aElements2[3].selectedTextEntry = 0;
-                    jkGuiRend_MenuSetReturnKeyShortcutElement(&jkGuiMultiplayer_menu2, &jkGuiMultiplayer_aElements2[4]);
-                    jkGuiRend_MenuSetEscapeKeyShortcutElement(&jkGuiMultiplayer_menu2, &jkGuiMultiplayer_aElements2[5]);
-                    v3 = jkGuiRend_DisplayAndReturnClicked(&jkGuiMultiplayer_menu2);
+				#ifdef PLATFORM_STEAM
+					// Added: if no connections tell the user and go back
+					//if (!jkGuiMultiplayer_numConnections)
+					//{
+					//	// todo: new strings
+					//	v24 = jkStrings_GetUniStringWithFallback("GUINET_NOTAVAIL");
+					//	v5 = jkStrings_GetUniStringWithFallback("GUINET_NETERROR");
+					//	jkGuiDialog_ErrorDialog(v5, v24);
+					//	v16 = -1;
+					//	break;
+					//}
+
+					// Added: skip selecting a provider if there's only 1
+					if (jkGuiMultiplayer_numConnections == 1)
+					{
+						jkGuiMultiplayer_aElements2[3].selectedTextEntry = 0;
+						v3 = 1;
+					}
+					else
+				#endif
+					{
+						if ( jkGuiMultiplayer_numConnections )
+						{
+							v2 = jkGuiMultiplayer_aConnections;
+							do
+							{
+								jkGuiRend_DarrayReallocStr(&a1, v2->name, 0);
+								++v1;
+								++v2;
+							}
+							while ( v1 < jkGuiMultiplayer_numConnections );
+						}
+						jkGuiRend_AddStringEntry(&a1, 0, 0);
+						jkGuiRend_SetClickableString(&jkGuiMultiplayer_aElements2[3], &a1);
+						jkGuiMultiplayer_aElements2[3].selectedTextEntry = 0;
+						jkGuiRend_MenuSetReturnKeyShortcutElement(&jkGuiMultiplayer_menu2, &jkGuiMultiplayer_aElements2[4]);
+						jkGuiRend_MenuSetEscapeKeyShortcutElement(&jkGuiMultiplayer_menu2, &jkGuiMultiplayer_aElements2[5]);
+						v3 = jkGuiRend_DisplayAndReturnClicked(&jkGuiMultiplayer_menu2);
+					}
                     if ( v3 > 0 )
                     {
                         // TODO if this is a ptr, fix it
@@ -227,23 +256,45 @@ LABEL_1:
                     jkGuiRend_DarrayNewStr(&array, 4, 1);
                     jkGuiRend_DarrayFreeEntry(&array);
                     v14 = 0;
-                    if ( jkGuiMultiplayer_numConnections )
-                    {
-                        v15 = jkGuiMultiplayer_aConnections;
-                        do
-                        {
-                            jkGuiRend_DarrayReallocStr(&array, v15->name, 0);
-                            ++v14;
-                            ++v15;
-                        }
-                        while ( v14 < jkGuiMultiplayer_numConnections );
-                    }
-                    jkGuiRend_AddStringEntry(&array, 0, 0);
-                    jkGuiRend_SetClickableString(&jkGuiMultiplayer_aElements2[3], &array);
-                    jkGuiMultiplayer_aElements2[3].selectedTextEntry = 0;
-                    jkGuiRend_MenuSetReturnKeyShortcutElement(&jkGuiMultiplayer_menu2, &jkGuiMultiplayer_aElements2[4]);
-                    jkGuiRend_MenuSetEscapeKeyShortcutElement(&jkGuiMultiplayer_menu2, &jkGuiMultiplayer_aElements2[5]);
-                    v16 = jkGuiRend_DisplayAndReturnClicked(&jkGuiMultiplayer_menu2);
+				#ifdef PLATFORM_STEAM
+					// Added: if no connections tell the user and go back
+					//if (!jkGuiMultiplayer_numConnections)
+					//{
+					//	// todo: new strings
+					//	v24 = jkStrings_GetUniStringWithFallback("GUINET_NOTAVAIL");
+					//	v5 = jkStrings_GetUniStringWithFallback("GUINET_NETERROR");
+					//	jkGuiDialog_ErrorDialog(v5, v24);
+					//	v16 = -1;
+					//	break;
+					//}
+
+					// Added: skip selecting a provider if there's only 1
+					if (jkGuiMultiplayer_numConnections == 1)
+					{
+						jkGuiMultiplayer_aElements2[3].selectedTextEntry = 0;
+						v16 = 1;
+					}
+					else
+				#endif
+					{
+						if ( jkGuiMultiplayer_numConnections )
+						{
+							v15 = jkGuiMultiplayer_aConnections;
+							do
+							{
+								jkGuiRend_DarrayReallocStr(&array, v15->name, 0);
+								++v14;
+								++v15;
+							}
+							while ( v14 < jkGuiMultiplayer_numConnections );
+						}
+						jkGuiRend_AddStringEntry(&array, 0, 0);
+						jkGuiRend_SetClickableString(&jkGuiMultiplayer_aElements2[3], &array);
+						jkGuiMultiplayer_aElements2[3].selectedTextEntry = 0;
+						jkGuiRend_MenuSetReturnKeyShortcutElement(&jkGuiMultiplayer_menu2, &jkGuiMultiplayer_aElements2[4]);
+						jkGuiRend_MenuSetEscapeKeyShortcutElement(&jkGuiMultiplayer_menu2, &jkGuiMultiplayer_aElements2[5]);
+						v16 = jkGuiRend_DisplayAndReturnClicked(&jkGuiMultiplayer_menu2);
+					}
                     if ( v16 > 0 )
                     {
                         // TODO if this is a ptr, fix it
@@ -302,10 +353,20 @@ LABEL_1:
                                 v22 = jkStrings_GetUniStringWithFallback("GUINET_HOSTERROR");
                                 jkGuiDialog_ErrorDialog(v22, v30);
                             }
+						//#ifdef PLATFORM_STEAM
+						//	else if (jkGuiMultiLobby_Show(&v34) == 1)
+						//	{
+						//		if (jkMain_loadFile2(v34.episodeGobName, v34.mapJklFname))
+						//		{
+						//			return 1;
+						//		}
+						//	}
+						//#else
                             else if ( jkMain_loadFile2(v34.episodeGobName, v34.mapJklFname) )
                             {
                                 return 1;
                             }
+						//#endif
                         }
                     }
                     while ( jkGuiNetHost_Show(&v34) == 1 );
@@ -315,6 +376,77 @@ LABEL_51:
                 case 102:
                     jkGuiBuildMulti_Show();
                     continue;
+				//case 103:
+				//	jkGuiRend_DarrayNewStr(&a1, 4, 1);
+				//	jkGuiRend_DarrayFreeEntry(&a1);
+				//	v1 = 0;
+				//#ifdef PLATFORM_STEAM
+				//	// Added: if no connections tell the user and go back
+				//	//if (!jkGuiMultiplayer_numConnections)
+				//	//{
+				//	//	// todo: new strings
+				//	//	v24 = jkStrings_GetUniStringWithFallback("GUINET_NOTAVAIL");
+				//	//	v5 = jkStrings_GetUniStringWithFallback("GUINET_NETERROR");
+				//	//	jkGuiDialog_ErrorDialog(v5, v24);
+				//	//	v3 = -1;
+				//	//	break;
+				//	//}
+				//
+				//	// Added: skip selecting a provider if there's only 1
+				//	if (jkGuiMultiplayer_numConnections == 1)
+				//	{
+				//		jkGuiMultiplayer_aElements2[3].selectedTextEntry = 0;
+				//		v3 = 1;
+				//	}
+				//	else
+				//#endif
+				//	{
+				//		if (jkGuiMultiplayer_numConnections)
+				//		{
+				//			v2 = jkGuiMultiplayer_aConnections;
+				//			do
+				//			{
+				//				jkGuiRend_DarrayReallocStr(&a1, v2->name, 0);
+				//				++v1;
+				//				++v2;
+				//			} while (v1 < jkGuiMultiplayer_numConnections);
+				//		}
+				//		jkGuiRend_AddStringEntry(&a1, 0, 0);
+				//		jkGuiRend_SetClickableString(&jkGuiMultiplayer_aElements2[3], &a1);
+				//		jkGuiMultiplayer_aElements2[3].selectedTextEntry = 0;
+				//		jkGuiRend_MenuSetReturnKeyShortcutElement(&jkGuiMultiplayer_menu2, &jkGuiMultiplayer_aElements2[4]);
+				//		jkGuiRend_MenuSetEscapeKeyShortcutElement(&jkGuiMultiplayer_menu2, &jkGuiMultiplayer_aElements2[5]);
+				//		v3 = jkGuiRend_DisplayAndReturnClicked(&jkGuiMultiplayer_menu2);
+				//	}
+				//	if (v3 > 0)
+				//	{
+				//		// TODO if this is a ptr, fix it
+				//		v4 = stdComm_OpenConnection((void*)jkGuiMultiplayer_aElements2[3].selectedTextEntry);
+				//		if (v4 == 0x887700FA)
+				//		{
+				//			v24 = jkStrings_GetUniStringWithFallback("GUINET_NOTAVAIL");
+				//			v5 = jkStrings_GetUniStringWithFallback("GUINET_NETERROR");
+				//			jkGuiDialog_ErrorDialog(v5, v24);
+				//			v3 = -1;
+				//		}
+				//		else if (v4)
+				//		{
+				//			v25 = jkStrings_GetUniStringWithFallback("GUINET_NOCONNECT");
+				//			v6 = jkStrings_GetUniStringWithFallback("GUINET_NETERROR");
+				//			jkGuiDialog_ErrorDialog(v6, v25);
+				//			v3 = -1;
+				//		}
+				//		else
+				//		{
+				//			v3 = 1;
+				//		}
+				//	}
+				//	jkGuiRend_DarrayFree(&a1);
+				//	if (v3 != 1)
+				//		continue;
+				//	if (jkGuiMultiFriends_Show(0) != 1)
+				//		goto LABEL_29;
+				//	break;
                 default:
                     continue;
             }
@@ -470,7 +602,7 @@ void jkGuiMultiplayer_sub_4140B0(jkGuiMenu *pMenu)
     HRESULT v3; // eax
     wchar_t *v4; // eax
     int v5; // ebp
-    jkMultiEntry *v6; // ebx
+    stdCommSession *v6; // ebx
     wchar_t *v7; // eax
     int v8; // [esp-14h] [ebp-18h]
     wchar_t *v9; // [esp-14h] [ebp-18h]
@@ -497,7 +629,7 @@ void jkGuiMultiplayer_sub_4140B0(jkGuiMenu *pMenu)
                         do
                         {
                             jkGuiRend_DarrayReallocStr(&jkGuiMultiplayer_stru_5564A8, v6->serverName, 0);
-                            if ( !memcmp(&jkGui_guid_556040, &v6->guidInstance, sizeof(GUID)) )
+                            if ( !memcmp(&jkGui_guid_556040, &v6->guidInstance, sizeof(v6->guidInstance)) )
                                 v10 = v5;
                             ++v5;
                             ++v6;
@@ -664,7 +796,7 @@ int jkGuiMultiplayer_Show2()
     wchar_t *v5; // eax
     wchar_t *v6; // [esp-4h] [ebp-14Ch]
     wchar_t *v7; // [esp-4h] [ebp-14Ch]
-    jkMultiEntry3 v8; // [esp+8h] [ebp-140h] BYREF
+    stdCommSession3 v8; // [esp+8h] [ebp-140h] BYREF
 
     memset(&v8, 0, sizeof(v8));
     if ( stdComm_dword_8321F8 )
@@ -741,7 +873,7 @@ void jkGuiMultiplayer_sub_4142C0(jkGuiMenu *pMenu)
         if ( v1 > jkGuiMultiplayer_dword_5564F0 + 2000 )
         {
             jkGuiMultiplayer_dword_5564F0 = v1;
-            DirectPlay_IdkSessionDesc(&jkGuiMultiplayer_multiEntry);
+            DirectPlay_GetSessionDesc(&jkGuiMultiplayer_multiEntry);
             if ( jkGuiMultiplayer_multiEntry.field_E0 )
             {
                 jkGuiMultiplayer_checksumSeed = jkGuiMultiplayer_multiEntry.checksumSeed;

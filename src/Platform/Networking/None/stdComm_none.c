@@ -36,7 +36,7 @@ void stdComm_None_Startup()
     jk_snwprintf(jkGuiMultiplayer_aConnections[0].name, 0x80, L"Screaming Into The Void");
     stdComm_dword_8321E0 = 0;
 
-    memset(jkGuiMultiplayer_aEntries, 0, sizeof(jkMultiEntry) * 32);
+    memset(jkGuiMultiplayer_aEntries, 0, sizeof(stdCommSession) * 32);
     dplay_dword_55D618 = 1;
     jk_snwprintf(jkGuiMultiplayer_aEntries[0].serverName, 0x20, L"OpenJKDF2 Loopback");
     stdString_snprintf(jkGuiMultiplayer_aEntries[0].episodeGobName, 0x20, "JK1MP");
@@ -128,13 +128,13 @@ void DirectPlay_Close()
     
 }
 
-int DirectPlay_OpenHost(jkMultiEntry* a)
+int DirectPlay_OpenHost(stdCommSession* a)
 {
     
     return 0;
 }
 
-int DirectPlay_GetSession_passwordidk(jkMultiEntry* a)
+int DirectPlay_GetSession_passwordidk(stdCommSession* a)
 {
     return 1;
 }
@@ -158,7 +158,7 @@ void DirectPlay_Destroy()
     
 }
 
-int DirectPlay_IdkSessionDesc(jkMultiEntry* pEntry)
+int DirectPlay_GetSessionDesc(stdCommSession* pEntry)
 {
     //TODO
     return 1;

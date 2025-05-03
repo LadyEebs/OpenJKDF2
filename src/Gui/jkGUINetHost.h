@@ -16,14 +16,14 @@ void jkGuiNetHost_LoadSettings();
 
 void jkGuiNetHost_Startup();
 void jkGuiNetHost_Shutdown();
-int jkGuiNetHost_Show(jkMultiEntry3 *pMultiEntry);
+int jkGuiNetHost_Show(stdCommSession3 *pMultiEntry);
 
-int jkGuiNetHost_sub_4118C0(jkMultiEntry3 *pEntry);
+int jkGuiNetHost_sub_4118C0(stdCommSession3 *pEntry);
 int jkGuiNetHost_sub_4119D0(jkGuiElement *pElement, jkGuiMenu *pMenu, int mouseX, int mouseY, int redraw);
 int jkGuiNetHost_sub_411AE0(jkGuiElement *pElement, jkGuiMenu *pMenu, int mouseX, int mouseY, int redraw);
 
 //static int (*jkGuiNetHost_Startup)() = (void*)jkGuiNetHost_Startup_ADDR;
 //static void (*jkGuiNetHost_Shutdown)() = (void*)jkGuiNetHost_Shutdown_ADDR;
-//static int (*jkGuiNetHost_Show)(jkMultiEntry3* a) = (void*)jkGuiNetHost_Show_ADDR;
+//static int (*jkGuiNetHost_Show)(stdCommSession3* a) = (void*)jkGuiNetHost_Show_ADDR;
 
 #endif // _JKGUINETHOST_H

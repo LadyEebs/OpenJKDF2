@@ -32,6 +32,10 @@
 #include "Gui/jkGUIRend.h"
 #include "Gui/jkGUI.h"
 #include "Gui/jkGUIMods.h"
+#ifdef PLATFORM_STEAM
+#include "JK/GUI/jkGUIMultiFriends.h"
+#include "JK/GUI/jkGUIMultiLobby.h"
+#endif
 #include "World/jkPlayer.h"
 #include "Gameplay/jkSaber.h"
 #include "Win95/std.h"
@@ -185,7 +189,7 @@ int Main_StartupDedicated(int bFullyDedicated)
     //jkPlayer_enableSSAO = 0;
     //jkPlayer_gamma = 1.0;
     
-    jkMultiEntry3 v34;
+    stdCommSession3 v34;
     memset(&v34, 0, sizeof(v34));
 
     if (bExplicitMap) {
@@ -284,8 +288,12 @@ int Main_Startup(const char *cmdline)
     jkGuiNetHost_scoreLimit = 100;
     jkGuiNetHost_timeLimit = 30;
     jkGuiNetHost_sessionFlags = 0;
-    jkGuiNetHost_tickRate = 180;
-    Video_modeStruct.modeIdx = 0;
+#ifdef PLATFORM_STEAM
+	jkGuiNetHost_tickRate = 50; // 50ms
+#else
+    jkGuiNetHost_tickRate = 180; // 180ms
+#endif
+	Video_modeStruct.modeIdx = 0;
     Video_modeStruct.descIdx = 0;
     Video_modeStruct.Video_8605C8 = 0;
     Video_modeStruct.b3DAccel = 0;
@@ -316,6 +324,9 @@ int Main_Startup(const char *cmdline)
     jkGuiSound_musicVolume = 1.0;
     stdPlatform_Printf("%s\n", Main_path);
     Main_ParseCmdLine((char *)cmdline);
+	
+	// debug
+	Main_bVerboseNetworking = 1;
 
     if ( Main_logLevel == 1 )
     {
@@ -415,6 +426,10 @@ int Main_Startup(const char *cmdline)
 #ifdef QOL_IMPROVEMENTS
         jkGuiMods_Startup();
 #endif
+#ifdef PLATFORM_STEAM
+		jkGuiMultiFriends_Startup();
+		jkGuiMultiLobby_Startup();
+#endif
 #ifndef LINUX_TMP
         smack_Startup(); // TODO
 #endif
@@ -497,6 +512,10 @@ void Main_Shutdown()
     jkGuiSingleTally_Shutdown();
 #ifdef QOL_IMPROVEMENTS
     jkGuiMods_Shutdown();
+#endif
+#ifdef PLATFORM_STEAM
+	jkGuiMultiFriends_Shutdown();
+	jkGuiMultiLobby_Shutdown();
 #endif
     jkGuiRend_Shutdown();
     jkCog_Shutdown();
@@ -670,10 +689,19 @@ void Main_ParseCmdLine(char *cmdline)
             //Main_cogLogFp = fopen("cog.log", "wc");
         }
 #ifdef QOL_IMPROVEMENTS
+	#ifdef PLATFORM_STEAM
+		else if (!__strcmpi(v1, "+connect_lobby"))
+		{
+			v4 = _strtok(0, " \t");
+			stdPlatform_Printf("Invited to lobby %s\n", v4);
+			stdString_CharToWchar(stdComm_waIdk, v4, 32);
+		}
+	#else // disable dedicated server for now since the new steam stuff works via SteamIDs, need to consider how to rectify this feature
         else if (!__strcmpi(v1, "-dedicatedServer") || !__strcmpi(v1, "/dedicatedServer") )
         {
             Main_bDedicatedServer = 1;
         }
+	#endif
         else if (!__strcmpi(v1, "-autostart") || !__strcmpi(v1, "/autostart") )
         {
             Main_bAutostart = 1;

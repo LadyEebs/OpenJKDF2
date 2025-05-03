@@ -20,6 +20,10 @@
 #include "Main/jkStrings.h"
 #include "Main/jkMain.h"
 #include "Dss/sithMulti.h"
+#ifdef PLATFORM_STEAM
+#include "JK/GUI/jkGUIMultiFriends.h"
+#include "JK/GUI/jkGUIMultiLobby.h"
+#endif
 
 enum jkGuiEscButton_t
 {
@@ -31,7 +35,12 @@ enum jkGuiEscButton_t
     JKGUIESC_RESTART      = 14,
     JKGUIESC_SAVE         = 15,
     JKGUIESC_SETUP        = 16,
-    JKGUIESC_ABORT        = 17
+    JKGUIESC_ABORT        = 17,
+#ifdef PLATFORM_STEAM
+	JKGUIESC_ADMIN        = 18,
+	JKGUIESC_INVITE       = 19,
+	JKGUIESC_VOTE         = 20
+#endif
 };
 
 enum jkGuiEscElement_t
@@ -45,9 +54,14 @@ enum jkGuiEscElement_t
     JKGUIESC_ELMT_RESTART      = 6,
     JKGUIESC_ELMT_SETUP        = 7,
     JKGUIESC_ELMT_ABORT        = 8,
+#ifdef PLATFORM_STEAM
+	JKGUIESC_ELMT_ADMIN        = 9,
+	JKGUIESC_ELMT_INVITE       = 10,
+	JKGUIESC_ELMT_VOTE         = 11
+#endif
 };
 
-static jkGuiElement jkGuiEsc_aElements[10] = {
+static jkGuiElement jkGuiEsc_aElements[] = {
     { ELEMENT_TEXTBUTTON, JKGUIESC_OBJECTIVES,   5, "GUI_OBJECTIVES",     3, {  0, 50,  400, 40},  1,  0,  0,  0,  0,  0, {0}, 0},
     { ELEMENT_TEXTBUTTON, JKGUIESC_MAP,          5, "GUI_MAP",            3, {  0, 100, 400, 40},  1,  0,  0,  0,  0,  0, {0}, 0},
     { ELEMENT_TEXTBUTTON, JKGUIESC_JEDIPOWERS,   5, "GUI_JEDIPOWERS",     3, {  0, 150, 400, 40},  1,  0,  0,  0,  0,  0, {0}, 0},
@@ -57,6 +71,11 @@ static jkGuiElement jkGuiEsc_aElements[10] = {
     { ELEMENT_TEXTBUTTON, JKGUIESC_RESTART,      5, "GUI_RESTART",        3, {400, 220, 240, 40},  1,  0,  0,  0,  0,  0, {0}, 0},
     { ELEMENT_TEXTBUTTON, JKGUIESC_SETUP,        5, "GUI_SETUP",          3, {400, 370, 240, 40},  1,  0,  0,  0,  0,  0, {0}, 0},
     { ELEMENT_TEXTBUTTON, JKGUIESC_ABORT,        5, "GUI_ABORT",          3, {400, 420, 240, 40},  1,  0,  0,  0,  0,  0, {0}, 0},
+#ifdef PLATFORM_STEAM
+	{ ELEMENT_TEXTBUTTON, JKGUIESC_ADMIN,        5, "GUIEXT_ADMIN",       3, {400, 220, 240, 40},  1,  0,  0,  0,  0,  0, {0}, 0},
+	{ ELEMENT_TEXTBUTTON, JKGUIESC_INVITE,       5, "GUIEXT_INVITE",      3, {400, 270, 240, 40},  1,  0,  0,  0,  0,  0, {0}, 0},
+	{ ELEMENT_TEXTBUTTON, JKGUIESC_VOTE,         5, "GUIEXT_VOTE",        3, {400, 320, 240, 40},  1,  0,  0,  0,  0,  0, {0}, 0},
+#endif
     { ELEMENT_END,        0,                     0,  NULL,                0, {0},                  0,  0,  0,  0,  0,  0, {0}, 0}
 };
 
@@ -90,6 +109,11 @@ void jkGuiEsc_Show()
         jkGuiEsc_aElements[JKGUIESC_ELMT_SAVE].bIsVisible = 0;
         jkGuiEsc_aElements[JKGUIESC_ELMT_OBJECTIVES].bIsVisible = !!(sithMulti_multiModeFlags & MULTIMODEFLAG_COOP); // Added: co-op
         jkGuiEsc_aElements[JKGUIESC_ELMT_RESTART].bIsVisible = 0;
+#ifdef PLATFORM_STEAM
+		jkGuiEsc_aElements[JKGUIESC_ELMT_ADMIN].bIsVisible = stdComm_bIsServer;
+		jkGuiEsc_aElements[JKGUIESC_ELMT_INVITE].bIsVisible = 1;
+		jkGuiEsc_aElements[JKGUIESC_ELMT_VOTE].bIsVisible = 1;
+#endif
     }
     else
     {
@@ -97,6 +121,11 @@ void jkGuiEsc_Show()
         jkGuiEsc_aElements[JKGUIESC_ELMT_SAVE].bIsVisible = 1;
         jkGuiEsc_aElements[JKGUIESC_ELMT_OBJECTIVES].bIsVisible = 1;
         jkGuiEsc_aElements[JKGUIESC_ELMT_RESTART].bIsVisible = 1;
+#ifdef PLATFORM_STEAM
+		jkGuiEsc_aElements[JKGUIESC_ELMT_ADMIN].bIsVisible = 0;
+		jkGuiEsc_aElements[JKGUIESC_ELMT_INVITE].bIsVisible = 0;
+		jkGuiEsc_aElements[JKGUIESC_ELMT_VOTE].bIsVisible = 0;
+#endif
 
         // MOTS added
         if (Main_bMotsCompat) {
@@ -182,6 +211,18 @@ void jkGuiEsc_Show()
 					jkGuiRend_UpdateSurface();
 				}
 				return;
+
+#ifdef PLATFORM_STEAM
+			case JKGUIESC_ADMIN:
+				continue;
+
+			case JKGUIESC_INVITE:
+				jkGuiMultiFriends_Show(0);
+				continue;
+
+			case JKGUIESC_VOTE:
+				continue;
+#endif
 
             default:
                 continue;

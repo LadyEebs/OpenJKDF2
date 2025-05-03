@@ -45,6 +45,7 @@ set(TARGET_USE_CURL FALSE)
 set(TARGET_USE_PHYSFS FALSE)
 set(TARGET_USE_BASICSOCKETS FALSE)
 set(TARGET_USE_GAMENETWORKINGSOCKETS FALSE)
+set(TARGET_USE_STEAMWORKS FALSE)
 set(TARGET_USE_LIBSMACKER FALSE)
 set(TARGET_USE_LIBSMUSHER FALSE)
 set(TARGET_USE_SDL2 FALSE)
@@ -185,6 +186,8 @@ endif()
 # All of the base sources
 file(GLOB ENGINE_SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/*.c
                        ${PROJECT_SOURCE_DIR}/src/*/*.c
+                       ${PROJECT_SOURCE_DIR}/src/JK/*.c
+					   ${PROJECT_SOURCE_DIR}/src/JK/GUI/*.c
                        ${PROJECT_SOURCE_DIR}/src/Modules/std/*.c
 					   ${PROJECT_SOURCE_DIR}/src/Modules/std/*/*.c
 					   ${PROJECT_SOURCE_DIR}/src/Modules/rdroid/*.c

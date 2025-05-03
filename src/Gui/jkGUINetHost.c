@@ -43,8 +43,11 @@ enum jkGuiNetHostElement_t
     NETHOST_PASSWORD_TEXTBOX = 17,
     NETHOST_EPISODE_LISTBOX = 19,
     NETHOST_LEVEL_LISTBOX = 21,
-
+#ifdef PLATFORM_STEAM
+	NETHOST_FRIENDS_ONLY_CHECKBOX = 25,
+#else
     NETHOST_PORT_TEXTBOX = 26,
+#endif
 };
 
 enum jkGuiNetHostAdvancedElement_t
@@ -63,12 +66,12 @@ static jkGuiElement jkGuiNetHost_aElements[28] =
     { ELEMENT_TEXTBOX,      0, 0, NULL, 16, { 20, 125, 270, 20 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
     { ELEMENT_TEXT,         0, 0, "GUI_MAXPLAYERS", 2, { 20, 155, 200, 40 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
     { ELEMENT_TEXTBOX,      0, 0, NULL, 2, { 225, 160, 65, 20 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
-    { ELEMENT_CHECKBOX,     0, 0, "GUI_SCORELIMIT", 0, { 20, 190, 200, 40 }, 1, 0, "GUI_SCORELIMIT_HINT", NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+    { ELEMENT_CHECKBOX,     0, 0, "GUI_SCORELIMIT", 0, { 20, 185, 200, 40 }, 1, 0, "GUI_SCORELIMIT_HINT", NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
     { ELEMENT_TEXTBOX,      0, 0, NULL, 3, { 225, 195, 65, 20 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
-    { ELEMENT_CHECKBOX,     0, 0, "GUI_TIMELIMIT", 0, { 20, 225, 200, 40 }, 1, 0, "GUI_TIMELIMIT_HINT", NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+    { ELEMENT_CHECKBOX,     0, 0, "GUI_TIMELIMIT", 0, { 20, 215, 200, 40 }, 1, 0, "GUI_TIMELIMIT_HINT", NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
     { ELEMENT_TEXTBOX,      0, 0, NULL, 3, { 225, 230, 65, 20 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
-    { ELEMENT_CHECKBOX,     0, 0, "GUI_TEAMMODE", 0, { 20, 260, 200, 40 }, 1, 0, "GUI_TEAMMODE_HINT", NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
-    { ELEMENT_CHECKBOX,     0, 0, "GUI_SINGLELEVEL", 0, { 20, 295, 200, 40 }, 1, 0, "GUI_SINGLELEVEL_HINT", NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+    { ELEMENT_CHECKBOX,     0, 0, "GUI_TEAMMODE", 0, { 20, 245, 200, 40 }, 1, 0, "GUI_TEAMMODE_HINT", NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+    { ELEMENT_CHECKBOX,     0, 0, "GUI_SINGLELEVEL", 0, { 20, 275, 200, 40 }, 1, 0, "GUI_SINGLELEVEL_HINT", NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
     { ELEMENT_TEXT,         0, 0, "GUI_MAXSTARS", 2, { 310, 80, 150, 40 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
     { ELEMENT_TEXT,         0, 0, NULL, 2, { 375, 120, 120, 30 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
     { ELEMENT_PICBUTTON,    1, 0, NULL, 33, { 310, 120, 30, 30 }, 1, 0, NULL, NULL, &jkGuiNetHost_sub_411AE0, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
@@ -82,7 +85,10 @@ static jkGuiElement jkGuiNetHost_aElements[28] =
     { ELEMENT_TEXTBUTTON,   GUI_ADVANCED, 2, "GUI_ADVANCED", 3, { 220, 430, 200, 40 }, 1, 0, "GUI_ADVANCED_HINT", NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
     { ELEMENT_TEXTBUTTON,   GUI_OK,  2, "GUI_OK", 3, { 420, 430, 200, 40 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
     { ELEMENT_TEXTBUTTON,   GUI_CANCEL, 2, "GUI_CANCEL", 3, { 20, 430, 200, 40 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
-#ifdef QOL_IMPROVEMENTS
+#ifdef PLATFORM_STEAM
+	{ ELEMENT_CHECKBOX,     0, 0, "GUIEXT_FRIENDS_ONLY", 0, { 20, 305, 200, 40 }, 1, 0, "GUI_SINGLELEVEL_HINT", NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+
+#elif defined(QOL_IMPROVEMENTS)
     { ELEMENT_TEXT, 0, 0, "GUIEXT_SERVER_PORT", 2, { 540, 80, 90, 40 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
     { ELEMENT_TEXTBOX, 0, 0, NULL, 16, { 540, 125, 90, 20 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
     
@@ -176,7 +182,9 @@ void jkGuiNetHost_SaveSettings()
     wuRegistry_SetWString("gameName", jkGuiNetHost_gameName);
 #endif
 #ifdef QOL_IMPROVEMENTS
+#ifndef PLATFORM_STEAM
     wuRegistry_SaveInt("portNum", jkGuiNetHost_portNum);
+#endif
     wuRegistry_SaveBool("bIsDedicated", jkGuiNetHost_bIsDedicated);
     wuRegistry_SaveBool("bIsCoop", jkGuiNetHost_bIsCoop);
     wuRegistry_SaveBool("bIsEpisodeCoop", jkGuiNetHost_bIsEpisodeCoop);
@@ -209,7 +217,9 @@ void jkGuiNetHost_LoadSettings()
 #endif
 
 #ifdef QOL_IMPROVEMENTS
+#ifndef PLATFORM_STEAM
     jkGuiNetHost_portNum = wuRegistry_GetInt("portNum", jkGuiNetHost_portNum);
+#endif
     jkGuiNetHost_bIsDedicated = wuRegistry_GetBool("bIsDedicated", jkGuiNetHost_bIsDedicated);
 
     if (jkGuiNetHost_bIsDedicated) {
@@ -293,15 +303,16 @@ void jkGuiNetHost_Shutdown()
     memset(&jkGuiNetHost_dArray1, 0, sizeof(jkGuiNetHost_dArray1));
     memset(&jkGuiNetHost_dArray2, 0, sizeof(jkGuiNetHost_dArray2));
 
+#ifndef PLATFORM_STEAM
     memset(jkGuiNetHost_portText, 0, sizeof(jkGuiNetHost_portText));
-
+#endif
     jkGuiNetHost_portNum = 27020;
     jkGuiNetHost_bIsDedicated = 0;
     jkGuiNetHost_bIsCoop = 0;
 }
 
 // MOTS altered
-int jkGuiNetHost_Show(jkMultiEntry3 *pMultiEntry)
+int jkGuiNetHost_Show(stdCommSession3 *pMultiEntry)
 {
     wchar_t *v3; // eax
     int v4; // ebp
@@ -347,8 +358,10 @@ int jkGuiNetHost_Show(jkMultiEntry3 *pMultiEntry)
     //a2[0] = (unsigned int)jkGuiNetHost_timeLimit; wat??
     jkGuiNetHost_aElements[NETHOST_SCORELIMIT_TEXTBOX].wstr = v27;
     jkGuiNetHost_aElements[NETHOST_SCORELIMIT_TEXTBOX].selectedTextEntry = 4;
-#ifdef QOL_IMPROVEMENTS
-    jk_snwprintf(jkGuiNetHost_portText, 0x20u, L"%d", jkGuiNetHost_portNum);
+#ifdef PLATFORM_STEAM
+	jkGuiNetHost_aElements[NETHOST_SCORELIMIT_CHECKBOX].selectedTextEntry = jkGuiNetHost_gameFlags & MULTIMODEFLAG_FRIENDS_ONLY;
+#elif defined(QOL_IMPROVEMENTS)
+	jk_snwprintf(jkGuiNetHost_portText, 0x20u, L"%d", jkGuiNetHost_portNum);
     jkGuiNetHost_aElements[NETHOST_PORT_TEXTBOX].wstr = jkGuiNetHost_portText;
     jkGuiNetHost_aElements[NETHOST_PORT_TEXTBOX].selectedTextEntry = 31;
 #endif
@@ -436,8 +449,10 @@ int jkGuiNetHost_Show(jkMultiEntry3 *pMultiEntry)
             pMultiEntry->sessionFlags = jkGuiNetHost_sessionFlags;
             jkGuiNetHost_gameFlags = pMultiEntry->multiModeFlags;
 #ifdef QOL_IMPROVEMENTS
+#ifndef PLATFORM_STEAM
             jkGuiNetHost_portNum = wstr_to_int_clamped(jkGuiNetHost_portText, 1, 65535);
-            wuRegistry_SetWString("serverPassword", pMultiEntry->wPassword);
+#endif
+			wuRegistry_SetWString("serverPassword", pMultiEntry->wPassword);
             wuRegistry_SetString("serverEpisodeGob", pMultiEntry->episodeGobName);
             wuRegistry_SetString("serverMapJkl", pMultiEntry->mapJklFname);
 
@@ -501,7 +516,7 @@ int jkGuiNetHost_Show(jkMultiEntry3 *pMultiEntry)
     return v4;
 }
 
-int jkGuiNetHost_sub_4118C0(jkMultiEntry3 *pEntry)
+int jkGuiNetHost_sub_4118C0(stdCommSession3 *pEntry)
 {
     int v1; // edi
     int tickRate; // eax

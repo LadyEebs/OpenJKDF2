@@ -1286,7 +1286,7 @@ void sithCog_SendMessage(sithCog *cog, int msgid, int senderType, int senderInde
             0.0,
             0.0,
             1234.0, // prevent infinite looping
-            -1);
+			INVALID_DPID);
 
         goto execute;
     }
@@ -1414,7 +1414,7 @@ LABEL_18:
                 param1,
                 param2,
                 1234.0, // prevent infinite looping
-                -1);
+				INVALID_DPID);
         }
 
         goto execute;

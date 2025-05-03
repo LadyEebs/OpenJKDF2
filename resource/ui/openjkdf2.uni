@@ -66,6 +66,8 @@ MSGS 100          # <--- DON'T FORGET TO UPDATE THIS COUNT
    "GUIEXT_COOP"                    0 "Experimental Co-op"
    "GUIEXT_COOP_HINT"               0 "Launch server with actors enabled."
    "GUIEXT_SERVER_PORT"             0 "Server Port:"
+   "GUIEXT_FRIENDS_ONLY"            0 "Friends Only"
+   "GUIEXT_FRIENDS"                 0 "Friends"
 
    #"GUIEXT_"                0 ""
 
@@ -86,6 +88,21 @@ MSGS 100          # <--- DON'T FORGET TO UPDATE THIS COUNT
 
    "GUIEXT_RAGDOLL_PHYS"                        0 "Enable Ragdoll Physics"
    "GUIEXT_RAGDOLL_PHYS_HINT"                   0 "Enables ragdoll physics simulation when available."
+
+
+#*******************
+#  Multiplayer Lobbies
+#******************/
+	"GUIEXT_PAGE"                                0 "Page"
+	"GUIEXT_STATUS"                              0 "Status"
+	"GUIEXT_OFFLINE"                             0 "Offline"
+	"GUIEXT_ONLINE"                              0 "Online"
+	"GUIEXT_BUSY"                                0 "Busy"
+	"GUIEXT_AWAY"                                0 "Away"
+	"GUIEXT_SNOOZE"                              0 "Snoozing"
+	"GUIEXT_INVITE"                              0 "Invite"
+	"GUIEXT_VOTE"                                0 "Vote"
+	"GUIEXT_ADMIN"                               0 "Admin"
 
 #******************************
 #  Controls

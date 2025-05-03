@@ -42,50 +42,50 @@
 #define sithDSSThing_ProcessDestroyThing_ADDR (0x004F5410)
 #define sithSector_TransitionMovingThing_ADDR (0x004F5440)
 
-void sithDSSThing_SendPos(sithThing *pThing, int sendto_id, int bSync);
+void sithDSSThing_SendPos(sithThing *pThing, DPID sendto_id, int bSync);
 int sithDSSThing_ProcessPos(sithCogMsg *msg);
 
-void sithDSSThing_SendSyncThing(sithThing *pThing, int sendto_id, int mpFlags);
+void sithDSSThing_SendSyncThing(sithThing *pThing, DPID sendto_id, int mpFlags);
 int sithDSSThing_ProcessSyncThing(sithCogMsg *msg);
 
-void sithDSSThing_SendPlaySound(sithThing *followThing, rdVector3 *pos, sithSound *sound, float volume, float a5, int flags, int refid, int sendto_id, int mpFlags);
+void sithDSSThing_SendPlaySound(sithThing *followThing, rdVector3 *pos, sithSound *sound, float volume, float a5, int flags, int refid, DPID sendto_id, int mpFlags);
 int sithDSSThing_ProcessPlaySound(sithCogMsg *msg);
 
 void sithDSSThing_SendPlaySoundMode(sithThing *pThing, int16_t a2, int a3, float a4);
 int sithDSSThing_ProcessPlaySoundMode(sithCogMsg *msg);
 
-void sithDSSThing_SendPlayKey(sithThing *pThing, rdKeyframe *pRdKeyframe, int a3, int16_t a4, int a5, int a6, int a7);
+void sithDSSThing_SendPlayKey(sithThing *pThing, rdKeyframe *pRdKeyframe, int a3, int16_t a4, int a5, DPID a6, int a7);
 int sithDSSThing_ProcessPlayKey(sithCogMsg *msg);
 
-void sithDSSThing_SendPlayKeyMode(sithThing *pThing, int16_t idx1, int idx2, int sendtoId, int mpFlags);
+void sithDSSThing_SendPlayKeyMode(sithThing *pThing, int16_t idx1, int idx2, DPID sendtoId, int mpFlags);
 int sithDSSThing_ProcessPlayKeyMode(sithCogMsg *msg);
 
-void sithDSSThing_SendSetThingModel(sithThing *pThing, int sendtoId);
+void sithDSSThing_SendSetThingModel(sithThing *pThing, DPID sendtoId);
 int sithDSSThing_ProcessSetThingModel(sithCogMsg *msg);
 
-void sithDSSThing_SendStopKey(sithThing *pThing, int a2, float a3, int sendtoId, int mpFlags);
+void sithDSSThing_SendStopKey(sithThing *pThing, int a2, float a3, DPID sendtoId, int mpFlags);
 int sithDSSThing_ProcessStopKey(sithCogMsg *msg);
 
-void sithDSSThing_SendStopSound(sithPlayingSound *pSound, float a2, int a3, int a4);
+void sithDSSThing_SendStopSound(sithPlayingSound *pSound, float a2, DPID a3, int a4);
 int sithDSSThing_ProcessStopSound(sithCogMsg *msg);
 
-void sithDSSThing_SendFireProjectile(sithThing *pWeapon, sithThing *pProjectile, rdVector3 *pFireOffset, rdVector3 *pAimError, sithSound *pFireSound, int16_t anim, float scale, int16_t scaleFlags, float a9, int thingId, int sendtoId, int mpFlags, int idk);
+void sithDSSThing_SendFireProjectile(sithThing *pWeapon, sithThing *pProjectile, rdVector3 *pFireOffset, rdVector3 *pAimError, sithSound *pFireSound, int16_t anim, float scale, int16_t scaleFlags, float a9, int thingId, DPID sendtoId, int mpFlags, int idk);
 int sithDSSThing_ProcessFireProjectile(sithCogMsg *msg);
 int sithDSSThing_ProcessMOTSNew2(sithCogMsg *msg);
 
-void sithDSSThing_SendDeath(sithThing *sender, sithThing *receiver, char cause, int sendto_id, int mpFlags);
+void sithDSSThing_SendDeath(sithThing *sender, sithThing *receiver, char cause, DPID sendto_id, int mpFlags);
 int sithDSSThing_ProcessDeath(sithCogMsg *msg);
 
-void sithDSSThing_SendDamage(sithThing *pDamagedThing, sithThing *pDamagedBy, float amt, int16_t a4, int sendtoId, int mpFlags);
+void sithDSSThing_SendDamage(sithThing *pDamagedThing, sithThing *pDamagedBy, float amt, int16_t a4, DPID sendtoId, int mpFlags);
 int sithDSSThing_ProcessDamage(sithCogMsg *msg);
 
-void sithDSSThing_SendFullDesc(sithThing *thing, int sendto_id, int mpFlags);
+void sithDSSThing_SendFullDesc(sithThing *thing, DPID sendto_id, int mpFlags);
 int sithDSSThing_ProcessFullDesc(sithCogMsg *msg);
 
-void sithDSSThing_SendPathMove(sithThing *pThing, int16_t a2, float a3, int a4, int sendtoId, int mpFlags);
+void sithDSSThing_SendPathMove(sithThing *pThing, int16_t a2, float a3, int a4, DPID sendtoId, int mpFlags);
 int sithDSSThing_ProcessPathMove(sithCogMsg *msg);
 
-void sithDSSThing_SendSyncThingAttachment(sithThing *thing, int sendto_id, int mpFlags, int a4);
+void sithDSSThing_SendSyncThingAttachment(sithThing *thing, DPID sendto_id, int mpFlags, int a4);
 int sithDSSThing_ProcessSyncThingAttachment(sithCogMsg *msg);
 
 void sithDSSThing_SendTakeItem(sithThing *pItemThing, sithThing *pActor, int mpFlags);
@@ -94,7 +94,7 @@ int sithDSSThing_ProcessTakeItem(sithCogMsg *msg);
 void sithDSSThing_SendCreateThing(sithThing *pTemplate, sithThing *pThing, sithThing *pThing2, sithSector *pSector, rdVector3 *pPos, rdVector3 *pRot, int mpFlags, int bSync);
 int sithDSSThing_ProcessCreateThing(sithCogMsg *msg);
 
-void sithDSSThing_SendDestroyThing(int idx, int sendtoId);
+void sithDSSThing_SendDestroyThing(int idx, DPID sendtoId);
 int sithDSSThing_ProcessDestroyThing(sithCogMsg *msg);
 
 void sithDSSThing_TransitionMovingThing(sithThing *pThing, rdVector3 *pPos, sithSector *pSector);

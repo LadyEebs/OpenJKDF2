@@ -19,7 +19,7 @@
 #include "Devices/sithComm.h"
 #include "jk.h"
 
-void sithDSSThing_SendPos(sithThing *pThing, int sendto_id, int bSync)
+void sithDSSThing_SendPos(sithThing *pThing, DPID sendto_id, int bSync)
 {
     rdVector3 lookOrientation; // [esp+4h] [ebp-Ch] BYREF
 
@@ -125,7 +125,7 @@ int sithDSSThing_ProcessPos(sithCogMsg *msg)
 }
 
 // MoTS altered
-void sithDSSThing_SendSyncThing(sithThing *pThing, int sendto_id, int mpFlags)
+void sithDSSThing_SendSyncThing(sithThing *pThing, DPID sendto_id, int mpFlags)
 {
     NETMSG_START;
 
@@ -321,7 +321,7 @@ int sithDSSThing_ProcessSyncThing(sithCogMsg *msg)
     return 1;
 }
 
-void sithDSSThing_SendPlaySound(sithThing *followThing, rdVector3 *pos, sithSound *sound, float volume, float a5, int flags, int refid, int sendto_id, int mpFlags)
+void sithDSSThing_SendPlaySound(sithThing *followThing, rdVector3 *pos, sithSound *sound, float volume, float a5, int flags, int refid, DPID sendto_id, int mpFlags)
 {
     NETMSG_START;
 
@@ -404,7 +404,7 @@ void sithDSSThing_SendPlaySoundMode(sithThing *pThing, int16_t a2, int a3, float
 
     NETMSG_END(DSS_PLAYSOUNDMODE);
 
-    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 255, 0);
+    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 255, 0);
 }
 
 int sithDSSThing_ProcessPlaySoundMode(sithCogMsg *msg)
@@ -430,7 +430,7 @@ int sithDSSThing_ProcessPlaySoundMode(sithCogMsg *msg)
     return 1;
 }
 
-void sithDSSThing_SendPlayKey(sithThing *pThing, rdKeyframe *pRdKeyframe, int a3, int16_t a4, int a5, int a6, int a7)
+void sithDSSThing_SendPlayKey(sithThing *pThing, rdKeyframe *pRdKeyframe, int a3, int16_t a4, int a5, DPID a6, int a7)
 {
     NETMSG_START;
 
@@ -480,7 +480,7 @@ int sithDSSThing_ProcessPlayKey(sithCogMsg *msg)
     return 0;
 }
 
-void sithDSSThing_SendPlayKeyMode(sithThing *pThing, int16_t idx1, int idx2, int sendtoId, int mpFlags)
+void sithDSSThing_SendPlayKeyMode(sithThing *pThing, int16_t idx1, int idx2, DPID sendtoId, int mpFlags)
 {
     NETMSG_START;
 
@@ -511,7 +511,7 @@ int sithDSSThing_ProcessPlayKeyMode(sithCogMsg *msg)
     return 1;
 }
 
-void sithDSSThing_SendSetThingModel(sithThing *pThing, int sendtoId)
+void sithDSSThing_SendSetThingModel(sithThing *pThing, DPID sendtoId)
 {
     if (!pThing || pThing->rdthing.type != RD_THINGTYPE_MODEL )
         return;
@@ -550,7 +550,7 @@ int sithDSSThing_ProcessSetThingModel(sithCogMsg *msg)
     return 0;
 }
 
-void sithDSSThing_SendStopKey(sithThing *pThing, int a2, float a3, int sendtoId, int mpFlags)
+void sithDSSThing_SendStopKey(sithThing *pThing, int a2, float a3, DPID sendtoId, int mpFlags)
 {
     NETMSG_START;
 
@@ -592,7 +592,7 @@ int sithDSSThing_ProcessStopKey(sithCogMsg *msg)
     return 1;
 }
 
-void sithDSSThing_SendStopSound(sithPlayingSound *pSound, float a2, int a3, int a4)
+void sithDSSThing_SendStopSound(sithPlayingSound *pSound, float a2, DPID a3, int a4)
 {
     NETMSG_START;
 
@@ -625,7 +625,7 @@ int sithDSSThing_ProcessStopSound(sithCogMsg *msg)
 }
 
 // MoTS altered
-void sithDSSThing_SendFireProjectile(sithThing *pWeapon, sithThing *pProjectile, rdVector3 *pFireOffset, rdVector3 *pAimError, sithSound *pFireSound, int16_t anim, float scale, int16_t scaleFlags, float a9, int thingId, int sendtoId, int mpFlags, int idk)
+void sithDSSThing_SendFireProjectile(sithThing *pWeapon, sithThing *pProjectile, rdVector3 *pFireOffset, rdVector3 *pAimError, sithSound *pFireSound, int16_t anim, float scale, int16_t scaleFlags, float a9, int thingId, DPID sendtoId, int mpFlags, int idk)
 {
     NETMSG_START;
 
@@ -760,7 +760,7 @@ int sithDSSThing_ProcessMOTSNew2(sithCogMsg *msg)
     return 0;
 }
 
-void sithDSSThing_SendDeath(sithThing *sender, sithThing *receiver, char cause, int sendto_id, int mpFlags)
+void sithDSSThing_SendDeath(sithThing *sender, sithThing *receiver, char cause, DPID sendto_id, int mpFlags)
 {
     NETMSG_START;
     
@@ -806,7 +806,7 @@ int sithDSSThing_ProcessDeath(sithCogMsg *msg)
     return 0;
 }
 
-void sithDSSThing_SendDamage(sithThing *pDamagedThing, sithThing *pDamagedBy, float amt, int16_t a4, int sendtoId, int mpFlags)
+void sithDSSThing_SendDamage(sithThing *pDamagedThing, sithThing *pDamagedBy, float amt, int16_t a4, DPID sendtoId, int mpFlags)
 {
     NETMSG_START;
 
@@ -848,7 +848,7 @@ int sithDSSThing_ProcessDamage(sithCogMsg *msg)
 }
 
 // MoTS altered
-void sithDSSThing_SendFullDesc(sithThing *thing, int sendto_id, int mpFlags)
+void sithDSSThing_SendFullDesc(sithThing *thing, DPID sendto_id, int mpFlags)
 {
     NETMSG_START;
 
@@ -1252,7 +1252,7 @@ int sithDSSThing_ProcessFullDesc(sithCogMsg *msg)
     return 1;
 }
 
-void sithDSSThing_SendPathMove(sithThing *pThing, int16_t a2, float a3, int a4, int sendtoId, int mpFlags)
+void sithDSSThing_SendPathMove(sithThing *pThing, int16_t a2, float a3, int a4, DPID sendtoId, int mpFlags)
 {
     rdVector3 out;
 
@@ -1324,7 +1324,7 @@ int sithDSSThing_ProcessPathMove(sithCogMsg *msg)
     return 1;
 }
 
-void sithDSSThing_SendSyncThingAttachment(sithThing *thing, int sendto_id, int mpFlags, int a4)
+void sithDSSThing_SendSyncThingAttachment(sithThing *thing, DPID sendto_id, int mpFlags, int a4)
 {
     NETMSG_START;
     
@@ -1453,7 +1453,7 @@ LABEL_12:
         if ( pItemThing2->type == SITH_THING_ITEM && (pItemThing2->thingflags & (SITH_TF_DISABLED|SITH_TF_WILLBEREMOVED)) == 0 )
         {
             sithComm_netMsgTmp.netMsg.cogMsgId = DSS_TAKEITEM2;
-            sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, 1, 1);
+            sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 1, 1);
             goto LABEL_12;
         }
     }
@@ -1464,7 +1464,7 @@ int sithDSSThing_ProcessTakeItem(sithCogMsg *msg)
     int v1; // ebx
     sithThing *v2; // edi
     sithThing *v4; // eax
-    int v6; // [esp-Ch] [ebp-1Ch]
+	DPID v6; // [esp-Ch] [ebp-1Ch]
 
     v1 = msg->pktData[0];
     v2 = sithThing_GetById(v1);
@@ -1486,7 +1486,7 @@ int sithDSSThing_ProcessTakeItem(sithCogMsg *msg)
             if ( v2->type != SITH_THING_ITEM || (v2->thingflags & (SITH_TF_DISABLED|SITH_TF_WILLBEREMOVED)) != 0 )
                 return 1;
             msg->netMsg.cogMsgId = DSS_TAKEITEM2;
-            sithComm_SendMsgToPlayer(msg, -1, 1, 1);
+            sithComm_SendMsgToPlayer(msg, INVALID_DPID, 1, 1);
         }
         sithItem_Take(v2, v4, 1);
         return 1;
@@ -1518,7 +1518,7 @@ void sithDSSThing_SendCreateThing(sithThing *pTemplate, sithThing *pThing, sithT
     NETMSG_PUSHS32(pThing->thing_id);
 
     NETMSG_END(DSS_CREATETHING);
-    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, mpFlags, bSync);
+    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, mpFlags, bSync);
 }
 
 int sithDSSThing_ProcessCreateThing(sithCogMsg *msg)
@@ -1560,7 +1560,7 @@ int sithDSSThing_ProcessCreateThing(sithCogMsg *msg)
     return 0;
 }
 
-void sithDSSThing_SendDestroyThing(int idx, int sendtoId)
+void sithDSSThing_SendDestroyThing(int idx, DPID sendtoId)
 {
     NETMSG_START;
 
@@ -1696,6 +1696,6 @@ void sithDSSThing_SendMOTSNew1(sithThing* pThing1, sithThing* pThing2, sithThing
     NETMSG_PUSHS32(psVar1->thing_id);
 
     NETMSG_END(DSS_MOTS_NEW_1);
-    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, -1, mpFlags, param_8);
+    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, mpFlags, param_8);
 }
 

@@ -93,7 +93,7 @@ void stdComm_Basic_Startup()
     jk_snwprintf(jkGuiMultiplayer_aConnections[0].name, 0x80, L"OpenJKDF2 TCP");
     stdComm_dword_8321E0 = 0;
 
-    memset(jkGuiMultiplayer_aEntries, 0, sizeof(jkMultiEntry) * 32);
+    memset(jkGuiMultiplayer_aEntries, 0, sizeof(stdCommSession) * 32);
     dplay_dword_55D618 = 1;
     jk_snwprintf(jkGuiMultiplayer_aEntries[0].serverName, 0x20, L"OpenJKDF2 Loopback");
     stdString_snprintf(jkGuiMultiplayer_aEntries[0].episodeGobName, 0x20, "JK1MP");
@@ -295,7 +295,7 @@ int DirectPlay_Receive(int *pIdOut, int *pMsgIdOut, int *pLenOut)
             struct
             {
                 int type;
-                jkMultiEntry3 entry;
+                stdCommSession3 entry;
             } outPkt;
 
             memset(&outPkt, 0, sizeof(outPkt));
@@ -536,7 +536,7 @@ void DirectPlay_Close()
     close(DirectPlay_sock);
 }
 
-int DirectPlay_OpenHost(jkMultiEntry* a)
+int DirectPlay_OpenHost(stdCommSession* a)
 {
     MyDplay_addr.sin_family = AF_INET;
     MyDplay_addr.sin_port = htons(SITHDPLAY_PORT); /*converts short to
@@ -602,7 +602,7 @@ int DirectPlay_OpenHost(jkMultiEntry* a)
     return 0;
 }
 
-int DirectPlay_GetSession_passwordidk(jkMultiEntry* a)
+int DirectPlay_GetSession_passwordidk(stdCommSession* a)
 {
     return 1;
 }
@@ -612,7 +612,7 @@ int stdComm_EnumSessions(int a, void* b)
     struct
     {
         int type;
-        jkMultiEntry3 entry;
+        stdCommSession3 entry;
     } inPkt;
 
     Hack_ResetClients();
@@ -658,7 +658,7 @@ void DirectPlay_Destroy()
     
 }
 
-int DirectPlay_IdkSessionDesc(jkMultiEntry* pEntry)
+int DirectPlay_GetSessionDesc(stdCommSession* pEntry)
 {
     //TODO
     return 1;

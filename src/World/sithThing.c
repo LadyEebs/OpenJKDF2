@@ -2203,28 +2203,28 @@ void sithThing_Sync()
 		if (sithNet_aSyncFlags[v0] & THING_SYNC_FULL)
 		{
             // Added: this used to be outside the loop?
-            sithDSSThing_SendFullDesc(sithNet_aSyncThings[v0], -1, 255);
+            sithDSSThing_SendFullDesc(sithNet_aSyncThings[v0], INVALID_DPID, 255);
             //return; // Removed, this used to stop the loop.
         }
         else
         {
 			if (sithNet_aSyncFlags[v0] & THING_SYNC_STATE)
-                sithDSSThing_SendSyncThing(sithNet_aSyncThings[v0], -1, 255);
+                sithDSSThing_SendSyncThing(sithNet_aSyncThings[v0], INVALID_DPID, 255);
 
 			if (sithNet_aSyncFlags[v0] & THING_SYNC_POS)
-                sithDSSThing_SendPos(sithNet_aSyncThings[v0], -1, 0);
+                sithDSSThing_SendPos(sithNet_aSyncThings[v0], INVALID_DPID, 0);
         }
 
         // Added: Co-op
         if (sithMulti_multiModeFlags & MULTIMODEFLAG_COOP && (sithNet_aSyncFlags[v0] & THING_SYNC_AI)) {
             if (sithNet_aSyncThings[v0]->actor && sithNet_aSyncThings[v0]->actor->pAIClass)
-                sithDSS_SendAIStatus(sithNet_aSyncThings[v0]->actor, -1, 1);
+                sithDSS_SendAIStatus(sithNet_aSyncThings[v0]->actor, INVALID_DPID, 1);
         }
 
         // Added: Co-op
         if (sithMulti_multiModeFlags & MULTIMODEFLAG_COOP && (sithNet_aSyncFlags[v0] & THING_SYNC_PUPPET)) {
             if (sithNet_aSyncThings[v0]->rdthing.puppet)
-                sithDSS_SendSyncPuppet(sithNet_aSyncThings[v0], -1, 255);
+                sithDSS_SendSyncPuppet(sithNet_aSyncThings[v0], INVALID_DPID, 255);
         }
     }
 

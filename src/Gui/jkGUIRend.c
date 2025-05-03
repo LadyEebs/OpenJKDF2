@@ -41,7 +41,7 @@ static int jkGuiRend_bOpen = 0;
 static int jkGuiRend_HandlerIsSet = 0;
 static int jkGuiRend_fillColor = 0;
 static int jkGuiRend_paletteChecksum = 0;
-static int jkGuiRend_dword_85620C = 0;
+int jkGuiRend_dword_85620C = 0;
 static int jkGuiRend_lastKeyScancode = 0;
 static int jkGuiRend_mouseX = 0;
 static int jkGuiRend_mouseY = 0;
@@ -875,7 +875,14 @@ int jkGuiRend_InvokeEvent(jkGuiElement *element, jkGuiMenu *menu, int eventType,
 {
     jkGuiEventHandlerFunc_t fnEventHandler;
 
-    if ( element && (!eventType || element->bIsVisible && !element->enableHover) && (fnEventHandler = jkGuiRend_elementHandlers[element->type].fnEventHandler) != 0 )
+	// added
+	fnEventHandler = element ? element->eventFuncOverride : NULL;
+	if (!fnEventHandler && element)
+	{
+		fnEventHandler = jkGuiRend_elementHandlers[element->type].fnEventHandler;
+	}
+
+    if ( element && (!eventType || element->bIsVisible && !element->enableHover) && fnEventHandler != 0 )
         return fnEventHandler(element, menu, eventType, eventParam);
     else
         return 0;

@@ -814,7 +814,7 @@ DirectPlay_Send	.text	0042FBB0	0000002B	00000000	00000010	R	.	.	.	.	.	T	.
 DirectPlay_Receive	.text	0042FBE0	000000A6	00000010	0000000C	R	.	.	.	.	.	T	.
 DirectPlay_OpenHost	.text	0042FC90	00000130	00000158	00000004	R	.	.	.	.	.	T	.
 DirectPlay_GetSession_passwordidk	.text	0042FDC0	00000111	00000118	00000004	R	.	.	.	.	.	.	.
-DirectPlay_IdkSessionDesc	.text	0042FEE0	00000063	00000014	00000004	R	.	.	.	.	.	.	.
+DirectPlay_GetSessionDesc	.text	0042FEE0	00000063	00000014	00000004	R	.	.	.	.	.	.	.
 DirectPlay_SetSessionFlagidk	.text	0042FF50	00000091	00000014	00000004	R	.	.	.	.	.	.	.
 DirectPlay_SetSessionDesc	.text	0042FFF0	000000DF	00000118	00000008	R	.	.	.	.	.	T	.
 DirectPlay_Open	.text	004300D0	000000A7	00000058	00000008	R	.	.	.	.	.	T	.

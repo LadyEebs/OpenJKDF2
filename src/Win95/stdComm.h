@@ -11,6 +11,7 @@ extern "C" {
 #include "Platform/Networking/Basic/stdComm_basic.h"
 #include "Platform/Networking/GNS/stdComm_GNS.h"
 #include "Platform/Networking/None/stdComm_none.h"
+#include "Modules/std/Steam/stdComm_Steam.h"
 
 #define stdComm_Startup_ADDR (0x004C9530)
 #define stdComm_Shutdown_ADDR (0x004C9550)
@@ -62,18 +63,27 @@ extern "C" {
 #define DirectPlay_sub_4308C0_ADDR (0x004308C0)
 #define DirectPlay_parseSessionDescidk_ADDR (0x004308F0)
 
+extern DPID stdComm_dplayIdSelf;
+extern stdComm_Friend* DirectPlay_apFriends;
+extern uint32_t DirectPlay_numFriends;
+
+#ifdef PLATFORM_STEAM
+extern stdCommSession* jkGuiMultiplayer_aEntries;
+#else
+extern stdCommSession jkGuiMultiplayer_aEntries[32];
+#endif
 
 int stdComm_Startup();
 void stdComm_Shutdown();
 HRESULT stdComm_EnumSessions2(void);
-int stdComm_seed_idk(jkMultiEntry *pEntry);
-int stdComm_CreatePlayer(jkMultiEntry *pEntry);
+int stdComm_seed_idk(stdCommSession *pEntry);
+int stdComm_CreatePlayer(stdCommSession *pEntry);
 int stdComm_Recv(sithCogMsg *msg);
 int stdComm_DoReceive();
-int stdComm_SendToPlayer(sithCogMsg *msg, int sendto_id);
+int stdComm_SendToPlayer(sithCogMsg *msg, DPID sendto_id);
 int DirectPlay_EnumPlayersCallback(DPID dpId, DWORD dwPlayerType, LPCDPNAME lpName, DWORD dwFlags, LPVOID lpContext);
 
-void stdComm_cogMsg_SendEnumPlayers(int sendtoId);
+void stdComm_cogMsg_SendEnumPlayers(DPID sendtoId);
 int stdComm_cogMsg_HandleEnumPlayers(sithCogMsg *msg);
 int stdComm_EarlyInit();
 
@@ -81,7 +91,12 @@ int stdComm_EarlyInit();
 
 //static int (*stdComm_Startup)() = (void*)stdComm_Startup_ADDR;
 
+#ifdef PLATFORM_STEAM
+void stdComm_Invite(DPID id);
 
+int stdComm_EnumFriends();
+int DirectPlay_EnumFriends();
+#endif
 
 //static void (*stdComm_EnumSessions2)() = (void*)stdComm_EnumSessions2_ADDR;
 
@@ -111,7 +126,7 @@ static int (*stdComm_EnumSessions)(int, void*) = (void*)stdComm_EnumSessions_ADD
 static void (*DirectPlay_EnumPlayers)(int a) = (void*)DirectPlay_EnumPlayers_ADDR;
 static int (*DirectPlay_StartSession)(void*, void*) = (void*)DirectPlay_StartSession_ADDR;
 static void (*DirectPlay_Destroy)() = (void*)DirectPlay_Destroy_ADDR;
-static int (*DirectPlay_IdkSessionDesc)(jkMultiEntry* pEntry) = (void*)DirectPlay_IdkSessionDesc_ADDR;
+static int (*DirectPlay_IdkSessionDesc)(stdCommSession* pEntry) = (void*)DirectPlay_IdkSessionDesc_ADDR;
 #else
 
 int stdComm_OpenConnection(void* a);
@@ -124,7 +139,7 @@ void stdComm_Close();
 //BOOL stdComm_SendToPlayer(void *a1, int sendto_id);
 int DirectPlay_SendLobbyMessage(void* pPkt, uint32_t pktLen);
 int DirectPlay_EnumSessions2();
-int DirectPlay_Receive(int *pIdOut, int *pMsgIdOut, int *pLenOut);
+int DirectPlay_Receive(DPID *pIdOut, void* pMsgIdOut, int *pLenOut);
 BOOL DirectPlay_Send(DPID idFrom, DPID idTo, void *lpData, DWORD dwDataSize);
 void DirectPlay_SetSessionDesc(const char* a1, DWORD maxPlayers);
 BOOL DirectPlay_SetSessionFlagidk(int a1);
@@ -132,13 +147,18 @@ BOOL DirectPlay_Startup();
 int DirectPlay_EarlyInit(wchar_t* pwIdk, wchar_t* pwPlayerName);
 DPID DirectPlay_CreatePlayer(wchar_t* pwIdk, int idk2);
 void DirectPlay_Close();
-int DirectPlay_OpenHost(jkMultiEntry* a);
-int DirectPlay_GetSession_passwordidk(jkMultiEntry* a);
+int DirectPlay_OpenHost(stdCommSession* a);
+int DirectPlay_GetSession_passwordidk(stdCommSession* a);
 int stdComm_EnumSessions(int a, void* b);
 void DirectPlay_EnumPlayers(int a);
 int DirectPlay_StartSession(void* a, void* b);
 void DirectPlay_Destroy();
-int DirectPlay_IdkSessionDesc(jkMultiEntry* pEntry);
+int DirectPlay_IdkSessionDesc(stdCommSession* pEntry);
+
+#ifdef PLATFORM_STEAM
+void DirectPlay_Invite(DPID id);
+#endif
+
 #endif
 
 #ifdef __cplusplus

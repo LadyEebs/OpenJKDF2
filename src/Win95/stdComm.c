@@ -4,6 +4,18 @@
 #include "General/stdString.h"
 #include "jk.h"
 
+#include "stdPlatform.h"
+
+stdComm_Friend* DirectPlay_apFriends = NULL;
+uint32_t DirectPlay_numFriends;
+
+DPID stdComm_dplayIdSelf;
+
+#ifdef PLATFORM_STEAM
+stdCommSession* jkGuiMultiplayer_aEntries = NULL;
+#else
+stdCommSession jkGuiMultiplayer_aEntries[32];
+#endif
 
 int stdComm_Startup()
 {
@@ -19,6 +31,9 @@ int stdComm_Startup()
 #endif
 #ifdef PLATFORM_GNS
     stdComm_GNS_Startup();
+#endif
+#ifdef PLATFORM_STEAM
+	stdComm_Steam_Startup();
 #endif
 #ifdef PLATFORM_NOSOCKETS
     stdComm_None_Startup();
@@ -38,20 +53,22 @@ void stdComm_Shutdown()
 #ifdef PLATFORM_GNS
     stdComm_GNS_Shutdown();
 #endif
+#ifdef PLATFORM_STEAM
+	stdComm_Steam_Shutdown();
+#endif
 }
 
 int stdComm_EarlyInit()
 {
-    int result = DirectPlay_EarlyInit(stdComm_waIdk, sithMulti_name);
-    stdComm_dword_8321F8 = result;
-    if (result)
+    stdComm_dword_8321F8 = DirectPlay_EarlyInit(stdComm_waIdk, sithMulti_name);
+    if (stdComm_dword_8321F8)
     {
+		stdPlatform_Printf("stdComm_EarlyInit: joining game %ls", stdComm_waIdk);
         stdComm_dword_8321DC = 1;
         stdComm_dword_8321E0 = 1;
         stdComm_dplayIdSelf = DirectPlay_CreatePlayer(jkPlayer_playerShortName, 0);
         if (stdComm_dplayIdSelf)
         {
-            result = stdComm_dword_8321F8;
             if (stdComm_dword_8321F8 == 1)
             {
                 stdComm_bIsServer = 1;
@@ -64,10 +81,10 @@ int stdComm_EarlyInit()
         else
         {
             DirectPlay_Close();
-            result = 0;
+			return 0;
         }
     }
-    return result;
+    return stdComm_dword_8321F8;
 }
 
 HRESULT stdComm_EnumSessions2(void)
@@ -75,7 +92,7 @@ HRESULT stdComm_EnumSessions2(void)
     return DirectPlay_EnumSessions2();
 }
 
-int stdComm_seed_idk(jkMultiEntry *pEntry)
+int stdComm_seed_idk(stdCommSession *pEntry)
 {
     jkGuiMultiplayer_checksumSeed = (__int64)(_frand() * 4294967300.0);
     pEntry->checksumSeed = jkGuiMultiplayer_checksumSeed;
@@ -86,7 +103,7 @@ int stdComm_seed_idk(jkMultiEntry *pEntry)
     return 0x80004005;
 }
 
-int stdComm_CreatePlayer(jkMultiEntry *pEntry)
+int stdComm_CreatePlayer(stdCommSession *pEntry)
 {
     HRESULT result; // eax
 
@@ -99,7 +116,9 @@ int stdComm_CreatePlayer(jkMultiEntry *pEntry)
         stdComm_dplayIdSelf = DirectPlay_CreatePlayer(jkPlayer_playerShortName, 0);
         if ( stdComm_dplayIdSelf )
         {
+		#ifndef PLATFORM_STEAM
             stdComm_dplayIdSelf = 1; // HACK
+		#endif
             stdComm_bIsServer = 1;
             stdComm_dword_8321E0 = 1;
             result = 0;
@@ -121,12 +140,12 @@ int stdComm_Recv(sithCogMsg *msg)
 
     pMsg = msg;
     msgBytes = 2052;
-    int playerId = 0;
+	DPID playerId = 0;
 
     _memset(&msg->netMsg.cogMsgId, 0, msgBytes); // Added
 
     // TODO I got a struct offset wrong.....
-    ret = DirectPlay_Receive(&playerId, (int*)&msg->netMsg.cogMsgId, &msgBytes);
+    ret = DirectPlay_Receive(&playerId, (void*)&msg->netMsg.cogMsgId, &msgBytes);
     if ( ret != -1 )
     {
         if ( !ret )
@@ -156,7 +175,7 @@ int stdComm_DoReceive()
 {
     int result; // eax
     int v1; // [esp+0h] [ebp-8h] BYREF
-    int v2; // [esp+4h] [ebp-4h] BYREF
+    DPID v2; // [esp+4h] [ebp-4h] BYREF
 
     v1 = 2048;
     do {
@@ -166,10 +185,10 @@ int stdComm_DoReceive()
     return result;
 }
 
-int stdComm_SendToPlayer(sithCogMsg *msg, int sendto_id)
+int stdComm_SendToPlayer(sithCogMsg *msg, DPID sendto_id)
 {
     uint32_t v2 = msg->netMsg.msg_size + 4;
-    if ( sendto_id != -1 )
+    if ( sendto_id != INVALID_DPID )
     {
         int ret = DirectPlay_Send(stdComm_dplayIdSelf, sendto_id, &msg->netMsg.cogMsgId, v2);
         if ( !ret )
@@ -186,7 +205,11 @@ int stdComm_SendToPlayer(sithCogMsg *msg, int sendto_id)
     for (int i = 0; i < jkPlayer_maxPlayers; i++)
     {
         sithPlayerInfo* v5 = &jkPlayer_playerInfos[i];
+	#ifdef PLATFORM_STEAM
+		if ((v5->flags & 1) != 0 && v5->net_id != stdComm_dplayIdSelf)
+	#else
         if ( !i || ((v5->flags & 1) != 0 && v5->net_id != stdComm_dplayIdSelf) ) // Added: always allow sending to 0, for dedicated servers' fake player
+	#endif
         {
             DirectPlay_Send(stdComm_dplayIdSelf, v5->net_id, &msg->netMsg.cogMsgId, v2);
             ++stdComm_dword_8321F4;
@@ -219,3 +242,15 @@ int DirectPlay_EnumPlayersCallback(DPID dpId, DWORD dwPlayerType, LPCDPNAME lpNa
     DirectPlay_numPlayers++;
     return 1;
 }
+
+#ifdef PLATFORM_STEAM
+int stdComm_EnumFriends()
+{
+	return DirectPlay_EnumFriends();
+}
+
+void stdComm_Invite(DPID id)
+{
+	DirectPlay_Invite(id);
+}
+#endif

@@ -64,12 +64,12 @@ void Hack_ResetClients();
 typedef struct GNSInfoPacket
 {
     int id;
-    jkMultiEntry entry;
+    stdCommSession entry;
 } GNSInfoPacket;
 #pragma pack(pop)
 
-static jkMultiEntry sithDplayGNS_storedEntryEnum;
-static jkMultiEntry sithDplayGNS_storedEntry;
+static stdCommSession sithDplayGNS_storedEntryEnum;
+static stdCommSession sithDplayGNS_storedEntry;
 extern wchar_t jkGuiMultiplayer_ipText[256];
 char jkGuiMultiplayer_ipText_conv[256];
 static int sithDplayGNS_numEnumd = 0;
@@ -1093,7 +1093,7 @@ void stdComm_GNS_Startup()
         jk_snwprintf(jkGuiMultiplayer_aConnections[0].name, 0x80, L"Screaming Into The Void (GNS Failed)");
         stdComm_dword_8321E0 = 0;
 
-        memset(jkGuiMultiplayer_aEntries, 0, sizeof(jkMultiEntry) * 32);
+        memset(jkGuiMultiplayer_aEntries, 0, sizeof(stdCommSession) * 32);
         dplay_dword_55D618 = 0;
         return;
     }
@@ -1102,7 +1102,7 @@ void stdComm_GNS_Startup()
     jk_snwprintf(jkGuiMultiplayer_aConnections[0].name, 0x80, L"Valve GNS");
     stdComm_dword_8321E0 = 0;
 
-    memset(jkGuiMultiplayer_aEntries, 0, sizeof(jkMultiEntry) * 32);
+    memset(jkGuiMultiplayer_aEntries, 0, sizeof(stdCommSession) * 32);
     dplay_dword_55D618 = 0;
     /*jk_snwprintf(jkGuiMultiplayer_aEntries[0].serverName, 0x20, L"OpenJKDF2 Loopback");
     stdString_snprintf(jkGuiMultiplayer_aEntries[0].episodeGobName, 0x20, "JK1MP");
@@ -1271,7 +1271,7 @@ void DirectPlay_Close()
     
 }
 
-int DirectPlay_OpenHost(jkMultiEntry* pEntry)
+int DirectPlay_OpenHost(stdCommSession* pEntry)
 {
     sithDplayGNS_storedEntry = *pEntry;
 
@@ -1286,7 +1286,7 @@ int DirectPlay_OpenHost(jkMultiEntry* pEntry)
     return 0;
 }
 
-int DirectPlay_GetSession_passwordidk(jkMultiEntry* pEntry)
+int DirectPlay_GetSession_passwordidk(stdCommSession* pEntry)
 {
     sithDplayGNS_storedEntry = *pEntry;
 
@@ -1457,7 +1457,7 @@ void DirectPlay_Destroy()
     
 }
 
-int DirectPlay_IdkSessionDesc(jkMultiEntry* pEntry)
+int DirectPlay_GetSessionDesc(stdCommSession* pEntry)
 {
     //TODO
     return 1;

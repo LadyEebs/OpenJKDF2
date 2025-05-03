@@ -51,6 +51,7 @@ extern "C" {
 #define NETMSG_PUSHS16(x) {*(int16_t*)craftingPacket = (int16_t)(x); craftingPacket += sizeof(int16_t);};
 #define NETMSG_PUSHU32(x) {*(uint32_t*)craftingPacket = (uint32_t)(x); craftingPacket += sizeof(uint32_t);};
 #define NETMSG_PUSHS32(x) {*(int32_t*)craftingPacket = (int32_t)(x); craftingPacket += sizeof(int32_t);};
+#define NETMSG_PUSHU64(x) {*(uint64_t*)craftingPacket = (uint64_t)(x); craftingPacket += sizeof(uint64_t);};
 #define NETMSG_PUSHF32(x) {*(float*)craftingPacket = (float)(x); craftingPacket += sizeof(float);};
 #define NETMSG_PUSHVEC2(x) {*(rdVector2*)craftingPacket = (x); craftingPacket += sizeof(rdVector2);};
 #define NETMSG_PUSHVEC3(x) {*(rdVector3*)craftingPacket = (x); craftingPacket += sizeof(rdVector3);};
@@ -74,7 +75,7 @@ extern "C" {
 
 #define NETMSG_IN_START(x) intptr_t _readingPacket = (intptr_t)&x->pktData[0]; uint8_t _readingOutU8; \
 uint16_t _readingOutU16; int16_t _readingOutS16; uint32_t _readingOutU32; \
-int32_t _readingOutS32; float _readingOutFloat; rdVector2 _readingOutV2; \
+int32_t _readingOutS32; uint64_t _readingOutU64; float _readingOutFloat; rdVector2 _readingOutV2; \
 rdVector3 _readingOutV3; rdVector3i _readingOutV3i; rdMatrix34 _readingOutM34;
 
 #define NETMSG_POPU8() (_readingOutU8 = *(uint8_t*)_readingPacket, _readingPacket += sizeof(uint8_t), _readingOutU8)
@@ -82,6 +83,7 @@ rdVector3 _readingOutV3; rdVector3i _readingOutV3i; rdMatrix34 _readingOutM34;
 #define NETMSG_POPS16() (_readingOutS16 = *(int16_t*)_readingPacket, _readingPacket += sizeof(int16_t), _readingOutS16)
 #define NETMSG_POPU32() (_readingOutU32 = *(uint32_t*)_readingPacket, _readingPacket += sizeof(uint32_t), _readingOutU32)
 #define NETMSG_POPS32() (_readingOutS32 = *(int32_t*)_readingPacket, _readingPacket += sizeof(int32_t), _readingOutS32)
+#define NETMSG_POPU64() (_readingOutU64 = *(uint64_t*)_readingPacket, _readingPacket += sizeof(uint64_t), _readingOutU64)
 #define NETMSG_POPF32() (_readingOutFloat = *(float*)_readingPacket, _readingPacket += sizeof(float), _readingOutFloat)
 #define NETMSG_POPVEC2() (_readingOutV2 = *(rdVector2*)_readingPacket, _readingPacket += sizeof(rdVector2), _readingOutV2)
 #define NETMSG_POPVEC3() (_readingOutV3 = *(rdVector3*)_readingPacket, _readingPacket += sizeof(rdVector3), _readingOutV3)
@@ -105,27 +107,27 @@ HRESULT sithMulti_CreatePlayer(const wchar_t *a1, const wchar_t *a2, const char 
 int sithMulti_Startup();
 void sithMulti_FreeThing(int a1);
 void sithMulti_Shutdown();
-int sithMulti_SendJoinRequest(int sendto_id);
+int sithMulti_SendJoinRequest(DPID sendto_id);
 int sithMulti_GetSpawnIdx(sithThing *pPlayerThing);
 void sithMulti_SyncScores();
 void sithMulti_HandleDeath(sithPlayerInfo *pPlayerInfo, sithThing *pKilledThing, sithThing *pKilledByThing);
 void sithMulti_EndLevel(unsigned int a1, int a2);
-void sithMulti_SendWelcome(int a1, int playerIdx, int sendtoId);
-void sithMulti_SendQuit(int idx);
+void sithMulti_SendWelcome(DPID a1, int playerIdx, DPID sendtoId);
+void sithMulti_SendQuit(DPID idx);
 int sithMulti_LobbyMessage();
 int sithMulti_ProcessJoinLeave(sithCogMsg *msg);
 int sithMulti_ProcessPing(sithCogMsg *msg);
 int sithMulti_ProcessPingResponse(sithCogMsg *msg);
 int sithMulti_ProcessQuit(sithCogMsg *msg);
 int sithMulti_ServerLeft(int a, sithEventInfo* b);
-void sithMulti_SendLeaveJoin(int sendtoId, int bSync);
+void sithMulti_SendLeaveJoin(DPID sendtoId, int bSync);
 int sithMulti_ProcessLeaveJoin(sithCogMsg *msg);
-void sithMulti_sub_4CA470(int a1);
+void sithMulti_sub_4CA470(DPID a1);
 void sithMulti_InitTick(unsigned int tickrate);
 int sithMulti_ProcessJoinRequest(sithCogMsg *msg);
 void sithMulti_HandleTimeLimit(int deltaMs);
-uint32_t sithMulti_IterPlayersnothingidk(int net_id);
-int sithMulti_SendPing(int sendtoId);
+uint32_t sithMulti_IterPlayersnothingidk(DPID net_id);
+int sithMulti_SendPing(DPID sendtoId);
 // Added: co-op
 void sithMulti_CheckForCheckpointUpdate(sithSector* sector);
 

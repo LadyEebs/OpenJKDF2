@@ -165,7 +165,7 @@ LABEL_32:
         return amount;
     }
     if ( sithComm_multiplayerFlags )
-        sithDSSThing_SendDeath(sender, receiver_, 0, -1, 255);
+        sithDSSThing_SendDeath(sender, receiver_, 0, INVALID_DPID, 255);
     sithActor_SpawnDeadBodyMaybe(sender, receiver_, flags, joint);
     return amount - sender->actorParams.health;
 }

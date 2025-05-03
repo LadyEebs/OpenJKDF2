@@ -27,27 +27,27 @@
 #define sithDSS_SendMisc_ADDR (0x004FA420)
 #define sithDSS_ProcessMisc_ADDR (0x004FA5D0)
 
-void sithDSS_SendSurfaceStatus(sithSurface *surface, int sendto_id, int mpFlags);
+void sithDSS_SendSurfaceStatus(sithSurface *surface, DPID sendto_id, int mpFlags);
 int sithDSS_ProcessSurfaceStatus(sithCogMsg *msg);
-void sithDSS_SendSectorStatus(sithSector *sector, int sendto_id, int mpFlags);
+void sithDSS_SendSectorStatus(sithSector *sector, DPID sendto_id, int mpFlags);
 int sithDSS_ProcessSectorStatus(sithCogMsg *msg);
-void sithDSS_SendSectorFlags(sithSector *pSector, int sendto_id, int mpFlags);
+void sithDSS_SendSectorFlags(sithSector *pSector, DPID sendto_id, int mpFlags);
 int sithDSS_ProcessSectorFlags(sithCogMsg *msg);
-void sithDSS_SendAIStatus(sithActor *actor, int sendto_id, int idx);
+void sithDSS_SendAIStatus(sithActor *actor, DPID sendto_id, int idx);
 int sithDSS_ProcessAIStatus(sithCogMsg *msg);
-void sithDSS_SendInventory(sithThing *thing, int binIdx, int sendto_id, int mpFlags);
+void sithDSS_SendInventory(sithThing *thing, int binIdx, DPID sendto_id, int mpFlags);
 int sithDSS_ProcessInventory(sithCogMsg *msg);
-void sithDSS_SendSurface(rdSurface *surface, int sendto_id, int mpFlags);
+void sithDSS_SendSurface(rdSurface *surface, DPID sendto_id, int mpFlags);
 int sithDSS_ProcessSurface(sithCogMsg *msg);
-void sithDSS_SendSyncPuppet(sithThing *thing, int sendto_id, int mpFlags);
+void sithDSS_SendSyncPuppet(sithThing *thing, DPID sendto_id, int mpFlags);
 int sithDSS_ProcessSyncPuppet(sithCogMsg *msg);
-void sithDSS_SendSyncEvents(sithEvent *timer, int sendto_id, int mpFlags);
+void sithDSS_SendSyncEvents(sithEvent *timer, DPID sendto_id, int mpFlags);
 int sithDSS_ProcessSyncEvents(sithCogMsg *msg);
-void sithDSS_SendSyncPalEffects(int sendto_id, int mpFlags);
+void sithDSS_SendSyncPalEffects(DPID sendto_id, int mpFlags);
 int sithDSS_ProcessSyncPalEffects(sithCogMsg *msg);
-void sithDSS_SendSyncCameras(int sendto_id, int mpFlags);
+void sithDSS_SendSyncCameras(DPID sendto_id, int mpFlags);
 int sithDSS_ProcessSyncCameras(sithCogMsg *msg);
-void sithDSS_SendMisc(int sendto_id, int mpFlags);
+void sithDSS_SendMisc(DPID sendto_id, int mpFlags);
 int sithDSS_ProcessMisc(sithCogMsg *msg);
 
 

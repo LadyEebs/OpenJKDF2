@@ -15,6 +15,7 @@ macro(plat_initialize)
     set(TARGET_COMPILE_FREEGLUT TRUE)
     set(TARGET_FIND_OPENAL FALSE)
     set(TARGET_USE_GAMENETWORKINGSOCKETS FALSE) # TODO why does this keep breaking :(
+	set(TARGET_USE_STEAMWORKS TRUE)
     set(SDL2_COMMON_LIBS SDL2main SDL::SDL)
     
     set(TARGET_WIN32 TRUE)
@@ -58,6 +59,10 @@ macro(plat_link_and_package)
     target_link_libraries(${BIN_NAME} PRIVATE -static)
     set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
     target_link_libraries(sith_engine PRIVATE Threads::Threads)
+
+	#find_package(OpenMP REQUIRED)
+	#target_link_libraries(sith_engine PRIVATE OpenMP::OpenMP_CXX)
+	#target_compile_options(sith_engine PRIVATE "${OpenMP_CXX_FLAGS}")
 
     target_link_libraries(sith_engine PRIVATE GLUT::GLUT)
     target_link_libraries(sith_engine PRIVATE GLEW::glew_s)
@@ -110,4 +115,14 @@ macro(plat_link_and_package)
             COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/GameNetworkingSockets/bin/GameNetworkingSockets.dll ${PROJECT_BINARY_DIR}
         )
     endif()
+
+	if(TARGET_USE_STEAMWORKS)
+	    target_link_libraries(sith_engine PRIVATE ${PROJECT_SOURCE_DIR}/3rdparty/steamworks-162/redistributable_bin/win64/steam_api64.lib)
+		add_custom_command(
+            TARGET ${BIN_NAME}
+            POST_BUILD 
+            COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/3rdparty/steamworks-162/redistributable_bin/win64/steam_api64.dll ${PROJECT_BINARY_DIR}
+             COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/3rdparty/steamworks-162/steam_appid.txt ${PROJECT_BINARY_DIR}
+		)
+	endif()
 endmacro()
