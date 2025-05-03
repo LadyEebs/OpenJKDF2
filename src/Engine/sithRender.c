@@ -3620,7 +3620,7 @@ int sithRender_RenderThing(sithThing *pThing)
 	// position debug
 #if 0
 		rdSprite debugSprite;
-		rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, "sabergreen0.mat", 0.05f, 0.05f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &rdroid_zeroVector3);
+		rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, "sabergreen0.mat", 0.05f, 0.05f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &rdroid_zeroVector3, 0);
 
 		rdThing debug;
 		rdThing_NewEntry(&debug, pThing);

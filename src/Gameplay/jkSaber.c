@@ -81,7 +81,7 @@ void jkSaber_InitializeSaberInfo(sithThing *thing, char *material_side_fname, ch
 	rdThing_FreeEntry(&saberinfo->glowSpriteThing);
 	rdSprite_FreeEntry(&saberinfo->glowSprite);
 
-	rdSprite_NewEntry(&saberinfo->glowSprite, "SaberGlow", 2, /*"saberglow.mat"*/material_tip_fname, base_rad * 2.0f * 1.5f, base_rad * 2.0f * 1.5f, 4, 0, 0, 0.0, &rdroid_zeroVector3);
+	rdSprite_NewEntry(&saberinfo->glowSprite, "SaberGlow", 2, /*"saberglow.mat"*/material_tip_fname, base_rad * 2.0f * 1.5f, base_rad * 2.0f * 1.5f, 4, 0, 0, 0.0, &rdroid_zeroVector3, 0);
 	rdThing_NewEntry(&saberinfo->glowSpriteThing, thing);
 	rdThing_SetSprite3(&saberinfo->glowSpriteThing, &saberinfo->glowSprite);
 #ifdef VERTEX_COLORS
