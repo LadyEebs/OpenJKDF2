@@ -115,8 +115,12 @@ void jkGame_SetDefaultSettings()
     jkPlayer_setDisableCutscenes = 0;
     jkPlayer_setRotateOverlayMap = 1;
     jkPlayer_setDrawStatus = 1;
+#ifdef DYNAMIC_POV
+	jkPlayer_setCrosshair = 1;
+#else
     jkPlayer_setCrosshair = 0;
-    jkPlayer_setSaberCam = 0;
+#endif
+	jkPlayer_setSaberCam = 0;
 }
 
 int jkGame_Update()
