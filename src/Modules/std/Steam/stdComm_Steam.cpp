@@ -115,39 +115,23 @@ struct LobbySystem
 		if (!lobbyID.IsValid())
 			return 0;
 
-		MultiByteToWideChar(CP_UTF8, 0, SteamMatchmaking()->GetLobbyData(lobbyID, "serverName"), 32, pEntry->serverName, 32);
-		strcpy_s(pEntry->episodeGobName, 32, SteamMatchmaking()->GetLobbyData(lobbyID, "episodeGobName"));
-		strcpy_s(pEntry->mapJklFname, 32, SteamMatchmaking()->GetLobbyData(lobbyID, "mapJklFname"));
-		pEntry->maxRank = std::stoi(SteamMatchmaking()->GetLobbyData(lobbyID, "maxRank"));
-
-		pEntry->field_E0 = 10; // todo: fixme
 		pEntry->guidInstance = lobbyID.ConvertToUint64();
 
 		pEntry->maxPlayers = SteamMatchmaking()->GetLobbyMemberLimit(lobbyID);
 		pEntry->numPlayers = SteamMatchmaking()->GetNumLobbyMembers(lobbyID);
 
-		// todo: encryption
-		pEntry->checksumSeed = std::stoi(SteamMatchmaking()->GetLobbyData(stdComm_steamLobbyID, "checksum"));
+		MultiByteToWideChar(CP_UTF8, 0, SteamMatchmaking()->GetLobbyData(lobbyID, "serverName"), 32, pEntry->serverName, 32);
+		strcpy_s(pEntry->episodeGobName, 32, SteamMatchmaking()->GetLobbyData(lobbyID, "episodeGobName"));
+		strcpy_s(pEntry->mapJklFname, 32, SteamMatchmaking()->GetLobbyData(lobbyID, "mapJklFname"));
+		//wchar_t wPassword[32];
+		pEntry->sessionFlags = std::stoul(SteamMatchmaking()->GetLobbyData(lobbyID, "sessionFlags"));
+		pEntry->checksumSeed = std::stoi(SteamMatchmaking()->GetLobbyData(stdComm_steamLobbyID, "checksum")); // todo: encryption
+		//int field_E0;
+		pEntry->multiModeFlags = std::stoul(SteamMatchmaking()->GetLobbyData(lobbyID, "multiModeFlags"));
+		pEntry->tickRateMs = std::stoi(SteamMatchmaking()->GetLobbyData(lobbyID, "tickRateMs"));
+		pEntry->maxRank = std::stoi(SteamMatchmaking()->GetLobbyData(lobbyID, "maxRank"));
 
-		//	GUID_idk guidInstance;
-		//	int maxPlayers;
-		//	int numPlayers;
-		//	wchar_t serverName[32];
-		//	char episodeGobName[32];
-		//	char mapJklFname[32];
-		//	wchar_t wPassword[32];
-		//	int sessionFlags;
-		//	int checksumSeed;
-		//	int field_E0;
-		//	int multiModeFlags;
-		//	int tickRateMs;
-		//	int maxRank;
-
-		//int multiModeFlags;
-		//int tickRateMs;
-		//pEntry->opt1 = pSession->dwUser1;
-		//pEntry->opt2 = pSession->dwUser3;
-		//pEntry->opt3 = pSession->dwUser4;
+		pEntry->field_E0 = 10; // todo: fixme
 
 		return 1;
 	}
@@ -604,8 +588,13 @@ int DirectPlay_OpenHost(stdCommSession* pEntry)
 	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "serverName", serverName);
 	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "episodeGobName", pEntry->episodeGobName);
 	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "mapJklFname", pEntry->mapJklFname);
+	//wchar_t wPassword[32];
+	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "sessionFlags", std::to_string(pEntry->sessionFlags).c_str());
+	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "checksum", std::to_string(pEntry->checksumSeed).c_str()); // todo: encryption
+	//int field_E0;
+	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "multiModeFlags", std::to_string(pEntry->multiModeFlags).c_str());
+	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "tickRateMs", std::to_string(pEntry->tickRateMs).c_str());
 	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "maxRank", std::to_string(pEntry->maxRank).c_str());
-	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "checksum", std::to_string(pEntry->checksumSeed).c_str());
 
 	stdComm_bIsServer = 1;
 	return 0;
