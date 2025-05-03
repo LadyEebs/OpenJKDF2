@@ -57,7 +57,7 @@ void sithCommand_Startup()
     sithConsole_RegisterDevCmd(sithCommand_CmdTick, "tick", 0);
     sithConsole_RegisterDevCmd(sithCommand_CmdSession, "session", 0);
 
-#ifndef QOL_IMPROVEMENTS // always allow these commands
+#ifndef _DEBUG//QOL_IMPROVEMENTS // always allow these commands
     if ( (g_debugmodeFlags & DEBUGFLAG_IN_EDITOR) != 0 )
 #endif
     {
