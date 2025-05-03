@@ -5372,6 +5372,25 @@ void std3D_PurgeTextureCache()
 #endif
 	std3D_PurgeDecals();
 
+	jk_printf("Purging bitmap cache... %x\n", std3D_loadedUITexturesAmt);
+	for (int i = 0; i < STD3D_MAX_TEXTURES; i++)
+	{
+		int texId = std3D_aUITextures[i];
+		stdBitmap* tex = std3D_aUIBitmaps[i];
+		if (!tex) continue;
+
+		for (int j = 0; j < tex->numMips; j++)
+		{
+			if (tex->aTextureIds[j] == texId)
+			{
+				std3D_PurgeUIEntry(i, j);
+				break;
+			}
+		}
+	}
+	std3D_loadedUITexturesAmt = 0;
+	
+
     if (!std3D_loadedTexturesAmt) {
         jk_printf("Skipping texture cache purge, nothing loaded.\n");
         return;
