@@ -1474,10 +1474,8 @@ void jkPlayer_DrawPov()
 			// draw the muzzle flash while the timer is valid
 			if (sithTime_curMs < jkPlayer_drawMuzzleFlash && playerThings[playerThingIdx].povSprite.sprite3)
 			{
-				rdMatrix34 muzzleMat;
-				rdMatrix_BuildRotate34(&muzzleMat, &playerThings[playerThingIdx].povSprite.spriteRot);
-				muzzleMat.scale = playerThings[playerThingIdx].povModel.hierarchyNodeMatrices[jkPlayer_muzzleFlashNode].scale;
-				rdSprite_Draw(&playerThings[playerThingIdx].povSprite, &muzzleMat);
+				rdMatrix34* muzzleMat = &playerThings[playerThingIdx].povModel.hierarchyNodeMatrices[jkPlayer_muzzleFlashNode];
+				rdSprite_Draw(&playerThings[playerThingIdx].povSprite, muzzleMat);
 
 				// add a light for the flash
 				static rdLight muzzleLight;
@@ -1491,7 +1489,7 @@ void jkPlayer_DrawPov()
 				// offset the light so it's on the top of the sprite, not the very center
 				// this is to simulate more of an "area light" of the flash wrapping around the POV model
 				rdVector3 pos;
-				rdVector_Copy3(&pos, &muzzleMat.scale);
+				rdVector_Copy3(&pos, &muzzleMat->scale);
 				rdVector_MultAcc3(&pos, &viewMat.uvec, playerThings[playerThingIdx].povSprite.sprite3->height);
 			#ifdef RENDER_DROID2
 				muzzleLight.falloffMin = muzzleLight.intensity / rdCamera_pCurCamera->attenuationMin;

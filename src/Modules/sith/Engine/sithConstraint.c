@@ -534,7 +534,7 @@ static void sithConstraint_DrawBallSocket(sithBallSocketConstraint* pConstraint)
 	for (int i = 0; i < 2; ++i)
 	{
 		rdSprite debugSprite;
-		rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, i == 0 ? "saberred0.mat" : "saberblue0.mat", 0.005f, 0.005f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &offset, 0);
+		rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, i == 0 ? "saberred0.mat" : "saberblue0.mat", 0.005f, 0.005f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &offset);
 
 		rdThing debug;
 		rdThing_NewEntry(&debug, pConstraint->base.parentThing);

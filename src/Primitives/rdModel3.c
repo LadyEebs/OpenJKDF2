@@ -1605,7 +1605,7 @@ void rdModel3_DrawMesh(rdMesh *meshIn, rdMatrix34 *mat)
 
 	// debug
 	//rdSprite debugSprite;
-	//rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, "sabergreen0.mat", pCurMesh->radius, pCurMesh->radius, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &rdroid_zeroVector3, 0);
+	//rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, "sabergreen0.mat", pCurMesh->radius, pCurMesh->radius, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &rdroid_zeroVector3);
 	//
 	//rdThing debug;
 	//rdThing_NewEntry(&debug, pCurThing);

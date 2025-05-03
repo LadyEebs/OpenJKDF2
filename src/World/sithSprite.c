@@ -102,7 +102,6 @@ rdSprite* sithSprite_LoadEntry(char *fpath)
     rdSprite *result;
     rdSprite *sprite;
     char spriteFpath[128];
-	uint32_t flags = 0;
 
     world = sithWorld_pLoading;
     result = (rdSprite *)stdHashTable_GetKeyVal(sithSprite_hashmap, fpath);
@@ -131,20 +130,11 @@ rdSprite* sithSprite_LoadEntry(char *fpath)
                     off.x = _atof(stdConffile_entry.args[8].value);
                     off.y = _atof(stdConffile_entry.args[9].value);
                     off.z = _atof(stdConffile_entry.args[10].value);
-				#ifdef QOL_IMPROVEMENTS
-					// added: face flags
-					if (stdConffile_entry.numArgs >= 12)
-						_sscanf(stdConffile_entry.args[11].value, "%x", &flags);
-				#endif
                     stdConffile_Close();
                     if ( typeid <= 2 && width > 0.0 && height > 0.0 )
                     {
                         
-                        if ( rdSprite_NewEntry(sprite, fpath, typeid, mat, width, height, geometryMode, lightMode, textureMode, extralight, &off
-						#ifdef QOL_IMPROVEMENTS
-						, flags
-						#endif
-						) )
+                        if ( rdSprite_NewEntry(sprite, fpath, typeid, mat, width, height, geometryMode, lightMode, textureMode, extralight, &off) )
                         {
 #ifdef DYNAMIC_POV
 							sprite->id = world->numSpritesLoaded;

@@ -12,32 +12,20 @@
 static rdVector3 rdSprite_inVerts[32];
 static rdVector3 rdSprite_tmpVerts[32];
 
-rdSprite* rdSprite_New(int type, char* fpath, char* materialFpath, float width, float height, int geometryMode, int lightMode, int textureMode, float extraLight, rdVector3* offset
-#ifdef QOL_IMPROVEMENTS
-	, uint32_t faceflags
-#endif
-)
+rdSprite* rdSprite_New(int type, char *fpath, char *materialFpath, float width, float height, int geometryMode, int lightMode, int textureMode, float extraLight, rdVector3 *offset)
 {
     rdSprite *sprite;
 
     sprite = (rdSprite *)rdroid_pHS->alloc(sizeof(rdSprite));
     if ( sprite )
     {
-        rdSprite_NewEntry(sprite, fpath, type, materialFpath, width, height, geometryMode, lightMode, textureMode, extraLight, offset
-#ifdef QOL_IMPROVEMENTS
-		, faceflags
-#endif
-		);
+        rdSprite_NewEntry(sprite, fpath, type, materialFpath, width, height, geometryMode, lightMode, textureMode, extraLight, offset);
     }
     
     return sprite;
 }
 
-int rdSprite_NewEntry(rdSprite *sprite, char *spritepath, int type, char *material, float width, float height, rdGeoMode_t geometryMode, rdLightMode_t lightMode, rdTexMode_t textureMode, float extraLight, rdVector3 *offset
-#ifdef QOL_IMPROVEMENTS
-	, uint32_t faceflags
-#endif
-)
+int rdSprite_NewEntry(rdSprite *sprite, char *spritepath, int type, char *material, float width, float height, rdGeoMode_t geometryMode, rdLightMode_t lightMode, rdTexMode_t textureMode, float extraLight, rdVector3 *offset)
 {
     if (spritepath)
     {
@@ -48,9 +36,6 @@ int rdSprite_NewEntry(rdSprite *sprite, char *spritepath, int type, char *materi
     sprite->height = height;
     sprite->offset = *offset;
     sprite->face.type = RD_FF_DOUBLE_SIDED | RD_FF_TEX_CLAMP_X | RD_FF_TEX_CLAMP_Y;
-#ifdef QOL_IMPROVEMENTS
-	sprite->face.type |= faceflags;
-#endif
     sprite->face.geometryMode = geometryMode;
     sprite->face.lightingMode = lightMode;
     sprite->face.textureMode = textureMode;
@@ -157,12 +142,6 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	if (clipResult == 2)
 		return 0;
 
-	rdVector3 rvec;
-	rdMatrix_TransformVector34(&rvec, &mat->rvec, &rdCamera_pCurCamera->view_matrix);
-	
-	rdVector3 uvec;
-	rdMatrix_TransformVector34(&uvec, &mat->uvec, &rdCamera_pCurCamera->view_matrix);
-
 	rdMatrix44 viewMatrix;
 	rdGetMatrix(&viewMatrix, RD_MATRIX_VIEW);
 
@@ -229,9 +208,8 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	else
 		rdAmbientLight(0, 0, 0);
 #endif
-	rdAmbientLightSH(NULL);//&rdCamera_pCurCamera->ambientSH);
-	rdExtraLight(sprite->face.extraLight);
 
+	rdSortOrder(sprite->face.sortId);
 	rdSortDistance(vertex_out.y);
 
 	rdBindMaterial(sprite->face.material, thing->wallCel);
@@ -240,19 +218,22 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	rdSetGlowIntensity(0.8f);
 
 	int oldZ = rdroid_curZBufferMethod;
+
 	float alpha = 1.0f;
 	if ((sprite->face.type & RD_FF_TEX_TRANSLUCENT) != 0)
 	{
 		alpha = 90.0f / 255.0f;
 		rdSetBlendEnabled(RD_TRUE);
-		rdSetZBufferMethod(RD_ZBUFFER_READ_NOWRITE);
-		rdSetBlendMode(RD_BLEND_SRCALPHA, RD_BLEND_INVSRCALPHA);
 	}
-	else if (sprite->face.type & RD_FF_ADDITIVE)
+	else
+	{
+		rdSetBlendEnabled(RD_FALSE);
+	}
+
+	if (sprite->face.type & RD_FF_ADDITIVE)
 	{
 		rdSetBlendEnabled(RD_TRUE);
-		rdSetBlendMode(RD_BLEND_SRCALPHA, RD_BLEND_ONE);
-		rdSetZBufferMethod(RD_ZBUFFER_READ_NOWRITE);
+		rdSetBlendMode(RD_BLEND_ONE, RD_BLEND_ONE);
 	}
 	else if (sprite->face.type & RD_FF_SCREEN)
 	{
@@ -262,37 +243,9 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	}
 	else
 	{
-		rdSetBlendEnabled(RD_FALSE);
+		rdSetBlendMode(RD_BLEND_SRCALPHA, RD_BLEND_INVSRCALPHA);
 		rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
 	}
-
-	// todo: how do we want to control this?
-	if (thing->parentSithThing)
-	{
-		float lifeLeft = thing->parentSithThing->lifeLeftMs;
-		float initialLifeLeft = thing->parentSithThing->initialLifeLeftMs;
-		//alpha = lifeLeft / initialLifeLeft;
-
-		alpha = pow(cosf((lifeLeft / initialLifeLeft * 2.0 - 1.0) * 3.141592 / 2.0), 3.0);
-		//float lifeProgress = 1.0f - (lifeLeft / initialLifeLeft);
-		//if (lifeProgress < 0.15f) // Quadratic ease-in and ease-out
-		//{
-		//	alpha = (lifeProgress / 0.15f) * (lifeProgress / 0.15f); // Quadratic ease-in
-		//}
-		//else  // Smooth fade-out (remaining 95%)
-		//{
-		//	alpha = 1.0f - ((lifeProgress - 0.15f) / 0.85f); // Linear fade-out
-		//	// Optional: Use quadratic fade-out for smoother decay:
-		//	//alpha = 1.0f - powf((lifeProgress - 0.05f) / 0.95f, 1.0f);
-		//}
-	}
-
-	rdSortOrder(0xF + sprite->face.sortId);
-
-	if ((sprite->face.type & RD_FF_DOUBLE_SIDED) != 0)
-		rdSetCullMode(RD_CULL_MODE_NONE);
-	else
-		rdSetCullMode(RD_CULL_MODE_BACK);
 
 	extern int jkPlayer_enableTextureFilter;
 	rdTexFilterMode(!jkPlayer_enableTextureFilter || (sprite->face.type & RD_FF_TEX_FILTER_NEAREST) ? RD_TEXFILTER_NEAREST : RD_TEXFILTER_BILINEAR);
@@ -303,56 +256,18 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	float halfWidth = sprite->halfWidth * thing->spriteScale;
 	float halfHeight = sprite->halfHeight * thing->spriteScale;
 
-	if (thing->parentSithThing && thing->parentSithThing->initialLifeLeftMs)
-	{
-		//halfWidth *= alpha;
-		//halfHeight *= alpha;
-	}
-	
-	//float rotation = stdMath_ArcTan4(mat->uvec.z, mat->lvec.z);// atan2(mat->rvec.y, mat->uvec.y);
-	//rdVector3 pyr;
-	//rdMatrix_ExtractAngles34(mat, &pyr);
-
-	rdMatrix_Normalize34(mat);
-
-	rdVector3 pyr;
-	rdVector_ExtractAngle(&mat->lvec, &pyr);
-
-	float s, c;
-	stdMath_SinCos(pyr.y, &s, &c);
-
-	rdVector2 corners[4] =
-	{
-		{  halfWidth,  halfHeight },
-		{ -halfWidth,  halfHeight },
-		{ -halfWidth, -halfHeight },
-		{  halfWidth, -halfHeight }
-	};
-
-	for (int i = 0; i < 4; i++)
-	{
-		float x = corners[i].x;
-		float y = corners[i].y;
-		corners[i].x = x * c - y * s;
-		corners[i].y = x * s + y * c;
-	}
-
-	rdSprite_inVerts[0].y = sprite->offset.y + vertex_out.y;
+	rdSprite_inVerts[0].x = sprite->offset.x - halfWidth + vertex_out.x;
 	rdSprite_inVerts[1].y = sprite->offset.y + vertex_out.y;
+	rdSprite_inVerts[1].z = sprite->offset.z - halfHeight + vertex_out.z;
+	rdSprite_inVerts[2].x = halfWidth + sprite->offset.x + vertex_out.x;
 	rdSprite_inVerts[2].y = sprite->offset.y + vertex_out.y;
+	rdSprite_inVerts[2].z = sprite->offset.z + halfHeight + vertex_out.z;
+	rdSprite_inVerts[0].y = sprite->offset.y + vertex_out.y;
+	rdSprite_inVerts[0].z = sprite->offset.z - halfHeight + vertex_out.z;
+	rdSprite_inVerts[3].x = sprite->offset.x - halfWidth + vertex_out.x;
+	rdSprite_inVerts[1].x = halfWidth + sprite->offset.x + vertex_out.x;
 	rdSprite_inVerts[3].y = sprite->offset.y + vertex_out.y;
-
-	rdSprite_inVerts[0].x = sprite->offset.x + corners[1].x + vertex_out.x;
-	rdSprite_inVerts[0].z = sprite->offset.z + corners[1].y + vertex_out.z;
-
-	rdSprite_inVerts[1].x = sprite->offset.x + corners[0].x + vertex_out.x;
-	rdSprite_inVerts[1].z = sprite->offset.z + corners[0].y + vertex_out.z;
-
-	rdSprite_inVerts[2].x = sprite->offset.x + corners[3].x + vertex_out.x;
-	rdSprite_inVerts[2].z = sprite->offset.z + corners[3].y + vertex_out.z;
-
-	rdSprite_inVerts[3].x = sprite->offset.x + corners[2].x + vertex_out.x;
-	rdSprite_inVerts[3].z = sprite->offset.z + corners[2].y + vertex_out.z;
+	rdSprite_inVerts[3].z = sprite->offset.z + halfHeight + vertex_out.z;
 
 	rdVector3 tint = { 1,1,1 };
 	//if (thing->parentSithThing->sector != sithCamera_currentCamera->sector)
@@ -367,13 +282,14 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	tint.y -= (halfTint.x + halfTint.y);
 	tint.z -= (halfTint.x + halfTint.z);
 
-	//if (thing->spriteRot != 0.0)
-	//	stdMath_SinCos(thing->spriteRot, &s, &c);
+	float s, c;
+	if (thing->spriteRot != 0.0)
+		stdMath_SinCos(thing->spriteRot, &s, &c);
 
 	if (sprite->face.type & RD_FF_VERTEX_COLORS)
-		rdColor4f(thing->color.x * tint.x + thing->color.x, thing->color.y * tint.y + thing->color.y, thing->color.z * tint.z + thing->color.z, alpha);
+		rdColor4f(thing->color.x * tint.x + thing->color.x, thing->color.y * tint.y + thing->color.y, thing->color.z * tint.z + thing->color.z, 1.0f);
 	else
-		rdColor4f(tint.x + 1.0f, tint.y + 1.0f, tint.z + 1.0f, alpha);
+		rdColor4f(tint.x + 1.0f, tint.y + 1.0f, tint.z + 1.0f, 1.0f);
 
 	if (rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
 	{
@@ -383,20 +299,20 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 			{
 				rdVector2 uv = sprite->vertexUVs[i];
 				// todo: make this transform a rdroid thing
-				//if (thing->spriteRot != 0.0)
-				//{
-				//	stdVBuffer* v24 = sprite->face.material->texinfos[0]->texture_ptr->texture_struct[0];
-				//
-				//	rdVector2 uvCentered;
-				//	uvCentered.x = uv.x - (float)v24->format.width / 2.0f;
-				//	uvCentered.y = uv.y - (float)v24->format.height / 2.0f;
-				//
-				//	uv.x = c * uvCentered.x - s * uvCentered.y;
-				//	uv.y = s * uvCentered.x + c * uvCentered.y;
-				//
-				//	uv.x += (float)v24->format.width / 2.0f;
-				//	uv.y += (float)v24->format.height / 2.0f;
-				//}
+				if (thing->spriteRot != 0.0)
+				{
+					stdVBuffer* v24 = sprite->face.material->texinfos[0]->texture_ptr->texture_struct[0];
+
+					rdVector2 uvCentered;
+					uvCentered.x = uv.x - (float)v24->format.width / 2.0f;
+					uvCentered.y = uv.y - (float)v24->format.height / 2.0f;
+
+					uv.x = c * uvCentered.x - s * uvCentered.y;
+					uv.y = s * uvCentered.x + c * uvCentered.y;
+
+					uv.x += (float)v24->format.width / 2.0f;
+					uv.y += (float)v24->format.height / 2.0f;
+				}
 				rdTexCoord2i(RD_TEXCOORD0, uv.x, uv.y);
 			}
 			rdVertex3v(&rdSprite_inVerts[i].x);

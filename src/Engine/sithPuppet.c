@@ -1709,7 +1709,7 @@ void sithPuppet_DebugDrawPhysicsBodies(sithThing* pThing)
 		rdVector3 offset = { 0, -pJoint->thing.moveSize, 0 };
 
 		rdSprite debugSprite;
-		rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, "saberblue0.mat", pJoint->thing.moveSize * 2.0f, pJoint->thing.moveSize * 2.0f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &offset, 0);
+		rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, "saberblue0.mat", pJoint->thing.moveSize * 2.0f, pJoint->thing.moveSize * 2.0f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &offset);
 
 		rdThing debug;
 		rdThing_NewEntry(&debug, pThing);
@@ -1746,7 +1746,7 @@ void sithPuppet_DebugDrawPhysicsJoints(sithThing* pThing)
 		rdVector_Add3(&pos, &pJoint->thing.position, &jointPivotOffset);
 
 		rdSprite debugSprite;
-		rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, "sabergreen0.mat", 0.005f, 0.005f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &offset, 0);
+		rdSprite_NewEntry(&debugSprite, "dbgragoll", 0, "sabergreen0.mat", 0.005f, 0.005f, RD_GEOMODE_TEXTURED, RD_LIGHTMODE_FULLYLIT, RD_TEXTUREMODE_AFFINE, 1.0f, &offset);
 
 		rdThing debug;
 		rdThing_NewEntry(&debug, pThing);
