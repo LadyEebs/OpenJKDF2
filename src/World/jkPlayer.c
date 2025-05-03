@@ -1501,10 +1501,17 @@ void jkPlayer_DrawPov()
 
 			// update the muzzle offset so we can use it in cog for weapon offsets etc
 			// the offset is in the cameras local frame
-			rdMatrix34 muzzleMat;
-			rdMatrix_Copy34(&muzzleMat, &playerThings[playerThingIdx].povModel.hierarchyNodeMatrices[jkPlayer_muzzleFlashNode]);
-			rdMatrix_PostMultiply34(&muzzleMat, &invOrient);
-			rdVector_Copy3(&jkPlayer_muzzleOffset, &muzzleMat.scale);
+			if (sithNet_isMulti)
+			{
+				rdVector_Zero3(&jkPlayer_muzzleOffset);
+			}
+			else
+			{
+				rdMatrix34 muzzleMat;
+				rdMatrix_Copy34(&muzzleMat, &playerThings[playerThingIdx].povModel.hierarchyNodeMatrices[jkPlayer_muzzleFlashNode]);
+				rdMatrix_PostMultiply34(&muzzleMat, &invOrient);
+				rdVector_Copy3(&jkPlayer_muzzleOffset, &muzzleMat.scale);
+			}
 		}
 		else
 		{
@@ -1892,7 +1899,7 @@ void jkPlayer_SetIdleWaggle(sithThing* player, rdVector3* waggleVec, float waggl
 
 void jkPlayer_GetMuzzleOffset(sithThing* player, rdVector3* muzzleOffset)
 {
-	if (player == playerThings[playerThingIdx].actorThing)
+	if (player == playerThings[playerThingIdx].actorThing && !sithNet_isMulti)
 	{
 		if(rdVector_Len3(&jkPlayer_muzzleOffset) > 0.0f)
 			rdVector_Copy3(muzzleOffset, &jkPlayer_muzzleOffset);
