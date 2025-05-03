@@ -4129,11 +4129,7 @@ typedef struct sithDplayPlayer
     int field_84;
     int field_88;
     int field_8C;
-#ifdef PLATFORM_STEAM
-	uint64_t dpId;
-#else
-    int dpId;
-#endif
+	DPID dpId;
 } sithDplayPlayer;
 
 #ifdef PLATFORM_STEAM
