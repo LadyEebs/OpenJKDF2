@@ -668,12 +668,13 @@ void DirectPlayer_AddPlayer(CSteamID steamID)
 		nickname = SteamFriends()->GetFriendPersonaName(steamID);
 
 	wchar_t wname[128];
-	MultiByteToWideChar(CP_UTF8, 0, nickname, 128, wname, 128);
+	int charsWritten = MultiByteToWideChar(CP_UTF8, 0, nickname, -1, wname, 127);
+	wname[charsWritten] = L'\0';
 
 	DPNAME name;
 	name.dwSize = sizeof(DPNAME);
 	name.lpszShortName = wname;
-	name.lpszLongName = wname;
+	name.lpszLongName = 0;//wname;
 
 	DirectPlay_EnumPlayersCallback(steamID.ConvertToUint64(), 0, &name, 0, 0);
 }
