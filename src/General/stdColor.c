@@ -1,5 +1,7 @@
 #include "stdColor.h"
 
+#include <float.h>
+
 int stdColor_Indexed8ToRGB16(uint8_t idx, rdColor24 *pal, rdTexformat *fmt)
 {
     rdColor24 *v3; // esi
@@ -124,4 +126,25 @@ int stdColor_ColorConvertOneRow(uint8_t *outPixels, rdTexformat *formatTo, uint8
         while ( !v21 );
     }
     return result;
+}
+
+// can be sped up by precomputing a table
+int stdColor_FindClosest32(rdColor32* rgb, rdColor24* pal)
+{
+	uint8_t idx = 0;
+	float maxDist = FLT_MAX;
+	for (int k = 0; k < 256; ++k)
+	{
+		float dr = ((float)rgb->r - (float)pal[k].r) / 255.0f;
+		float dg = ((float)rgb->g - (float)pal[k].g) / 255.0f;
+		float db = ((float)rgb->b - (float)pal[k].b) / 255.0f;
+
+		float dist = (dr * dr + dg * dg + db * db);
+		if (dist < maxDist)
+		{
+			idx = k;
+			maxDist = dist;
+		}
+	}
+	return idx;
 }

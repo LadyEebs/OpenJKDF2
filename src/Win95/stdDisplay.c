@@ -559,8 +559,8 @@ void stdDisplay_422A50(){}
 void stdDisplay_GammaCorrect(const void *pPal)
 {
     _memcpy(stdDisplay_tmpGammaPal, pPal, sizeof(stdDisplay_tmpGammaPal));
-    if ( stdDisplay_paGammaTable && stdDisplay_gammaIdx )
-        stdColor_GammaCorrect((uint8_t *)stdDisplay_gammaPalette, (uint8_t *)stdDisplay_tmpGammaPal, 256, stdDisplay_paGammaTable[stdDisplay_gammaIdx - 1]);
-    else
+    //if ( stdDisplay_paGammaTable && stdDisplay_gammaIdx )
+    //    stdColor_GammaCorrect((uint8_t *)stdDisplay_gammaPalette, (uint8_t *)stdDisplay_tmpGammaPal, 256, stdDisplay_paGammaTable[stdDisplay_gammaIdx - 1]);
+    //else
         _memcpy(stdDisplay_gammaPalette, pPal, sizeof(stdDisplay_gammaPalette));
 }
