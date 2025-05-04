@@ -99,7 +99,7 @@ template <size_t N>
 void Steam_SetLobbyWideString(CSteamID lobbyID, const char* key, const wchar_t(&wStr)[N])
 {
 	char utf8[128];
-	int bytesWritten = WideCharToMultiByte(CP_UTF8, 0, wStr, -1, utf8, N - 1, nullptr, nullptr);
+	int bytesWritten = WideCharToMultiByte(CP_UTF8, 0, wStr, -1, utf8, 127, nullptr, nullptr);
 	utf8[bytesWritten] = '\0';
 
 	SteamMatchmaking()->SetLobbyData(lobbyID, key, utf8);
