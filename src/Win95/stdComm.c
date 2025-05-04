@@ -249,8 +249,8 @@ int stdComm_EnumFriends()
 	return DirectPlay_EnumFriends();
 }
 
-void stdComm_Invite(DPID id)
+int stdComm_Invite(DPID id)
 {
-	DirectPlay_Invite(id);
+	return DirectPlay_Invite(id);
 }
 #endif

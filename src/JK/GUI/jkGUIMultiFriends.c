@@ -72,7 +72,7 @@ static jkGuiElement jkGuiMultiFriends_buttons[] = {
 	{ELEMENT_TEXT,			         0,  0,                   0,  3, {0, 0x19A, 0x280, 20},  1,  0,  0,  0,  0,  0, {0},  0},
 	{ELEMENT_TEXT,			         0,  6,     "GUIEXT_INVITE",  3, {20, 20, 0x258, 0x28},  1,  0,  0,  0,  0,  0, {0},  0},
 	//{ELEMENT_TEXT,		         0,  2, "GUI_CHOOSEAPROVIDER",  2, {170, 0x82, 0x1D6, 0x28},  1,  0,  0,  0,  0,  0, {0},  0},
-	{ELEMENT_LISTBOX,		         1,  0,                   0,  0, { 280, 100, 320, 300 },  1,  0, 0,  jkGuiMultiFriends_ListDraw,  0, listbox_images, { 36, 0, 0, 0, 0, { 0, 0, 0, 0 } },  0, jkGuiMultiFriends_ListEventHandler},
+	{ELEMENT_LISTBOX,		         1,  0,                   0,  0, { 280, 100, 320, 300 },  1,  0, 0,  jkGuiMultiFriends_ListDraw,  jkGuiMultiFriends_ListClick, listbox_images, { 36, 0, 0, 0, 0, { 0, 0, 0, 0 } },  0, jkGuiMultiFriends_ListEventHandler},
 	{ELEMENT_TEXTBUTTON,	GUI_INVITE,  2,     "GUIEXT_INVITE",  3,  { 0, 190, 200, 20 },  1,  0,  0,  0,  0,  0, {0},  0},
 	{ELEMENT_TEXTBUTTON,	  GUI_DONE,  2,          "GUI_DONE",  3, {20, 0x1AE, 0xC8, 0x28},  1,  0,  0,  0,  0,  0, {0},  0},
 	{ELEMENT_END,			         0,  0,                   0,  0, {0},  0,  0,  0,  0,  0,  0, {0},  0},
@@ -126,8 +126,11 @@ int jkGuiMultiFriends_Show(int a1)
 		case GUI_DONE:
 			break;
 		case GUI_INVITE:
-			stdComm_Invite(DirectPlay_apFriends[jkGuiMultiFriends_buttons[MULTI_FRIENDS_LISTBOX].selectedTextEntry].dpId);
+		{
+			int friendIdx = jkGuiMultiFriends_buttons[MULTI_FRIENDS_LISTBOX].selectedTextEntry;
+			DirectPlay_apFriends[friendIdx].invited = stdComm_Invite(DirectPlay_apFriends[friendIdx].dpId);
 			continue;
+		}
 		default:
 			continue;
 		}
@@ -227,7 +230,9 @@ void jkGuiMultiFriends_ListDraw(jkGuiElement* element_, jkGuiMenu* menu, stdVBuf
 			}
 	 
 			//stdBitmap* thumbnail = DirectPlay_apFriends[element_->unistr[i].id].thumbnail;
-			stdVBuffer* thumbnail = DirectPlay_apFriends[element_->unistr[i].id].thumbnail;
+			rdColor24* pal24 = (rdColor24*)jkGui_stdBitmaps[JKGUI_BM_BK_BUILD_LOAD]->palette;//(rdColor24*)stdDisplay_gammaPalette;
+
+			stdVBuffer* thumbnail = DirectPlay_GetFriendAvatarThumbnail(element_->unistr[i].id, pal24);
 			if(thumbnail)
 			{
 				//float screenW = Video_menuBuffer.format.width;
@@ -435,6 +440,9 @@ int jkGuiMultiFriends_ListEventHandler(jkGuiElement* element, jkGuiMenu* menu, i
 
 int jkGuiMultiFriends_ListClick(jkGuiElement* pElement, jkGuiMenu* pMenu, int mouseX, int mouseY, BOOL redraw)
 {
+	int friendIdx = jkGuiMultiFriends_buttons[MULTI_FRIENDS_LISTBOX].selectedTextEntry;
+	jkGuiMultiFriends_buttons[MULTI_FRIENDS_INVITE_BTN].bIsVisible = !DirectPlay_apFriends[friendIdx].invited;
+	
 	return 0;
 }
 

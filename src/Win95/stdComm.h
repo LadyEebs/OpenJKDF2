@@ -92,7 +92,7 @@ int stdComm_EarlyInit();
 //static int (*stdComm_Startup)() = (void*)stdComm_Startup_ADDR;
 
 #ifdef PLATFORM_STEAM
-void stdComm_Invite(DPID id);
+int stdComm_Invite(DPID id);
 
 int stdComm_EnumFriends();
 int DirectPlay_EnumFriends();
@@ -153,10 +153,12 @@ int stdComm_EnumSessions(int a, void* b);
 void DirectPlay_EnumPlayers(int a);
 int DirectPlay_StartSession(void* a, void* b);
 void DirectPlay_Destroy();
-int DirectPlay_IdkSessionDesc(stdCommSession* pEntry);
+int DirectPlay_GetSessionDesc(stdCommSession* pEntry);
 
 #ifdef PLATFORM_STEAM
-void DirectPlay_Invite(DPID id);
+int DirectPlay_Invite(DPID id);
+stdVBuffer* DirectPlay_GetFriendAvatarThumbnail(int idx, rdColor24* pal24);
+
 #endif
 
 #endif

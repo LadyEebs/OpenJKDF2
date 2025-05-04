@@ -4140,6 +4140,7 @@ typedef struct stdComm_Friend
 	uint64_t     dpId;
 	//stdBitmap*   thumbnail;
 	stdVBuffer*  thumbnail;
+	int          invited;
 } stdComm_Friend;
 #endif
 

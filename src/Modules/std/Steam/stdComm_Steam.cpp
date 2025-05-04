@@ -9,6 +9,7 @@
 extern "C"{
 #include "Win95/stdDisplay.h"
 #include "General/stdBitmap.h"
+#include "General/stdColor.h"
 		// todo: make this a callback this shouldn't be here
 	extern int jkGuiMultiplayer_Show2();
 
@@ -94,8 +95,66 @@ static int GenerateChallenge(char* out, int length) {
 	return 1;
 }
 
+template <size_t N>
+void Steam_SetLobbyWideString(CSteamID lobbyID, const char* key, const wchar_t(&wStr)[N])
+{
+	char utf8[128];
+	int bytesWritten = WideCharToMultiByte(CP_UTF8, 0, wStr, -1, utf8, N - 1, nullptr, nullptr);
+	utf8[bytesWritten] = '\0';
+
+	SteamMatchmaking()->SetLobbyData(lobbyID, key, utf8);
+}
+
+template <size_t N>
+void Steam_GetLobbyWideString(CSteamID lobbyID, const char* key, wchar_t(&wStr)[N])
+{
+	const char* utf8 = SteamMatchmaking()->GetLobbyData(lobbyID, key);
+	int charsWritten = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, wStr, N-1);
+	wStr[charsWritten] = L'\0';
+}
+
 extern "C" {
-	void DirectPlayer_AddPlayer(CSteamID steamID);
+	static int Steam_GetLobbySessionDesc(CSteamID lobbyID, stdCommSession* pEntry)
+	{
+		if (!lobbyID.IsValid())
+			return 0;
+
+		pEntry->guidInstance = lobbyID.ConvertToUint64();
+
+		pEntry->maxPlayers = SteamMatchmaking()->GetLobbyMemberLimit(lobbyID);
+		pEntry->numPlayers = SteamMatchmaking()->GetNumLobbyMembers(lobbyID);
+
+		Steam_GetLobbyWideString(lobbyID, "serverName", pEntry->serverName);
+		strcpy_s(pEntry->episodeGobName, 32, SteamMatchmaking()->GetLobbyData(lobbyID, "episodeGobName"));
+		strcpy_s(pEntry->mapJklFname, 32, SteamMatchmaking()->GetLobbyData(lobbyID, "mapJklFname"));
+		//MultiByteToWideChar(CP_UTF8, 0, SteamMatchmaking()->GetLobbyData(lobbyID, "password"), 32, pEntry->wPassword, 32);
+		pEntry->sessionFlags = std::stoul(SteamMatchmaking()->GetLobbyData(lobbyID, "sessionFlags"));
+		pEntry->checksumSeed = std::stoi(SteamMatchmaking()->GetLobbyData(lobbyID, "checksum")); // todo: encryption
+		pEntry->field_E0 = std::stoi(SteamMatchmaking()->GetLobbyData(lobbyID, "version"));
+		pEntry->multiModeFlags = std::stoul(SteamMatchmaking()->GetLobbyData(lobbyID, "multiModeFlags"));
+		pEntry->tickRateMs = std::stoi(SteamMatchmaking()->GetLobbyData(lobbyID, "tickRateMs"));
+		pEntry->maxRank = std::stoi(SteamMatchmaking()->GetLobbyData(lobbyID, "maxRank"));
+
+		return 1;
+	}
+
+	static void Steam_SetLobbySessionDesc(CSteamID lobbyID, stdCommSession* pEntry)
+	{
+		// make sure we're the owner
+		SteamMatchmaking()->SetLobbyOwner(lobbyID, SteamUser()->GetSteamID());
+
+		Steam_SetLobbyWideString(lobbyID, "serverName", pEntry->serverName);
+
+		SteamMatchmaking()->SetLobbyData(lobbyID, "episodeGobName", pEntry->episodeGobName);
+		SteamMatchmaking()->SetLobbyData(lobbyID, "mapJklFname", pEntry->mapJklFname);
+		//SteamMatchmaking()->SetLobbyData(lobbyID, "password", password);
+		SteamMatchmaking()->SetLobbyData(lobbyID, "sessionFlags", std::to_string(pEntry->sessionFlags).c_str());
+		SteamMatchmaking()->SetLobbyData(lobbyID, "checksum", std::to_string(pEntry->checksumSeed).c_str()); // todo: encryption
+		SteamMatchmaking()->SetLobbyData(lobbyID, "version", std::to_string(pEntry->field_E0).c_str());
+		SteamMatchmaking()->SetLobbyData(lobbyID, "multiModeFlags", std::to_string(pEntry->multiModeFlags).c_str());
+		SteamMatchmaking()->SetLobbyData(lobbyID, "tickRateMs", std::to_string(pEntry->tickRateMs).c_str());
+		SteamMatchmaking()->SetLobbyData(lobbyID, "maxRank", std::to_string(pEntry->maxRank).c_str());
+	}
 }
 
 static CSteamID stdComm_steamLobbyID;
@@ -108,31 +167,6 @@ struct LobbySystem
 		, inviteCallback(this, &LobbySystem::OnGameInvite)
 		, sessionCallback(this, &LobbySystem::OnSessionRequest)
 	{
-	}
-
-	int GetLobbySessionDesc(CSteamID lobbyID, stdCommSession* pEntry)
-	{
-		if (!lobbyID.IsValid())
-			return 0;
-
-		pEntry->guidInstance = lobbyID.ConvertToUint64();
-
-		pEntry->maxPlayers = SteamMatchmaking()->GetLobbyMemberLimit(lobbyID);
-		pEntry->numPlayers = SteamMatchmaking()->GetNumLobbyMembers(lobbyID);
-
-		MultiByteToWideChar(CP_UTF8, 0, SteamMatchmaking()->GetLobbyData(lobbyID, "serverName"), 32, pEntry->serverName, 32);
-		strcpy_s(pEntry->episodeGobName, 32, SteamMatchmaking()->GetLobbyData(lobbyID, "episodeGobName"));
-		strcpy_s(pEntry->mapJklFname, 32, SteamMatchmaking()->GetLobbyData(lobbyID, "mapJklFname"));
-		//MultiByteToWideChar(CP_UTF8, 0, SteamMatchmaking()->GetLobbyData(lobbyID, "password"), 32, pEntry->wPassword, 32);
-		pEntry->sessionFlags = std::stoul(SteamMatchmaking()->GetLobbyData(lobbyID, "sessionFlags"));
-		pEntry->checksumSeed = std::stoi(SteamMatchmaking()->GetLobbyData(stdComm_steamLobbyID, "checksum")); // todo: encryption
-		pEntry->field_E0 = std::stoi(SteamMatchmaking()->GetLobbyData(lobbyID, "version"));
-		pEntry->multiModeFlags = std::stoul(SteamMatchmaking()->GetLobbyData(lobbyID, "multiModeFlags"));
-		pEntry->tickRateMs = std::stoi(SteamMatchmaking()->GetLobbyData(lobbyID, "tickRateMs"));
-		pEntry->maxRank = std::stoi(SteamMatchmaking()->GetLobbyData(lobbyID, "maxRank"));
-
-
-		return 1;
 	}
 
 	uint32_t CreateLobby(stdCommSession* pEntry)
@@ -150,12 +184,25 @@ struct LobbySystem
 			SteamNetworkingSockets()->RunCallbacks();
 		}
 
+		if (success && pEntry)
+			Steam_SetLobbySessionDesc(stdComm_steamLobbyID, pEntry);
+
 		return success;
 	}
 
-	uint32_t JoinLobby()
+	uint32_t JoinLobby(uint64_t id)
 	{
 		success = 0;
+
+		stdComm_dword_8321E8 = 0;
+		stdComm_dword_8321E0 = 1;
+		stdComm_dplayIdSelf = DirectPlay_CreatePlayer(jkPlayer_playerShortName, 0);
+		stdComm_bIsServer = 0;
+
+		stdComm_steamLobbyID.Clear();
+		stdComm_steamLobbyID.SetFromUint64(id);
+		if (!stdComm_steamLobbyID.IsValid())
+			return success;
 
 		SteamAPICall_t hSteamAPICall = SteamMatchmaking()->JoinLobby(stdComm_steamLobbyID);
 		joinResult.Set(hSteamAPICall, this, &LobbySystem::OnLobbyEntered);
@@ -227,7 +274,7 @@ struct LobbySystem
 			if (lobbyID.IsValid())// && ownerID.IsValid())
 			{
 				stdCommSession* pEntry = &jkGuiMultiplayer_aEntries[i];
-				GetLobbySessionDesc(lobbyID, pEntry);
+				Steam_GetLobbySessionDesc(lobbyID, pEntry);
 			}
 		}
 
@@ -259,7 +306,6 @@ struct LobbySystem
 			break;
 		case k_EChatMemberStateChangeLeft:
 		case k_EChatMemberStateChangeDisconnected:
-			// todo: migrate host
 			break;
 		case k_EChatMemberStateChangeKicked:
 		case k_EChatMemberStateChangeBanned:
@@ -268,6 +314,13 @@ struct LobbySystem
 		default:
 			break;
 		}
+		
+		// todo: migrating the host should actually be done on a higher level in the game code
+		//CSteamID ownerID = SteamMatchmaking()->GetLobbyOwner(update->m_ulSteamIDLobby);
+		//if (ownerID == SteamUser()->GetSteamID()) // if the new lobby owner is us
+		//	stdComm_bIsServer = 1; // then we become the server
+		//else
+		//	stdComm_bIsServer = 0;
 	}
 
 	void OnGameInvite(GameRichPresenceJoinRequested_t* invite)
@@ -481,15 +534,7 @@ int stdComm_Open(int idx, wchar_t* pwPassword)
 
 	jkGuiMultiplayer_checksumSeed = jkGuiMultiplayer_aEntries[idx].checksumSeed;
 
-	stdComm_dword_8321E8 = 0;
-	stdComm_dword_8321E0 = 1;
-	stdComm_dplayIdSelf = DirectPlay_CreatePlayer(jkPlayer_playerShortName, 0);
-	stdComm_bIsServer = 0;
-
-	stdComm_steamLobbyID.Clear();
-	stdComm_steamLobbyID.SetFromUint64(jkGuiMultiplayer_aEntries[idx].guidInstance);
-
-	uint32_t result = lobbyFuncs.JoinLobby();
+	uint32_t result = lobbyFuncs.JoinLobby(jkGuiMultiplayer_aEntries[idx].guidInstance);
 	if (result == k_EChatRoomEnterResponseSuccess)
 		return 0;
 	
@@ -546,20 +591,7 @@ int DirectPlay_EarlyInit(wchar_t* pwIdk, wchar_t* pwPlayerName)
 			stdPlatform_Printf("Invited to game %ls\n", pwIdk);
 
 		uint64_t id = std::wcstoull(pwIdk, 0, 0);
-		stdComm_steamLobbyID.Clear();
-		stdComm_steamLobbyID.SetFromUint64(id);
-		if (!stdComm_steamLobbyID.IsValid())
-		{
-			stdPlatform_Printf("Lobby %ls is invalid\n", pwIdk);
-			return 0;
-		}
-
-		stdComm_dword_8321E8 = 0;
-		stdComm_dword_8321E0 = 1;
-		stdComm_dplayIdSelf = DirectPlay_CreatePlayer(jkPlayer_playerShortName, 0);
-		stdComm_bIsServer = 0;
-
-		uint32_t result = lobbyFuncs.JoinLobby();
+		uint32_t result = lobbyFuncs.JoinLobby(id);
 		if (result == k_EChatRoomEnterResponseSuccess)
 			return 2; // peer
 
@@ -587,36 +619,21 @@ int DirectPlay_OpenHost(stdCommSession* pEntry)
 	if (!SteamAPI_IsSteamRunning())
 		return 0;
 
-	uint32_t result = lobbyFuncs.CreateLobby(pEntry);
-	if (result != k_EChatRoomEnterResponseSuccess)
+	// update the session desc if the lobby already exists
+	if (stdComm_steamLobbyID.IsValid())
 	{
-		stdPlatform_Printf("Failed to create lobby with error %d\n", result);
-		stdComm_bIsServer = 0;
-		return result;
+		Steam_SetLobbySessionDesc(stdComm_steamLobbyID, pEntry);
 	}
-
-	// todo: should be in the session functions
-	// make sure we're the owner
-	SteamMatchmaking()->SetLobbyOwner(stdComm_steamLobbyID, SteamUser()->GetSteamID());
-
-	// set the session description through lobby metadata
-	char serverName[32];
-	WideCharToMultiByte(CP_UTF8, 0, pEntry->serverName, 32, serverName, 32, 0, 0);
-
-	// todo: encryption
-	char password[32];
-	WideCharToMultiByte(CP_UTF8, 0, pEntry->wPassword, 32, password, 32, 0, 0);
-
-	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "serverName", serverName);
-	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "episodeGobName", pEntry->episodeGobName);
-	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "mapJklFname", pEntry->mapJklFname);
-	//SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "password", password);
-	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "sessionFlags", std::to_string(pEntry->sessionFlags).c_str());
-	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "checksum", std::to_string(pEntry->checksumSeed).c_str()); // todo: encryption
-	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "version", std::to_string(pEntry->field_E0).c_str());
-	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "multiModeFlags", std::to_string(pEntry->multiModeFlags).c_str());
-	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "tickRateMs", std::to_string(pEntry->tickRateMs).c_str());
-	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "maxRank", std::to_string(pEntry->maxRank).c_str());
+	else
+	{
+		uint32_t result = lobbyFuncs.CreateLobby(pEntry);
+		if (result != k_EChatRoomEnterResponseSuccess)
+		{
+			stdPlatform_Printf("Failed to create lobby with error %d\n", result);
+			stdComm_bIsServer = 0;
+			return result;
+		}
+	}
 
 	stdComm_bIsServer = 1;
 	return 0;
@@ -651,7 +668,7 @@ void DirectPlayer_AddPlayer(CSteamID steamID)
 		nickname = SteamFriends()->GetFriendPersonaName(steamID);
 
 	wchar_t wname[128];
-	stdString_CharToWchar(wname, nickname, 128);
+	MultiByteToWideChar(CP_UTF8, 0, nickname, 128, wname, 128);
 
 	DPNAME name;
 	name.dwSize = sizeof(DPNAME);
@@ -697,7 +714,7 @@ int DirectPlay_GetSessionDesc(stdCommSession* pEntry)
 {
 	pEntry->field_E0 = 0;
 
-	if(!lobbyFuncs.GetLobbySessionDesc(stdComm_steamLobbyID, pEntry))
+	if(!Steam_GetLobbySessionDesc(stdComm_steamLobbyID, pEntry))
 		return 1;
 
 	return 0;
@@ -716,82 +733,17 @@ int DirectPlay_EnumFriends()
 	DirectPlay_apFriends = (stdComm_Friend*)pHS->alloc(sizeof(stdComm_Friend) * DirectPlay_numFriends);
 	memset(DirectPlay_apFriends, 0, sizeof(stdComm_Friend) * DirectPlay_numFriends);
 
-	// todo: get this out of here
-	rdColor24* pal24 = (rdColor24*)jkGui_stdBitmaps[JKGUI_BM_BK_BUILD_LOAD]->palette;//(rdColor24*)stdDisplay_gammaPalette;
-
 	for (int i = 0; i < DirectPlay_numFriends; ++i)
 	{
 		CSteamID steamID = SteamFriends()->GetFriendByIndex(i, k_EFriendFlagImmediate);
 		DirectPlay_apFriends[i].dpId = steamID.ConvertToUint64();
-		stdString_CharToWchar(DirectPlay_apFriends[i].name, SteamFriends()->GetFriendPersonaName(steamID), 32);
+		MultiByteToWideChar(CP_UTF8, 0, SteamFriends()->GetFriendPersonaName(steamID), 32, DirectPlay_apFriends[i].name, 32);
 
 		EPersonaState state = SteamFriends()->GetFriendPersonaState(steamID);
 		DirectPlay_apFriends[i].state = min((int)state, NET_USER_SNOOZE);
 
-		int avatar = SteamFriends()->GetSmallFriendAvatar(steamID);
-		if (avatar > 0 && pal24)
-		{
-			// If we have to check the size of the image.
-			uint32 uAvatarWidth, uAvatarHeight;
-			bool success = SteamUtils()->GetImageSize(avatar, &uAvatarWidth, &uAvatarHeight);
-			if (success)
-			{
-				const int uImageSizeInBytes = uAvatarWidth * uAvatarHeight * 4;
-
-				uint8* pixels = (uint8*)std_pHS->alloc(uImageSizeInBytes);
-				success = SteamUtils()->GetImageRGBA(avatar, pixels, uImageSizeInBytes);
-				if (success)
-				{
-					//DirectPlay_apFriends[i].thumbnail = stdBitmap_NewEntryFromRGBA(pixels, uAvatarWidth, uAvatarHeight, 0, 0);
-
-					stdVBufferTexFmt vbufTexFmt; // [esp+A0h] [ebp-4Ch] BYREF
-					memset(&vbufTexFmt, 0, sizeof(stdVBufferTexFmt));
-					vbufTexFmt.format.bpp = 8;
-					vbufTexFmt.format.colorMode = STDCOLOR_PAL;
-	
-					vbufTexFmt.height = uAvatarHeight;
-					vbufTexFmt.width = uAvatarWidth;
-
-					DirectPlay_apFriends[i].thumbnail = stdDisplay_VBufferNew(&vbufTexFmt, 0, 0, 0);
-					if (DirectPlay_apFriends[i].thumbnail)
-					{
-						DirectPlay_apFriends[i].thumbnail->palette = pal24;
-						stdDisplay_VBufferLock(DirectPlay_apFriends[i].thumbnail);
-						uint8_t* target = (uint8_t*)DirectPlay_apFriends[i].thumbnail->surface_lock_alloc;
-						for (int y = 0; y < uAvatarHeight; ++y)
-						{
-							for (int x = 0; x < uAvatarWidth; ++x)
-							{
-								uint32_t pixelIdx = (y * uAvatarWidth + x);
-
-								rdColor32 rgb = ((rdColor32*)pixels)[pixelIdx];
-												
-								uint8_t idx = 0;
-								float maxDist = FLT_MAX;
-								for (int k = 0; k < 256; ++k)
-								{
-									float dr = ((float)rgb.r - (float)pal24[k].r) / 255.0f;
-									float dg = ((float)rgb.g - (float)pal24[k].g) / 255.0f;
-									float db = ((float)rgb.b - (float)pal24[k].b) / 255.0f;
-
-									float dist = (dr * dr + dg * dg + db * db);
-									if(dist < maxDist)
-									{
-										idx = k;
-										maxDist = dist;
-									}
-								}
-						
-								target[pixelIdx] = idx;
-							}
-						}
-						//memcpy(DirectPlay_apFriends[i].thumbnail->surface_lock_alloc, pixels, uImageSizeInBytes);
-						stdDisplay_VBufferUnlock(DirectPlay_apFriends[i].thumbnail);
-					}
-				}
-				std_pHS->free(pixels);
-			}
-		}
+		DirectPlay_apFriends[i].invited = 0;
+		DirectPlay_apFriends[i].thumbnail = 0; // filled later on request
 	}
 
 	qsort(DirectPlay_apFriends, DirectPlay_numFriends, sizeof(stdComm_Friend), DirectPlay_SortFriends);
@@ -799,12 +751,79 @@ int DirectPlay_EnumFriends()
 	return 1;
 }
 
-void DirectPlay_Invite(DPID id)
+int DirectPlay_Invite(DPID id)
 {
 	CSteamID steamID(id);
 	if(steamID.IsValid())
-		SteamMatchmaking()->InviteUserToLobby(stdComm_steamLobbyID, steamID);
+		return SteamMatchmaking()->InviteUserToLobby(stdComm_steamLobbyID, steamID);
+	return 0;
 }
+
+
+stdVBuffer* DirectPlay_GetFriendAvatarThumbnail(int idx, rdColor24* pal24)
+{
+	if (idx < 0 || idx >= DirectPlay_numFriends)
+		return NULL;
+
+	// if we have a thumbnail already with the same palette, just return it
+	if (DirectPlay_apFriends[idx].thumbnail && (DirectPlay_apFriends[idx].thumbnail->palette == pal24));
+		return DirectPlay_apFriends[idx].thumbnail;
+
+	// free if already exits, we're going to replace it
+	// todo: do we want to cache different versions for different palettes?
+	// ideally, we'd just render the full 32bit thumbnail but the menu atm is all 8 bit...
+	if (DirectPlay_apFriends[idx].thumbnail)
+	{
+		stdDisplay_VBufferFree(DirectPlay_apFriends[idx].thumbnail);
+		DirectPlay_apFriends[idx].thumbnail = 0;
+	}
+
+	// try fetch the avatar image
+	CSteamID steamID(DirectPlay_apFriends[idx].dpId);
+	int avatar = SteamFriends()->GetSmallFriendAvatar(steamID);
+	if (avatar > 0 && pal24)
+	{
+		// If we have to check the size of the image.
+		uint32 uAvatarWidth, uAvatarHeight;
+		bool success = SteamUtils()->GetImageSize(avatar, &uAvatarWidth, &uAvatarHeight);
+		if (success)
+		{
+			const int uImageSizeInBytes = uAvatarWidth * uAvatarHeight * 4;
+
+			uint8* pixels = (uint8*)std_pHS->alloc(uImageSizeInBytes);
+			success = SteamUtils()->GetImageRGBA(avatar, pixels, uImageSizeInBytes);
+			if (success)
+			{
+				//DirectPlay_apFriends[i].thumbnail = stdBitmap_NewEntryFromRGBA(pixels, uAvatarWidth, uAvatarHeight, 0, 0);
+
+				stdVBufferTexFmt vbufTexFmt;
+				memset(&vbufTexFmt, 0, sizeof(stdVBufferTexFmt));
+				vbufTexFmt.format.bpp = 8;
+				vbufTexFmt.format.colorMode = STDCOLOR_PAL;
+				vbufTexFmt.height = uAvatarHeight;
+				vbufTexFmt.width = uAvatarWidth;
+
+				DirectPlay_apFriends[idx].thumbnail = stdDisplay_VBufferNew(&vbufTexFmt, 0, 0, 0);
+				if (DirectPlay_apFriends[idx].thumbnail)
+				{
+					DirectPlay_apFriends[idx].thumbnail->palette = pal24;
+
+					stdDisplay_VBufferLock(DirectPlay_apFriends[idx].thumbnail);
+					uint8_t* target = (uint8_t*)DirectPlay_apFriends[idx].thumbnail->surface_lock_alloc;
+					rdColor32* rgba = (rdColor32*)pixels;
+					for (int pixelIdx = 0; pixelIdx < uAvatarWidth * uAvatarHeight; ++pixelIdx)
+						target[pixelIdx] = stdColor_FindClosest32(rgba + pixelIdx, pal24);
+
+					//memcpy(DirectPlay_apFriends[i].thumbnail->surface_lock_alloc, pixels, uImageSizeInBytes);
+					stdDisplay_VBufferUnlock(DirectPlay_apFriends[idx].thumbnail);
+				}
+			}
+			std_pHS->free(pixels);
+		}
+	}
+	return DirectPlay_apFriends[idx].thumbnail;
+}
+
 
 }
 
