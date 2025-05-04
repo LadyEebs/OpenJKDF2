@@ -80,7 +80,7 @@ static jkGuiElement jkGuiMultiFriends_buttons[] = {
 
 static jkGuiMenu jkGuiMultiFriends_menu =
 {
-	jkGuiMultiFriends_buttons, -1, 65535, 65535, 15, NULL, NULL, jkGui_stdBitmaps, jkGui_stdFonts, 0, NULL, "thermloop01.wav", "thrmlpu2.wav", NULL, NULL, NULL, 0, NULL, NULL
+	jkGuiMultiFriends_buttons, -1, 65535, 65535, 15, NULL, NULL, jkGui_stdBitmaps, jkGui_stdFonts, 0, jkGuiMultiFriends_Refresh, "thermloop01.wav", "thrmlpu2.wav", NULL, NULL, NULL, 0, NULL, NULL
 };
 
 int jkGuiMultiFriends_PopulateFriendList(Darray* pDarray, jkGuiElement* pElement)
@@ -155,14 +155,14 @@ void jkGuiMultiFriends_Shutdown()
 #endif
 }
 
-void jkGuiMultiFriends_sub_4188B0(jkGuiMenu* pMenu)
+void jkGuiMultiFriends_Refresh(jkGuiMenu* pMenu)
 {
-	//int timeDelta = stdPlatform_GetTimeMsec() - jkGuiMultiFriends_msStart;
-    //if ( timeDelta > 1000 )
-    //{
-	//	jkGuiMultiFriends_msStart = stdPlatform_GetTimeMsec();
-	//	jkGuiMultiFriends_PopulateFriendList(&jkGuiMultiFriends_stringArray, &jkGuiMultiFriends_buttons[MULTI_FRIENDS_LISTBOX]);
-    //}
+	int timeDelta = stdPlatform_GetTimeMsec() - jkGuiMultiFriends_msStart;
+    if ( timeDelta > 5000 )
+    {
+		jkGuiMultiFriends_msStart = stdPlatform_GetTimeMsec();
+		jkGuiMultiFriends_PopulateFriendList(&jkGuiMultiFriends_stringArray, &jkGuiMultiFriends_buttons[MULTI_FRIENDS_LISTBOX]);
+	}
 }
 
 extern int jkGuiRend_dword_85620C;

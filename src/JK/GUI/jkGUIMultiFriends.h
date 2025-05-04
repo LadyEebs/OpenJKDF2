@@ -9,7 +9,7 @@ int jkGuiMultiFriends_Show(int a1);
 
 void jkGuiMultiFriends_Startup();
 void jkGuiMultiFriends_Shutdown();
-void jkGuiMultiFriends_sub_4188B0(jkGuiMenu* pMenu);
+void jkGuiMultiFriends_Refresh(jkGuiMenu* pMenu);
 
 #endif
 
