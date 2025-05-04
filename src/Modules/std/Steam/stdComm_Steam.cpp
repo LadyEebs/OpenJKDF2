@@ -639,6 +639,13 @@ int stdComm_EnumSessions(int a, void* b)
 
 void DirectPlayer_AddPlayer(CSteamID steamID)
 {
+	// check if the player is already in the lobby
+	for (int i = 0; i < DirectPlay_numPlayers; ++i)
+	{
+		if(DirectPlay_aPlayers[i].dpId == steamID.ConvertToUint64())
+			return;
+	}
+
 	const char* nickname = SteamMatchmaking()->GetLobbyMemberData(stdComm_steamLobbyID, steamID, "nickname");
 	if(!nickname)
 		nickname = SteamFriends()->GetFriendPersonaName(steamID);
