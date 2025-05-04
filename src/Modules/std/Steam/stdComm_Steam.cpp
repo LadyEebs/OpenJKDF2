@@ -123,15 +123,14 @@ struct LobbySystem
 		MultiByteToWideChar(CP_UTF8, 0, SteamMatchmaking()->GetLobbyData(lobbyID, "serverName"), 32, pEntry->serverName, 32);
 		strcpy_s(pEntry->episodeGobName, 32, SteamMatchmaking()->GetLobbyData(lobbyID, "episodeGobName"));
 		strcpy_s(pEntry->mapJklFname, 32, SteamMatchmaking()->GetLobbyData(lobbyID, "mapJklFname"));
-		//wchar_t wPassword[32];
+		//MultiByteToWideChar(CP_UTF8, 0, SteamMatchmaking()->GetLobbyData(lobbyID, "password"), 32, pEntry->wPassword, 32);
 		pEntry->sessionFlags = std::stoul(SteamMatchmaking()->GetLobbyData(lobbyID, "sessionFlags"));
 		pEntry->checksumSeed = std::stoi(SteamMatchmaking()->GetLobbyData(stdComm_steamLobbyID, "checksum")); // todo: encryption
-		//int field_E0;
+		pEntry->field_E0 = std::stoi(SteamMatchmaking()->GetLobbyData(lobbyID, "version"));
 		pEntry->multiModeFlags = std::stoul(SteamMatchmaking()->GetLobbyData(lobbyID, "multiModeFlags"));
 		pEntry->tickRateMs = std::stoi(SteamMatchmaking()->GetLobbyData(lobbyID, "tickRateMs"));
 		pEntry->maxRank = std::stoi(SteamMatchmaking()->GetLobbyData(lobbyID, "maxRank"));
 
-		pEntry->field_E0 = 10; // todo: fixme
 
 		return 1;
 	}
@@ -144,8 +143,12 @@ struct LobbySystem
 		createResult.Set(hSteamAPICall, this, &LobbySystem::OnLobbyCreated);
 
 		// wait for result
-		while (success == 0)
+		uint32_t msec = stdPlatform_GetTimeMsec();
+		while (success == 0 && !Timeout(msec))
+		{
 			SteamAPI_RunCallbacks();
+			SteamNetworkingSockets()->RunCallbacks();
+		}
 
 		return success;
 	}
@@ -158,23 +161,26 @@ struct LobbySystem
 		joinResult.Set(hSteamAPICall, this, &LobbySystem::OnLobbyEntered);
 
 		// wait for join result
-		while (success == 0)
+		uint32_t msec = stdPlatform_GetTimeMsec();
+		while (success == 0 && !Timeout(msec))
+		{
 			SteamAPI_RunCallbacks();
+			SteamNetworkingSockets()->RunCallbacks();
+		}
 
 		return success;
 	}
 
 	void ListLobbies()
 	{
-		success = 0;
-
-		SteamMatchmaking()->AddRequestLobbyListDistanceFilter(k_ELobbyDistanceFilterFar);
-		SteamAPICall_t hSteamAPICall = SteamMatchmaking()->RequestLobbyList();
-		listResult.Set(hSteamAPICall, this, &LobbySystem::OnLobbyMatchList);
-
-		// wait for the result
-		while (success == 0)
-			SteamAPI_RunCallbacks();
+		if (!listResult.IsActive())
+		{
+			SteamMatchmaking()->AddRequestLobbyListDistanceFilter(k_ELobbyDistanceFilterFar);
+			SteamAPICall_t hSteamAPICall = SteamMatchmaking()->RequestLobbyList();
+			listResult.Set(hSteamAPICall, this, &LobbySystem::OnLobbyMatchList);
+		}
+		SteamAPI_RunCallbacks();
+		SteamNetworkingSockets()->RunCallbacks();
 	}
 
 	void OnLobbyCreated(LobbyCreated_t* pCreated, bool)
@@ -189,7 +195,7 @@ struct LobbySystem
 
 	void OnLobbyEntered(LobbyEnter_t* pEntered, bool)
 	{
-		if (CSteamID(pEntered->m_ulSteamIDLobby) == stdComm_steamLobbyID)
+		//if (CSteamID(pEntered->m_ulSteamIDLobby) == stdComm_steamLobbyID)
 		{
 			char name[32];
 			WideCharToMultiByte(CP_UTF8, 0, jkPlayer_playerShortName, 32, name, 32, nullptr, 0);
@@ -207,7 +213,10 @@ struct LobbySystem
 			std_pHS->free(jkGuiMultiplayer_aEntries);
 			jkGuiMultiplayer_aEntries = 0;
 		}
-		dplay_dword_55D618 = max(pLobbyMatchList->m_nLobbiesMatching, 1);
+		dplay_dword_55D618 = pLobbyMatchList->m_nLobbiesMatching;
+		if (!dplay_dword_55D618)
+			return;
+
 		jkGuiMultiplayer_aEntries = (stdCommSession*)std_pHS->alloc(dplay_dword_55D618 * sizeof(stdCommSession));
 		memset(jkGuiMultiplayer_aEntries, 0, dplay_dword_55D618 * sizeof(stdCommSession));
 
@@ -301,6 +310,12 @@ struct LobbySystem
 		SteamNetworkingMessages()->AcceptSessionWithUser(request->m_identityRemote);
 	}
 	
+	int Timeout(uint32_t msec)
+	{
+		int diff = stdPlatform_GetTimeMsec() - msec;
+		return diff > 300; // timeout after 300ms
+	}
+
 	uint32_t success = 0;
 
 	CCallback<LobbySystem, LobbyDataUpdate_t> dataUpdateCallback;
@@ -564,6 +579,7 @@ DPID DirectPlay_CreatePlayer(wchar_t* pwIdk, int idk2)
 void DirectPlay_Close()
 {
 	SteamMatchmaking()->LeaveLobby(stdComm_steamLobbyID);
+	stdComm_steamLobbyID.Clear();
 }
 
 int DirectPlay_OpenHost(stdCommSession* pEntry)
@@ -585,15 +601,19 @@ int DirectPlay_OpenHost(stdCommSession* pEntry)
 
 	// set the session description through lobby metadata
 	char serverName[32];
-	MultiByteToWideChar(CP_UTF8, 0, serverName, 32, pEntry->serverName, 32);
+	WideCharToMultiByte(CP_UTF8, 0, pEntry->serverName, 32, serverName, 32, 0, 0);
+
+	// todo: encryption
+	char password[32];
+	WideCharToMultiByte(CP_UTF8, 0, pEntry->wPassword, 32, password, 32, 0, 0);
 
 	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "serverName", serverName);
 	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "episodeGobName", pEntry->episodeGobName);
 	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "mapJklFname", pEntry->mapJklFname);
-	//wchar_t wPassword[32];
+	//SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "password", password);
 	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "sessionFlags", std::to_string(pEntry->sessionFlags).c_str());
 	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "checksum", std::to_string(pEntry->checksumSeed).c_str()); // todo: encryption
-	//int field_E0;
+	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "version", std::to_string(pEntry->field_E0).c_str());
 	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "multiModeFlags", std::to_string(pEntry->multiModeFlags).c_str());
 	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "tickRateMs", std::to_string(pEntry->tickRateMs).c_str());
 	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "maxRank", std::to_string(pEntry->maxRank).c_str());

@@ -237,6 +237,8 @@ LABEL_1:
                     jkGuiRend_DarrayFree(&a1);
                     if ( v3 != 1 )
                         continue;
+					// Added
+					jkGuiMultiplayer_dword_5564E8 = 0; // init to 0 so we immediately try to populate
                     _memset(&v35, 0, sizeof(v35));
                     _memset(&jkGuiMultiplayer_stru_556168, 0, sizeof(jkGuiMultiplayer_stru_556168));
                     memset(&jkGui_guid_556040, 0, sizeof(GUID));
@@ -611,7 +613,11 @@ void jkGuiMultiplayer_sub_4140B0(jkGuiMenu *pMenu)
     if ( g_app_suspended )
     {
         v1 = stdPlatform_GetTimeMsec();
-        if ( v1 > jkGuiMultiplayer_dword_5564E8 + 5000 )
+#ifdef PLATFORM_STEAM
+        if ( v1 > jkGuiMultiplayer_dword_5564E8 + 500 )
+#else
+		if (v1 > jkGuiMultiplayer_dword_5564E8 + 5000)
+#endif
         {
             v2 = -1;
             jkGuiMultiplayer_dword_5564E8 = v1;
