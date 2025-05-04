@@ -224,16 +224,14 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	{
 		alpha = 90.0f / 255.0f;
 		rdSetBlendEnabled(RD_TRUE);
+		rdSetBlendMode(RD_BLEND_SRCALPHA, RD_BLEND_INVSRCALPHA);
+		rdSetZBufferMethod(RD_ZBUFFER_READ_NOWRITE);
 	}
-	else
-	{
-		rdSetBlendEnabled(RD_FALSE);
-	}
-
-	if (sprite->face.type & RD_FF_ADDITIVE)
+	else if (sprite->face.type & RD_FF_ADDITIVE)
 	{
 		rdSetBlendEnabled(RD_TRUE);
 		rdSetBlendMode(RD_BLEND_ONE, RD_BLEND_ONE);
+		rdSetZBufferMethod(RD_ZBUFFER_READ_NOWRITE);
 	}
 	else if (sprite->face.type & RD_FF_SCREEN)
 	{
@@ -243,7 +241,7 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	}
 	else
 	{
-		rdSetBlendMode(RD_BLEND_SRCALPHA, RD_BLEND_INVSRCALPHA);
+		rdSetBlendEnabled(RD_FALSE);
 		rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
 	}
 
