@@ -23,6 +23,7 @@
 #ifdef PLATFORM_STEAM
 #include "JK/GUI/jkGUIMultiFriends.h"
 #include "JK/GUI/jkGUIMultiLobby.h"
+#include "JK/GUI/jkGUIMultiPlayers.h"
 #endif
 
 enum jkGuiEscButton_t
@@ -37,7 +38,7 @@ enum jkGuiEscButton_t
     JKGUIESC_SETUP        = 16,
     JKGUIESC_ABORT        = 17,
 #ifdef PLATFORM_STEAM
-	JKGUIESC_ADMIN        = 18,
+	JKGUIESC_PLAYERS        = 18,
 	JKGUIESC_INVITE       = 19,
 	JKGUIESC_VOTE         = 20
 #endif
@@ -55,7 +56,7 @@ enum jkGuiEscElement_t
     JKGUIESC_ELMT_SETUP        = 7,
     JKGUIESC_ELMT_ABORT        = 8,
 #ifdef PLATFORM_STEAM
-	JKGUIESC_ELMT_ADMIN        = 9,
+	JKGUIESC_ELMT_PLAYERS        = 9,
 	JKGUIESC_ELMT_INVITE       = 10,
 	JKGUIESC_ELMT_VOTE         = 11
 #endif
@@ -72,7 +73,7 @@ static jkGuiElement jkGuiEsc_aElements[] = {
     { ELEMENT_TEXTBUTTON, JKGUIESC_SETUP,        5, "GUI_SETUP",          3, {400, 370, 240, 40},  1,  0,  0,  0,  0,  0, {0}, 0},
     { ELEMENT_TEXTBUTTON, JKGUIESC_ABORT,        5, "GUI_ABORT",          3, {400, 420, 240, 40},  1,  0,  0,  0,  0,  0, {0}, 0},
 #ifdef PLATFORM_STEAM
-	{ ELEMENT_TEXTBUTTON, JKGUIESC_ADMIN,        5, "GUIEXT_ADMIN",       3, {400, 220, 240, 40},  1,  0,  0,  0,  0,  0, {0}, 0},
+	{ ELEMENT_TEXTBUTTON, JKGUIESC_PLAYERS,      5, "GUIEXT_PLAYERS",     3, {400, 220, 240, 40},  1,  0,  0,  0,  0,  0, {0}, 0},
 	{ ELEMENT_TEXTBUTTON, JKGUIESC_INVITE,       5, "GUIEXT_INVITE",      3, {400, 270, 240, 40},  1,  0,  0,  0,  0,  0, {0}, 0},
 	{ ELEMENT_TEXTBUTTON, JKGUIESC_VOTE,         5, "GUIEXT_VOTE",        3, {400, 320, 240, 40},  1,  0,  0,  0,  0,  0, {0}, 0},
 #endif
@@ -110,7 +111,7 @@ void jkGuiEsc_Show()
         jkGuiEsc_aElements[JKGUIESC_ELMT_OBJECTIVES].bIsVisible = !!(sithMulti_multiModeFlags & MULTIMODEFLAG_COOP); // Added: co-op
         jkGuiEsc_aElements[JKGUIESC_ELMT_RESTART].bIsVisible = 0;
 #ifdef PLATFORM_STEAM
-		jkGuiEsc_aElements[JKGUIESC_ELMT_ADMIN].bIsVisible = stdComm_bIsServer;
+		jkGuiEsc_aElements[JKGUIESC_ELMT_PLAYERS].bIsVisible = 1;
 		jkGuiEsc_aElements[JKGUIESC_ELMT_INVITE].bIsVisible = 1;
 		jkGuiEsc_aElements[JKGUIESC_ELMT_VOTE].bIsVisible = 1;
 #endif
@@ -122,7 +123,7 @@ void jkGuiEsc_Show()
         jkGuiEsc_aElements[JKGUIESC_ELMT_OBJECTIVES].bIsVisible = 1;
         jkGuiEsc_aElements[JKGUIESC_ELMT_RESTART].bIsVisible = 1;
 #ifdef PLATFORM_STEAM
-		jkGuiEsc_aElements[JKGUIESC_ELMT_ADMIN].bIsVisible = 0;
+		jkGuiEsc_aElements[JKGUIESC_ELMT_PLAYERS].bIsVisible = 0;
 		jkGuiEsc_aElements[JKGUIESC_ELMT_INVITE].bIsVisible = 0;
 		jkGuiEsc_aElements[JKGUIESC_ELMT_VOTE].bIsVisible = 0;
 #endif
@@ -213,7 +214,8 @@ void jkGuiEsc_Show()
 				return;
 
 #ifdef PLATFORM_STEAM
-			case JKGUIESC_ADMIN:
+			case JKGUIESC_PLAYERS:
+				jkGuiMultiPlayers_Show();
 				continue;
 
 			case JKGUIESC_INVITE:

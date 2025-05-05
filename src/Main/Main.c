@@ -35,6 +35,7 @@
 #ifdef PLATFORM_STEAM
 #include "JK/GUI/jkGUIMultiFriends.h"
 #include "JK/GUI/jkGUIMultiLobby.h"
+#include "JK/GUI/jkGUIMultiPlayers.h"
 #endif
 #include "World/jkPlayer.h"
 #include "Gameplay/jkSaber.h"
@@ -429,6 +430,7 @@ int Main_Startup(const char *cmdline)
 #ifdef PLATFORM_STEAM
 		jkGuiMultiFriends_Startup();
 		jkGuiMultiLobby_Startup();
+		jkGuiMultiPlayers_Startup();
 #endif
 #ifndef LINUX_TMP
         smack_Startup(); // TODO
@@ -516,6 +518,7 @@ void Main_Shutdown()
 #ifdef PLATFORM_STEAM
 	jkGuiMultiFriends_Shutdown();
 	jkGuiMultiLobby_Shutdown();
+	jkGuiMultiPlayers_Shutdown();
 #endif
     jkGuiRend_Shutdown();
     jkCog_Shutdown();

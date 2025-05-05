@@ -93,16 +93,20 @@ MSGS 100          # <--- DON'T FORGET TO UPDATE THIS COUNT
 #*******************
 #  Multiplayer Lobbies
 #******************/
-	"GUIEXT_PAGE"                                0 "Page"
 	"GUIEXT_STATUS"                              0 "Status"
 	"GUIEXT_OFFLINE"                             0 "Offline"
 	"GUIEXT_ONLINE"                              0 "Online"
 	"GUIEXT_BUSY"                                0 "Busy"
 	"GUIEXT_AWAY"                                0 "Away"
 	"GUIEXT_SNOOZE"                              0 "Snoozing"
+
 	"GUIEXT_INVITE"                              0 "Invite"
 	"GUIEXT_VOTE"                                0 "Vote"
-	"GUIEXT_ADMIN"                               0 "Admin"
+
+	"GUIEXT_PLAYERS"                             0 "Players"
+	"GUIEXT_SELECT_PLAYER"                       0 "Select a player"
+	"GUIEXT_KICK_PLAYER"                         0 "Kick"
+	"GUIEXT_CONFIRM_KICK_PLAYER"                 0 "Are you sure you want to kick this player?"
 
 #******************************
 #  Controls
