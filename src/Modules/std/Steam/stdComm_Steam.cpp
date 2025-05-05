@@ -406,7 +406,6 @@ void DirectPlay_ClearFriends()
 	}
 }
 
-// pretty sure this stuff should be on JK game side
 void stdComm_Steam_Startup()
 {
 	if (!SteamAPI_Init())
