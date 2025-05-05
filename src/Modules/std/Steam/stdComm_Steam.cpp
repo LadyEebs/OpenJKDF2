@@ -744,7 +744,7 @@ int DirectPlay_EnumFriends()
 		DirectPlay_apFriends[i].state = min((int)state, NET_USER_SNOOZE);
 
 		DirectPlay_apFriends[i].invited = 0;
-		DirectPlay_apFriends[i].thumbnail = 0; // filled later on request
+		DirectPlay_apFriends[i].thumbnail = NULL; // filled later on request
 	}
 
 	qsort(DirectPlay_apFriends, DirectPlay_numFriends, sizeof(stdComm_Friend), DirectPlay_SortFriends);
@@ -766,21 +766,23 @@ stdVBuffer* DirectPlay_GetFriendAvatarThumbnail(int idx, rdColor24* pal24)
 	if (idx < 0 || idx >= DirectPlay_numFriends)
 		return NULL;
 
+	stdComm_Friend* pFriend = &DirectPlay_apFriends[idx];
+
 	// if we have a thumbnail already with the same palette, just return it
-	if (DirectPlay_apFriends[idx].thumbnail && (DirectPlay_apFriends[idx].thumbnail->palette == pal24));
-		return DirectPlay_apFriends[idx].thumbnail;
+	if (pFriend->thumbnail && (pFriend->thumbnail->palette == pal24))
+		return pFriend->thumbnail;
 
 	// free if already exits, we're going to replace it
 	// todo: do we want to cache different versions for different palettes?
 	// ideally, we'd just render the full 32bit thumbnail but the menu atm is all 8 bit...
-	if (DirectPlay_apFriends[idx].thumbnail)
+	if (pFriend->thumbnail)
 	{
-		stdDisplay_VBufferFree(DirectPlay_apFriends[idx].thumbnail);
-		DirectPlay_apFriends[idx].thumbnail = 0;
+		stdDisplay_VBufferFree(pFriend->thumbnail);
+		pFriend->thumbnail = 0;
 	}
 
 	// try fetch the avatar image
-	CSteamID steamID(DirectPlay_apFriends[idx].dpId);
+	CSteamID steamID(pFriend->dpId);
 	int avatar = SteamFriends()->GetSmallFriendAvatar(steamID);
 	if (avatar > 0 && pal24)
 	{
@@ -804,25 +806,25 @@ stdVBuffer* DirectPlay_GetFriendAvatarThumbnail(int idx, rdColor24* pal24)
 				vbufTexFmt.height = uAvatarHeight;
 				vbufTexFmt.width = uAvatarWidth;
 
-				DirectPlay_apFriends[idx].thumbnail = stdDisplay_VBufferNew(&vbufTexFmt, 0, 0, 0);
-				if (DirectPlay_apFriends[idx].thumbnail)
+				pFriend->thumbnail = stdDisplay_VBufferNew(&vbufTexFmt, 0, 0, 0);
+				if (pFriend->thumbnail)
 				{
-					DirectPlay_apFriends[idx].thumbnail->palette = pal24;
+					pFriend->thumbnail->palette = pal24;
 
-					stdDisplay_VBufferLock(DirectPlay_apFriends[idx].thumbnail);
-					uint8_t* target = (uint8_t*)DirectPlay_apFriends[idx].thumbnail->surface_lock_alloc;
+					stdDisplay_VBufferLock(pFriend->thumbnail);
+					uint8_t* target = (uint8_t*)pFriend->thumbnail->surface_lock_alloc;
 					rdColor32* rgba = (rdColor32*)pixels;
 					for (int pixelIdx = 0; pixelIdx < uAvatarWidth * uAvatarHeight; ++pixelIdx)
 						target[pixelIdx] = stdColor_FindClosest32(rgba + pixelIdx, pal24);
 
 					//memcpy(DirectPlay_apFriends[i].thumbnail->surface_lock_alloc, pixels, uImageSizeInBytes);
-					stdDisplay_VBufferUnlock(DirectPlay_apFriends[idx].thumbnail);
+					stdDisplay_VBufferUnlock(pFriend->thumbnail);
 				}
 			}
 			std_pHS->free(pixels);
 		}
 	}
-	return DirectPlay_apFriends[idx].thumbnail;
+	return pFriend->thumbnail;
 }
 
 
