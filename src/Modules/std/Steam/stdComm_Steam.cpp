@@ -744,7 +744,10 @@ int DirectPlay_EnumFriends()
 		DirectPlay_apFriends[i].name[charsWritten] = L'\0';
 
 		EPersonaState state = SteamFriends()->GetFriendPersonaState(steamID);
-		DirectPlay_apFriends[i].state = min((int)state, NET_USER_SNOOZE);
+		if(state > k_EPersonaStateSnooze)
+			DirectPlay_apFriends[i].state = NET_USER_ONLINE;
+		else
+			DirectPlay_apFriends[i].state = (int)state;
 
 		DirectPlay_apFriends[i].invited = 0;
 		DirectPlay_apFriends[i].thumbnail = NULL; // filled later on request
