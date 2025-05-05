@@ -738,7 +738,10 @@ int DirectPlay_EnumFriends()
 	{
 		CSteamID steamID = SteamFriends()->GetFriendByIndex(i, k_EFriendFlagImmediate);
 		DirectPlay_apFriends[i].dpId = steamID.ConvertToUint64();
-		MultiByteToWideChar(CP_UTF8, 0, SteamFriends()->GetFriendPersonaName(steamID), 32, DirectPlay_apFriends[i].name, 32);
+
+		const char* name = SteamFriends()->GetFriendPersonaName(steamID);
+		int charsWritten = MultiByteToWideChar(CP_UTF8, 0, name, -1, DirectPlay_apFriends[i].name, 31);
+		DirectPlay_apFriends[i].name[charsWritten] = L'\0';
 
 		EPersonaState state = SteamFriends()->GetFriendPersonaState(steamID);
 		DirectPlay_apFriends[i].state = min((int)state, NET_USER_SNOOZE);
