@@ -241,7 +241,7 @@ LABEL_1:
 					jkGuiMultiplayer_dword_5564E8 = 0; // init to 0 so we immediately try to populate
                     _memset(&v35, 0, sizeof(v35));
                     _memset(&jkGuiMultiplayer_stru_556168, 0, sizeof(jkGuiMultiplayer_stru_556168));
-                    memset(&jkGui_guid_556040, 0, sizeof(GUID));
+                    memset(&jkGui_guid_556040, 0, sizeof(jkGui_guid_556040));
                     jkGuiRend_DarrayNewStr(&jkGuiMultiplayer_stru_5564A8, 8, 1);
                     jkGuiRend_DarrayReallocStr(&jkGuiMultiplayer_stru_5564A8, 0, 0);
                     jkGuiRend_SetClickableString(&jkGuiMultiplayer_aElements3[3], &jkGuiMultiplayer_stru_5564A8);
@@ -745,7 +745,7 @@ void jkGuiMultiplayer_sub_413E50(int idx)
         jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[9], &jkGuiMultiplayer_menu3, 0);
         jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[5], &jkGuiMultiplayer_menu3, 0);
         jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[4], &jkGuiMultiplayer_menu3, 0);
-        memset(&jkGui_guid_556040, 0, sizeof(GUID));
+        memset(&jkGui_guid_556040, 0, sizeof(jkGui_guid_556040));
     }
     jkGuiRend_UpdateAndDrawClickable(&jkGuiMultiplayer_aElements3[6], &jkGuiMultiplayer_menu3, 1);
     jkGuiRend_UpdateAndDrawClickable(&jkGuiMultiplayer_aElements3[7], &jkGuiMultiplayer_menu3, 1);
