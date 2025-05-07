@@ -611,6 +611,9 @@ int sithMulti_ProcessJoinLeave(sithCogMsg *msg)
         {
             sithPlayer_sub_4C87C0(v1, v2);
             v8 = sithStrTable_GetUniStringWithFallback("%s_HAS_JOINED_THE_GAME");
+#ifdef PLATFORM_STEAM
+			sithVoice_CreateChannel(jkPlayer_playerInfos[v1].net_id);
+#endif
             jk_snwprintf(a1a, 0x80u, v8, jkPlayer_playerInfos[v1].player_name);
             sithConsole_PrintUniStr(a1a);
             jkPlayer_playerInfos[v1].lastUpdateMs = sithTime_curMs;
@@ -716,6 +719,9 @@ int sithMulti_ProcessQuit(sithCogMsg *msg)
             jk_snwprintf(a1a, 0x80u, v6, &jkPlayer_playerInfos[v5]);
             sithConsole_PrintUniStr(a1a);
             sithConsole_AlertSound();
+#ifdef PLATFORM_STEAM
+			sithVoice_DeleteChannel(jkPlayer_playerInfos[v5].net_id);
+#endif
             if ( jkPlayer_playerInfos[v5].net_id == sithNet_serverNetId )
             {
                 v7 = sithStrTable_GetUniStringWithFallback("SERVER_LEFT_GAME");
@@ -772,6 +778,9 @@ int sithMulti_ServerLeft(int a, sithEventInfo* b)
                     jk_snwprintf(a1, 0x80u, v3, v1);
                     sithConsole_PrintUniStr(a1);
                     sithConsole_AlertSound();
+#ifdef PLATFORM_STEAM
+					sithVoice_DeleteChannel(v1->net_id);
+#endif
                     if ( v1->net_id == sithNet_serverNetId )
                     {
                         v4 = sithStrTable_GetUniStringWithFallback("SERVER_LEFT_GAME");
@@ -807,6 +816,9 @@ int sithMulti_ServerLeft(int a, sithEventInfo* b)
         jk_snwprintf(a1, 0x80u, v6, jkPlayer_playerInfos);
         sithConsole_PrintUniStr(a1);
         sithConsole_AlertSound();
+#ifdef PLATFORM_STEAM
+		sithVoice_DeleteChannel(jkPlayer_playerInfos[0].net_id);
+#endif
         if ( jkPlayer_playerInfos[0].net_id == sithNet_serverNetId )
         {
             v7 = sithStrTable_GetUniStringWithFallback("SERVER_LEFT_GAME");
@@ -928,6 +940,9 @@ int sithMulti_ProcessLeaveJoin(sithCogMsg *msg)
                     jk_snwprintf(v22, 0x80u, v12, v6);
                     sithConsole_PrintUniStr(v22);
                     sithConsole_AlertSound();
+				#ifdef PLATFORM_STEAM
+					sithVoice_DeleteChannel(v6->net_id);
+				#endif
                     if ( v6->net_id == sithNet_serverNetId )
                     {
                         v13 = sithStrTable_GetUniStringWithFallback("SERVER_LEFT_GAME");
@@ -950,7 +965,9 @@ int sithMulti_ProcessLeaveJoin(sithCogMsg *msg)
                 v10 = sithStrTable_GetUniStringWithFallback("%s_HAS_JOINED_THE_GAME");
                 jk_snwprintf(a1a, 0x80u, v10, v6);
                 sithConsole_PrintUniStr(a1a);
-
+#ifdef PLATFORM_STEAM
+				sithVoice_CreateChannel(v6->net_id);
+#endif
                 v6->lastUpdateMs = sithTime_curMs;
                 if (sithNet_isServer)
                     sithCog_SendSimpleMessageToAll(SITH_MESSAGE_JOIN, 3, v6->playerThing->thingIdx, 0, v3);
@@ -1028,7 +1045,10 @@ LABEL_10:
         jk_snwprintf(a1a, 0x80u, v4, &jkPlayer_playerInfos[v3]);
         sithConsole_PrintUniStr(a1a);
         sithConsole_AlertSound();
-        if ( jkPlayer_playerInfos[v3].net_id == sithNet_serverNetId )
+#ifdef PLATFORM_STEAM
+		sithVoice_DeleteChannel(jkPlayer_playerInfos[v3].net_id);
+#endif
+		if ( jkPlayer_playerInfos[v3].net_id == sithNet_serverNetId )
         {
             v5 = sithStrTable_GetUniStringWithFallback("SERVER_LEFT_GAME");
             sithConsole_PrintUniStr(v5);

@@ -62,6 +62,29 @@ int sithVoice_GetChannel(DPID id)
 	return -1;
 }
 
+void sithVoice_DeleteChannel(DPID id)
+{
+	int idx = sithVoice_GetChannel(id);
+	if (idx < 0)
+		return;
+
+	sithVoice_channels[idx].dpId = 0;
+
+	stdSound_StreamBufferRelease(sithVoice_channels[idx].stream);
+	sithVoice_channels[idx].stream = NULL;
+
+	sithVoicePacket* pVoicePacket = sithVoice_channels[idx].packets;
+	while (pVoicePacket)
+	{
+		sithVoicePacket* pNextPacket = pVoicePacket->pNext;
+
+		pSithHS->free(pVoicePacket->pData);
+		pSithHS->free(pVoicePacket);
+
+		pVoicePacket = pNextPacket;
+	}
+}
+
 void sithVoice_AddVoicePacket(DPID id, const uint8_t* pVoiceData, size_t length)
 {
 	int bytes = stdVoice_Decompress(sithVoice_uncompressedVoice, sizeof(sithVoice_uncompressedVoice), pVoiceData, length);
