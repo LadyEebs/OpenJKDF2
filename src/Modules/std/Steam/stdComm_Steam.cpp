@@ -155,6 +155,22 @@ extern "C" {
 		SteamMatchmaking()->SetLobbyData(lobbyID, "tickRateMs", std::to_string(pEntry->tickRateMs).c_str());
 		SteamMatchmaking()->SetLobbyData(lobbyID, "maxRank", std::to_string(pEntry->maxRank).c_str());
 	}
+
+	static void Steam_UpdateRichPresence(CSteamID lobbyID)
+	{
+		if (lobbyID.IsValid())
+		{
+			char rgchConnectString[128];
+			rgchConnectString[0] = 0;
+
+			stdString_snprintf(rgchConnectString, 128, "+connect_lobby %llu", lobbyID.ConvertToUint64());
+			SteamFriends()->SetRichPresence("connect", rgchConnectString);
+		}
+		else
+		{
+			SteamFriends()->SetRichPresence("connect", NULL);
+		}
+	}
 }
 
 static CSteamID stdComm_steamLobbyID;
@@ -537,6 +553,8 @@ int stdComm_Open(int idx, wchar_t* pwPassword)
 	if (result == k_EChatRoomEnterResponseSuccess)
 		return 0;
 	
+	Steam_UpdateRichPresence(stdComm_steamLobbyID);
+
 	stdPlatform_Printf("Failed to join lobby with error %d\n", result);
 	return result;
 }
@@ -641,6 +659,8 @@ int DirectPlay_OpenHost(stdCommSession* pEntry)
 			return result;
 		}
 	}
+
+	Steam_UpdateRichPresence(stdComm_steamLobbyID);
 
 	stdComm_bIsServer = 1;
 	return 0;
