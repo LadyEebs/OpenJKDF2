@@ -493,6 +493,7 @@ void jkGuiRend_sub_50FDB0()
 void jkGuiRend_Startup()
 {
     jkGuiRend_bInitted = 1;
+	jkGuiRend_DsoundAmbienceHandle = 0;
 }
 
 void jkGuiRend_Shutdown()
@@ -501,6 +502,12 @@ void jkGuiRend_Shutdown()
 
     // Added: Clean reset
 #ifdef QOL_IMPROVEMENTS
+	if (jkGuiRend_DsoundAmbienceHandle)
+	{
+		stdSound_BufferRelease(jkGuiRend_DsoundAmbienceHandle);
+		jkGuiRend_DsoundAmbienceHandle = NULL;
+	}
+
     for (int i = 0; i < 4; i++)
     {
         if ( jkGuiRend_DsoundHandles[i] )
@@ -2696,11 +2703,6 @@ void jkGuiRend_UpdateAudio()
 		stdSound_buffer_t* newHandle = sithSound_InitFromPath("torchlight.wav");
 		if (newHandle)
 		{
-			if (jkGuiRend_DsoundAmbienceHandle)
-			{
-				stdSound_BufferRelease(jkGuiRend_DsoundAmbienceHandle);
-				jkGuiRend_DsoundAmbienceHandle = NULL;
-			}
 			jkGuiRend_DsoundAmbienceHandle = newHandle;
 			stdSound_BufferSetVolume(newHandle, 0.1f);
 			stdSound_BufferPlay(newHandle, 1);
