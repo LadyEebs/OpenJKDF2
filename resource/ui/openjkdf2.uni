@@ -67,6 +67,7 @@ MSGS 100          # <--- DON'T FORGET TO UPDATE THIS COUNT
    "GUIEXT_COOP_HINT"               0 "Launch server with actors enabled."
    "GUIEXT_SERVER_PORT"             0 "Server Port:"
    "GUIEXT_FRIENDS_ONLY"            0 "Friends only"
+   "GUIEXT_FRIENDS_ONLY_HINT"       0 "Only broadcast game to friends"
    "GUIEXT_FRIENDS"                 0 "Friends"
 
    #"GUIEXT_"                0 ""

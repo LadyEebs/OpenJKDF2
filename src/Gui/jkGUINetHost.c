@@ -86,7 +86,7 @@ static jkGuiElement jkGuiNetHost_aElements[28] =
     { ELEMENT_TEXTBUTTON,   GUI_OK,  2, "GUI_OK", 3, { 420, 430, 200, 40 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
     { ELEMENT_TEXTBUTTON,   GUI_CANCEL, 2, "GUI_CANCEL", 3, { 20, 430, 200, 40 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
 #ifdef PLATFORM_STEAM
-	{ ELEMENT_CHECKBOX,     0, 0, "GUIEXT_FRIENDS_ONLY", 0, { 20, 305, 200, 40 }, 1, 0, "GUI_SINGLELEVEL_HINT", NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_CHECKBOX,     0, 0, "GUIEXT_FRIENDS_ONLY", 0, { 20, 305, 200, 40 }, 1, 0, "GUIEXT_FRIENDS_ONLY_HINT", NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
 
 #elif defined(QOL_IMPROVEMENTS)
     { ELEMENT_TEXT, 0, 0, "GUIEXT_SERVER_PORT", 2, { 540, 80, 90, 40 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
