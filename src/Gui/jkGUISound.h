@@ -9,6 +9,9 @@
 #define jkGuiSound_Show_ADDR (0x00410E70)
 
 extern float jkGuiSound_cutsceneVolume;
+#ifdef PLATFORM_STEAM
+extern float jkGuiSound_voiceVolume;
+#endif
 
 void jkGuiSound_Startup();
 void jkGuiSound_Shutdown();

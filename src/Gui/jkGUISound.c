@@ -16,13 +16,17 @@
 #include "Devices/sithSoundMixer.h"
 #include "Platform/wuRegistry.h"
 #include "Win95/stdSound.h"
+#include "Modules/sith/Engine/sithVoice.h"
 
 // Added
 float jkGuiSound_cutsceneVolume = 1.0;
+#ifdef PLATFORM_STEAM
+float jkGuiSound_voiceVolume = 1.0;
+#endif
 
 static int slider_images[2] = {JKGUI_BM_SLIDER_BACK, JKGUI_BM_SLIDER_THUMB};
 
-static jkGuiElement jkGuiSound_elements[25] = {
+static jkGuiElement jkGuiSound_elements[] = {
     {ELEMENT_TEXT, 0, 0, 0, 3, {0, 410, 640, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
     {ELEMENT_TEXT, 0, 6, "GUI_SETUP", 3, {20, 20, 600, 40}, 1, 0, 0, 0, 0, 0, {0}, 0},
     {ELEMENT_TEXTBUTTON, 100, 2, "GUI_GENERAL", 3, {20, 80, 120, 40},  1, 0, "GUI_GENERAL_HINT", 0, 0, 0, {0}, 0},
@@ -32,21 +36,40 @@ static jkGuiElement jkGuiSound_elements[25] = {
     {ELEMENT_TEXTBUTTON, 104, 2, "GUI_CONTROLS", 3, {500, 80, 120, 40}, 1, 0, "GUI_CONTROLS_HINT", 0, 0, 0, {0}, 0},
     {ELEMENT_CHECKBOX, 0, 0, "GUI_ENABLE3DSOUND", 0, {30, 150, 240, 40}, 1, 0, "GUI_ENABLE3DSOUND_HINT", 0, 0, 0, {0}, 0},
     {ELEMENT_TEXT, 0, 0, "GUI_LOWRESSOUNDS", 2, {30, 270, 240, 40}, 1, 0, 0, 0, 0, 0, {0}, 0},
-    {ELEMENT_TEXT, 0, 0, "GUI_MUSICVOLUME", 3, {340, 140, 220, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
-    {ELEMENT_SLIDER, 0, 0, (const char*)100, 0, {300, 160, 320, 30}, 1, 0, "GUI_MUSICVOLUME_HINT", 0, 0, slider_images, {0}, 0},
-    {ELEMENT_TEXT, 0, 0, "GUI_OFF", 2, {300, 190, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
-    {ELEMENT_TEXT, 0, 0, "GUI_MAX", 2, {580, 190, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
-    {ELEMENT_TEXT, 0, 0, "GUI_SFXVOLUME", 3, {340, 220, 220, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
-    {ELEMENT_SLIDER, 0, 0, (const char*)100, 0, {300, 245, 320, 30}, 1, 0, "GUI_SFXVOLUME_HINT", 0, 0, slider_images, {0}, 0},
-    {ELEMENT_TEXT, 0, 0, "GUI_OFF", 2, {300, 280, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
-    {ELEMENT_TEXT, 0, 0, "GUI_MAX", 2, {580, 280, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+   
 #ifdef SDL2_RENDER
-    {ELEMENT_TEXT, 0, 0, L"Cutscene Volume", 3, {340, 310, 220, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
-    {ELEMENT_SLIDER, 0, 0, (const char*)100, 0, {300, 335, 320, 30}, 1, 0, L"Set the volume of audio during cutscenes.", 0, 0, slider_images, {0}, 0},
-    {ELEMENT_TEXT, 0, 0, "GUI_OFF", 2, {310, 370, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
-    {ELEMENT_TEXT, 0, 0, L"", 2, {450, 370, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
-    {ELEMENT_TEXT, 0, 0, "GUI_MAX", 2, {590, 370, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+	{ELEMENT_TEXT, 0, 0, "GUI_MUSICVOLUME", 3, {340, 140, 220, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+    {ELEMENT_SLIDER, 0, 0, (const char*)100, 0, {300, 140 + 20, 305, 30}, 1, 0, "GUI_MUSICVOLUME_HINT", 0, 0, slider_images, {0}, 0},
+    {ELEMENT_TEXT, 0, 0, "GUI_OFF", 2, {270, 140 + 25, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+    {ELEMENT_TEXT, 0, 0, "GUI_MAX", 2, {610, 140 + 25, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+
+    {ELEMENT_TEXT, 0, 0, "GUI_SFXVOLUME", 3, {340, 205, 220, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+    {ELEMENT_SLIDER, 0, 0, (const char*)100, 0, {300, 205 + 20, 305, 30}, 1, 0, "GUI_SFXVOLUME_HINT", 0, 0, slider_images, {0}, 0},
+    {ELEMENT_TEXT, 0, 0, "GUI_OFF", 2, {270, 205 + 25, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+    {ELEMENT_TEXT, 0, 0, "GUI_MAX", 2, {610, 205 + 25, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+   
+    {ELEMENT_TEXT, 0, 0, "GUIEXT_CUTSCENE_VOL", 3, {340, 270, 220, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+    {ELEMENT_SLIDER, 0, 0, (const char*)100, 0, {300, 270 + 20, 305, 30}, 1, 0, "GUIEXT_CUTSCENE_VOL_HINT", 0, 0, slider_images, {0}, 0},
+    {ELEMENT_TEXT, 0, 0, "GUI_OFF", 2, {270, 270 + 25, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+    {ELEMENT_TEXT, 0, 0, L"", 2, {450, 270 + 25, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+    {ELEMENT_TEXT, 0, 0, "GUI_MAX", 2, {610, 270 + 25, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+#ifdef PLATFORM_STEAM
+	{ELEMENT_TEXT, 0, 0, "GUIEXT_VOICE_VOL", 3, {340, 335, 220, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+	{ELEMENT_SLIDER, 0, 0, (const char*)100, 0, {300, 335 + 20, 305, 30}, 1, 0, "GUIEXT_VOICE_VOL_HINT", 0, 0, slider_images, {0}, 0},
+	{ELEMENT_TEXT, 0, 0, "GUI_OFF", 2, {270, 335 + 25, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+	{ELEMENT_TEXT, 0, 0, L"", 2, {450, 335 + 25, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+	{ELEMENT_TEXT, 0, 0, "GUI_MAX", 2, {610, 335 + 25, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+#endif
 #else
+	{ELEMENT_TEXT, 0, 0, "GUI_MUSICVOLUME", 3, {340, 140, 220, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+	{ELEMENT_SLIDER, 0, 0, (const char*)100, 0, {300, 160, 320, 30}, 1, 0, "GUI_MUSICVOLUME_HINT", 0, 0, slider_images, {0}, 0},
+	{ELEMENT_TEXT, 0, 0, "GUI_OFF", 2, {300, 190, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+	{ELEMENT_TEXT, 0, 0, "GUI_MAX", 2, {580, 190, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+	{ELEMENT_TEXT, 0, 0, "GUI_SFXVOLUME", 3, {340, 220, 220, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+	{ELEMENT_SLIDER, 0, 0, (const char*)100, 0, {300, 245, 320, 30}, 1, 0, "GUI_SFXVOLUME_HINT", 0, 0, slider_images, {0}, 0},
+	{ELEMENT_TEXT, 0, 0, "GUI_OFF", 2, {300, 280, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+	{ELEMENT_TEXT, 0, 0, "GUI_MAX", 2, {580, 280, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
+
     {ELEMENT_TEXT, 0, 0, "GUI_DIGICHANNELS", 3, {340, 310, 220, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
     {ELEMENT_SLIDER, 0, 0, (const char*)16, 0, {300, 335, 320, 30}, 1, 0, "GUI_DIGICHANNELS_HINT", 0, 0, slider_images, {0}, 0},
     {ELEMENT_TEXT, 0, 0, "GUI_8", 2, {310, 370, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
@@ -76,7 +99,10 @@ void jkGuiSound_Startup()
 
     // Added
     jkGuiSound_cutsceneVolume = wuRegistry_GetFloat("cutsceneVolume", jkGuiSound_cutsceneVolume);
-
+#ifdef PLATFORM_STEAM
+	jkGuiSound_voiceVolume = wuRegistry_GetFloat("voiceVolume", jkGuiSound_voiceVolume);
+	sithVoice_SetVolume(jkGuiSound_voiceVolume);
+#endif
     jkGuiSound_b3DSound_2 = jkGuiSound_b3DSound;
     sithSoundMixer_UpdateMusicVolume(jkGuiSound_musicVolume); // TODO
 
@@ -95,6 +121,10 @@ void jkGuiSound_Shutdown()
 
     // Added
     wuRegistry_SaveFloat("cutsceneVolume", jkGuiSound_cutsceneVolume);
+#ifdef PLATFORM_STEAM
+	wuRegistry_SaveFloat("voiceVolume", jkGuiSound_voiceVolume);
+	jkGuiSound_voiceVolume = 1.0;
+#endif
 
     // Added: clean reset
     jkGuiSound_cutsceneVolume = 1.0;
@@ -115,6 +145,9 @@ int jkGuiSound_Show()
 #ifdef SDL2_RENDER
     jkGuiSound_elements[18].selectedTextEntry = (__int64)(jkGuiSound_cutsceneVolume * 100.0);
     jkGuiSound_numChannels = 256;
+#ifdef PLATFORM_STEAM
+	jkGuiSound_elements[23].selectedTextEntry = (__int64)(jkGuiSound_voiceVolume * 100.0);
+#endif
 #else
     jkGuiSound_elements[18].selectedTextEntry = jkGuiSound_numChannels - 8;
 #endif
@@ -148,6 +181,10 @@ int jkGuiSound_Show()
         wuRegistry_SaveFloat("sfxVolume", jkGuiSound_sfxVolume);
         wuRegistry_SaveInt("numChannels", jkGuiSound_numChannels);
         wuRegistry_SaveFloat("cutsceneVolume", jkGuiSound_cutsceneVolume);
+	#ifdef PLATFORM_STEAM
+		jkGuiSound_voiceVolume = (double)jkGuiSound_elements[23].selectedTextEntry * 0.01;
+		wuRegistry_SaveFloat("voiceVolume", jkGuiSound_voiceVolume);
+	#endif
 #else
         jkGuiSound_numChannels = jkGuiSound_elements[18].selectedTextEntry + 8;
         if ( jkGuiSound_b3DSound_3 && jkGuiSound_elements[7].selectedTextEntry != jkGuiSound_b3DSound_2 )
@@ -162,6 +199,10 @@ int jkGuiSound_Show()
         sithSoundMixer_UpdateMusicVolume(jkGuiSound_musicVolume);
         stdSound_SetMenuVolume(jkGuiSound_sfxVolume);
 		jkGuiRend_UpdateAudio();
+#ifdef PLATFORM_STEAM
+		sithVoice_SetVolume(jkGuiSound_voiceVolume);
+#endif
+
     }
 
     return v1;

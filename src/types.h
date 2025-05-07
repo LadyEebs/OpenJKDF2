@@ -337,6 +337,7 @@ typedef struct sithMapView sithMapView;
 typedef struct sithPlayerInfo sithPlayerInfo;
 typedef struct sithAnimclassEntry sithAnimclassEntry;
 typedef struct stdALBuffer stdALBuffer;
+typedef struct stdALStreamBuffer stdALStreamBuffer;
 typedef struct stdNullSoundBuffer stdNullSoundBuffer;
 typedef struct stdFontCharset stdFontCharset;
 typedef struct rdTri rdTri;
@@ -373,6 +374,7 @@ typedef IDirectSound3DBuffer stdSound_3dBuffer_t;
 #ifdef STDSOUND_OPENAL
 typedef stdALBuffer stdSound_buffer_t;
 typedef stdALBuffer stdSound_3dBuffer_t;
+typedef stdALStreamBuffer stdSound_streamBuffer_t;
 #endif
 
 #ifdef STDSOUND_NULL

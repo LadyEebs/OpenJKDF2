@@ -327,7 +327,7 @@ int Main_Startup(const char *cmdline)
     Main_ParseCmdLine((char *)cmdline);
 	
 	// debug
-	Main_bVerboseNetworking = 1;
+	//Main_bVerboseNetworking = 1;
 
     if ( Main_logLevel == 1 )
     {

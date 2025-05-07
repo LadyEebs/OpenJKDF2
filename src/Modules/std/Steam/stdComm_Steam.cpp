@@ -184,7 +184,7 @@ struct LobbySystem
 			SteamNetworkingSockets()->RunCallbacks();
 		}
 
-		if (success && pEntry)
+		if (success)// && pEntry)
 			Steam_SetLobbySessionDesc(stdComm_steamLobbyID, pEntry);
 
 		return success;
@@ -590,6 +590,14 @@ int DirectPlay_EarlyInit(wchar_t* pwIdk, wchar_t* pwPlayerName)
 			stdPlatform_Printf("Invited to game %ls\n", pwIdk);
 
 		uint64_t id = std::wcstoull(pwIdk, 0, 0);
+		CSteamID lobbyID(id);
+		if (SteamMatchmaking()->GetLobbyOwner(lobbyID) == SteamUser()->GetSteamID()) // we are the host
+		{
+			stdComm_steamLobbyID = lobbyID;
+			return 2;
+		}
+
+		// otherwise we are a peer
 		uint32_t result = lobbyFuncs.JoinLobby(id);
 		if (result == k_EChatRoomEnterResponseSuccess)
 			return 2; // peer

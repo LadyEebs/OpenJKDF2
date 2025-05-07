@@ -22,6 +22,9 @@
 #include "AI/sithAI.h"
 #include "Devices/sithComm.h"
 #include "stdPlatform.h"
+#ifdef PLATFORM_STEAM
+#include "Modules/sith/Engine/sithVoice.h"
+#endif
 
 // Added: co-op
 int sithMulti_lastCheckpoint = 0;
@@ -222,6 +225,9 @@ int sithMulti_Startup()
     sithSector_numSync = 0;
     sithNet_bNeedsFullThingSyncForLeaveJoin = 0;
     sithComm_ClearMsgTmpBuf();
+#ifdef PLATFORM_STEAM
+	sithVoice_Open();
+#endif
     if ( stdComm_bIsServer )
     {
 		return sithMulti_StartupServer();
@@ -249,6 +255,9 @@ void sithMulti_Shutdown()
     sithEvent_RegisterFunc(2, 0, 0, 0);
     stdComm_Close();
     stdComm_CloseConnection();
+#ifdef PLATFORM_STEAM
+	sithVoice_Close();
+#endif
 }
 
 int sithMulti_SendJoinRequest(DPID sendto_id)

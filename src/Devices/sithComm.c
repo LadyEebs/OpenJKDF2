@@ -7,6 +7,10 @@
 #include "Win95/stdComm.h"
 #include "jk.h"
 
+#ifdef PLATFORM_STEAM
+#include "Modules/sith/Engine/sithVoice.h"
+#endif
+
 int sithComm_009a1160 = 0;
 int sithComm_version = OPENJKDF2_SAVE_VERSION;//JK_SAVE_VERSION;
 
@@ -15,7 +19,7 @@ int sithComm_Startup()
 {
     if (sithComm_bInit)
         return 0;
-    _memset(sithComm_msgFuncs, 0, sizeof(cogMsg_Handler) * 65);  // TODO define
+    _memset(sithComm_msgFuncs, 0, sizeof(cogMsg_Handler) * DSS_MAX);  // TODO define
     _memset(sithComm_aMsgPairs, 0, sizeof(sithCogMsg_Pair) * 0x80); // TODO define
     sithComm_dword_847E84 = 0;
     sithComm_msgId = 1;
@@ -65,6 +69,10 @@ int sithComm_Startup()
         sithComm_msgFuncs[DSS_MOTS_NEW_1] = sithDSSThing_ProcessMOTSNew1;
         sithComm_msgFuncs[DSS_MOTS_NEW_2] = sithDSSThing_ProcessMOTSNew2;
     }
+
+#ifdef PLATFORM_STEAM
+	sithComm_msgFuncs[DSS_VOICE] = sithComm_ProcessVoice;
+#endif
 
     // Added: clean reset
     sithComm_009a1160 = 0;
@@ -284,6 +292,10 @@ LABEL_25:
             break;
     }
     sithComm_SyncWithPlayers();
+#ifdef PLATFORM_STEAM
+	// todo: move me
+	sithVoice_Tick();
+#endif
     return v13;
 }
 
@@ -298,7 +310,7 @@ int sithComm_InvokeMsgByIdx(sithCogMsg *a1)
 
     int msgId = a1->netMsg.cogMsgId;
 
-    if ( (signed int)(uint16_t)msgId < 65 && sithComm_msgFuncs[msgId])
+    if ( (signed int)(uint16_t)msgId < DSS_MAX && sithComm_msgFuncs[msgId])
         result = sithComm_msgFuncs[msgId](a1);
     else
         result = 1;
@@ -378,3 +390,20 @@ int sithComm_cogMsg_Reset(sithCogMsg *msg)
 
     return 1;
 }
+
+#ifdef PLATFORM_STEAM
+void sithComm_SendVoice(const uint8_t* buffer, size_t length)
+{
+	memcpy(sithComm_netMsgTmp.pktData, buffer, min(length, 1024));
+	sithComm_netMsgTmp.netMsg.flag_maybe = 0;
+	sithComm_netMsgTmp.netMsg.cogMsgId = DSS_VOICE;
+	sithComm_netMsgTmp.netMsg.msg_size = length;
+	sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 255, 1);
+}
+
+void sithComm_ProcessVoice(sithCogMsg* msg)
+{
+	sithVoice_AddVoicePacket(msg->netMsg.thingIdx, &msg->pktData[0], msg->netMsg.msg_size);
+}
+
+#endif

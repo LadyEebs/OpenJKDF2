@@ -29,4 +29,9 @@ void sithComm_SyncWithPlayers();
 void sithComm_ClearMsgTmpBuf();
 int sithComm_cogMsg_Reset(sithCogMsg *msg);
 
+#ifdef PLATFORM_STEAM
+void sithComm_ProcessVoice(sithCogMsg* msg);
+void sithComm_SendVoice(const uint8_t* buffer, size_t length);
+#endif
+
 #endif // _DEVICES_SITHCOMM_H

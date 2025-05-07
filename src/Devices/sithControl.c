@@ -36,7 +36,7 @@ static int sithControl_008d7f54 = 0;
 static int sithControl_008d7f58 = 0;
 static int sithControl_008d7f5c = 0;
 
-static const char *sithControl_aFunctionStrs[74] =
+static const char *sithControl_aFunctionStrs[] =
 {
     "FORWARD",
     "TURN",
@@ -111,7 +111,10 @@ static const char *sithControl_aFunctionStrs[74] =
     "ACTIVATE28",
     "ACTIVATE29",
     "ACTIVATE30",
-    "ACTIVATE31"
+    "ACTIVATE31",
+	#ifdef PLATFORM_STEAM
+	"VOICE"
+	#endif
 };
 
 int sithControl_Startup()
@@ -229,6 +232,9 @@ void sithControl_InitFuncToControlType()
     sithControl_inputFuncToControlType[INPUT_FUNC_TALLY] = 4 | 1;
     if ( (g_debugmodeFlags & DEBUGFLAG_IN_EDITOR) != 0 )
         sithControl_inputFuncToControlType[INPUT_FUNC_DEBUG] = 4 | 1;
+#ifdef PLATFORM_STEAM
+	sithControl_inputFuncToControlType[INPUT_FUNC_VOICE] = 4 | 1;
+#endif
 }
 
 // MOTS altered

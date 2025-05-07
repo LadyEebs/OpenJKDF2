@@ -57,6 +57,19 @@ typedef struct stdALBuffer
     rdVector3 pos;
     rdVector3 vel;
 } stdALBuffer;
+
+typedef struct stdALStreamBuffer
+{
+	ALuint buffers[4];
+	ALuint source;
+	int format;
+	int bStereo;
+	int bitsPerSample;
+	uint32_t nSamplesPerSec;
+	int nextBuffer;
+	float vol;
+} stdALStreamBuffer;
+
 #else
 typedef struct IDirectSoundBuffer
 {
@@ -148,6 +161,16 @@ void stdSound_SetPosition(stdSound_buffer_t* sound, rdVector3 *pos);
 void stdSound_SetVelocity(stdSound_buffer_t* sound, rdVector3 *vel);
 int stdSound_IsPlaying(stdSound_buffer_t* a1, rdVector3 *pos);
 void stdSound_3DBufferRelease(stdSound_3dBuffer_t* p3DBuffer);
+
+// Added
+stdSound_streamBuffer_t* stdSound_StreamBufferCreate(int bStereo, uint32_t nSamplesPerSec, uint16_t bitsPerSample);
+void stdSound_StreamBufferRelease(stdSound_streamBuffer_t* buffer);
+int stdSound_StreamBufferQueue(stdSound_streamBuffer_t* buffer, const uint8_t* data, size_t length);
+void stdSound_StreamBufferUnqueue(stdSound_streamBuffer_t* buffer);
+int stdSound_StreamBufferQueued(stdSound_streamBuffer_t* buffer);
+int stdSound_StreamBufferProcessed(stdSound_streamBuffer_t* buffer);
+int stdSound_StreamBufferPlay(stdSound_streamBuffer_t* buf);
+void stdSound_StreamBufferSetVolume(stdSound_streamBuffer_t* stream, float volume);
 #endif
 
 #endif // _STDSOUND_H

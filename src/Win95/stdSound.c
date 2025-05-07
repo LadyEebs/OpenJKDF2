@@ -552,6 +552,133 @@ void stdSound_3DBufferRelease(stdSound_3dBuffer_t* p3DBuffer)
 {
     
 }
+
+stdSound_streamBuffer_t* stdSound_StreamBufferCreate(int bStereo, uint32_t nSamplesPerSec, uint16_t bitsPerSample)
+{
+	if (Main_bHeadless) return NULL;
+
+	stdSound_streamBuffer_t* out = std_pHS->alloc(sizeof(stdSound_streamBuffer_t));
+	if (!out)
+		return NULL;
+
+	alGenBuffers(ARRAYSIZE(out->buffers), out->buffers);
+	alGenSources(1, &out->source);
+
+	alSourcei(out->source, AL_LOOPING, AL_FALSE);
+	
+	for (int i = 0; i < ARRAYSIZE(out->buffers); i++)
+		alSourcei(out->source, AL_BUFFER, out->buffers[i]);
+
+	out->nextBuffer = 0;
+}
+
+void stdSound_StreamBufferRelease(stdSound_streamBuffer_t* buffer)
+{
+	alSourceStop(buffer->source);
+
+	alDeleteBuffers(4, buffer->buffers);
+	alDeleteSources(1, &buffer->source);
+}
+
+void stdSound_StreamBufferUnqueue(stdSound_streamBuffer_t* buffer)
+{
+	int nProcessed;
+	alGetSourcei(buffer->source, AL_BUFFERS_PROCESSED, &nProcessed);
+
+	ALuint nBufferID;
+	for (int i = 0; i < nProcessed; i++)
+		alSourceUnqueueBuffers(buffer->source, 1, &nBufferID);
+}
+
+int stdSound_StreamBufferQueue(stdSound_streamBuffer_t* buffer, const uint8_t* data, size_t length)
+{
+	int bufferID = buffer->buffers[buffer->nextBuffer];
+
+	int format = 0;
+	if (buffer->bStereo)
+	{
+		switch (buffer->bitsPerSample)
+		{
+		case 8:
+			format = AL_FORMAT_STEREO8;
+			break;
+		case 16:
+			format = AL_FORMAT_STEREO16;
+			break;
+		case 24:
+			format = AL_FORMAT_STEREO24;
+			break;
+		}
+	}
+	else
+	{
+		switch (buffer->bitsPerSample)
+		{
+		case 8:
+			format = AL_FORMAT_MONO8;
+			break;
+		case 16:
+			format = AL_FORMAT_MONO16;
+			break;
+		case 24:
+			format = AL_FORMAT_MONO24;
+			break;
+		}
+	}
+	alBufferData(bufferID, format, data, length, buffer->nSamplesPerSec);
+
+	buffer->nextBuffer = (buffer->nextBuffer + 1) % ARRAY_SIZE(buffer->buffers);
+
+	alSourceQueueBuffers(buffer->source, 1, &bufferID);
+
+	return 1;
+}
+
+int stdSound_StreamBufferQueued(stdSound_streamBuffer_t* buffer)
+{
+	if (!buffer->source)
+		return 0;
+
+	ALint nQueued;
+	alGetSourcei(buffer->source, AL_BUFFERS_QUEUED, &nQueued);
+	return nQueued;
+}
+
+int stdSound_StreamBufferProcessed(stdSound_streamBuffer_t* buffer)
+{
+	if (!buffer->source)
+		return 0;
+
+	int nProcessed;
+	alGetSourcei(buffer->source, AL_BUFFERS_PROCESSED, &nProcessed);
+	return nProcessed;
+}
+
+int stdSound_StreamBufferPlay(stdSound_streamBuffer_t* buf)
+{
+	if (Main_bHeadless) return 1;
+	alSourcePlay(buf->source);
+	return 1;
+}
+
+void stdSound_StreamBufferSetVolume(stdSound_streamBuffer_t* stream, float volume)
+{
+	if (Main_bHeadless) return;
+	if (!stream) return;
+
+	stream->vol = volume;
+	if (!stream->source)
+		return;
+
+	alSourcef(stream->source, AL_GAIN, stream->vol);
+
+	if (volume == 0.0)
+	{
+		alSourcei(stream->source, AL_LOOPING, AL_FALSE);
+		alSourceStop(stream->source);
+	}
+}
+
 #endif
 
 #ifdef STDSOUND_NULL

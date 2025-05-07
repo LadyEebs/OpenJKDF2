@@ -733,6 +733,9 @@ enum DSS_ID
     DSS_62        = 62,
     DSS_63        = 63,
     DSS_64        = 64,
+#ifdef PLATFORM_STEAM
+	DSS_VOICE     = 65,
+#endif
     DSS_MAX        = 66
 };
 
@@ -858,7 +861,12 @@ enum INPUT_FUNC
     INPUT_FUNC_ACTIVATE29 = 71,
     INPUT_FUNC_ACTIVATE30 = 72,
     INPUT_FUNC_ACTIVATE31 = 73,
+#ifdef PLATFORM_STEAM
+	INPUT_FUNC_VOICE = 74,
+	INPUT_FUNC_MAX = 75,
+#else
     INPUT_FUNC_MAX = 74,
+#endif
 };
 
 enum SITHSOUNDFLAG
