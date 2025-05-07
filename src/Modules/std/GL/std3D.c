@@ -5807,7 +5807,7 @@ void std3D_SetTransformState(std3D_worldStage* pStage, std3D_DrawCallState* pSta
 void std3D_SetTextureState(std3D_worldStage* pStage, std3D_DrawCallState* pState)
 {
 	std3D_TextureState* pTexState = &pState->textureState;
-	rdDDrawSurface* pTexture = (pState->stateBits.geoMode + 1 == RD_GEOMODE_TEXTURED) ? pState->textureState.pTexture : NULL;
+	rdDDrawSurface* pTexture = (pState->stateBits.geoMode + 1 >= RD_GEOMODE_TEXTURED) ? pState->textureState.pTexture : NULL;
 
 	std3D_TextureUniforms tex;
 	tex.uv_mode = pState->stateBits.texMode;
@@ -5892,8 +5892,11 @@ void std3D_SetTextureState(std3D_worldStage* pStage, std3D_DrawCallState* pState
 		glBindTexture(GL_TEXTURE_2D, blank_tex_white);
 		glActiveTexture(GL_TEXTURE0);
 
-	//	tex.tex_mode = TEX_MODE_TEST;
+		tex.tex_mode = TEX_MODE_TEST;
 		rdVector_Set2(&tex.texsize, 1, 1);
+
+		tex.texwidth = 1;
+		tex.texheight = 1;
 	}
 
 	glBindBuffer(GL_UNIFORM_BUFFER, tex_ubo);
