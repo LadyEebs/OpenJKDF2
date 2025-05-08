@@ -211,6 +211,7 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 
 	rdSortOrder(sprite->face.sortId);
 	rdSortDistance(vertex_out.y);
+	rdSetShader(0);
 
 	rdBindMaterial(sprite->face.material, thing->wallCel);
 
