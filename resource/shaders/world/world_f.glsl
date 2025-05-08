@@ -137,7 +137,8 @@ void main(void)
 	apply_decals(get_cluster());
 
 	// unpack color and do fog and whatever else
-	vec4 outColor = unpackUnorm4x8(r[0]) * invlightMult; // unpack r0
+	vec4 outColor = unpackUnorm4x8(r[0]); // unpack r0
+	outColor.rgb *= invlightMult;
 
 	float dither = dither_value_float(uvec2(gl_FragCoord.xy));
 
