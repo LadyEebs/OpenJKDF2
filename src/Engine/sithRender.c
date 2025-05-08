@@ -351,6 +351,49 @@ void sithRender_RenderDebugLight(float intensity, rdVector3* pos)
 #endif
 }
 
+// Added: pulled this out of the thing render loop to add FP legs
+int sithRender_ShouldRenderCameraThing(sithThing* thing)
+{
+	int isFirstPerson = (sithCamera_currentCamera->cameraPerspective & 0xFC) == 0;
+	int isFocusThing = thing == sithCamera_currentCamera->primaryFocus;
+	int isFirstPersonThing = isFirstPerson && isFocusThing;
+
+#ifndef FP_LEGS
+	return !isFirstPersonThing;
+#else
+	thing->rdthing.hiddenJoint = -1;
+	thing->rdthing.hideWeaponMesh = 0;
+
+	// if cam is 1st person and a player is focused, hide the upper body
+	if (isFirstPersonThing)
+	{
+		if (thing->type == SITH_THING_PLAYER)
+		{
+			thing->rdthing.hideWeaponMesh = 1;
+
+			sithAnimclass* animclass = thing->animclass;
+			if (animclass)
+			{
+#ifdef ANIMCLASS_NAMES
+				int jointIdx = animclass->bodypart[JOINTTYPE_TORSO].nodeIdx; // torso
+#else
+				int jointIdx = animclass->bodypart_to_joint[JOINTTYPE_TORSO]; // torso
+#endif
+				if (jointIdx >= 0)
+				{
+					if (thing->rdthing.model3 && jointIdx < thing->rdthing.model3->numHierarchyNodes)
+						thing->rdthing.hiddenJoint = jointIdx;
+				}
+
+				return 1;
+			}
+		}
+	}
+
+	return !isFirstPersonThing;
+#endif
+}
+
 void sithRender_RenderDebugLights()
 {
     sithSector *sectorIter; // edx
@@ -2052,10 +2095,9 @@ void sithRender_RenderLevelGeometry()
 				continue;
 #endif
 
-#ifndef FP_LEGS
-			if (!((sithCamera_currentCamera->cameraPerspective & 0xFC) != 0 || pThing != sithCamera_currentCamera->primaryFocus))
+			if (!sithRender_ShouldRenderCameraThing(pThing))
+			//if (!((sithCamera_currentCamera->cameraPerspective & 0xFC) != 0 || pThing != sithCamera_currentCamera->primaryFocus))
 				continue;
-#endif
 
 			if (pThing->rdthing.type != RD_THINGTYPE_MODEL)
 				continue;
@@ -3210,48 +3252,11 @@ void sithRender_RenderThings()
 
             if ( (thingIter->thingflags & (SITH_TF_DISABLED| SITH_TF_INVISIBLE |SITH_TF_WILLBEREMOVED)) == 0
               && (thingIter->thingflags & SITH_TF_LEVELGEO) == 0
-#ifndef FP_LEGS
-			  && ((sithCamera_currentCamera->cameraPerspective & 0xFC) != 0 || thingIter != sithCamera_currentCamera->primaryFocus)
-#endif
+			  //&& ((sithCamera_currentCamera->cameraPerspective & 0xFC) != 0 || thingIter != sithCamera_currentCamera->primaryFocus)
+			  && sithRender_ShouldRenderCameraThing(thingIter)
 			)
             {
-			#ifdef FP_LEGS
-				thingIter->rdthing.hiddenJoint = -1;
-				thingIter->rdthing.hideWeaponMesh = 0;
-				// if cam is 1st person and a player is focused, hide the upper body
-				if ((sithCamera_currentCamera->cameraPerspective & 0xFC) == 0 && thingIter == sithCamera_currentCamera->primaryFocus)
-				{
-					if (thingIter->type == SITH_THING_PLAYER)
-					{
-						thingIter->rdthing.hideWeaponMesh = 1;
-
-						sithAnimclass* animclass = thingIter->animclass;
-						if (animclass)
-						{
-						#ifdef ANIMCLASS_NAMES
-							int jointIdx = animclass->bodypart[JOINTTYPE_TORSO].nodeIdx; // torso
-						#else
-							int jointIdx = animclass->bodypart_to_joint[JOINTTYPE_TORSO]; // torso
-						#endif
-							if (jointIdx >= 0)
-							{
-								if (thingIter->rdthing.model3 && jointIdx < thingIter->rdthing.model3->numHierarchyNodes)
-									thingIter->rdthing.hiddenJoint = jointIdx;
-							}
-						}
-						else
-						{
-							continue;
-						}
-					}
-					else
-					{
-						continue;
-					}
-				}
-			#endif
-
-                rdMatrix_TransformPoint34(&thingIter->screenPos, &thingIter->position, &rdCamera_pCurCamera->view_matrix);
+			    rdMatrix_TransformPoint34(&thingIter->screenPos, &thingIter->position, &rdCamera_pCurCamera->view_matrix);
                 
                 //printf("%f %f %f ; %f %f %f\n", thingIter->screenPos.x, thingIter->screenPos.y, thingIter->screenPos.z, thingIter->position.x, thingIter->position.y, thingIter->position.z);
                 
