@@ -1744,7 +1744,7 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 	tint.y -= (halfTint.x + halfTint.y);
 	tint.z -= (halfTint.x + halfTint.z);
 
-	if (rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
+	if (rdBeginPrimitive(RD_PRIMITIVE_POLYGON))
 	{
 		for (int j = 0; j < face->numVertices; j++)
 		{

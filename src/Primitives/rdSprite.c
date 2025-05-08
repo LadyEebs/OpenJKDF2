@@ -289,7 +289,7 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	else
 		rdColor4f(tint.x + 1.0f, tint.y + 1.0f, tint.z + 1.0f, 1.0f);
 
-	if (rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
+	if (rdBeginPrimitive(RD_PRIMITIVE_POLYGON))
 	{
 		for (int i = 0; i < sprite->face.numVertices; ++i)
 		{

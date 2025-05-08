@@ -479,7 +479,7 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 	tint.y -= (halfTint.x + halfTint.y);
 	tint.z -= (halfTint.x + halfTint.z);
 
-	if(rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
+	if(rdBeginPrimitive(RD_PRIMITIVE_POLYGON))
 	{
 		for(int i = 0; i < face->numVertices; ++i)
 		{

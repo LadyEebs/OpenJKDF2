@@ -412,7 +412,7 @@ int rdParticle_Draw(rdThing* thing, rdMatrix34* mat)
 		float top = aParticleVertices[j].z + particle->radius;
 		float depth = aParticleVertices[j].y;
 
-		if (rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
+		if (rdBeginPrimitive(RD_PRIMITIVE_POLYGON))
 		{
 			rdColor4f(tint.x + 1.0f, tint.y + 1.0f, tint.z + 1.0f, 1.0f);
 			rdVertex3f(left, depth, bottom);

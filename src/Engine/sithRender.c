@@ -1540,7 +1540,7 @@ void sithRender_Clip(sithSector *sector, rdClipFrustum *frustumArg, float a3)
 #ifdef RENDER_DROID2
 void sithRender_DrawSkyStencil(sithSurface* surface)
 {
-	if (rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
+	if (rdBeginPrimitive(RD_PRIMITIVE_POLYGON))
 	{
 		for (int j = 0; j < surface->surfaceInfo.face.numVertices; j++)
 		{
@@ -1770,7 +1770,7 @@ void sithRender_DrawSurface(sithSurface* surface)
 	tint.y -= (halfTint.x + halfTint.y);
 	tint.z -= (halfTint.x + halfTint.z);
 
-	if (rdBeginPrimitive(RD_PRIMITIVE_TRIANGLE_FAN))
+	if (rdBeginPrimitive(RD_PRIMITIVE_POLYGON))
 	{
 		for (int j = 0; j < surface->surfaceInfo.face.numVertices; j++)
 		{
