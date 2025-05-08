@@ -285,9 +285,9 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 		stdMath_SinCos(thing->spriteRot, &s, &c);
 
 	if (sprite->face.type & RD_FF_VERTEX_COLORS)
-		rdColor4f(thing->color.x * tint.x + thing->color.x, thing->color.y * tint.y + thing->color.y, thing->color.z * tint.z + thing->color.z, 1.0f);
+		rdColor4f(thing->color.x * tint.x + thing->color.x, thing->color.y * tint.y + thing->color.y, thing->color.z * tint.z + thing->color.z, alpha);
 	else
-		rdColor4f(tint.x + 1.0f, tint.y + 1.0f, tint.z + 1.0f, 1.0f);
+		rdColor4f(tint.x + 1.0f, tint.y + 1.0f, tint.z + 1.0f, alpha);
 
 	if (rdBeginPrimitive(RD_PRIMITIVE_POLYGON))
 	{
