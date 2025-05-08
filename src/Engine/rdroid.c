@@ -481,6 +481,8 @@ void rdUpdateDirtyState()
 		rdMatrix_Invert44(&rdroid_curProjInv, &rdroid_matrices[RD_MATRIX_PROJECTION]);
 		rdMatrix_Copy44(&rdroid_transformState.proj, &rdroid_matrices[RD_MATRIX_PROJECTION]);
 	}
+
+	rdroid_dirtyBits = 0;
 }
 
 void rdMatrixMode(rdMatrixMode_t mode)

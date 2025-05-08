@@ -2144,7 +2144,7 @@ int init_resources()
 	for (int i = 0; i < STD3D_STAGING_COUNT; ++i)
 	{
 		glBindBuffer(GL_ARRAY_BUFFER, world_vbo_all[i]);
-		glBufferData(GL_ARRAY_BUFFER, RD_CACHE_MAX_DRAW_CALLS * sizeof(rdVertex), NULL, GL_STREAM_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, RD_CACHE_MAX_DRAW_CALL_VERTS * sizeof(rdVertex), NULL, GL_STREAM_DRAW);
 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_ibo_triangle[i]);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, RD_CACHE_MAX_DRAW_CALL_INDICES * sizeof(uint16_t), NULL, GL_STREAM_DRAW);
