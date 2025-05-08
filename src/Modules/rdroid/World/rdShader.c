@@ -717,6 +717,8 @@ int rdShader_ParseInstruction(char* line, rdShaderInstr* result)
 
 	// parse the opcode
 	inst.opcode = rdShader_ParseOpCode(token);
+	if (inst.opcode == RD_SHADER_OP_NOP)
+		return 0;
 
 	if (inst.src[0].reg.type == RD_SHADER_TEX && inst.src[0].reg.address == 4)
 		rdShader_pCurrentAssembler->shader->hasReadback = 1;
