@@ -140,6 +140,12 @@ void main(void)
 	vec4 outColor = unpackUnorm4x8(r[0]); // unpack r0
 	outColor.rgb *= invlightMult;
 
+	// alpha testing
+#ifdef ALPHA_DISCARD
+    if (outColor.a < 0.5) // todo: alpha test value
+		discard;
+#endif
+
 	float dither = dither_value_float(uvec2(gl_FragCoord.xy));
 
 	// apply fog to outputs
@@ -166,12 +172,6 @@ void main(void)
 
 	
 	//fragColor.rgb = temperature(cost / 8.0);
-
-	// alpha testing
-#ifdef ALPHA_DISCARD
-    if (fragColor.a < 0.01) // todo: alpha test value
-		discard;
-#endif
 
 	// unpack glow and output
 	fragGlow = vec4(unpackUnorm4x8(r[1])); // unpack r1
