@@ -1804,6 +1804,8 @@ void sithRender_DrawSurface(sithSurface* surface)
 		//tint = surface->parent_sector->tint;
 	}
 
+	rdVector3 cmpTint = surface->parent_sector->colormap->tint;
+
 	rdVector3 halfTint;
 	halfTint.x = tint.x * 0.5f;
 	halfTint.y = tint.y * 0.5f;
@@ -1821,16 +1823,30 @@ void sithRender_DrawSurface(sithSurface* surface)
 
 			if (lightMode == RD_LIGHTMODE_FULLYLIT)
 			{
-				rdColor4f(1.5f * tint.x + 1.5f, 1.5f * tint.y + 1.5f, 1.5f * tint.z + 1.5f, alpha);
+				rdVector3 rgb;
+				rgb.x = tint.x * 1.5 + 1.5f;
+				rgb.y = tint.y * 1.5 + 1.5f;
+				rgb.z = tint.z * 1.5 + 1.5f;
+				rdColor4f(rgb.x * cmpTint.x, rgb.y * cmpTint.y, rgb.z * cmpTint.z, alpha);
 			}
 			else if (lightMode == RD_LIGHTMODE_NOTLIT)
 			{
-				rdColor4f(tint.x + 1.0f, tint.y + 1.0f, tint.z + 1.0f, alpha);
+				rdVector3 rgb;
+				rgb.x = tint.x + 1.0f;
+				rgb.y = tint.y + 1.0f;
+				rgb.z = tint.z + 1.0f;
+				rdColor4f(rgb.x* cmpTint.x, rgb.y* cmpTint.y, rgb.z* cmpTint.z, alpha);
 			}
 			else if ((surface->surfaceFlags & SITH_SURFACE_1000000) == 0)
 			{
 				float intensity = surface->surfaceInfo.intensities[j];
-				rdColor4f(intensity* tint.x + intensity, intensity * tint.y + intensity, intensity * tint.z + intensity, alpha);
+				
+				rdVector3 rgb;
+				rgb.x = intensity * tint.x + intensity;
+				rgb.y = intensity * tint.y + intensity;
+				rgb.z = intensity * tint.z + intensity;
+
+				rdColor4f(rgb.x* cmpTint.x, rgb.y* cmpTint.y, rgb.z* cmpTint.z, alpha);
 			}
 			else
 			{
@@ -1842,7 +1858,12 @@ void sithRender_DrawSurface(sithSurface* surface)
 				float g = (green[j]);
 				float b = (blue[j]);
 
-				rdColor4f(r * tint.x + r, g * tint.y + g, b * tint.z + b, alpha);
+				rdVector3 rgb;
+				rgb.x = r * tint.x + r;
+				rgb.y = g * tint.y + g;
+				rgb.z = b * tint.z + b;
+
+				rdColor4f(rgb.x * cmpTint.x, rgb.y * cmpTint.y, rgb.z * cmpTint.z, alpha);
 			}
 
 			if (surface->surfaceInfo.face.geometryMode >= RD_GEOMODE_TEXTURED && surface->surfaceInfo.face.vertexUVIdx)

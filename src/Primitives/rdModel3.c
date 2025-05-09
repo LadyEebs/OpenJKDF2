@@ -1735,6 +1735,8 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 	//if (pCurThing->parentSithThing->sector != sithCamera_currentCamera->sector)
 		//tint = pCurThing->parentSithThing->sector->tint;
 
+	rdVector3 cmpTint = pCurThing->parentSithThing->sector->colormap->tint;
+
 	rdVector3 halfTint;
 	halfTint.x = tint.x * 0.5f;
 	halfTint.y = tint.y * 0.5f;
@@ -1752,23 +1754,43 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 
 			if (face->lightingMode == RD_LIGHTMODE_FULLYLIT)
 			{
-				rdColor4f(1.5f * tint.x + 1.5f, 1.5f * tint.y + 1.5f, 1.5f * tint.z + 1.5f, alpha);
+				rdVector3 rgb;
+				rgb.x = tint.x * 1.5 + 1.5f;
+				rgb.y = tint.y * 1.5 + 1.5f;
+				rgb.z = tint.z * 1.5 + 1.5f;
+				rdColor4f(rgb.x * cmpTint.x, rgb.y * cmpTint.y, rgb.z * cmpTint.z, alpha);
 			}
 			else if (face->lightingMode == RD_LIGHTMODE_NOTLIT)
 			{
-				rdColor4f(tint.x + 1.0f, tint.y + 1.0f, tint.z + 1.0f, alpha);
+				rdVector3 rgb;
+				rgb.x = tint.x + 1.0f;
+				rgb.y = tint.y + 1.0f;
+				rgb.z = tint.z + 1.0f;
+				rdColor4f(rgb.x * cmpTint.x, rgb.y * cmpTint.y, rgb.z * cmpTint.z, alpha);
 			}
 			else if (rdGetVertexColorMode() == 0)
 			{
 				float intensity = pCurMesh->vertices_i[posidx];
-				rdColor4f(intensity * tint.x + intensity, intensity * tint.y + intensity, intensity * tint.z + intensity, alpha);
+
+				rdVector3 rgb;
+				rgb.x = intensity * tint.x + intensity;
+				rgb.y = intensity * tint.y + intensity;
+				rgb.z = intensity * tint.z + intensity;
+
+				rdColor4f(rgb.x * cmpTint.x, rgb.y * cmpTint.y, rgb.z * cmpTint.z, alpha);
 			}
 			else
 			{
-				float red = pCurMesh->vertices_r[posidx];
-				float green = pCurMesh->vertices_g[posidx];
-				float blue = pCurMesh->vertices_b[posidx];
-				rdColor4f(red * tint.x + red, green * tint.y + green, blue * tint.z + blue, alpha);
+				float r = pCurMesh->vertices_r[posidx];
+				float g = pCurMesh->vertices_g[posidx];
+				float b = pCurMesh->vertices_b[posidx];
+
+				rdVector3 rgb;
+				rgb.x = r * tint.x + r;
+				rgb.y = g * tint.y + g;
+				rgb.z = b * tint.z + b;
+
+				rdColor4f(rgb.x * cmpTint.x, rgb.y * cmpTint.y, rgb.z * cmpTint.z, alpha);
 			}
 
 			if(face->vertexUVIdx && pCurMesh->vertexUVs)

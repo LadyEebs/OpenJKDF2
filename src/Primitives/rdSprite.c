@@ -211,7 +211,7 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 
 	rdSortOrder(sprite->face.sortId);
 	rdSortDistance(vertex_out.y);
-	rdSetShader(0);
+		rdSetShader(0);
 
 	rdBindMaterial(sprite->face.material, thing->wallCel);
 
@@ -285,10 +285,22 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	if (thing->spriteRot != 0.0)
 		stdMath_SinCos(thing->spriteRot, &s, &c);
 
+	rdVector3 cmpTint = pCurThing->parentSithThing->sector->colormap->tint;
+
+	rdVector3 rgb;
 	if (sprite->face.type & RD_FF_VERTEX_COLORS)
-		rdColor4f(thing->color.x * tint.x + thing->color.x, thing->color.y * tint.y + thing->color.y, thing->color.z * tint.z + thing->color.z, alpha);
+	{
+		rgb.x = thing->color.x * tint.x + thing->color.x;
+		rgb.y = thing->color.x * tint.y + thing->color.x;
+		rgb.z = thing->color.x * tint.z + thing->color.x;
+	}
 	else
-		rdColor4f(tint.x + 1.0f, tint.y + 1.0f, tint.z + 1.0f, alpha);
+	{
+		rgb.x = tint.x + 1.0f;
+		rgb.y = tint.y + 1.0f;
+		rgb.z = tint.z + 1.0f;
+	}
+	rdColor4f(rgb.x * cmpTint.x, rgb.y * cmpTint.y, rgb.z * cmpTint.z, alpha);
 
 	if (rdBeginPrimitive(RD_PRIMITIVE_POLYGON))
 	{

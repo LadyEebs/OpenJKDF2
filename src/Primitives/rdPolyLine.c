@@ -470,6 +470,8 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 	//if (thing->parentSithThing->sector != sithCamera_currentCamera->sector)
 		//tint = thing->parentSithThing->sector->tint;
 
+	rdVector3 cmpTint = pCurThing->parentSithThing->sector->colormap->tint;
+
 	rdVector3 halfTint;
 	halfTint.x = tint.x * 0.5f;
 	halfTint.y = tint.y * 0.5f;
@@ -479,11 +481,18 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 	tint.y -= (halfTint.x + halfTint.y);
 	tint.z -= (halfTint.x + halfTint.z);
 
+	rdVector3 rgb;
+	rgb.x = tint.x + 1.0f;
+	rgb.y = tint.y + 1.0f;
+	rgb.z = tint.z + 1.0f;
+	
+	rdColor4f(rgb.x * cmpTint.x, rgb.y * cmpTint.y, rgb.z * cmpTint.z, alpha);
+
 	if(rdBeginPrimitive(RD_PRIMITIVE_POLYGON))
 	{
 		for(int i = 0; i < face->numVertices; ++i)
 		{
-			rdColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+			//rdColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 			if(idxInfo->vertexUVs)
 			{
 				rdVector3* uv = &uvs[i];
