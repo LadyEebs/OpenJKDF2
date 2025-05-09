@@ -32,6 +32,7 @@ typedef struct sithVoiceChannel
 	DPID dpId;
 	sithVoicePacket* packets;
 	stdSound_streamBuffer_t* stream;
+	int bIsMuted;
 } sithVoiceChannel;
 
 sithVoiceChannel sithVoice_channels[32];
@@ -59,6 +60,7 @@ int sithVoice_CreateChannel(DPID id)
 	channel->dpId = id;
 	channel->stream = stdSound_StreamBufferCreate(0, VOICE_OUTPUT_SAMPLE_RATE, 16);
 	channel->packets = NULL;
+	channel->bIsMuted = 0; // todo: persistence
 
 	return sithVoice_activeChannels++;
 }
@@ -101,6 +103,30 @@ void sithVoice_DeleteChannel(DPID id)
 	sithVoice_DeleteChannelByIndex(idx);
 }
 
+void sithVoice_MuteChannel(DPID id, int bIsMuted)
+{
+	int idx = sithVoice_GetChannel(id);
+	if (idx < 0)
+		return;
+	sithVoice_channels[idx].bIsMuted = bIsMuted;
+}
+
+void sithVoice_ToggleChannelMuted(DPID id)
+{
+	int idx = sithVoice_GetChannel(id);
+	if (idx < 0)
+		return;
+	sithVoice_channels[idx].bIsMuted = !sithVoice_channels[idx].bIsMuted;
+}
+
+int sithVoice_IsChannelMuted(DPID id)
+{
+	int idx = sithVoice_GetChannel(id);
+	if (idx < 0)
+		return 0;
+	return sithVoice_channels[idx].bIsMuted;
+}
+
 void sithVoice_AddVoicePacket(DPID id, const uint8_t* pVoiceData, size_t length)
 {
 	sithVoice_verbosePrintf("Decompressing %d bytes of voice data\n", length);
@@ -120,6 +146,10 @@ void sithVoice_AddVoicePacket(DPID id, const uint8_t* pVoiceData, size_t length)
 		stdPrintf(pSithHS->errorPrint, ".\\Engine\\sithVoice.c", __LINE__, "Failed to get or create voice channel for ID %ull.\n", id);
 		return;
 	}
+
+	// ignore packets if muted
+	if (sithVoice_channels[idx].bIsMuted)
+		return;
 
 	sithVoice_verbosePrintf("Adding a packet of %d bytes to voice channel %d\n", idx);
 
@@ -202,6 +232,10 @@ void sithVoice_Playback()
 			sithVoice_verbosePrintf("Voice channel stream for %ull is NULL\n", channel->dpId);
 			continue;
 		}
+
+		// ignore if muted
+		if (channel->bIsMuted)
+			return;
 
 		int queued = stdSound_StreamBufferQueued(channel->stream);
 		int processed = stdSound_StreamBufferProcessed(channel->stream);

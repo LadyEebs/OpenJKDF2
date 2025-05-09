@@ -16,6 +16,9 @@
 #include "stdPlatform.h"
 #include "Win95/stdComm.h"
 #include "Dss/sithMulti.h"
+#ifdef PLATFORM_STEAM
+#include "Modules/sith/Engine/sithVoice.h"
+#endif
 
 #include "jk.h"
 
@@ -33,7 +36,8 @@ enum jkGuiMultiPlayer_Element
 	GUI_PLAYER_SELECT_TEXT  = 1,
 	GUI_PLAYER_LISTBOX = 2,
 	GUI_DONE_BTN = 3,
-	GUI_PLAYER_KICK_BTN = 4
+	GUI_PLAYER_KICK_BTN = 4,
+	GUI_PLAYER_MUTE_BTN = 5,
 };
 
 static jkGuiElement jkGuiMultiPlayers_aElements[15] = {
@@ -41,8 +45,9 @@ static jkGuiElement jkGuiMultiPlayers_aElements[15] = {
     {ELEMENT_TEXT, 0, 0, "GUIEXT_SELECT_PLAYER", 2, {0x28, 0x69, 0x14A, 0x14}, 1, 0, 0, 0, 0, 0, {0}, 0},
     {ELEMENT_LISTBOX, 3039, 0x0, 0, 0, {0x28, 0x82, 0x14A, 0x10F}, 1, 0, 0, 0, jkGuiMultiPlayers_ListClick, jkGuiMultiPlayers_listIdk, {0}, 0},
     {ELEMENT_TEXTBUTTON, -1, 0x2, "GUI_DONE", 3, {0, 0x1AE, 0x0C8, 0x28}, 1, 0, 0, 0, 0, 0, {0}, 0},
-    {ELEMENT_TEXTBUTTON, 0, 2, "GUIEXT_KICK_PLAYER", 3, {0xE6, 0x1AE, 0x0B4, 0x28}, 1, 0, 0, 0, jkGuiMultiPlayers_KickClicked, 0, {0}, 0},
-    {ELEMENT_END, 0, 0, 0, 0, {0}, 0, 0, 0, 0, 0, 0, {0}, 0},
+    {ELEMENT_TEXTBUTTON, 0, 2, "GUIEXT_KICK_PLAYER", 3, {250, 0x1AE, 0x0B4, 0x28}, 1, 0, 0, 0, jkGuiMultiPlayers_KickClicked, 0, {0}, 0},
+	{ELEMENT_TEXTBUTTON, 0, 2, "GUIEXT_MUTE_PLAYER", 3, {380, 0x1AE, 0x0B4, 0x28}, 1, 0, 0, 0, jkGuiMultiPlayers_MuteClicked, 0, {0}, 0},
+   {ELEMENT_END, 0, 0, 0, 0, {0}, 0, 0, 0, 0, 0, 0, {0}, 0},
 };
 
 static jkGuiMenu jkGuiMultiPlayers_menu = {jkGuiMultiPlayers_aElements, 0xFFFFFFFF, 0xFFFF, 0xFFFF, 0xF, 0, 0, jkGui_stdBitmaps, jkGui_stdFonts, 0, 0, "thermloop01.wav", "thrmlpu2.wav", 0, 0, 0, 0, 0, 0};
@@ -53,8 +58,11 @@ int jkGuiMultiPlayers_ListClick(jkGuiElement *element, jkGuiMenu *menu, int mous
     if ( redraw )
         return 12345;
 
-	if (sithNet_isMulti && sithNet_isServer)
-		jkGuiMultiPlayers_aElements[GUI_PLAYER_KICK_BTN].bIsVisible = DirectPlay_aPlayers[element->selectedTextEntry].dpId != stdComm_dplayIdSelf;
+	if (sithNet_isMulti)
+	{
+		jkGuiMultiPlayers_aElements[GUI_PLAYER_KICK_BTN].bIsVisible = sithNet_isServer && DirectPlay_aPlayers[element->selectedTextEntry].dpId != stdComm_dplayIdSelf;
+		jkGuiMultiPlayers_aElements[GUI_PLAYER_MUTE_BTN].bIsVisible = DirectPlay_aPlayers[element->selectedTextEntry].dpId != stdComm_dplayIdSelf;
+	}
 
     jkGuiMultiPlayers_PopulateInfo(1);
     return 0;
@@ -89,6 +97,7 @@ int jkGuiMultiPlayers_Show()
     jkGuiMultiPlayers_PopulateInfo(0);
 
 	jkGuiMultiPlayers_aElements[GUI_PLAYER_KICK_BTN].bIsVisible = sithNet_isMulti && sithNet_isServer && DirectPlay_aPlayers[0].dpId != stdComm_dplayIdSelf;
+	jkGuiMultiPlayers_aElements[GUI_PLAYER_MUTE_BTN].bIsVisible = sithNet_isMulti && DirectPlay_aPlayers[0].dpId != stdComm_dplayIdSelf;
 
 	int result;
     while ( 1 )
@@ -154,5 +163,18 @@ int jkGuiMultiPlayers_KickClicked(jkGuiElement* element, jkGuiMenu* menu, int mo
 	if (jkGuiDialog_YesNoDialog(wstr_del, wstr_confirmDel))
 		sithMulti_SendQuit(DirectPlay_aPlayers[element->selectedTextEntry].dpId);
 	
+	return 1;
+}
+
+int jkGuiMultiPlayers_MuteClicked(jkGuiElement* element, jkGuiMenu* menu, int mouseX, int mouseY, int bRedraw)
+{
+	if (!sithNet_isMulti || !sithNet_isServer)
+		return 0;
+
+	if (DirectPlay_aPlayers[element->selectedTextEntry].dpId == stdComm_dplayIdSelf)
+		return 0;
+
+	sithVoice_ToggleChannelMuted(DirectPlay_aPlayers[element->selectedTextEntry].dpId);
+
 	return 1;
 }

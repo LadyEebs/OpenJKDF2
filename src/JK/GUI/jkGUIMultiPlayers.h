@@ -13,5 +13,6 @@ int jkGuiMultiPlayers_PopulateInfoInit(jkGuiElement *a1, jkGuiMenu *a2, int a3, 
 void jkGuiMultiPlayers_Startup();
 void jkGuiMultiPlayers_Shutdown();
 int jkGuiMultiPlayers_KickClicked(jkGuiElement* element, jkGuiMenu* menu, int mouseX, int mouseY, int bRedraw);
+int jkGuiMultiPlayers_MuteClicked(jkGuiElement* element, jkGuiMenu* menu, int mouseX, int mouseY, int bRedraw);
 
 #endif // _JKGUIMULTIPLAYERS_H

@@ -44,6 +44,9 @@ int sithCommand_CmdJump(stdDebugConsoleCmd *pCmd, const char *pArgStr);
 int sithCommand_CmdPlayers(stdDebugConsoleCmd *pCmd, const char *pArgStr);
 int sithCommand_CmdPing(stdDebugConsoleCmd *pCmd, const char *pArgStr);
 int sithCommand_CmdKick(stdDebugConsoleCmd *pCmd, const char *pArgStr);
+#ifdef PLATFORM_STEAM
+int sithCommand_CmdMute(stdDebugConsoleCmd* pCmd, const char* pArgStr);
+#endif
 
 // Added
 int sithCommand_CmdThingNpc(stdDebugConsoleCmd *pCmd, const char *pArgStr);

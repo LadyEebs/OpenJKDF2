@@ -19,6 +19,10 @@
 #include "General/stdJSON.h"
 #include "World/sithWorld.h"
 #include "jk.h"
+#ifdef PLATFORM_STEAM
+#include "Modules/sith/Engine/sithVoice.h"
+#endif
+#include "../jk.h"
 
 #define sithCommand_CmdMatList ((void*)sithCommand_CmdMatList_ADDR)
 
@@ -56,6 +60,9 @@ void sithCommand_Startup()
     sithConsole_RegisterDevCmd(sithCommand_CmdKick, "boot", 0); // MOTS added
     sithConsole_RegisterDevCmd(sithCommand_CmdTick, "tick", 0);
     sithConsole_RegisterDevCmd(sithCommand_CmdSession, "session", 0);
+#ifdef PLATFORM_STEAM
+	sithConsole_RegisterDevCmd(sithCommand_CmdMute, "mute", 0);
+#endif
 
 #ifndef _DEBUG//QOL_IMPROVEMENTS // always allow these commands
     if ( (g_debugmodeFlags & DEBUGFLAG_IN_EDITOR) != 0 )
@@ -737,6 +744,28 @@ int sithCommand_CmdKick(stdDebugConsoleCmd *pCmd, const char *pArgStr)
         while ( v2 < jkPlayer_maxPlayers );
     }
     return 1;
+}
+
+int sithCommand_CmdMute(stdDebugConsoleCmd* pCmd, const char* pArgStr)
+{
+	if (!pArgStr || !sithNet_isMulti)
+		return 0;
+
+	wchar_t wname[32];
+	stdString_CharToWchar(wname, pArgStr, 31);
+	wname[31] = 0;
+
+	for (int i = 0; i < jkPlayer_maxPlayers; ++i)
+	{
+		sithPlayerInfo* playerInfo = &jkPlayer_playerInfos[i];
+		if ((playerInfo->flags & 1) != 0 && !__wcsicmp(playerInfo->player_name, wname))
+		{
+			_sprintf(std_genBuffer, "Muted %S", playerInfo->player_name);
+			sithConsole_Print(std_genBuffer);
+			sithVoice_ToggleChannelMuted(playerInfo->net_id);
+		}
+	}
+	return 1;
 }
 
 // Added: npc spawn
