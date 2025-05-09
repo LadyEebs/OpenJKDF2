@@ -1406,7 +1406,7 @@ void jkPlayer_DrawPov()
 				hasTarget = 1;
 			}
 
-			if(hasTarget && !jkPlayer_aimLock)
+			if(hasTarget && !jkPlayer_aimLock && !sithNet_isMulti)
 			{
 				// apply inverse of the original look orient to get a local transform
 				rdMatrix_PostMultiply34(&autoAimMat, &invOrient);
