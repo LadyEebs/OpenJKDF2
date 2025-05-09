@@ -116,6 +116,7 @@ MSGS 100          # <--- DON'T FORGET TO UPDATE THIS COUNT
 	"GUIEXT_SELECT_PLAYER"                       0 "Select a player"
 	"GUIEXT_KICK_PLAYER"                         0 "Kick"
 	"GUIEXT_CONFIRM_KICK_PLAYER"                 0 "Are you sure you want to kick this player?"
+	"GUIEXT_MUTE_PLAYER"                         0 "Mute"
 
 #******************************
 #  Controls
