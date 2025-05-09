@@ -68,6 +68,7 @@ typedef struct stdALStreamBuffer
 	uint32_t nSamplesPerSec;
 	int nextBuffer;
 	float vol;
+	rdVector3 pos;
 } stdALStreamBuffer;
 
 #else
@@ -170,7 +171,9 @@ void stdSound_StreamBufferUnqueue(stdSound_streamBuffer_t* buffer);
 int stdSound_StreamBufferQueued(stdSound_streamBuffer_t* buffer);
 int stdSound_StreamBufferProcessed(stdSound_streamBuffer_t* buffer);
 int stdSound_StreamBufferPlay(stdSound_streamBuffer_t* buf);
+void stdSound_StreamBufferStop(stdSound_streamBuffer_t* buf);
 void stdSound_StreamBufferSetVolume(stdSound_streamBuffer_t* stream, float volume);
+void stdSound_StreamBufferSetPosition(stdSound_streamBuffer_t* pSoundBuf, rdVector3* pos);
 #endif
 
 #endif // _STDSOUND_H

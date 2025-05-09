@@ -301,7 +301,7 @@ void sithPlayer_debug_loadauto(sithThing *player)
 	}
     else
 #endif
-	if ( (g_submodeFlags & 1) != 0 || (g_debugmodeFlags & DEBUGFLAG_IN_EDITOR) != 0 )
+	if ( (g_submodeFlags & SITH_SUBMODE_MULTI) != 0 || (g_debugmodeFlags & DEBUGFLAG_IN_EDITOR) != 0 )
     {
         sithPlayer_debug_ToNextCheckpoint(player);
     }

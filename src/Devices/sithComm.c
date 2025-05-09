@@ -280,7 +280,7 @@ LABEL_22:
               || sithComm_netMsgTmp.netMsg.cogMsgId == DSS_JOINREQUEST
               || sithComm_netMsgTmp.netMsg.cogMsgId == DSS_RESET
               || sithComm_netMsgTmp.netMsg.cogMsgId == DSS_LEAVEJOIN
-              || (g_submodeFlags & 8) != 0 )
+              || (g_submodeFlags & SITH_SUBMODE_JOINING) != 0 )
             {
                 goto LABEL_14;
             }

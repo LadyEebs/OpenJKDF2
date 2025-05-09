@@ -85,7 +85,8 @@ const char* sithDSS_IdToStr(int id)
         "DSS_62",
         "DSS_63",
         "DSS_64",
-        "DSS_MAX",
+		"DSS_VOICE",
+       // "DSS_MAX",
     };
     if (id < 0) return "UNK_TOOSMAll";
     if (id > DSS_MAX) {

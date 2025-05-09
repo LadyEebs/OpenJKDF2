@@ -1652,6 +1652,12 @@ enum AUTOPICKUP
     AUTOPICKUP_8 = 8,
 };
 
+enum SITH_SUBMODE_FLAGS
+{
+	SITH_SUBMODE_MULTI         = 0x1, // multiplayer
+	SITH_SUBMODE_JOINING = 0x8, // synchronizing the game state from the host
+};
+
 #ifdef PLATFORM_STEAM
 enum NetUserState
 {

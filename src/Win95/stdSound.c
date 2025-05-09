@@ -67,6 +67,39 @@ ALCcontext *context;
 static rdVector3 stdSound_listenerPos;
 static ALfloat stdSound_listenerOri[6] = { 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f };
 
+static int stdSound_BitsToALFormat(int stereo, int bitsPerSample)
+{
+	if (stereo)
+	{
+		switch (bitsPerSample)
+		{
+		case 8:
+			return AL_FORMAT_STEREO8;
+
+		case 16:
+			return AL_FORMAT_STEREO16;
+
+		case 24:
+			return AL_FORMAT_STEREO24;
+		}
+	}
+	else
+	{
+		switch (bitsPerSample)
+		{
+		case 8:
+			return AL_FORMAT_MONO8;
+
+		case 16:
+			return AL_FORMAT_MONO16;
+
+		case 24:
+			return AL_FORMAT_MONO24;
+		}
+	}
+	return 0;
+}
+
 void stdSound_DS3DToAL(rdVector3* pOut, rdVector3* pIn)
 {
     pOut->x = pIn->x * 0.1;
@@ -170,36 +203,8 @@ stdSound_buffer_t* stdSound_BufferCreate(int bStereo, uint32_t nSamplesPerSec, u
     if (!Main_bHeadless)
         alGenBuffers(1, &out->buffer);
     
-    int format = 0;
-    if (bStereo)
-    {
-        switch (bitsPerSample) {
-            case 8:
-                format = AL_FORMAT_STEREO8;
-                break;
-            case 16:
-                format = AL_FORMAT_STEREO16;
-                break;
-            case 24:
-                format = AL_FORMAT_STEREO24;
-                break;
-        }
-    }
-    else
-    {
-        switch (bitsPerSample) {
-            case 8:
-                format = AL_FORMAT_MONO8;
-                break;
-            case 16:
-                format = AL_FORMAT_MONO16;
-                break;
-            case 24:
-                format = AL_FORMAT_MONO24;
-                break;
-        }
-    }
-    
+    int format = stdSound_BitsToALFormat(bStereo, bitsPerSample);
+  
 #ifdef AL_FORMAT_WAVE_EXT
     //format = AL_FORMAT_WAVE_EXT;
 #endif
@@ -561,28 +566,43 @@ stdSound_streamBuffer_t* stdSound_StreamBufferCreate(int bStereo, uint32_t nSamp
 	if (!out)
 		return NULL;
 
-	alGenBuffers(ARRAYSIZE(out->buffers), out->buffers);
-	alGenSources(1, &out->source);
-
-	alSourcei(out->source, AL_LOOPING, AL_FALSE);
-	
-	for (int i = 0; i < ARRAYSIZE(out->buffers); i++)
-		alSourcei(out->source, AL_BUFFER, out->buffers[i]);
-
+	out->bitsPerSample = bitsPerSample;
+	out->nSamplesPerSec = nSamplesPerSec;
+	out->bStereo = bStereo;
 	out->nextBuffer = 0;
+	out->vol = 1.0f;
+	rdVector_Zero3(&out->pos);
+
+	out->format = stdSound_BitsToALFormat(bStereo, bitsPerSample);
+	
+	alGenBuffers(ARRAYSIZE(out->buffers), out->buffers);
+
+	alGenSources(1, &out->source);
+	alSourcei(out->source, AL_LOOPING, AL_FALSE);
+
+	alSource3f(out->source, AL_POSITION, 0.0f, 0.0f, 0.0f);
+	alSource3f(out->source, AL_VELOCITY, 0.0f, 0.0f, 0.0f);
+	alSourcei(out->source, AL_SOURCE_RELATIVE, AL_TRUE); // No 3D until we're given a position
+
+	return out;
 }
 
 void stdSound_StreamBufferRelease(stdSound_streamBuffer_t* buffer)
 {
-	alSourceStop(buffer->source);
+	if (!buffer)
+		return;
 
+	alSourceStop(buffer->source);
 	alDeleteBuffers(4, buffer->buffers);
 	alDeleteSources(1, &buffer->source);
 }
 
 void stdSound_StreamBufferUnqueue(stdSound_streamBuffer_t* buffer)
 {
-	int nProcessed;
+	if(!buffer)
+		return;
+
+	ALint nProcessed;
 	alGetSourcei(buffer->source, AL_BUFFERS_PROCESSED, &nProcessed);
 
 	ALuint nBufferID;
@@ -592,73 +612,54 @@ void stdSound_StreamBufferUnqueue(stdSound_streamBuffer_t* buffer)
 
 int stdSound_StreamBufferQueue(stdSound_streamBuffer_t* buffer, const uint8_t* data, size_t length)
 {
-	int bufferID = buffer->buffers[buffer->nextBuffer];
+	if (!buffer)
+		return 0;
 
-	int format = 0;
-	if (buffer->bStereo)
-	{
-		switch (buffer->bitsPerSample)
-		{
-		case 8:
-			format = AL_FORMAT_STEREO8;
-			break;
-		case 16:
-			format = AL_FORMAT_STEREO16;
-			break;
-		case 24:
-			format = AL_FORMAT_STEREO24;
-			break;
-		}
-	}
-	else
-	{
-		switch (buffer->bitsPerSample)
-		{
-		case 8:
-			format = AL_FORMAT_MONO8;
-			break;
-		case 16:
-			format = AL_FORMAT_MONO16;
-			break;
-		case 24:
-			format = AL_FORMAT_MONO24;
-			break;
-		}
-	}
-	alBufferData(bufferID, format, data, length, buffer->nSamplesPerSec);
-
+	ALint bufferID = buffer->buffers[buffer->nextBuffer];
 	buffer->nextBuffer = (buffer->nextBuffer + 1) % ARRAY_SIZE(buffer->buffers);
 
+	alBufferData(bufferID, buffer->format, data, length, buffer->nSamplesPerSec);
 	alSourceQueueBuffers(buffer->source, 1, &bufferID);
-
+	
 	return 1;
 }
 
 int stdSound_StreamBufferQueued(stdSound_streamBuffer_t* buffer)
 {
-	if (!buffer->source)
+	if (!buffer || !buffer->source)
 		return 0;
 
 	ALint nQueued;
 	alGetSourcei(buffer->source, AL_BUFFERS_QUEUED, &nQueued);
+
 	return nQueued;
 }
 
 int stdSound_StreamBufferProcessed(stdSound_streamBuffer_t* buffer)
 {
-	if (!buffer->source)
+	if (!buffer || !buffer->source)
 		return 0;
 
-	int nProcessed;
+	ALint nProcessed;
 	alGetSourcei(buffer->source, AL_BUFFERS_PROCESSED, &nProcessed);
+
 	return nProcessed;
 }
 
 int stdSound_StreamBufferPlay(stdSound_streamBuffer_t* buf)
 {
 	if (Main_bHeadless) return 1;
+
 	alSourcePlay(buf->source);
+
 	return 1;
+}
+
+void stdSound_StreamBufferStop(stdSound_streamBuffer_t* buf)
+{
+	if (Main_bHeadless) return 1;
+
+	alSourceStop(buf->source);
 }
 
 void stdSound_StreamBufferSetVolume(stdSound_streamBuffer_t* stream, float volume)
@@ -670,13 +671,26 @@ void stdSound_StreamBufferSetVolume(stdSound_streamBuffer_t* stream, float volum
 	if (!stream->source)
 		return;
 
-	alSourcef(stream->source, AL_GAIN, stream->vol);
+	alSourcef(stream->source, AL_GAIN, stream->vol * 1.5);
 
 	if (volume == 0.0)
-	{
-		alSourcei(stream->source, AL_LOOPING, AL_FALSE);
 		alSourceStop(stream->source);
-	}
+}
+
+
+void stdSound_StreamBufferSetPosition(stdSound_streamBuffer_t* pSoundBuf, rdVector3* pos)
+{
+	if (!pSoundBuf || !pos) return;
+
+	stdSound_DS3DToAL(&pSoundBuf->pos, pos);
+
+	if (!pSoundBuf->source)
+		return;
+
+	if (Main_bHeadless) return;
+
+	alSourcei(pSoundBuf->source, AL_SOURCE_RELATIVE, AL_FALSE);
+	alSourcefv(pSoundBuf->source, AL_POSITION, (ALfloat*)&pSoundBuf->pos);
 }
 
 #endif

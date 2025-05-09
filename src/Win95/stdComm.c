@@ -155,7 +155,7 @@ int stdComm_Recv(sithCogMsg *msg)
             pMsg->netMsg.timeMs = sithTime_curMs;
             return 1;
         }
-        if ( (g_submodeFlags & 8) == 0 )
+        if ( (g_submodeFlags & SITH_SUBMODE_JOINING) == 0 )
         {
             if (ret == 2)
             {

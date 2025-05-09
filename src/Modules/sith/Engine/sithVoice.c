@@ -11,10 +11,19 @@
 
 #include "Win95/stdSound.h"
 
+int Main_bVerboseVoice = 0;
+
+#define sithVoice_infoPrintf(fmt, ...) stdPlatform_Printf(fmt, ##__VA_ARGS__)
+#define sithVoice_verbosePrintf(fmt, ...) if (Main_bVerboseVoice) \
+    { \
+        stdPlatform_Printf(fmt, ##__VA_ARGS__);  \
+    } \
+    ;
+
 typedef struct sithVoicePacket
 {
 	uint32_t unSize;
-	void*    pData;
+	uint8_t* pData;
 	struct sithVoicePacket* pNext;
 } sithVoicePacket;
 
@@ -28,8 +37,9 @@ typedef struct sithVoiceChannel
 sithVoiceChannel sithVoice_channels[32];
 int sithVoice_activeChannels = 0;
 int sithVoice_bIsOpen = 0;
+int sithVoice_bIsRecording = 0;
 
-uint8_t sithVoice_uncompressedVoice[11000 * 2]; // too big for the stack
+uint8_t sithVoice_uncompressedVoice[VOICE_OUTPUT_SAMPLE_RATE * VOICE_OUTPUT_BYTES_PER_SAMPLE]; // too big for the stack
 float sithVoice_volume = 1.0;
 
 void sithVoice_SetVolume(float volume)
@@ -41,13 +51,14 @@ int sithVoice_CreateChannel(DPID id)
 {
 	if(sithVoice_activeChannels >= 32)
 	{
-		stdPlatform_Printf("Exceeded maximum number of voice channels\n");
+		stdPrintf(pSithHS->errorPrint, ".\\Engine\\sithVoice.c", __LINE__, "Exceeded maximum number of voice channels.\n");
 		return -1;
 	}
 
 	sithVoiceChannel* channel = &sithVoice_channels[sithVoice_activeChannels];
 	channel->dpId = id;
-	channel->stream = stdSound_StreamBufferCreate(0, 11025, 16);
+	channel->stream = stdSound_StreamBufferCreate(0, VOICE_OUTPUT_SAMPLE_RATE, 16);
+	channel->packets = NULL;
 
 	return sithVoice_activeChannels++;
 }
@@ -62,12 +73,9 @@ int sithVoice_GetChannel(DPID id)
 	return -1;
 }
 
-void sithVoice_DeleteChannel(DPID id)
-{
-	int idx = sithVoice_GetChannel(id);
-	if (idx < 0)
-		return;
 
+void sithVoice_DeleteChannelByIndex(int idx)
+{
 	sithVoice_channels[idx].dpId = 0;
 
 	stdSound_StreamBufferRelease(sithVoice_channels[idx].stream);
@@ -85,21 +93,35 @@ void sithVoice_DeleteChannel(DPID id)
 	}
 }
 
+void sithVoice_DeleteChannel(DPID id)
+{
+	int idx = sithVoice_GetChannel(id);
+	if (idx < 0)
+		return;
+	sithVoice_DeleteChannelByIndex(idx);
+}
+
 void sithVoice_AddVoicePacket(DPID id, const uint8_t* pVoiceData, size_t length)
 {
+	sithVoice_verbosePrintf("Decompressing %d bytes of voice data\n", length);
+
 	int bytes = stdVoice_Decompress(sithVoice_uncompressedVoice, sizeof(sithVoice_uncompressedVoice), pVoiceData, length);
 	if (!bytes)
 		return;
-	
+
+	sithVoice_verbosePrintf("%d bytes of voice data decompressed\n", bytes);
+
 	int idx = sithVoice_GetChannel(id);
 	if (idx < 0)
 		idx = sithVoice_CreateChannel(id);
 
 	if (idx < 0)
 	{
-		stdPlatform_Printf("Failed to get or create voice channel.\n");
+		stdPrintf(pSithHS->errorPrint, ".\\Engine\\sithVoice.c", __LINE__, "Failed to get or create voice channel for ID %ull.\n", id);
 		return;
 	}
+
+	sithVoice_verbosePrintf("Adding a packet of %d bytes to voice channel %d\n", idx);
 
 	sithVoicePacket* pVoicePacket = pSithHS->alloc(sizeof(sithVoicePacket));
 	pVoicePacket->pData = pSithHS->alloc(bytes);
@@ -123,7 +145,6 @@ void sithVoice_AddVoicePacket(DPID id, const uint8_t* pVoiceData, size_t length)
 int sithVoice_Open()
 {
 	memset(sithVoice_channels, 0, sizeof(sithVoice_channels));
-	stdVoice_StartRecording();
 	sithVoice_bIsOpen = 1;
 	return 1;
 }
@@ -131,50 +152,73 @@ int sithVoice_Open()
 void sithVoice_Close()
 {
 	sithVoice_bIsOpen = 0;
-	stdVoice_StopRecording();
 
 	for (int i = 0; i < sithVoice_activeChannels; ++i)
-	{
-		sithVoice_channels[i].dpId = 0;
-
-		stdSound_StreamBufferRelease(sithVoice_channels[i].stream);
-		sithVoice_channels[i].stream = NULL;
-
-		sithVoicePacket* pVoicePacket = sithVoice_channels[i].packets;
-		while (pVoicePacket)
-		{
-			sithVoicePacket* pNextPacket = pVoicePacket->pNext;
-
-			pSithHS->free(pVoicePacket->pData);
-			pSithHS->free(pVoicePacket);
-
-			pVoicePacket = pNextPacket;
-		}
-	}
+		sithVoice_DeleteChannelByIndex(i);
 	sithVoice_activeChannels = 0;
 }
 
-void sithVoice_Tick()
+void sithVoice_UpdateRecordingState()
 {
-	int pushToTalk = 0;
-	sithControl_ReadFunctionMap(INPUT_FUNC_VOICE, &pushToTalk);
-	if (pushToTalk)
+	if(sithControl_ReadFunctionMap(INPUT_FUNC_VOICE, 0))
 	{
-		uint8_t buffer[1024];
-		int bytes = stdVoice_GetVoice(buffer, 1024);
-		if (bytes)
-			sithComm_SendVoice(buffer, bytes);
-	}
+		if (!sithVoice_bIsRecording)
+		{
+			sithVoice_bIsRecording = 1;
+			stdVoice_StartRecording();
+			sithVoice_verbosePrintf("Voice recording started\n");
+		}
 
+	}
+	else if (sithVoice_bIsRecording)
+	{
+		stdVoice_StopRecording();
+		sithVoice_bIsRecording = 0;
+		sithVoice_verbosePrintf("Voice recording stopped\n");
+	}
+}
+
+extern DPID stdComm_dplayIdSelf;
+
+void sithVoice_CaptureAndSendVoice()
+{
+	uint8_t buffer[1024];
+	int bytes = stdVoice_GetVoice(buffer, 1024);
+	if (bytes && sithVoice_bIsRecording)
+	{
+		sithComm_SendVoice(buffer, bytes);
+
+		//sithVoice_AddVoicePacket(stdComm_dplayIdSelf, buffer, bytes);
+	}
+}
+
+void sithVoice_Playback()
+{
 	for (int i = 0; i < sithVoice_activeChannels; ++i)
 	{
-		sithVoiceChannel* channel = &sithVoice_channels[sithVoice_activeChannels];
+		sithVoiceChannel* channel = &sithVoice_channels[i];
+		if (!channel->stream)
+		{
+			sithVoice_verbosePrintf("Voice channel stream for %ull is NULL\n", channel->dpId);
+			continue;
+		}
 
 		int queued = stdSound_StreamBufferQueued(channel->stream);
 		int processed = stdSound_StreamBufferProcessed(channel->stream);
 
+		sithVoice_verbosePrintf("Voice channel %d: %d queued, %d processed\n", i, queued, processed);
+
 		if ((queued == 4) && (processed == 0))
 			continue;
+
+		// positional voice
+		// todo: add a toggle so it can be set by the host
+		//if (channel->dpId != stdComm_dplayIdSelf)
+		//{
+		//	int playerIdx = sithPlayer_ThingIdxToPlayerIdx(channel->dpId);
+		//	if (playerIdx >= 0) // just in case
+		//		stdSound_StreamBufferSetPosition(channel->stream, &jkPlayer_playerInfos[playerIdx].playerThing->position);
+		//}
 
 		stdSound_StreamBufferUnqueue(channel->stream);
 
@@ -200,6 +244,13 @@ void sithVoice_Tick()
 			stdSound_StreamBufferPlay(channel->stream);
 		}
 	}
+}
+
+void sithVoice_Tick()
+{
+	sithVoice_UpdateRecordingState();
+	sithVoice_CaptureAndSendVoice();
+	sithVoice_Playback();
 }
 
 #endif

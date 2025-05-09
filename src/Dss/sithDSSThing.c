@@ -1067,7 +1067,7 @@ int sithDSSThing_ProcessFullDesc(sithCogMsg *msg)
 
     NETMSG_IN_START(msg);
 
-    if ( sithNet_isMulti && (g_submodeFlags & 8) == 0 )
+    if ( sithNet_isMulti && (g_submodeFlags & SITH_SUBMODE_JOINING) == 0 )
         return 0;
 
     thingIdx = NETMSG_POPS16();

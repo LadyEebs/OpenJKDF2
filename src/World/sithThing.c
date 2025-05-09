@@ -1664,7 +1664,7 @@ int sithThing_Load(sithWorld *pWorld, int a2)
 	sithNet_thingsIdx = 0;
    
     v20 = 0x1000 << jkPlayer_setDiff;
-    if ( (g_submodeFlags & 1) != 0 )
+    if ( (g_submodeFlags & SITH_SUBMODE_MULTI) != 0 )
         v20 |= 0x8000u;
     else
         v20 |= 0x10000u;

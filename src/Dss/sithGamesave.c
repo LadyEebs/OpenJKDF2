@@ -397,7 +397,7 @@ int sithGamesave_Write(char *saveFname, int a2, int a3, wchar_t *saveName)
     char PathName[128]; // [esp+2Ch] [ebp-280h] BYREF
     wchar_t v13[256]; // [esp+ACh] [ebp-200h] BYREF
 
-    if ( (g_submodeFlags & 1) != 0 )
+    if ( (g_submodeFlags & SITH_SUBMODE_MULTI) != 0 )
         return 0;
     if ( (sithPlayer_pLocalPlayerThing->thingflags & SITH_TF_DEAD) != 0 )
         return 0;

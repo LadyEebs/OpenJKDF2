@@ -305,7 +305,7 @@ int sithMain_Tick()
     }
 #endif
     
-    if ( (g_submodeFlags & 8) != 0 )
+    if ( (g_submodeFlags & SITH_SUBMODE_JOINING) != 0 )
     {
         sithTime_Tick();
         sithComm_Sync();
@@ -464,7 +464,7 @@ int sithMain_Tick()
 
 void sithMain_UpdateCamera()
 {
-    if ( (g_submodeFlags & 8) == 0 )
+    if ( (g_submodeFlags & SITH_SUBMODE_JOINING) == 0 )
     {
         sithMain_sub_4C4D80();
 

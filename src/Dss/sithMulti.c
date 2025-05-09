@@ -208,7 +208,7 @@ int sithMulti_Startup()
     sithThing **v5; // ebp
     int v7; // ecx
 
-    g_submodeFlags |= 1u;
+    g_submodeFlags |= SITH_SUBMODE_MULTI;
     sithMulti_leaveJoinType = 0;
     sithMulti_bTimelimitMet = 0;
     sithComm_multiplayerFlags |= 1u;
@@ -621,13 +621,13 @@ int sithMulti_ProcessJoinLeave(sithCogMsg *msg)
         }
         return 1;
     }
-    if ( (g_submodeFlags & 8) == 0 )
+    if ( (g_submodeFlags & SITH_SUBMODE_JOINING) == 0 )
         return 1;
 
 	for (int i = 0; i < jkPlayer_maxPlayers; i++)
 		jkPlayer_playerInfos[i].lastUpdateMs = sithTime_curMs;
 
-    g_submodeFlags &= ~8u;
+    g_submodeFlags &= ~SITH_SUBMODE_JOINING;
     sithThing_sub_4CCE60();
     sithPlayer_sub_4C87C0(playerIdx, dpId);
     sithPlayer_idk(playerIdx); // sets playerThingIdx and info
@@ -730,7 +730,7 @@ int sithMulti_ServerLeft(int a, sithEventInfo* b)
     wchar_t *v7; // eax
     wchar_t a1[128]; // [esp+10h] [ebp-100h] BYREF
 
-    if ( sithWorld_pCurrentWorld && sithPlayer_pLocalPlayerThing && (g_submodeFlags & 8) == 0 )
+    if ( sithWorld_pCurrentWorld && sithPlayer_pLocalPlayerThing && (g_submodeFlags & SITH_SUBMODE_JOINING) == 0 )
         sithDSSThing_SendPos(sithPlayer_pLocalPlayerThing, INVALID_DPID, 0);
     if ( sithNet_isServer )
     {
@@ -909,9 +909,9 @@ int sithMulti_ProcessLeaveJoin(sithCogMsg *msg)
 #else
 			v6->net_id = NETMSG_POPS32();
 #endif
-            if ( (v6->flags & 1) == 0 || (v7 & 1) != 0 || (g_submodeFlags & 8) != 0 )
+            if ( (v6->flags & 1) == 0 || (v7 & 1) != 0 || (g_submodeFlags & SITH_SUBMODE_JOINING) != 0 )
             {
-                if ( !v6->net_id && (v7 & 1) != 0 && (g_submodeFlags & 8) == 0 )
+                if ( !v6->net_id && (v7 & 1) != 0 && (g_submodeFlags & SITH_SUBMODE_JOINING) == 0 )
                 {
                     v12 = sithStrTable_GetUniStringWithFallback("%s_HAS_LEFT_THE_GAME");
                     jk_snwprintf(v22, 0x80u, v12, v6);

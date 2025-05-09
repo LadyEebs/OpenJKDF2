@@ -16,6 +16,9 @@ extern int Main_bVerboseNetworking;
 extern int Main_bMotsCompat;
 extern int Main_bDwCompat;
 extern int Main_bEnhancedCogVerbs;
+#ifdef PLATFORM_STEAM
+extern int Main_bVerboseVoice;
+#endif
 #endif
 
 int Main_Startup(const char *cmdline);

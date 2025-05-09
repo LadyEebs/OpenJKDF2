@@ -541,7 +541,7 @@ int jkGuiMultiplayer_ShowSynchronizing()
     void *v2; // [esp-4h] [ebp-8h]
 
     v2 = jkGui_stdBitmaps[JKGUI_BM_BK_MULTI]->palette;
-    g_submodeFlags |= 8u;
+    g_submodeFlags |= SITH_SUBMODE_JOINING;
 	jkGuiRend_UpdateAudio();
 	jkGui_SetModeMenu(v2);
     jkGuiMultiplayer_aElements4[1].wstr = jkStrings_GetUniStringWithFallback("GUI_SYNCHRONIZING");
@@ -558,7 +558,7 @@ int jkGuiMultiplayer_CogMsgHandleJoining(sithCogMsg *msg)
     wchar_t *v2; // eax
     wchar_t *v3; // [esp-4h] [ebp-4h]
 
-    if ( (g_submodeFlags & 8) != 0 )
+    if ( (g_submodeFlags & SITH_SUBMODE_JOINING) != 0 )
     {
         switch ( msg->pktData[0] )
         {
@@ -773,13 +773,13 @@ void jkGuiMultiplayer_idk(jkGuiMenu *pMenu)
     wchar_t *v2; // eax
     wchar_t *v3; // [esp-4h] [ebp-4h]
 
-    if ( stdComm_dword_8321E0 && (g_submodeFlags & 8) != 0 )
+    if ( stdComm_dword_8321E0 && (g_submodeFlags & SITH_SUBMODE_JOINING) != 0 )
     {
         v1 = stdPlatform_GetTimeMsec();
         if ( v1 <= jkGuiMultiplayer_dword_5564EC + 2000 || (jkGuiMultiplayer_dword_5564EC = v1, sithMulti_SendJoinRequest(sithNet_serverNetId)) )
         {
             sithComm_Sync();
-            if ( (g_submodeFlags & 8) == 0 )
+            if ( (g_submodeFlags & SITH_SUBMODE_JOINING) == 0 )
                 pMenu->lastClicked = 1;
         }
         else
@@ -812,7 +812,7 @@ int jkGuiMultiplayer_Show2()
             result = stdComm_dword_8321F8 - 2;
             if ( stdComm_dword_8321F8 != 2 )
                 return result;
-            g_submodeFlags |= 8;
+            g_submodeFlags |= SITH_SUBMODE_JOINING;
 			jkGuiRend_UpdateAudio();
 			jkGui_SetModeMenu(jkGui_stdBitmaps[JKGUI_BM_BK_MULTI]->palette);
             jkGuiMultiplayer_aElements4[1].wstr = jkStrings_GetUniStringWithFallback("GUINET_WAITHOSTSETTINGS");
@@ -921,7 +921,7 @@ int jkGuiMultiplayer_ShowWaitHostSettings()
     void *v2; // [esp-4h] [ebp-8h]
 
     v2 = jkGui_stdBitmaps[JKGUI_BM_BK_MULTI]->palette;
-    g_submodeFlags |= 8u;
+    g_submodeFlags |= SITH_SUBMODE_JOINING;
 	jkGuiRend_UpdateAudio();
 	jkGui_SetModeMenu(v2);
     jkGuiMultiplayer_aElements4[1].wstr = jkStrings_GetUniStringWithFallback("GUINET_WAITHOSTSETTINGS");

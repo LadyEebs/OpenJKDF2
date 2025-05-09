@@ -65,7 +65,7 @@ int jkControl_HandleHudKeys(sithThing *player, float b)
                 jkHud_Chat();
         }
 
-        if ( (g_submodeFlags & 1) == 0 )
+        if ( (g_submodeFlags & SITH_SUBMODE_MULTI) == 0 )
         {
             sithControl_ReadFunctionMap(INPUT_FUNC_GAMESAVE, &v15);
             if (v15 && sithThing_MotsTick(0xe,0,2.0))
