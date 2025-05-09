@@ -211,14 +211,24 @@ void sithVoice_Playback()
 		if ((queued == 4) && (processed == 0))
 			continue;
 
-		// positional voice
+		// proximity voice
 		// todo: add a toggle so it can be set by the host
-		//if (channel->dpId != stdComm_dplayIdSelf)
-		//{
-		//	int playerIdx = sithPlayer_ThingIdxToPlayerIdx(channel->dpId);
-		//	if (playerIdx >= 0) // just in case
-		//		stdSound_StreamBufferSetPosition(channel->stream, &jkPlayer_playerInfos[playerIdx].playerThing->position);
-		//}
+		if (channel->dpId != stdComm_dplayIdSelf)
+		{
+			int playerIdx = sithPlayer_ThingIdxToPlayerIdx(channel->dpId);
+			if (playerIdx >= 0) // just in case
+			{
+				sithThing* pPlayerThing = jkPlayer_playerInfos[playerIdx].playerThing;
+
+				// scale handled here for consistency with sithSoundMixer
+				rdVector3 pos, vel;
+				rdVector_Scale3(&pos, &pPlayerThing->position, 10.0);
+				rdVector_Scale3(&vel, &pPlayerThing->physicsParams.vel, 10.0);
+
+				stdSound_StreamBufferSetPosition(channel->stream, &pos);
+				stdSound_StreamBufferSetVelocity(channel->stream, &vel);
+			}
+		}
 
 		stdSound_StreamBufferUnqueue(channel->stream);
 

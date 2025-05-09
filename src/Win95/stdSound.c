@@ -572,6 +572,7 @@ stdSound_streamBuffer_t* stdSound_StreamBufferCreate(int bStereo, uint32_t nSamp
 	out->nextBuffer = 0;
 	out->vol = 1.0f;
 	rdVector_Zero3(&out->pos);
+	rdVector_Zero3(&out->vel);
 
 	out->format = stdSound_BitsToALFormat(bStereo, bitsPerSample);
 	
@@ -691,6 +692,21 @@ void stdSound_StreamBufferSetPosition(stdSound_streamBuffer_t* pSoundBuf, rdVect
 
 	alSourcei(pSoundBuf->source, AL_SOURCE_RELATIVE, AL_FALSE);
 	alSourcefv(pSoundBuf->source, AL_POSITION, (ALfloat*)&pSoundBuf->pos);
+}
+
+void stdSound_StreamBufferSetVelocity(stdSound_streamBuffer_t* pSoundBuf, rdVector3* vel)
+{
+	if (!pSoundBuf || !vel) return;
+
+	stdSound_DS3DToAL(&pSoundBuf->vel, vel);
+
+	if (!pSoundBuf->source)
+		return;
+
+	if (Main_bHeadless) return;
+
+	alSourcei(pSoundBuf->source, AL_SOURCE_RELATIVE, AL_FALSE);
+	alSourcefv(pSoundBuf->source, AL_VELOCITY, (ALfloat*)&pSoundBuf->vel);
 }
 
 #endif
