@@ -160,6 +160,7 @@ struct LobbySystem
 			SteamNetworkingSockets()->RunCallbacks();
 		}
 
+		// we could do this in the callback but we want the lobby updated before we even get into the game
 		if (success)// && pEntry)
 			Steam_SetLobbySessionDesc(stdComm_steamLobbyID, pEntry);
 
@@ -291,8 +292,8 @@ struct LobbySystem
 			//	//SteamMatchmaking()->SendLobbyChatMsg()
 			break;
 		case k_EChatMemberStateChangeLeft:
-		case k_EChatMemberStateChangeDisconnected:
 			break;
+		case k_EChatMemberStateChangeDisconnected:
 		case k_EChatMemberStateChangeKicked:
 		case k_EChatMemberStateChangeBanned:
 			sithMulti_SendQuit(update->m_ulSteamIDUserChanged);
@@ -653,16 +654,19 @@ int stdComm_EnumSessions(int a, void* b)
 
 void DirectPlayer_AddPlayer(CSteamID steamID)
 {
-	// check if the player is already in the lobby
+	const char* nickname = SteamMatchmaking()->GetLobbyMemberData(stdComm_steamLobbyID, steamID, "nickname");
+	if (!nickname)
+		nickname = SteamFriends()->GetFriendPersonaName(steamID);
+
+	// check if the player was already added
 	for (int i = 0; i < DirectPlay_numPlayers; ++i)
 	{
 		if(DirectPlay_aPlayers[i].dpId == steamID.ConvertToUint64())
+		{
+			stdPlatform_Printf("Player %s already in the game\n", nickname);
 			return;
+		}
 	}
-
-	const char* nickname = SteamMatchmaking()->GetLobbyMemberData(stdComm_steamLobbyID, steamID, "nickname");
-	if(!nickname)
-		nickname = SteamFriends()->GetFriendPersonaName(steamID);
 
 	wchar_t wname[128];
 	int charsWritten = MultiByteToWideChar(CP_UTF8, 0, nickname, -1, wname, 127);
