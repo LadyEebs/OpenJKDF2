@@ -5,6 +5,14 @@ General:
 - Simple Job System
 - Extra math functions and utils
 
+Mutliplayer:
+- Steam integration
+- IP-free p2p networking and games list
+- Lobby driven networking
+- Invites (both in-game and from the steam overlay and friends list)
+- Friends integration
+- QoL improvements
+
 Rendering (General):
 - Fog (Infernal Machine style), requires JKL version 2.0 to use
 - Underwater distortion PostFX
