@@ -433,7 +433,7 @@ void sithMulti_ProcessScore()
 {
     int score_limit_met;
 
-    if ( (sithNet_MultiModeFlags & MULTIMODEFLAG_4) == 0 )
+    if ( (sithNet_MultiModeFlags & MULTIMODEFLAG_CUSTOM_SCORING) == 0 )
     {
         sithNet_teamScore[0] = 0;
         sithNet_teamScore[1] = 0;

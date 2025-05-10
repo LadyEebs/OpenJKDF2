@@ -466,7 +466,7 @@ int jkGuiNetHost_Show(stdCommSession3 *pMultiEntry)
                 pMultiEntry->multiModeFlags |= MULTIMODEFLAG_SINGLE_LEVEL;
             }
             if ( jkGuiNetHost_aElements[NETHOST_TEAMMODE_CHECKBOX].selectedTextEntry )
-                pMultiEntry->multiModeFlags |= (MULTIMODEFLAG_100 | MULTIMODEFLAG_2 | MULTIMODEFLAG_TEAMS);
+                pMultiEntry->multiModeFlags |= (MULTIMODEFLAG_100 | MULTIMODEFLAG_NO_FRIENDLY_FIRE | MULTIMODEFLAG_TEAMS);
             stdString_SafeWStrCopy(pMultiEntry->wPassword, v30, 0x20);
             if (_wcslen(pMultiEntry->wPassword)) {
                 jkGuiNetHost_sessionFlags |= SESSIONFLAG_PASSWORD; // Added: wtf?

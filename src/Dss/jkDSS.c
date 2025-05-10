@@ -336,7 +336,7 @@ int jkDSS_ProcessSetSaberInfoMots(sithCogMsg *msg)
 
     if ( msg->netMsg.cogMsgId == DSS_SABERINFO1 )
     {
-        if ( (sithNet_MultiModeFlags & MULTIMODEFLAG_20) != 0 )
+        if ( (sithNet_MultiModeFlags & MULTIMODEFLAG_NO_SKINS) != 0 )
         {
             stdString_SafeStrCopy(model_3do_fname, "kk.3do", 0x20);
             stdString_SafeStrCopy(v14, "ky.snd", 0x20);
@@ -430,7 +430,7 @@ int jkDSS_ProcessSetSaberInfo(sithCogMsg *msg)
 
     if ( msg->netMsg.cogMsgId == DSS_SABERINFO1 )
     {
-        if ( (sithNet_MultiModeFlags & MULTIMODEFLAG_20) != 0 )
+        if ( (sithNet_MultiModeFlags & MULTIMODEFLAG_NO_SKINS) != 0 )
             return 1;
         if ( (sithNet_MultiModeFlags & MULTIMODEFLAG_100) != 0 )
         {
