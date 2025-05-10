@@ -37,10 +37,15 @@ static const char* jkGuiMultiplayer_searchDistances[] =
 int jkGuiMultiplayer_searchDistance = NET_SEARCH_NEAR;
 int jkGuiMultiplayer_searchRank = -1;
 int jkGuiMultiplayer_searchFriendsOnly = 0;
+int jkGuiMultiplayer_searchFFA = 1;
+int jkGuiMultiplayer_searchTeams = 1;
+int jkGuiMultiplayer_searchCoop = 1;
 wchar_t jkGuiMultiplayer_searchRankText[128];
 
 int jkGuiMultiplayer_SearchDistanceArrowHandler(jkGuiElement* pElement, jkGuiMenu* pMenu, int mouseX, int mouseY, BOOL a5);
 int jkGuiMultiplayer_RankArrowHandler(jkGuiElement* pElement, jkGuiMenu* pMenu, int mouseX, int mouseY, BOOL a5);
+int jkGuiMultiplayer_FilterClickHandler(jkGuiElement* pElement, jkGuiMenu* pMenu, int mouseX, int mouseY, BOOL a5);
+
 
 #endif
 
@@ -105,25 +110,20 @@ static jkGuiElement jkGuiMultiplayer_aElements3[] = {
     {ELEMENT_TEXTBUTTON, -1,  2, "GUI_CANCEL",  3, {20, 0x1AE, 0xC8, 0x28},  1,  0,  0,  0,  0,  0, {0},  0},
 
 #ifdef PLATFORM_STEAM
-	{ ELEMENT_TEXT,        0,            0, "GUIEXT_SEARCH_DISTANCE",  2,  {380, 150, 300, 0x14}, 1,  0, 0, 0, 0, 0, {0}, 0},
-	{ ELEMENT_TEXT,        0,            0, NULL,                    2,  { 455, 180, 160, 30 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
-	{ ELEMENT_PICBUTTON, 103,            0, NULL,                    33, { 380, 180, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_SearchDistanceArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
-	{ ELEMENT_PICBUTTON, 104,            0, NULL,                    34, { 410, 180, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_SearchDistanceArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_TEXT,        0,            0, "GUIEXT_SEARCH_DISTANCE",  2,  {380, 115, 300, 0x14}, 1,  0, 0, 0, 0, 0, {0}, 0},
+	{ ELEMENT_TEXT,        0,            0, NULL,                    2,  { 455, 145, 160, 30 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_PICBUTTON, 103,            0, NULL,                    33, { 380, 145, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_SearchDistanceArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_PICBUTTON, 104,            0, NULL,                    34, { 410, 145, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_SearchDistanceArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
 
-	{ ELEMENT_TEXT,        0,            0, "GUI_RANKLABEL",  2,  {380, 210, 300, 0x14}, 1,  0, 0, 0, 0, 0, {0}, 0},
-	{ ELEMENT_TEXT,        0,            0, NULL,                    2,  { 455, 240, 160, 30 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
-	{ ELEMENT_PICBUTTON, 103,            0, NULL,                    33, { 380, 240, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_RankArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
-	{ ELEMENT_PICBUTTON, 104,            0, NULL,                    34, { 410, 240, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_RankArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_TEXT,        0,            0, "GUI_RANKLABEL",  2,  {380, 175, 300, 0x14}, 1,  0, 0, 0, 0, 0, {0}, 0},
+	{ ELEMENT_TEXT,        0,            0, NULL,                    2,  { 455, 205, 160, 30 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_PICBUTTON, 103,            0, NULL,                    33, { 380, 205, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_RankArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_PICBUTTON, 104,            0, NULL,                    34, { 410, 205, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_RankArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
 	
-	{ ELEMENT_CHECKBOX,     0, 0, "GUIEXT_FRIENDS_ONLY", 0, { 380, 115, 200, 40 }, 1, 0, 0, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
-
-	//{ ELEMENT_TEXT,        0,            0, "GUIEXT_FILTERS",  2,  {380, 105, 300, 0x14}, 1,  0, 0, 0, 0, 0, {0}, 0},
-
-	// other possible filters:
-	// game type (any, FFA, Teams)
-	// passworded?
-	// session flags?
-	// multi flags?
+	{ ELEMENT_CHECKBOX,     0, 0, "GUIEXT_FRIENDS_ONLY", 0, { 0x28, 65, 120, 40 }, 1, 0, 0, NULL, jkGuiMultiplayer_FilterClickHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_CHECKBOX,     1, 0, "GUIEXT_FREE_FOR_ALL", 0, { 0x28+ 150, 65, 120, 40 }, 1, 0, 0, NULL, jkGuiMultiplayer_FilterClickHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_CHECKBOX,     2, 0, "GUI_TEAMMODE", 0, { 0x28 + 150 + 150, 65, 120, 40 }, 1, 0, 0, NULL, jkGuiMultiplayer_FilterClickHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_CHECKBOX,     3, 0, "GUIEXT_COOPMODE", 0, { 0x28 + 150 + 150 + 150, 65, 120, 40 }, 1, 0, 0, NULL, jkGuiMultiplayer_FilterClickHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
 #endif
 
     {ELEMENT_END,  0,  0,  0,  0, {0},  0,  0,  0,  0,  0,  0, {0},  0},
@@ -164,6 +164,9 @@ void jkGuiMultiplayer_Startup()
 		wuRegistry_GetInt("lastLobbySearchDistance", jkGuiMultiplayer_searchDistance);
 		wuRegistry_GetInt("lastLobbySearchRank", jkGuiMultiplayer_searchRank);
 		wuRegistry_GetBool("lastLobbySearchFriendsOnly", jkGuiMultiplayer_searchFriendsOnly);
+		wuRegistry_GetBool("lastLobbySearchFFA", jkGuiMultiplayer_searchFFA);
+		wuRegistry_GetBool("lastLobbySearchTeams", jkGuiMultiplayer_searchTeams);
+		wuRegistry_GetBool("lastLobbySearchCoop", jkGuiMultiplayer_searchCoop);
 
 		jkGuiMultiplayer_aElements3[13].wstr = jkStrings_GetUniStringWithFallback(jkGuiMultiplayer_searchDistances[jkGuiMultiplayer_searchDistance]);
 
@@ -184,6 +187,9 @@ void jkGuiMultiplayer_Startup()
 		jkGuiMultiplayer_aElements3[17].wstr = &jkGuiMultiplayer_searchRankText[0];
 
 		jkGuiMultiplayer_aElements3[20].selectedTextEntry = jkGuiMultiplayer_searchFriendsOnly;
+		jkGuiMultiplayer_aElements3[21].selectedTextEntry = jkGuiMultiplayer_searchFFA;
+		jkGuiMultiplayer_aElements3[22].selectedTextEntry = jkGuiMultiplayer_searchTeams;
+		jkGuiMultiplayer_aElements3[23].selectedTextEntry = jkGuiMultiplayer_searchCoop;
 
 	#else
 		wuRegistry_GetWString("lastConnectedHost", jkGuiMultiplayer_ipText, 0x100, L"127.0.0.1");
@@ -559,9 +565,6 @@ LABEL_28:
             if ( jkGuiRend_DisplayAndReturnClicked(&jkGuiMultiplayer_menu3) != 1 )
             {
 LABEL_29:
-#ifdef PLATFORM_STEAM
-				jkGuiMultiplayer_searchFriendsOnly = jkGuiMultiplayer_aElements3[20].selectedTextEntry;
-#endif
                 stdComm_EnumSessions2();
                 stdComm_CloseConnection();
                 goto LABEL_1;
@@ -789,6 +792,11 @@ void jkGuiMultiplayer_sub_413E50(int idx)
 
     if ( idx >= 0 )
     {
+		// Added: clear the strings because sometimes __wcscat appends
+		memset(&jkGuiMultiplayer_stru_556168.field_0, 0, 0x100u);
+		memset(jkGuiMultiplayer_stru_556168.field_100, 0, 0x100u);
+		memset(&jkGuiMultiplayer_stru_556168.field_200, 0, 0x100u);
+
         v1 = jkStrings_GetUniStringWithFallback("GUI_LEVEL");
         jk_snwprintf(
             jkGuiMultiplayer_stru_556168.field_0,
@@ -1093,6 +1101,31 @@ int jkGuiMultiplayer_RankArrowHandler(jkGuiElement* pElement, jkGuiMenu* pMenu, 
 
 	// force an update
 	jkGuiMultiplayer_dword_5564E8 = 0;
+
+	return 0;
+}
+
+int jkGuiMultiplayer_FilterClickHandler(jkGuiElement* pElement, jkGuiMenu* pMenu, int mouseX, int mouseY, BOOL a5)
+{
+	int* value = 0;
+	if (pElement->hoverId == 0)
+		value = &jkGuiMultiplayer_searchFriendsOnly;
+	else if (pElement->hoverId == 1)
+		value = &jkGuiMultiplayer_searchFFA;
+	else if (pElement->hoverId == 2)
+		value = &jkGuiMultiplayer_searchTeams;
+	else if (pElement->hoverId == 3)
+		value = &jkGuiMultiplayer_searchCoop;
+
+
+	if (!value)
+		return 0;
+
+
+	*value = !(*value);
+	pElement->selectedTextEntry = *value;
+
+	jkGuiRend_UpdateAndDrawClickable(pElement, pMenu, 1);
 
 	return 0;
 }

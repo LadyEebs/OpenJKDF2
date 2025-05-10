@@ -65,6 +65,7 @@ MSGS 100          # <--- DON'T FORGET TO UPDATE THIS COUNT
    "GUIEXT_DEDICATED_SERVER_HINT"   0 "Launch server without participating as a player."
    "GUIEXT_COOP"                    0 "Experimental Co-op"
    "GUIEXT_COOP_HINT"               0 "Launch server with actors enabled."
+   "GUIEXT_COOPMODE"                0 "Co-op"
    "GUIEXT_SERVER_PORT"             0 "Server Port:"
    "GUIEXT_FRIENDS_ONLY"            0 "Friends only"
    "GUIEXT_FRIENDS_ONLY_HINT"       0 "Only broadcast game to friends"
@@ -126,8 +127,6 @@ MSGS 100          # <--- DON'T FORGET TO UPDATE THIS COUNT
 
 	"GUIEXT_BANNED"                              0 "Banned from the game -- exiting"
 
-	"GUIEXT_FILTERS"                             0 "Filters"
-
 	"GUIEXT_SEARCH_DISTANCE"                     0 "Search Distance:"
 	"GUIEXT_SEARCH_LOCAL"                        0 "Local"
 	"GUIEXT_SEARCH_NEAR"                         0 "Near"
@@ -135,6 +134,8 @@ MSGS 100          # <--- DON'T FORGET TO UPDATE THIS COUNT
 	"GUIEXT_SEARCH_WORLDWIDE"                    0 "Worldwide"
 
 	"GUIEXT_ANY"                                 0 "Any"
+
+	"GUIEXT_FREE_FOR_ALL"                        0 "Free for All"
 
 #******************************
 #  Controls

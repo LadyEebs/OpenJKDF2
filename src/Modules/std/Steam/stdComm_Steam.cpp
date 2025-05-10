@@ -73,6 +73,9 @@ extern "C" {
 	extern int jkGuiMultiplayer_searchDistance;
 	extern int jkGuiMultiplayer_searchRank;
 	extern int jkGuiMultiplayer_searchFriendsOnly;
+	extern int jkGuiMultiplayer_searchFFA;
+	extern int jkGuiMultiplayer_searchTeams;
+	extern int jkGuiMultiplayer_searchCoop;
 	char jkGuiMultiplayer_ipText_conv[1024];
 
 	static int Steam_GetLobbySessionDesc(CSteamID lobbyID, stdCommSession* pEntry)
@@ -116,7 +119,15 @@ extern "C" {
 		SteamMatchmaking()->SetLobbyData(lobbyID, "tickRateMs", std::to_string(pEntry->tickRateMs).c_str());
 		SteamMatchmaking()->SetLobbyData(lobbyID, "maxRank", std::to_string(pEntry->maxRank).c_str());
 
-		SteamMatchmaking()->SetLobbyData(lobbyID, "friendsOnly", std::to_string(pEntry->multiModeFlags & MULTIMODEFLAG_FRIENDS_ONLY).c_str());
+		// set filter values
+		bool isFriendsOnly = pEntry->multiModeFlags & MULTIMODEFLAG_FRIENDS_ONLY;
+		bool isTeams = pEntry->multiModeFlags & MULTIMODEFLAG_TEAMS;
+		bool isCoop = pEntry->multiModeFlags & MULTIMODEFLAG_COOP;
+
+		SteamMatchmaking()->SetLobbyData(lobbyID, "friendsOnly", std::to_string((int)isFriendsOnly).c_str());
+		SteamMatchmaking()->SetLobbyData(lobbyID, "teamPlay", std::to_string((int)isTeams).c_str());
+		SteamMatchmaking()->SetLobbyData(lobbyID, "coop", std::to_string((int)isCoop).c_str());
+		SteamMatchmaking()->SetLobbyData(lobbyID, "ffa", std::to_string((int)(!isTeams && !isCoop)).c_str());
 	}
 
 	static void Steam_UpdateRichPresence(CSteamID lobbyID)
@@ -202,6 +213,7 @@ struct LobbySystem
 	{
 		if (!listResult.IsActive())
 		{
+			// filter by name (seems to want a perfect match... should we keep it?)
 			if (jkGuiMultiplayer_ipText[0] != L'\0')
 			{
 				int charsWritten = WideCharToMultiByte(CP_UTF8, 0, jkGuiMultiplayer_ipText, -1, jkGuiMultiplayer_ipText_conv, 1023, 0, 0);
@@ -209,12 +221,25 @@ struct LobbySystem
 				SteamMatchmaking()->AddRequestLobbyListStringFilter("serverName", jkGuiMultiplayer_ipText_conv, k_ELobbyComparisonEqual);
 			}
 
+			// filter by rank
 			if (jkGuiMultiplayer_searchRank >= 0)
 				SteamMatchmaking()->AddRequestLobbyListNumericalFilter("maxRank", jkGuiMultiplayer_searchRank, k_ELobbyComparisonEqual);
 
+			// filter by friends only
 			if (jkGuiMultiplayer_searchFriendsOnly)
 				SteamMatchmaking()->AddRequestLobbyListNumericalFilter("friendsOnly", jkGuiMultiplayer_searchFriendsOnly, k_ELobbyComparisonEqual);
 
+			// include any game that's not team play or co-p
+			if (!jkGuiMultiplayer_searchFFA)
+				SteamMatchmaking()->AddRequestLobbyListNumericalFilter("ffa", 1, k_ELobbyComparisonNotEqual);
+
+			// exclude team games
+			if (!jkGuiMultiplayer_searchTeams)
+				SteamMatchmaking()->AddRequestLobbyListNumericalFilter("teamPlay", 1, k_ELobbyComparisonNotEqual);
+
+			// any game marked co-op
+			if (!jkGuiMultiplayer_searchCoop)
+				SteamMatchmaking()->AddRequestLobbyListNumericalFilter("coop", 1, k_ELobbyComparisonNotEqual);
 
 			SteamMatchmaking()->AddRequestLobbyListDistanceFilter((ELobbyDistanceFilter)jkGuiMultiplayer_searchDistance);//k_ELobbyDistanceFilterFar);
 			SteamAPICall_t hSteamAPICall = SteamMatchmaking()->RequestLobbyList();
