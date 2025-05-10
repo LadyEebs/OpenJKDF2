@@ -19,7 +19,7 @@
 #define sithPlayer_SetScreenTint_ADDR (0x004C8D30)
 #define sithPlayer_debug_loadauto_ADDR (0x004C8E10)
 #define sithPlayer_debug_ToNextCheckpoint_ADDR (0x004C8EC0)
-#define sithPlayer_sub_4C9060_ADDR (0x004C9060)
+#define sithPlayer_OnSameTeam_ADDR (0x004C9060)
 #define sithPlayer_FindPlayerByName_ADDR (0x004C90C0)
 #define sithPlayer_ThingIdxToPlayerIdx_ADDR (0x004C9120)
 #define sithPlayer_sub_4C9150_ADDR (0x004C9150)
@@ -48,7 +48,7 @@ void sithPlayer_debug_loadauto(sithThing *player);
 void sithPlayer_SetScreenTint(float tintR, float tintG, float tintB);
 void sithPlayer_AddDynamicTint(float fR, float fG, float fB);
 void sithPlayer_AddDyamicAdd(int r, int g, int b);
-int sithPlayer_sub_4C9060(sithThing *thing1, sithThing *thing2);
+int sithPlayer_OnSameTeam(sithThing *thing1, sithThing *thing2);
 void sithPlayer_HandleSentDeathPkt(sithThing *thing);
 void sithPlayer_sub_4C9150(sithThing *player, sithThing *killedBy);
 int sithPlayer_GetNumidk(int a1);

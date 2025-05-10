@@ -1247,7 +1247,7 @@ void jkHud_DrawGPU()
 		{
 			int isFriendly = (jkPlayer_crosshairTarget->actorParams.typeflags & SITH_AF_NOTARGET);
 			if(sithNet_isMulti)
-				isFriendly |= sithPlayer_sub_4C9060(sithPlayer_pLocalPlayerThing, jkPlayer_crosshairTarget);
+				isFriendly |= sithPlayer_OnSameTeam(sithPlayer_pLocalPlayerThing, jkPlayer_crosshairTarget);
 
 			if (!isFriendly)
 				g = b = 0;

@@ -359,30 +359,15 @@ void sithPlayer_AddDyamicAdd(int r, int g, int b)
     if ( pPalEffects->add.z > 0xFF )
         pPalEffects->add.z = 255;
 }
-int sithPlayer_sub_4C9060(sithThing *thing1, sithThing *thing2)
-{
-    sithPlayerInfo *v2; // ecx
-    sithPlayerInfo *v3; // eax
-    int v4; // ecx
-    int v5; // eax
 
+int sithPlayer_OnSameTeam(sithThing *thing1, sithThing *thing2)
+{
     if ( (sithNet_MultiModeFlags & MULTIMODEFLAG_TEAMS) != 0 && thing1 != thing2 && thing1->type == SITH_THING_PLAYER && thing2->type == SITH_THING_PLAYER )
     {
-        // Yes, these are assigns not ==
-        if ( v2 = thing1->actorParams.playerinfo )
-        {
-            if ( v3 = thing2->actorParams.playerinfo )
-            {
-                if ( v4 = v2->teamNum )
-                {
-                    if ( v5 = v3->teamNum )
-                    {
-                        if ( v4 == v5 )
-                            return 1;
-                    }
-                }
-            }
-        }
+		sithPlayerInfo* pPlayerInfo1 = thing1->actorParams.playerinfo;
+		sithPlayerInfo* pPlayerInfo2 = thing2->actorParams.playerinfo;
+		if (pPlayerInfo1 && pPlayerInfo2)
+			return pPlayerInfo1->teamNum == pPlayerInfo2->teamNum;
     }
     return 0;
 }

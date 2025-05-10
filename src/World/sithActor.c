@@ -142,7 +142,7 @@ float sithActor_Hit(sithThing *sender, sithThing *receiver, float amount, int fl
             }
         }
         amount *= damageMult;
-        if ( sithNet_isMulti && (sithNet_MultiModeFlags & MULTIMODEFLAG_NO_FRIENDLY_FIRE) != 0 && sithPlayer_sub_4C9060(v7, sender) )
+        if ( sithNet_isMulti && (sithNet_MultiModeFlags & MULTIMODEFLAG_NO_FRIENDLY_FIRE) != 0 && sithPlayer_OnSameTeam(v7, sender) )
             return 0.0;
     }
 

@@ -1824,7 +1824,7 @@ sithPlayer_AddDyamicAdd	.text	004C8CD0	00000060	00000000	0000000C	R	.	.	.	.	.	T	
 sithPlayer_SetScreenTint	.text	004C8D30	000000DC	00000000	0000000C	R	.	.	.	.	.	T	.
 sithPlayer_debug_loadauto	.text	004C8E10	000000A9	00000084	00000004	R	.	.	.	.	.	T	.
 sithPlayer_debug_ToNextCheckpoint	.text	004C8EC0	0000019F	00000008	00000004	R	.	.	.	.	.	T	.
-sithPlayer_sub_4C9060	.text	004C9060	0000005E	00000004	00000008	R	.	.	.	.	.	T	.
+sithPlayer_OnSameTeam	.text	004C9060	0000005E	00000004	00000008	R	.	.	.	.	.	T	.
 sithPlayer_FindPlayerByName	.text	004C90C0	0000005B	00000010	00000004	R	.	.	.	.	.	T	.
 sithPlayer_ThingIdxToPlayerIdx	.text	004C9120	0000002E	00000004	00000004	R	.	.	.	.	.	T	.
 sithPlayer_sub_4C9150	.text	004C9150	00000086	0000000C	00000008	R	.	.	.	.	.	T	.
