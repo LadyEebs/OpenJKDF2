@@ -1014,7 +1014,7 @@ int jkDev_CmdMana(stdDebugConsoleCmd *pCmd, const char *pArgStr)
 // MOTS altered
 int jkDev_CmdTeam(stdDebugConsoleCmd *pCmd, const char *pArgStr)
 {
-    if ( !pArgStr || !sithNet_isMulti || (sithNet_MultiModeFlags & MULTIMODEFLAG_TEAMS) == 0 || (sithNet_MultiModeFlags & MULTIMODEFLAG_100) == 0 )
+    if ( !pArgStr || !sithNet_isMulti || (sithNet_MultiModeFlags & MULTIMODEFLAG_TEAMS) == 0 || (sithNet_MultiModeFlags & MULTIMODEFLAG_AUTO_TEAM) == 0 )
         return 1;
 
     uint32_t v2 = _atol(pArgStr);

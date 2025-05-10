@@ -341,7 +341,7 @@ int jkDSS_ProcessSetSaberInfoMots(sithCogMsg *msg)
             stdString_SafeStrCopy(model_3do_fname, "kk.3do", 0x20);
             stdString_SafeStrCopy(v14, "ky.snd", 0x20);
         }
-        if ( (sithNet_MultiModeFlags & MULTIMODEFLAG_100) != 0 )
+        if ( (sithNet_MultiModeFlags & MULTIMODEFLAG_AUTO_TEAM) != 0 )
         {
             if (personality < 0 || personality > 7) {
                 stdString_SafeStrCopy(model_3do_fname, "kk.3do", 0x20);
@@ -432,7 +432,7 @@ int jkDSS_ProcessSetSaberInfo(sithCogMsg *msg)
     {
         if ( (sithNet_MultiModeFlags & MULTIMODEFLAG_NO_SKINS) != 0 )
             return 1;
-        if ( (sithNet_MultiModeFlags & MULTIMODEFLAG_100) != 0 )
+        if ( (sithNet_MultiModeFlags & MULTIMODEFLAG_AUTO_TEAM) != 0 )
         {
             _strncpy(model_3do_fname, jkDSS_aKyTeamModels[v11->teamNum], 0x1Fu);
             model_3do_fname[31] = 0;
@@ -1133,7 +1133,7 @@ int jkDSS_ProcessSetTeam(sithCogMsg *pMsg)
     if ( !teamNum || teamNum > 4 )
         return 0;
 
-    if ( (sithNet_MultiModeFlags & MULTIMODEFLAG_TEAMS) == 0 || (sithNet_MultiModeFlags & MULTIMODEFLAG_100) == 0 )
+    if ( (sithNet_MultiModeFlags & MULTIMODEFLAG_TEAMS) == 0 || (sithNet_MultiModeFlags & MULTIMODEFLAG_AUTO_TEAM) == 0 )
         return 1;
 
     jkPlayer_playerInfos[playerIdx].teamNum = teamNum;

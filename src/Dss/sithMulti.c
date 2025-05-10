@@ -156,7 +156,7 @@ int sithMulti_StartupServer()
 		jkPlayer_playerInfos[0].playerThing->thingflags |= SITH_TF_DISABLED;
 		jkPlayer_playerInfos[0].playerThing->attach_flags = 0;
 	}
-	if ((sithNet_MultiModeFlags & MULTIMODEFLAG_100) != 0)
+	if ((sithNet_MultiModeFlags & MULTIMODEFLAG_AUTO_TEAM) != 0)
 	{
 		jkPlayer_playerInfos[0].teamNum = 1;
 	}
@@ -1556,7 +1556,7 @@ void sithMulti_HandleTimeLimit(int deltaMs)
                                     ++stdComm_dword_832208,
                                     stdComm_dword_832208 >= sithMulti_dword_83265C) )
                         {
-                            if ( (sithNet_MultiModeFlags & MULTIMODEFLAG_TEAMS) != 0 && (sithNet_MultiModeFlags & MULTIMODEFLAG_100) != 0 )
+                            if ( (sithNet_MultiModeFlags & MULTIMODEFLAG_TEAMS) != 0 && (sithNet_MultiModeFlags & MULTIMODEFLAG_AUTO_TEAM) != 0 )
                                 jkPlayer_playerInfos[sithMulti_requestConnectIdx].teamNum = (sithMulti_requestConnectIdx & 1) + 1;
                             sithMulti_verbosePrintf("Last sync %x %x\n", sithMulti_sendto_id, sithMulti_requestConnectIdx);
                             jkPlayer_playerInfos[sithMulti_requestConnectIdx].net_id = sithMulti_sendto_id;
