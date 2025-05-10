@@ -72,6 +72,7 @@ extern "C" {
 	extern wchar_t jkGuiMultiplayer_ipText[256];
 	extern int jkGuiMultiplayer_searchDistance;
 	extern int jkGuiMultiplayer_searchRank;
+	extern int jkGuiMultiplayer_searchFriendsOnly;
 	char jkGuiMultiplayer_ipText_conv[1024];
 
 	static int Steam_GetLobbySessionDesc(CSteamID lobbyID, stdCommSession* pEntry)
@@ -114,6 +115,8 @@ extern "C" {
 		SteamMatchmaking()->SetLobbyData(lobbyID, "multiModeFlags", std::to_string(pEntry->multiModeFlags).c_str());
 		SteamMatchmaking()->SetLobbyData(lobbyID, "tickRateMs", std::to_string(pEntry->tickRateMs).c_str());
 		SteamMatchmaking()->SetLobbyData(lobbyID, "maxRank", std::to_string(pEntry->maxRank).c_str());
+
+		SteamMatchmaking()->SetLobbyData(lobbyID, "friendsOnly", std::to_string(pEntry->multiModeFlags & MULTIMODEFLAG_FRIENDS_ONLY).c_str());
 	}
 
 	static void Steam_UpdateRichPresence(CSteamID lobbyID)
@@ -208,6 +211,10 @@ struct LobbySystem
 
 			if (jkGuiMultiplayer_searchRank >= 0)
 				SteamMatchmaking()->AddRequestLobbyListNumericalFilter("maxRank", jkGuiMultiplayer_searchRank, k_ELobbyComparisonEqual);
+
+			if (jkGuiMultiplayer_searchFriendsOnly)
+				SteamMatchmaking()->AddRequestLobbyListNumericalFilter("friendsOnly", jkGuiMultiplayer_searchFriendsOnly, k_ELobbyComparisonEqual);
+
 
 			SteamMatchmaking()->AddRequestLobbyListDistanceFilter((ELobbyDistanceFilter)jkGuiMultiplayer_searchDistance);//k_ELobbyDistanceFilterFar);
 			SteamAPICall_t hSteamAPICall = SteamMatchmaking()->RequestLobbyList();

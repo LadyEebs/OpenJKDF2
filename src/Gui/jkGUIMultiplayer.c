@@ -36,6 +36,7 @@ static const char* jkGuiMultiplayer_searchDistances[] =
 };
 int jkGuiMultiplayer_searchDistance = NET_SEARCH_NEAR;
 int jkGuiMultiplayer_searchRank = -1;
+int jkGuiMultiplayer_searchFriendsOnly = 0;
 wchar_t jkGuiMultiplayer_searchRankText[128];
 
 int jkGuiMultiplayer_SearchDistanceArrowHandler(jkGuiElement* pElement, jkGuiMenu* pMenu, int mouseX, int mouseY, BOOL a5);
@@ -104,22 +105,23 @@ static jkGuiElement jkGuiMultiplayer_aElements3[] = {
     {ELEMENT_TEXTBUTTON, -1,  2, "GUI_CANCEL",  3, {20, 0x1AE, 0xC8, 0x28},  1,  0,  0,  0,  0,  0, {0},  0},
 
 #ifdef PLATFORM_STEAM
-	{ ELEMENT_TEXT,        0,            0, "GUIEXT_SEARCH_DISTANCE",  2,  {380, 120, 300, 0x14}, 1,  0, 0, 0, 0, 0, {0}, 0},
-	{ ELEMENT_TEXT,        0,            0, NULL,                    3,  { 424, 145, 160, 30 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
-	{ ELEMENT_PICBUTTON, 103,            0, NULL,                    33, { 400, 145, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_SearchDistanceArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
-	{ ELEMENT_PICBUTTON, 104,            0, NULL,                    34, { 584, 145, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_SearchDistanceArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_TEXT,        0,            0, "GUIEXT_SEARCH_DISTANCE",  2,  {380, 150, 300, 0x14}, 1,  0, 0, 0, 0, 0, {0}, 0},
+	{ ELEMENT_TEXT,        0,            0, NULL,                    2,  { 455, 180, 160, 30 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_PICBUTTON, 103,            0, NULL,                    33, { 380, 180, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_SearchDistanceArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_PICBUTTON, 104,            0, NULL,                    34, { 410, 180, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_SearchDistanceArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
 
-	{ ELEMENT_TEXT,        0,            0, "GUI_RANKLABEL",  2,  {380, 175, 300, 0x14}, 1,  0, 0, 0, 0, 0, {0}, 0},
-	{ ELEMENT_TEXT,        0,            0, NULL,                    3,  { 424, 200, 160, 30 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
-	{ ELEMENT_PICBUTTON, 103,            0, NULL,                    33, { 400, 200, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_RankArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
-	{ ELEMENT_PICBUTTON, 104,            0, NULL,                    34, { 584, 200, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_RankArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_TEXT,        0,            0, "GUI_RANKLABEL",  2,  {380, 210, 300, 0x14}, 1,  0, 0, 0, 0, 0, {0}, 0},
+	{ ELEMENT_TEXT,        0,            0, NULL,                    2,  { 455, 240, 160, 30 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_PICBUTTON, 103,            0, NULL,                    33, { 380, 240, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_RankArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_PICBUTTON, 104,            0, NULL,                    34, { 410, 240, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_RankArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
 	
+	{ ELEMENT_CHECKBOX,     0, 0, "GUIEXT_FRIENDS_ONLY", 0, { 380, 115, 200, 40 }, 1, 0, 0, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+
 	//{ ELEMENT_TEXT,        0,            0, "GUIEXT_FILTERS",  2,  {380, 105, 300, 0x14}, 1,  0, 0, 0, 0, 0, {0}, 0},
 
 	// other possible filters:
 	// game type (any, FFA, Teams)
 	// passworded?
-	// friends only?
 	// session flags?
 	// multi flags?
 #endif
@@ -161,6 +163,7 @@ void jkGuiMultiplayer_Startup()
 		jkGuiMultiplayer_ipText[0] = L'\0';
 		wuRegistry_GetInt("lastLobbySearchDistance", jkGuiMultiplayer_searchDistance);
 		wuRegistry_GetInt("lastLobbySearchRank", jkGuiMultiplayer_searchRank);
+		wuRegistry_GetBool("lastLobbySearchFriendsOnly", jkGuiMultiplayer_searchFriendsOnly);
 
 		jkGuiMultiplayer_aElements3[13].wstr = jkStrings_GetUniStringWithFallback(jkGuiMultiplayer_searchDistances[jkGuiMultiplayer_searchDistance]);
 
@@ -179,6 +182,8 @@ void jkGuiMultiplayer_Startup()
 		}
 
 		jkGuiMultiplayer_aElements3[17].wstr = &jkGuiMultiplayer_searchRankText[0];
+
+		jkGuiMultiplayer_aElements3[20].selectedTextEntry = jkGuiMultiplayer_searchFriendsOnly;
 
 	#else
 		wuRegistry_GetWString("lastConnectedHost", jkGuiMultiplayer_ipText, 0x100, L"127.0.0.1");
@@ -554,6 +559,9 @@ LABEL_28:
             if ( jkGuiRend_DisplayAndReturnClicked(&jkGuiMultiplayer_menu3) != 1 )
             {
 LABEL_29:
+#ifdef PLATFORM_STEAM
+				jkGuiMultiplayer_searchFriendsOnly = jkGuiMultiplayer_aElements3[20].selectedTextEntry;
+#endif
                 stdComm_EnumSessions2();
                 stdComm_CloseConnection();
                 goto LABEL_1;
@@ -580,6 +588,8 @@ LABEL_29:
         wuRegistry_SetWString("lastConnectedHost", jkGuiMultiplayer_ipText);
 	#else
 		wuRegistry_SaveInt("lastLobbySearchDistance", jkGuiMultiplayer_searchDistance);
+		wuRegistry_SaveInt("lastLobbySearchRank", jkGuiMultiplayer_searchRank);
+		wuRegistry_SaveBool("lastLobbySearchFriendsOnly", jkGuiMultiplayer_searchFriendsOnly);
 	#endif
 #endif
         v10 = stdComm_Open(v7, v35.sessionName);
