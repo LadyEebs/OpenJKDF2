@@ -826,7 +826,7 @@ void jkGuiMultiplayer_sub_413E50(int idx)
             v4 = jkStrings_GetUniStringWithFallback("GUINET_GAMETEAM");
             __wcscat(jkGuiMultiplayer_stru_556168.field_100, v4);
         }
-        if ( (jkGuiMultiplayer_aEntries[idx].sessionFlags & SESSIONFLAG_20) != 0 )
+        if ( (jkGuiMultiplayer_aEntries[idx].sessionFlags & SESSIONFLAG_CLOSED) != 0 )
         {
             v5 = jkStrings_GetUniStringWithFallback("GUINET_GAMECLOSED");
             jk_snwprintf(jkGuiMultiplayer_stru_556168.field_100, 0x80u, v5);
