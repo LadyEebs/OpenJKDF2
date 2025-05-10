@@ -126,6 +126,16 @@ MSGS 100          # <--- DON'T FORGET TO UPDATE THIS COUNT
 
 	"GUIEXT_BANNED"                              0 "Banned from the game -- exiting"
 
+	"GUIEXT_FILTERS"                             0 "Filters"
+
+	"GUIEXT_SEARCH_DISTANCE"                     0 "Search Distance:"
+	"GUIEXT_SEARCH_LOCAL"                        0 "Local"
+	"GUIEXT_SEARCH_NEAR"                         0 "Near"
+	"GUIEXT_SEARCH_FAR"                          0 "Far"
+	"GUIEXT_SEARCH_WORLDWIDE"                    0 "Worldwide"
+
+	"GUIEXT_ANY"                                 0 "Any"
+
 #******************************
 #  Controls
 #******************************

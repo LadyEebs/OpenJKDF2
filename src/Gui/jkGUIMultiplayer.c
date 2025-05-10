@@ -26,6 +26,23 @@ static int jkGuiMultiplayer_bInitted = 0;
 static int jkGuiMultiplayer_aElements2_aIdk[2] = {0xd, 0xe};
 static int jkGuiMultiplayer_aElements3_aIdk[2] = {0xd, 0xe};
 
+#ifdef PLATFORM_STEAM
+static const char* jkGuiMultiplayer_searchDistances[] =
+{
+	"GUIEXT_SEARCH_LOCAL",
+	"GUIEXT_SEARCH_NEAR",
+	"GUIEXT_SEARCH_FAR",
+	"GUIEXT_SEARCH_WORLDWIDE",
+};
+int jkGuiMultiplayer_searchDistance = NET_SEARCH_NEAR;
+int jkGuiMultiplayer_searchRank = -1;
+wchar_t jkGuiMultiplayer_searchRankText[128];
+
+int jkGuiMultiplayer_SearchDistanceArrowHandler(jkGuiElement* pElement, jkGuiMenu* pMenu, int mouseX, int mouseY, BOOL a5);
+int jkGuiMultiplayer_RankArrowHandler(jkGuiElement* pElement, jkGuiMenu* pMenu, int mouseX, int mouseY, BOOL a5);
+
+#endif
+
 static jkGuiElement jkGuiMultiplayer_aElements[] = {
     {ELEMENT_TEXT,  0,  6, "GUI_MULTIPLAYER",  3, {0x4, 20, 0x258, 0x28},  1,  0,  0,  0,  0,  0, {0},  0},
     {ELEMENT_TEXTBUTTON, 0x64,  2, "GUI_JOINGAME",  3, {0x50, 0x50, 0xC8, 0x28},  1,  0,  0,  0,  0,  0, {0},  0},
@@ -48,9 +65,25 @@ static jkGuiElement jkGuiMultiplayer_aElements2[7] = {
     {ELEMENT_END,  0,  0,  0,  0, {0},  0,  0,  0,  0,  0,  0, {0},  0},
 };
 
-static jkGuiElement jkGuiMultiplayer_aElements3[13] = {
+static jkGuiElement jkGuiMultiplayer_aElements3[] = {
     {ELEMENT_TEXT,  0,  0,  0,  3, { 0, 0x19A, 0x280, 20},  1,  0,  0,  0,  0,  0, {0},  0},
     {ELEMENT_TEXT,  0,  6, "GUI_MULTIPLAYER",  3, {20, 20, 0x258, 0x28},  1,  0,  0,  0,  0,  0, {0},  0},
+#ifdef PLATFORM_STEAM
+	{ELEMENT_TEXT,  0,  0, "GUI_CHOOSEAGAME",  2, {0x28, 0x69, 300, 0x14},  1,  0,  0,  0,  0,  0, {0},  0},
+	{ELEMENT_LISTBOX,  1,  0,  0,  0, {0x28, 0x82, 300, 180}, 1,  0, "GUI_GAMESTOJOIN_HINT",  0, jkGuiMultiplayer_sub_413E00, jkGuiMultiplayer_aElements3_aIdk, {0},  0},
+
+	{ELEMENT_TEXT,  0,  0, "GUINET_PASSWORD",  2, {380, 285, 300, 0x14},  1,  0,  0,  0,  0,  0, {0},  0},
+	{ELEMENT_TEXTBOX,  0,  0, jkGuiMultiplayer_stru_556168.field_300, 0x20, {380, 310, 210, 20},  1,  0,  0,  0,  0,  0, {0},  0},
+
+	//{ELEMENT_TEXT,  0,  1, jkGuiMultiplayer_stru_556168.field_0,  3, {350, 200, 300, 30},  1,  0,  0,  0,  0,  0, {0},  0},
+	//{ELEMENT_TEXT,  0,  0, jkGuiMultiplayer_stru_556168.field_100,  3, {350, 240, 300, 30},  1,  0,  0,  0,  0,  0, {0},  0},
+	//{ELEMENT_TEXT,  0,  0, jkGuiMultiplayer_stru_556168.field_200,  3, {350, 280, 300, 30},  1,  0,  0,  0,  0,  0, {0},  0},
+	{ELEMENT_TEXT,  0,  1, jkGuiMultiplayer_stru_556168.field_0,  3, {0x32, 0x14A + 20, 0x21C, 20},  1,  0,  0,  0,  0,  0, {0},  0},
+	{ELEMENT_TEXT,  0,  0, jkGuiMultiplayer_stru_556168.field_100,  3, {0x32, 0x163 + 20, 0x21C, 20},  1,  0,  0,  0,  0,  0, {0},  0},
+	{ELEMENT_TEXT,  0,  0, jkGuiMultiplayer_stru_556168.field_200,  3, {0x32, 0x17C + 20, 0x21C, 20},  1,  0,  0,  0,  0,  0, {0},  0},
+
+	{ ELEMENT_TEXTBOX, 0, 0, NULL, 255, { 0x28, 310, 300, 20 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+#else
     {ELEMENT_TEXT,  0,  0, "GUI_CHOOSEAGAME",  2, {170, 0x82, 0x1C2, 20},  1,  0,  0,  0,  0,  0, {0},  0},
     {ELEMENT_LISTBOX,  1,  0,  0,  0, {170, 0xA0, 320, 0x6E},  1,  0, "GUI_GAMESTOJOIN_HINT",  0, jkGuiMultiplayer_sub_413E00, jkGuiMultiplayer_aElements3_aIdk, {0},  0},
 #ifdef QOL_IMPROVEMENTS
@@ -63,11 +96,34 @@ static jkGuiElement jkGuiMultiplayer_aElements3[13] = {
     {ELEMENT_TEXT,  0,  1, jkGuiMultiplayer_stru_556168.field_0,  3, {0x32, 0x14A, 0x21C, 20},  1,  0,  0,  0,  0,  0, {0},  0},
     {ELEMENT_TEXT,  0,  0, jkGuiMultiplayer_stru_556168.field_100,  3, {0x32, 0x163, 0x21C, 20},  1,  0,  0,  0,  0,  0, {0},  0},
     {ELEMENT_TEXT,  0,  0, jkGuiMultiplayer_stru_556168.field_200,  3, {0x32, 0x17C, 0x21C, 20},  1,  0,  0,  0,  0,  0, {0},  0},
+
+	{ ELEMENT_TEXTBOX, 0, 0, NULL, 255, { 170, 280, 320, 20 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+ #endif
+
     {ELEMENT_TEXTBUTTON,  1,  2, "GUI_OK",  3, {0x1A4, 0x1AE, 0xC8, 0x28},  1,  0,  0,  0,  0,  0, {0},  0},
     {ELEMENT_TEXTBUTTON, -1,  2, "GUI_CANCEL",  3, {20, 0x1AE, 0xC8, 0x28},  1,  0,  0,  0,  0,  0, {0},  0},
-#if defined(QOL_IMPROVEMENTS) && !defined(PLATFORM_STEAM)
-    { ELEMENT_TEXTBOX, 0, 0, NULL, 255, { 170, 280, 320, 20 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+
+#ifdef PLATFORM_STEAM
+	{ ELEMENT_TEXT,        0,            0, "GUIEXT_SEARCH_DISTANCE",  2,  {380, 120, 300, 0x14}, 1,  0, 0, 0, 0, 0, {0}, 0},
+	{ ELEMENT_TEXT,        0,            0, NULL,                    3,  { 424, 145, 160, 30 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_PICBUTTON, 103,            0, NULL,                    33, { 400, 145, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_SearchDistanceArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_PICBUTTON, 104,            0, NULL,                    34, { 584, 145, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_SearchDistanceArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+
+	{ ELEMENT_TEXT,        0,            0, "GUI_RANKLABEL",  2,  {380, 175, 300, 0x14}, 1,  0, 0, 0, 0, 0, {0}, 0},
+	{ ELEMENT_TEXT,        0,            0, NULL,                    3,  { 424, 200, 160, 30 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_PICBUTTON, 103,            0, NULL,                    33, { 400, 200, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_RankArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_PICBUTTON, 104,            0, NULL,                    34, { 584, 200, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_RankArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	
+	//{ ELEMENT_TEXT,        0,            0, "GUIEXT_FILTERS",  2,  {380, 105, 300, 0x14}, 1,  0, 0, 0, 0, 0, {0}, 0},
+
+	// other possible filters:
+	// game type (any, FFA, Teams)
+	// passworded?
+	// friends only?
+	// session flags?
+	// multi flags?
 #endif
+
     {ELEMENT_END,  0,  0,  0,  0, {0},  0,  0,  0,  0,  0,  0, {0},  0},
 };
 
@@ -100,10 +156,35 @@ void jkGuiMultiplayer_Startup()
 #endif
     jkGuiMultiplayer_bInitted = 1;
 
-#if defined(QOL_IMPROVEMENTS) && !defined(PLATFORM_STEAM)
-	wuRegistry_GetWString("lastConnectedHost", jkGuiMultiplayer_ipText, 0x100, L"127.0.0.1");
-    jkGuiMultiplayer_aElements3[11].wstr = jkGuiMultiplayer_ipText;
-    jkGuiMultiplayer_aElements3[11].selectedTextEntry = 255;
+#ifdef QOL_IMPROVEMENTS
+	#ifdef PLATFORM_STEAM
+		jkGuiMultiplayer_ipText[0] = L'\0';
+		wuRegistry_GetInt("lastLobbySearchDistance", jkGuiMultiplayer_searchDistance);
+		wuRegistry_GetInt("lastLobbySearchRank", jkGuiMultiplayer_searchRank);
+
+		jkGuiMultiplayer_aElements3[13].wstr = jkStrings_GetUniStringWithFallback(jkGuiMultiplayer_searchDistances[jkGuiMultiplayer_searchDistance]);
+
+		if (jkGuiMultiplayer_searchRank >= 0)
+		{
+			char tmp[32];
+			stdString_snprintf(tmp, 32, "RANK_%d_L", jkGuiMultiplayer_searchRank);
+			wchar_t* rankText = jkStrings_GetUniStringWithFallback(tmp);
+			wchar_t* rankPrint = jkStrings_GetUniStringWithFallback("GUI_RANK");
+			jk_snwprintf(&jkGuiMultiplayer_searchRankText[0], 0x80u, rankPrint, jkGuiMultiplayer_searchRank, rankText);
+		}
+		else
+		{
+			wchar_t* rankText = jkStrings_GetUniStringWithFallback("GUIEXT_ANY");
+			jk_snwprintf(&jkGuiMultiplayer_searchRankText[0], 0x80u, L"%s", rankText);
+		}
+
+		jkGuiMultiplayer_aElements3[17].wstr = &jkGuiMultiplayer_searchRankText[0];
+
+	#else
+		wuRegistry_GetWString("lastConnectedHost", jkGuiMultiplayer_ipText, 0x100, L"127.0.0.1");
+	#endif
+    jkGuiMultiplayer_aElements3[9].wstr = jkGuiMultiplayer_ipText;
+    jkGuiMultiplayer_aElements3[9].selectedTextEntry = 255;
 #endif
 }
 
@@ -245,11 +326,11 @@ LABEL_1:
                     jkGuiRend_DarrayNewStr(&jkGuiMultiplayer_stru_5564A8, 8, 1);
                     jkGuiRend_DarrayReallocStr(&jkGuiMultiplayer_stru_5564A8, 0, 0);
                     jkGuiRend_SetClickableString(&jkGuiMultiplayer_aElements3[3], &jkGuiMultiplayer_stru_5564A8);
-                    jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[9], &jkGuiMultiplayer_menu3, 0);
-                    jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[5], &jkGuiMultiplayer_menu3, 0);
+                    jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[10], &jkGuiMultiplayer_menu3, 0);
+                    jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[5], &jkGuiMultiplayer_menu3, 1);
                     jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[4], &jkGuiMultiplayer_menu3, 0);
-                    jkGuiRend_MenuSetReturnKeyShortcutElement(&jkGuiMultiplayer_menu3, &jkGuiMultiplayer_aElements3[9]);
-                    jkGuiRend_MenuSetEscapeKeyShortcutElement(&jkGuiMultiplayer_menu3, &jkGuiMultiplayer_aElements3[10]);
+                    jkGuiRend_MenuSetReturnKeyShortcutElement(&jkGuiMultiplayer_menu3, &jkGuiMultiplayer_aElements3[10]);
+                    jkGuiRend_MenuSetEscapeKeyShortcutElement(&jkGuiMultiplayer_menu3, &jkGuiMultiplayer_aElements3[11]);
                     if ( jkGuiRend_DisplayAndReturnClicked(&jkGuiMultiplayer_menu3) != 1 )
                         goto LABEL_29;
                     break;
@@ -468,8 +549,8 @@ LABEL_51:
                 break;
             jkGuiDialog_ErrorDialog(jkStrings_GetUniStringWithFallback("GUINET_JOINERROR"), jkStrings_GetUniStringWithFallback("GUINET_WRONGVERSION"));
 LABEL_28:
-            jkGuiRend_MenuSetReturnKeyShortcutElement(&jkGuiMultiplayer_menu3, &jkGuiMultiplayer_aElements3[9]);
-            jkGuiRend_MenuSetEscapeKeyShortcutElement(&jkGuiMultiplayer_menu3, &jkGuiMultiplayer_aElements3[10]);
+            jkGuiRend_MenuSetReturnKeyShortcutElement(&jkGuiMultiplayer_menu3, &jkGuiMultiplayer_aElements3[10]);
+            jkGuiRend_MenuSetEscapeKeyShortcutElement(&jkGuiMultiplayer_menu3, &jkGuiMultiplayer_aElements3[11]);
             if ( jkGuiRend_DisplayAndReturnClicked(&jkGuiMultiplayer_menu3) != 1 )
             {
 LABEL_29:
@@ -495,8 +576,11 @@ LABEL_29:
             jkGuiDialog_ErrorDialog(v11, v27);
             goto LABEL_28;
         }
-
+	#ifndef PLATFORM_STEAM
         wuRegistry_SetWString("lastConnectedHost", jkGuiMultiplayer_ipText);
+	#else
+		wuRegistry_SaveInt("lastLobbySearchDistance", jkGuiMultiplayer_searchDistance);
+	#endif
 #endif
         v10 = stdComm_Open(v7, v35.sessionName);
         if ( v10 )
@@ -724,8 +808,8 @@ void jkGuiMultiplayer_sub_413E50(int idx)
         }
         else
         {
-            jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[5], &jkGuiMultiplayer_menu3, 0);
-            jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[4], &jkGuiMultiplayer_menu3, 0);
+            jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[5], &jkGuiMultiplayer_menu3, /*0*/0);
+            jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[4], &jkGuiMultiplayer_menu3, /*0*/0);
         }
         if ( (jkGuiMultiplayer_aEntries[idx].multiModeFlags & MULTIMODEFLAG_TEAMS) != 0 )
         {
@@ -736,11 +820,11 @@ void jkGuiMultiplayer_sub_413E50(int idx)
         {
             v5 = jkStrings_GetUniStringWithFallback("GUINET_GAMECLOSED");
             jk_snwprintf(jkGuiMultiplayer_stru_556168.field_100, 0x80u, v5);
-            jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[9], &jkGuiMultiplayer_menu3, 0);
+            jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[10], &jkGuiMultiplayer_menu3, /*0*/0);
         }
         else
         {
-            jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[9], &jkGuiMultiplayer_menu3, 1);
+            jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[10], &jkGuiMultiplayer_menu3, 1);
         }
     }
     else
@@ -748,7 +832,7 @@ void jkGuiMultiplayer_sub_413E50(int idx)
         memset(&jkGuiMultiplayer_stru_556168.field_0, 0, 0x100u);
         memset(jkGuiMultiplayer_stru_556168.field_100, 0, 0x100u);
         memset(&jkGuiMultiplayer_stru_556168.field_200, 0, 0x100u);
-        jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[9], &jkGuiMultiplayer_menu3, 0);
+        jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[10], &jkGuiMultiplayer_menu3, 0);
         jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[5], &jkGuiMultiplayer_menu3, 0);
         jkGuiRend_SetVisibleAndDraw(&jkGuiMultiplayer_aElements3[4], &jkGuiMultiplayer_menu3, 0);
         memset(&jkGui_guid_556040, 0, sizeof(jkGui_guid_556040));
@@ -937,3 +1021,70 @@ int jkGuiMultiplayer_ShowWaitHostSettings()
     jkGui_SetModeGame();
     return v0;
 }
+
+#ifdef PLATFORM_STEAM
+int jkGuiMultiplayer_SearchDistanceArrowHandler(jkGuiElement* pElement, jkGuiMenu* pMenu, int mouseX, int mouseY, BOOL a5)
+{
+	if (pElement->hoverId == 103)
+	{
+		--jkGuiMultiplayer_searchDistance;
+		if (jkGuiMultiplayer_searchDistance < 0)
+			jkGuiMultiplayer_searchDistance = NET_SEARCH_WORLDWIDE;
+	}
+	else if (pElement->hoverId == 104)
+	{
+		++jkGuiMultiplayer_searchDistance;
+		if (jkGuiMultiplayer_searchDistance > NET_SEARCH_WORLDWIDE)
+			jkGuiMultiplayer_searchDistance = 0;
+	}
+
+	jkGuiMultiplayer_aElements3[13].wstr = jkStrings_GetUniStringWithFallback(jkGuiMultiplayer_searchDistances[jkGuiMultiplayer_searchDistance]);
+	jkGuiRend_UpdateAndDrawClickable(&jkGuiMultiplayer_aElements3[13], pMenu, 1);
+
+	// force an update
+	jkGuiMultiplayer_dword_5564E8 = 0;
+
+	return 0;
+}
+
+int jkGuiMultiplayer_RankArrowHandler(jkGuiElement* pElement, jkGuiMenu* pMenu, int mouseX, int mouseY, BOOL a5)
+{
+	if (pElement->hoverId == 103)
+	{
+		--jkGuiMultiplayer_searchRank;
+		if (jkGuiMultiplayer_searchRank < -1)
+			jkGuiMultiplayer_searchRank = 9;
+	}
+	else if (pElement->hoverId == 104)
+	{
+		++jkGuiMultiplayer_searchRank;
+		if (jkGuiMultiplayer_searchRank > 9)
+			jkGuiMultiplayer_searchRank = -1;
+	}
+
+
+	if (jkGuiMultiplayer_searchRank >= 0)
+	{
+		char tmp[32];
+		stdString_snprintf(tmp, 32, "RANK_%d_L", jkGuiMultiplayer_searchRank);
+		wchar_t* rankText = jkStrings_GetUniStringWithFallback(tmp);
+		wchar_t* rankPrint = jkStrings_GetUniStringWithFallback("GUI_RANK");
+		jk_snwprintf(&jkGuiMultiplayer_searchRankText[0], 0x80u, rankPrint, jkGuiMultiplayer_searchRank, rankText);
+	}
+	else
+	{
+		wchar_t* rankText = jkStrings_GetUniStringWithFallback("GUIEXT_ANY");
+		jk_snwprintf(&jkGuiMultiplayer_searchRankText[0], 0x80u, L"%s", rankText);
+	}
+
+	jkGuiMultiplayer_aElements3[17].wstr = &jkGuiMultiplayer_searchRankText[0];
+	
+	jkGuiRend_UpdateAndDrawClickable(&jkGuiMultiplayer_aElements3[17], pMenu, 1);
+
+	// force an update
+	jkGuiMultiplayer_dword_5564E8 = 0;
+
+	return 0;
+}
+
+#endif

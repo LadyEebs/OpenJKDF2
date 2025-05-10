@@ -1668,6 +1668,15 @@ enum NetUserState
 	NET_USER_AWAY    = 3,
 	NET_USER_SNOOZE  = 4,
 };
+
+enum NetSearchDistance
+{
+	NET_SEARCH_LOCAL,
+	NET_SEARCH_NEAR,
+	NET_SEARCH_FAR,
+	NET_SEARCH_WORLDWIDE
+};
+
 #endif
 
 #endif // _OPENJKDF2_TYPES_ENUMS_H

@@ -48,53 +48,6 @@ extern "C"{
 
 #if 1
 
-static int GenerateChallenge(char* out, int length) {
-	static const char charset[] =
-		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-	int i;
-
-	if (length <= 1) return 0;
-
-#ifdef _WIN32
-	HCRYPTPROV hProv;
-	if (!CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
-	{
-		return 0;
-	}
-
-	if (!CryptGenRandom(hProv, length - 1, (BYTE*)out))
-	{
-		CryptReleaseContext(hProv, 0);
-		return 0;
-	}
-
-	for (i = 0; i < length - 1; ++i)
-	{
-		out[i] = charset[((unsigned char)out[i]) % (sizeof(charset) - 1)];
-	}
-
-	CryptReleaseContext(hProv, 0);
-#else
-	int fd = open("/dev/urandom", O_RDONLY);
-	if (fd < 0) return 0;
-
-	if (read(fd, out, length - 1) != length - 1)
-	{
-		close(fd);
-		return 0;
-	}
-	close(fd);
-
-	for (i = 0; i < length - 1; ++i)
-	{
-		out[i] = charset[((unsigned char)out[i]) % (sizeof(charset) - 1)];
-	}
-#endif
-
-	out[length - 1] = '\0';
-	return 1;
-}
-
 template <size_t N>
 void Steam_SetLobbyWideString(CSteamID lobbyID, const char* key, const wchar_t(&wStr)[N])
 {
@@ -114,6 +67,13 @@ void Steam_GetLobbyWideString(CSteamID lobbyID, const char* key, wchar_t(&wStr)[
 }
 
 extern "C" {
+
+	// todo: move this
+	extern wchar_t jkGuiMultiplayer_ipText[256];
+	extern int jkGuiMultiplayer_searchDistance;
+	extern int jkGuiMultiplayer_searchRank;
+	char jkGuiMultiplayer_ipText_conv[1024];
+
 	static int Steam_GetLobbySessionDesc(CSteamID lobbyID, stdCommSession* pEntry)
 	{
 		if (!lobbyID.IsValid())
@@ -238,7 +198,17 @@ struct LobbySystem
 	{
 		if (!listResult.IsActive())
 		{
-			SteamMatchmaking()->AddRequestLobbyListDistanceFilter(k_ELobbyDistanceFilterFar);
+			if (jkGuiMultiplayer_ipText[0] != L'\0')
+			{
+				int charsWritten = WideCharToMultiByte(CP_UTF8, 0, jkGuiMultiplayer_ipText, -1, jkGuiMultiplayer_ipText_conv, 1023, 0, 0);
+				jkGuiMultiplayer_ipText_conv[charsWritten] = L'\0';
+				SteamMatchmaking()->AddRequestLobbyListStringFilter("serverName", jkGuiMultiplayer_ipText_conv, k_ELobbyComparisonEqual);
+			}
+
+			if (jkGuiMultiplayer_searchRank >= 0)
+				SteamMatchmaking()->AddRequestLobbyListNumericalFilter("maxRank", jkGuiMultiplayer_searchRank, k_ELobbyComparisonEqual);
+
+			SteamMatchmaking()->AddRequestLobbyListDistanceFilter((ELobbyDistanceFilter)jkGuiMultiplayer_searchDistance);//k_ELobbyDistanceFilterFar);
 			SteamAPICall_t hSteamAPICall = SteamMatchmaking()->RequestLobbyList();
 			listResult.Set(hSteamAPICall, this, &LobbySystem::OnLobbyMatchList);
 		}
