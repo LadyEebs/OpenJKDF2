@@ -131,6 +131,12 @@ int sithMulti_SendPing(DPID sendtoId);
 // Added: co-op
 void sithMulti_CheckForCheckpointUpdate(sithSector* sector);
 
+#ifdef PLATFORM_STEAM
+int sithMulti_Ban(DPID id);
+int sithMulti_Unban(DPID id);
+int sithMulti_IsBanned(DPID id);
+#endif
+
 //static void (*sithMulti_Startup)() = (void*)sithMulti_Startup_ADDR;
 //static void (*sithMulti_FreeThing)(int a1) = (void*)sithMulti_FreeThing_ADDR;
 //static int (*sithMulti_SendQuit)(int a1) = (void*)sithMulti_SendQuit_ADDR;

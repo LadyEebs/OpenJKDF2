@@ -118,7 +118,13 @@ MSGS 100          # <--- DON'T FORGET TO UPDATE THIS COUNT
 	"GUIEXT_SELECT_PLAYER"                       0 "Select a player"
 	"GUIEXT_KICK_PLAYER"                         0 "Kick"
 	"GUIEXT_CONFIRM_KICK_PLAYER"                 0 "Are you sure you want to kick this player?"
+	"GUIEXT_BAN_PLAYER"                          0 "Ban"
+	"GUIEXT_CONFIRM_BAN_PLAYER"                  0 "Are you sure you want to ban this player from the current seesion?"
+	"GUIEXT_UNBAN_PLAYER"                        0 "Unban"
+	"GUIEXT_CONFIRM_UNBAN_PLAYER"                0 "Are you sure you want to unban this player from the current seesion?"
 	"GUIEXT_MUTE_PLAYER"                         0 "Mute"
+
+	"GUIEXT_BANNED"                              0 "Banned from the game -- exiting"
 
 #******************************
 #  Controls

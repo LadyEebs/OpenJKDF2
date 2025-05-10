@@ -566,7 +566,7 @@ void stdComm_Close()
 
 int DirectPlay_SendLobbyMessage(void* pPkt, uint32_t pktLen)
 {
-	SteamMatchmaking()->SendLobbyChatMsg(stdComm_steamLobbyID, pPkt, pktLen);
+	//SteamMatchmaking()->SendLobbyChatMsg(stdComm_steamLobbyID, pPkt, pktLen);
 
 	return 1;
 }

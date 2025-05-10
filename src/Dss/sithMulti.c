@@ -29,6 +29,12 @@
 // Added: co-op
 int sithMulti_lastCheckpoint = 0;
 
+#ifdef PLATFORM_STEAM
+DPID* sithMulti_apBanList = 0;
+int sithMulti_banSize = 0;
+int sithMulti_numBans = 0;
+#endif
+
 #define sithMulti_infoPrintf(fmt, ...) stdPlatform_Printf(fmt, ##__VA_ARGS__)
 #define sithMulti_verbosePrintf(fmt, ...) if (Main_bVerboseNetworking) \
     { \
@@ -255,6 +261,13 @@ void sithMulti_Shutdown()
     stdComm_CloseConnection();
 #ifdef PLATFORM_STEAM
 	sithVoice_Close();
+
+	// uncomment to clear bans after each game
+	//if (sithMulti_apBanList)
+	//	pSithHS->free(sithMulti_apBanList);
+	//sithMulti_apBanList = 0;
+	//sithMulti_numBans = 0;
+	//sithMulti_banSize = 0;
 #endif
 }
 
@@ -522,6 +535,78 @@ void sithMulti_SendQuit(DPID idx)
 
     sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, idx, 1, 1);
 }
+
+#ifdef PLATFORM_STEAM
+
+// todo: persistence/serialization?
+int sithMulti_Ban(DPID id)
+{
+	if (!sithNet_isServer)
+		return 0;
+
+	// lazy init
+	if (!sithMulti_apBanList)
+	{
+		sithMulti_numBans = 0;
+		sithMulti_banSize = 8;
+		sithMulti_apBanList = pSithHS->alloc(sizeof(DPID) * sithMulti_banSize);
+	}
+
+	// check if already banned
+	// unlikely since they shouldn't be in game but just to be safe
+	for (int i = 0; i < sithMulti_numBans; ++i)
+	{
+		if (sithMulti_apBanList[i] == id)
+			return 0;
+	}
+	
+	// realloc if needed
+	if (sithMulti_numBans >= sithMulti_banSize)
+	{
+		sithMulti_banSize *= 2;
+		sithMulti_apBanList = pSithHS->realloc(sithMulti_apBanList, sizeof(DPID) * sithMulti_banSize);
+	}
+
+	// add to the ban list
+	sithMulti_apBanList[sithMulti_numBans++] = id;
+
+	// kick the player
+	sithMulti_SendQuit(id);
+
+	return 1;
+}
+
+int sithMulti_Unban(DPID id)
+{
+	if (!sithNet_isServer)
+		return 0;
+
+	for (int i = 0; i < sithMulti_numBans; ++i)
+	{
+		if (sithMulti_apBanList[i] == id)
+		{
+			for (int j = i; j < sithMulti_numBans - 1; ++j)
+				sithMulti_apBanList[j] = sithMulti_apBanList[j + 1];
+
+			--sithMulti_numBans;
+
+			return 1;
+		}
+	}
+	return 0;
+}
+
+int sithMulti_IsBanned(DPID id)
+{
+	for (size_t i = 0; i < sithMulti_numBans; i++)
+	{
+		if (sithMulti_apBanList[i] == id)
+			return 1;
+	}
+	return 0;
+}
+
+#endif
 
 int sithMulti_LobbyMessage()
 {
@@ -1087,6 +1172,21 @@ int sithMulti_ProcessJoinRequest(sithCogMsg *msg)
         NETMSG_POPSTR(v11, 32);
 
         sithMulti_verbosePrintf("sithMulti_ProcessJoinRequest, id %llu map %s\n", v1, v11);
+
+	#ifdef PLATFORM_STEAM
+		if (sithMulti_IsBanned(v1))
+		{
+			sithMulti_verbosePrintf("Banned player attempted to join %s\n", v11);
+
+			NETMSG_START;
+			NETMSG_PUSHS32(7);
+			NETMSG_PUSHS32(0);
+			NETMSG_END(DSS_JOINING);
+
+			sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, v1, 1, 0);
+			return 1;
+		}
+	#endif
 
         if ( __strcmpi(v11, sithWorld_pCurrentWorld->map_jkl_fname) )
         {

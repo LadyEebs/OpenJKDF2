@@ -585,6 +585,12 @@ int jkGuiMultiplayer_CogMsgHandleJoining(sithCogMsg *msg)
             case 6:
                 v3 = jkStrings_GetUniStringWithFallback("GUINET_WRONGLEVEL");
                 v2 = jkStrings_GetUniStringWithFallback("GUINET_JOINERROR");
+		#ifdef PLATFORM_STEAM
+				goto LABEL_9;
+			case 7:
+				v3 = jkStrings_GetUniStringWithFallback("GUIEXT_BANNED");
+				v2 = jkStrings_GetUniStringWithFallback("GUINET_JOINERROR");
+		#endif
 LABEL_9:
                 jkGuiDialog_ErrorDialog(v2, v3);
                 jkGuiMultiplayer_menu4.lastClicked = -2;
