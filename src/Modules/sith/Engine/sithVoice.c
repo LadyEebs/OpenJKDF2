@@ -246,8 +246,7 @@ void sithVoice_Playback()
 			continue;
 
 		// proximity voice
-		// todo: add a toggle so it can be set by the host
-		if (channel->dpId != stdComm_dplayIdSelf)
+		if(sithNet_MultiModeFlags & MULTIMODEFLAG_PROXIMITY_CHAT)
 		{
 			int playerIdx = sithPlayer_ThingIdxToPlayerIdx(channel->dpId);
 			if (playerIdx >= 0) // just in case

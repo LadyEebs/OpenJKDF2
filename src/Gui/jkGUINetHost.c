@@ -53,6 +53,7 @@ enum jkGuiNetHostElement_t
 enum jkGuiNetHostAdvancedElement_t
 {
     NETHOST_TICKRATE_TEXTBOX = 3,
+	NETHOST_PROXIMITY_CHECKBOX = 6,
 };
 
 static int jkGuiNetHost_aIdk[2] = {0xd, 0xe};
@@ -101,7 +102,7 @@ static jkGuiMenu jkGuiNetHost_menu =
     &jkGuiNetHost_aElements, 0, 65535, 65535, 15, NULL, NULL, jkGui_stdBitmaps, jkGui_stdFonts, 0, NULL, "thermloop01.wav", "thrmlpu2.wav", NULL, NULL, NULL, 0, NULL, NULL
 };
 
-static jkGuiElement jkGuiNetHost_aSettingsElements[9] =
+static jkGuiElement jkGuiNetHost_aSettingsElements[] =
 {
     { ELEMENT_TEXT, 0, 0, NULL, 3, { 0, 410, 640, 20 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
     { ELEMENT_TEXT, 0, 6, "GUI_MULTIPLAYER", 3, { 20, 20, 600, 40 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
@@ -110,6 +111,7 @@ static jkGuiElement jkGuiNetHost_aSettingsElements[9] =
 #ifdef QOL_IMPROVEMENTS
     { ELEMENT_CHECKBOX, 0, 0, "GUIEXT_DEDICATED_SERVER", 0, { 70, 270, 200, 40 }, 1, 0, "GUIEXT_DEDICATED_SERVER_HINT", NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
     { ELEMENT_CHECKBOX, 0, 0, "GUIEXT_COOP", 0, { 70, 300, 200, 40 }, 1, 0, "GUIEXT_COOP_HINT", NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_CHECKBOX, 0, 0, "GUIEXT_PROXIMITY_CHAT", 0, { 70, 330, 200, 40 }, 1, 0, "GUIEXT_PROXIMITY_CHAT_HINT", NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
 #endif
     { ELEMENT_TEXTBUTTON, GUI_OK, 2, "GUI_OK", 3, { 420, 430, 200, 40 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
     { ELEMENT_TEXTBUTTON, GUI_CANCEL, 2, "GUI_CANCEL", 3, { 20, 430, 200, 40 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
@@ -132,6 +134,9 @@ int jkGuiNetHost_portNum = 27020;
 int jkGuiNetHost_bIsDedicated = 0;
 int jkGuiNetHost_bIsCoop = 0;
 int jkGuiNetHost_bIsEpisodeCoop = 0;
+#ifdef PLATFORM_STEAM
+int jkGuiNetHost_bIsProximityChat = 0;
+#endif
 
 int wstr_to_int_clamped(wchar_t *pWstr, int minVal, int maxVal)
 {
@@ -170,6 +175,15 @@ void jkGuiNetHost_SaveSettings()
         jkGuiNetHost_gameFlags &= ~MULTIMODEFLAG_COOP;
     }
 
+#ifdef PLATFORM_STEAM
+	if (jkGuiNetHost_bIsProximityChat) {
+        jkGuiNetHost_gameFlags |= MULTIMODEFLAG_PROXIMITY_CHAT;
+    }
+    else {
+        jkGuiNetHost_gameFlags &= ~MULTIMODEFLAG_PROXIMITY_CHAT;
+    }
+#endif
+
 #endif
     wuRegistry_SaveInt("maxRank", jkGuiNetHost_maxRank);
     wuRegistry_SaveInt("sessionFlags", jkGuiNetHost_sessionFlags);
@@ -184,6 +198,8 @@ void jkGuiNetHost_SaveSettings()
 #ifdef QOL_IMPROVEMENTS
 #ifndef PLATFORM_STEAM
     wuRegistry_SaveInt("portNum", jkGuiNetHost_portNum);
+#else
+	wuRegistry_SaveBool("bIsProximityChat", jkGuiNetHost_bIsProximityChat);
 #endif
     wuRegistry_SaveBool("bIsDedicated", jkGuiNetHost_bIsDedicated);
     wuRegistry_SaveBool("bIsCoop", jkGuiNetHost_bIsCoop);
@@ -219,6 +235,14 @@ void jkGuiNetHost_LoadSettings()
 #ifdef QOL_IMPROVEMENTS
 #ifndef PLATFORM_STEAM
     jkGuiNetHost_portNum = wuRegistry_GetInt("portNum", jkGuiNetHost_portNum);
+#else
+	jkGuiNetHost_bIsProximityChat = wuRegistry_GetBool("bIsProximityChat", jkGuiNetHost_bIsProximityChat);
+	if (jkGuiNetHost_bIsProximityChat) {
+        jkGuiNetHost_gameFlags |= MULTIMODEFLAG_PROXIMITY_CHAT;
+    }
+    else {
+        jkGuiNetHost_gameFlags &= ~MULTIMODEFLAG_PROXIMITY_CHAT;
+    }
 #endif
     jkGuiNetHost_bIsDedicated = wuRegistry_GetBool("bIsDedicated", jkGuiNetHost_bIsDedicated);
 
@@ -305,6 +329,8 @@ void jkGuiNetHost_Shutdown()
 
 #ifndef PLATFORM_STEAM
     memset(jkGuiNetHost_portText, 0, sizeof(jkGuiNetHost_portText));
+#else
+	jkGuiNetHost_bIsProximityChat = 0;
 #endif
     jkGuiNetHost_portNum = 27020;
     jkGuiNetHost_bIsDedicated = 0;
@@ -474,6 +500,14 @@ int jkGuiNetHost_Show(stdCommSession3 *pMultiEntry)
             else {
                 jkGuiNetHost_gameFlags &= ~MULTIMODEFLAG_COOP;
             }
+#ifdef PLATFORM_STEAM
+			if (jkGuiNetHost_bIsProximityChat) {
+                jkGuiNetHost_gameFlags |= MULTIMODEFLAG_PROXIMITY_CHAT;
+            }
+            else {
+                jkGuiNetHost_gameFlags &= ~MULTIMODEFLAG_PROXIMITY_CHAT;
+            }
+#endif
             pMultiEntry->multiModeFlags = jkGuiNetHost_gameFlags;
             pMultiEntry->sessionFlags = jkGuiNetHost_sessionFlags;
 #endif
@@ -500,6 +534,9 @@ int jkGuiNetHost_Show(stdCommSession3 *pMultiEntry)
 #ifdef QOL_IMPROVEMENTS
             jkGuiNetHost_bIsDedicated = !!jkGuiNetHost_aSettingsElements[4].selectedTextEntry;
             jkGuiNetHost_bIsCoop = !!jkGuiNetHost_aSettingsElements[5].selectedTextEntry;
+		#ifdef PLATFORM_STEAM
+			jkGuiNetHost_bIsProximityChat = !!jkGuiNetHost_aSettingsElements[6].selectedTextEntry;
+		#endif
 
             jkEpisodeTypeFlags_t loadMask = (JK_EPISODE_DEATHMATCH | JK_EPISODE_4_UNK | JK_EPISODE_SPECIAL_CTF);
             if (jkGuiNetHost_bIsCoop)

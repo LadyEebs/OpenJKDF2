@@ -69,6 +69,8 @@ MSGS 100          # <--- DON'T FORGET TO UPDATE THIS COUNT
    "GUIEXT_FRIENDS_ONLY"            0 "Friends only"
    "GUIEXT_FRIENDS_ONLY_HINT"       0 "Only broadcast game to friends"
    "GUIEXT_FRIENDS"                 0 "Friends"
+   "GUIEXT_PROXIMITY_CHAT"          0 "Proximity Voice Chat"
+   "GUIEXT_PROXIMITY_CHAT_HINT"     0 "Players can only hear nearby players"
 
    #"GUIEXT_"                0 ""
 
