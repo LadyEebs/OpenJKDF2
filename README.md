@@ -11,6 +11,7 @@ Mutliplayer:
 - Lobby driven networking
 - Invites (both in-game and from the steam overlay and friends list)
 - Friends integration
+- Voice chat (with optional proximity behavior)
 - QoL improvements
 
 Rendering (General):
