@@ -30,6 +30,7 @@ extern "C"{
 #include <queue>
 #include <map>
 #include <cctype>
+#include <set>
 
 #include <isteamnetworkingsockets.h>
 #include <isteamnetworkingmessages.h>
@@ -148,6 +149,12 @@ extern "C" {
 }
 
 static CSteamID stdComm_steamLobbyID;
+
+static std::queue<CSteamID> stdComm_disconnections;
+static std::set<CSteamID> stdComm_disconnectionSet;
+
+static std::queue<CSteamID> stdComm_connections;
+static std::set<CSteamID> stdComm_connectionSet;
 
 struct LobbySystem
 {
@@ -319,16 +326,21 @@ struct LobbySystem
 		switch(update->m_rgfChatMemberStateChange)
 		{
 		case k_EChatMemberStateChangeEntered:
-			// todo: password
-			//if (GenerateChallenge(nonce, sizeof(nonce)))
-			//	//SteamMatchmaking()->SendLobbyChatMsg()
+			if (stdComm_connectionSet.find(update->m_ulSteamIDUserChanged) == stdComm_connectionSet.end())
+			{
+				stdComm_connections.push(update->m_ulSteamIDUserChanged);
+				stdComm_connectionSet.insert(std::ref(stdComm_connections.back()));
+			}
 			break;
 		case k_EChatMemberStateChangeLeft:
-			break;
 		case k_EChatMemberStateChangeDisconnected:
 		case k_EChatMemberStateChangeKicked:
 		case k_EChatMemberStateChangeBanned:
-			sithMulti_SendQuit(update->m_ulSteamIDUserChanged);
+			if (stdComm_disconnectionSet.find(update->m_ulSteamIDUserChanged) == stdComm_disconnectionSet.end())
+			{
+				stdComm_disconnections.push(update->m_ulSteamIDUserChanged);
+				stdComm_disconnectionSet.insert(std::ref(stdComm_disconnections.back()));
+			}
 			break;
 		default:
 			break;
@@ -465,6 +477,25 @@ int DirectPlay_Receive(DPID* pIdOut, void* pMsgIdOut, int* pLenOut)
 {
 	SteamAPI_RunCallbacks();
 	SteamNetworkingSockets()->RunCallbacks();
+
+	// handle any connections/disconnections
+	if (!stdComm_connections.empty()) // emulate DPSYS_CREATEPLAYERORGROUP
+	{
+		CSteamID dcID = stdComm_connections.front();
+		stdComm_connectionSet.erase(dcID);
+		stdComm_connections.pop();
+		*pIdOut = dcID.ConvertToUint64();
+		return 5; // 5 = send player game info
+	}
+
+	if (!stdComm_disconnections.empty()) // emulate DPSYS_DESTROYPLAYERORGROUP
+	{
+		CSteamID dcID = stdComm_disconnections.front();
+		stdComm_disconnectionSet.erase(dcID);
+		stdComm_disconnections.pop();
+		*pIdOut = dcID.ConvertToUint64();
+		return 2; // 2 = remove player
+	}
 
 	SteamNetworkingMessage_t* pMsg = nullptr;
 	int numMsgs = SteamNetworkingMessages()->ReceiveMessagesOnChannel(0, &pMsg, 1);
@@ -853,8 +884,8 @@ stdVBuffer* DirectPlay_GetFriendAvatarThumbnail(int idx, rdColor24* pal24)
 					stdDisplay_VBufferLock(pFriend->thumbnail);
 					uint8_t* target = (uint8_t*)pFriend->thumbnail->surface_lock_alloc;
 					rdColor32* rgba = (rdColor32*)pixels;
-					for (int pixelIdx = 0; pixelIdx < uAvatarWidth * uAvatarHeight; ++pixelIdx)
-						target[pixelIdx] = stdColor_FindClosest32(rgba + pixelIdx, pal24);
+					for (uint32_t pixelIdx = 0; pixelIdx < uAvatarWidth * uAvatarHeight; ++pixelIdx)
+						target[pixelIdx] = (uint8_t)stdColor_FindClosest32(rgba + pixelIdx, pal24);
 
 					//memcpy(DirectPlay_apFriends[i].thumbnail->surface_lock_alloc, pixels, uImageSizeInBytes);
 					stdDisplay_VBufferUnlock(pFriend->thumbnail);
