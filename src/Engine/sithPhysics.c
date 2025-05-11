@@ -151,6 +151,46 @@ LABEL_8:
     }
 }
 
+//#define QUAKE_PLAYER
+#ifdef QUAKE_PLAYER
+// Quake style velocity normalization
+void sithPhysics_NormalizeVelocity(rdVector3* currentVel, rdVector3* targetVel, float deltaTime)
+{
+	float targetSpeed = rdVector_Normalize3Acc(targetVel);
+	float currentSpeed = rdVector_Dot3(currentVel, targetVel);
+	float addedSpeed = targetSpeed - currentSpeed;
+	if (addedSpeed <= 0)
+	{
+		rdVector_Zero3(targetVel);
+	}
+	else
+	{
+		float accelspeed = deltaTime * targetSpeed;
+		if (accelspeed > addedSpeed)
+			accelspeed = addedSpeed;
+
+		rdVector_Scale3Acc(targetVel, accelspeed);
+	}
+}
+
+// Quake style acceleration normalization
+float sithPhysics_GetThrustAdjustment(sithThing* pThing)
+{
+	rdVector3 thrust = pThing->physicsParams.acceleration;
+	if (pThing->attach_flags & (SITH_ATTACH_THINGSURFACE | SITH_ATTACH_WORLDSURFACE))
+		thrust.z = 0.0f;
+
+	float dx = stdMath_Fabs(thrust.x);
+	float dy = stdMath_Fabs(thrust.y);
+	float dz = stdMath_Fabs(thrust.z);
+	float maxThrust = fmax(fmax(x, y), z);
+	if (!maxThrust)
+		return 0.0f;
+
+	return 1.5 * maxThrust / rdVector_Len3(&thrust);
+}
+#endif
+
 // Inlined func
 void sithPhysics_ThingTick(sithThing *pThing, float deltaSecs)
 {
@@ -1164,13 +1204,38 @@ void sithPhysics_ThingPhysAttached(sithThing *pThing, float deltaSeconds)
     if ( (pThing->physicsParams.physflags & SITH_PF_USESTHRUST) != 0
       && !rdVector_IsZero3(&pThing->physicsParams.acceleration) )
     {
-        float v44 = possibly_undef_2 * deltaSeconds;
-        if ( (pThing->physicsParams.physflags & SITH_PF_CROUCHING) != 0 )
-            v44 = deltaSeconds * 0.8;
-        rdVector_Scale3(&vel_change, &pThing->physicsParams.acceleration, v44);
-        rdVector_ClipPrecision3(&vel_change);
-        if ( !rdVector_IsZero3(&vel_change) )
-            rdMatrix_TransformVector34Acc(&vel_change, &pThing->lookOrientation);
+#ifdef QUAKE_PLAYER
+		if (pThing->type == SITH_THING_PLAYER)
+		{
+			float v44 = possibly_undef_2;
+			if ((pThing->physicsParams.physflags & SITH_PF_CROUCHING) != 0)
+				v44 = 0.8;
+				
+			// normalize thrust
+			v44 *= sithPhysics_GetThrustAdjustment(pThing);
+
+			rdVector_Scale3(&vel_change, &pThing->physicsParams.acceleration, v44);
+			rdVector_ClipPrecision3(&vel_change);
+			if (!rdVector_IsZero3(&vel_change))
+			{
+				rdMatrix_TransformVector34Acc(&vel_change, &pThing->lookOrientation);
+
+				// normalize the acceleration velocity
+				sithPhysics_NormalizeVelocity(&pThing->physicsParams.vel, &vel_change, deltaSeconds);
+			}
+		}
+		else
+#endif
+		{
+			float v44 = possibly_undef_2 * deltaSeconds;
+			if ((pThing->physicsParams.physflags & SITH_PF_CROUCHING) != 0)
+				v44 = deltaSeconds * 0.8;
+
+			rdVector_Scale3(&vel_change, &pThing->physicsParams.acceleration, v44);
+			rdVector_ClipPrecision3(&vel_change);
+			if ( !rdVector_IsZero3(&vel_change) )
+				rdMatrix_TransformVector34Acc(&vel_change, &pThing->lookOrientation);
+		}
     }
 
     if (pThing->physicsParams.mass != 0.0 && (pThing->sector->flags & SITH_SECTOR_HASTHRUST) && !(pThing->physicsParams.physflags & SITH_PF_NOTHRUST))
