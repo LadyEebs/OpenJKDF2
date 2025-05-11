@@ -164,7 +164,7 @@ void sithPlayerActions_WarpToCheckpoint(sithThing *thing, int idx)
 {
     if ( idx < (unsigned int)jkPlayer_maxPlayers )
     {
-        if ( (jkPlayer_playerInfos[idx].flags & 2) != 0 )
+        if ( (jkPlayer_playerInfos[idx].flags & SITH_PLAYER_PLACED) != 0 )
         {
             _memcpy(&thing->lookOrientation, &jkPlayer_playerInfos[idx].spawnPosOrient, sizeof(thing->lookOrientation));
             thing->position = thing->lookOrientation.scale;

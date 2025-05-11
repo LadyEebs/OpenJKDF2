@@ -720,7 +720,7 @@ void jkHud_Draw()
             do
             {
                 v32 = playerInfoIter;
-                if ((playerInfoIter->flags & 1) != 0)
+                if ((playerInfoIter->flags & SITH_PLAYER_JOINEDGAME) != 0)
                 {
                     stdString_SafeWStrCopy(jkHud_aPlayerScores[v29].playerName, playerInfoIter->player_name, 0x20);
                     v33 = v32->playerThing->rdthing.model3->filename;
@@ -1354,7 +1354,7 @@ void jkHud_DrawGPU()
             do
             {
                 v32 = playerInfoIter;
-                if ((playerInfoIter->flags & 1) != 0)
+                if ((playerInfoIter->flags & SITH_PLAYER_JOINEDGAME) != 0)
                 {
                     stdString_SafeWStrCopy(jkHud_aPlayerScores[v29].playerName, playerInfoIter->player_name, 0x20);
                     v33 = v32->playerThing->rdthing.model3->filename;

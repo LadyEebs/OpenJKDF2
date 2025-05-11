@@ -467,7 +467,7 @@ void jkCog_PrintUniString(sithCog *ctx)
             jkDev_PrintUniString(v4);
             return;
         }
-        if ( COG_SHOULD_SYNC(ctx) && v3 < jkPlayer_maxPlayers && (jkPlayer_playerInfos[v3].flags & 1) != 0 )
+        if ( COG_SHOULD_SYNC(ctx) && v3 < jkPlayer_maxPlayers && (jkPlayer_playerInfos[v3].flags & SITH_PLAYER_JOINEDGAME) != 0 )
         {
             
             jkDSS_SendJKPrintUniString(v1, v3);
@@ -955,7 +955,7 @@ LABEL_8:
             if ( (ctx->flags & SITH_COG_NO_SYNC) == 0 )
             {
                 v4 = ctx->trigId;
-                if ( v4 != SITH_MESSAGE_STARTUP && v4 != SITH_MESSAGE_SHUTDOWN && v2 < jkPlayer_maxPlayers && (jkPlayer_playerInfos[v2].flags & 1) != 0 )
+                if ( v4 != SITH_MESSAGE_STARTUP && v4 != SITH_MESSAGE_SHUTDOWN && v2 < jkPlayer_maxPlayers && (jkPlayer_playerInfos[v2].flags & SITH_PLAYER_JOINEDGAME) != 0 )
                     sithMulti_SendChat(v5, v2, v1);
             }
         }

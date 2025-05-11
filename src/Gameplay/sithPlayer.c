@@ -32,7 +32,7 @@ void sithPlayer_Startup(int idx)
     sithThing *v2; // eax
 
     v1 = &jkPlayer_playerInfos[idx];
-    v1->flags = jkPlayer_playerInfos[idx].flags & ~1u;
+    v1->flags = jkPlayer_playerInfos[idx].flags & ~SITH_PLAYER_JOINEDGAME;
     v1->net_id = 0;
     v2 = jkPlayer_playerInfos[idx].playerThing;
     if ( v2 )
@@ -78,7 +78,7 @@ void sithPlayer_NewEntry(sithWorld *world)
                 playerInfo->playerThing = v1;
                 v1->thingflags |= SITH_TF_INVULN;
                 v1->actorParams.playerinfo = playerInfo;
-                playerInfo->flags |= 2;
+                playerInfo->flags |= SITH_PLAYER_PLACED;
                 rdMatrix_Copy34(&playerInfo->spawnPosOrient, &v1->lookOrientation);
                 rdVector_Copy3(&playerInfo->spawnPosOrient.scale, &v1->position);
                 playerInfo->pSpawnSector = v1->sector;
@@ -126,7 +126,7 @@ int sithPlayer_GetNum(sithThing *player)
     i = 0;
     while (i < jkPlayer_maxPlayers)
     {
-        if ((jkPlayer_playerInfos[i].flags & 1) && jkPlayer_playerInfos[i].playerThing == player)
+        if ((jkPlayer_playerInfos[i].flags & SITH_PLAYER_JOINEDGAME) && jkPlayer_playerInfos[i].playerThing == player)
             return i;
 
         i++;
@@ -435,7 +435,7 @@ int sithPlayer_GetNumidk(int a1)
     result = 0;
     if ( jkPlayer_maxPlayers <= 0 )
         return -1;
-    for ( i = &jkPlayer_playerInfos[0]; (i->flags & 1) == 0 || i->playerThing->thingIdx != a1; i++ )
+    for ( i = &jkPlayer_playerInfos[0]; (i->flags & SITH_PLAYER_JOINEDGAME) == 0 || i->playerThing->thingIdx != a1; i++ )
     {
         if ( ++result >= jkPlayer_maxPlayers )
             return -1;
@@ -480,7 +480,7 @@ void sithPlayer_InitPlayerInfo(unsigned int idx)
             sithPlayer_pLocalPlayer->palEffectsIdx1 = stdPalEffects_NewRequest(1);
             sithPlayer_pLocalPlayer->palEffectsIdx2 = stdPalEffects_NewRequest(2);
         }
-        pPlayerInfo->flags &= ~0x5;
+        pPlayerInfo->flags &= ~(SITH_PLAYER_NETWORKED | SITH_PLAYER_JOINEDGAME);
     }
 }
 
@@ -488,7 +488,7 @@ int sithPlayer_sub_4C87C0(int idx, DPID netId)
 {
     if ( !jkPlayer_playerInfos[idx].playerThing )
         return 0;
-    jkPlayer_playerInfos[idx].flags |= 5;
+    jkPlayer_playerInfos[idx].flags |= (SITH_PLAYER_NETWORKED | SITH_PLAYER_JOINEDGAME);
     jkPlayer_playerInfos[idx].net_id = netId;
     jkPlayer_playerInfos[idx].playerThing->thingflags &= ~SITH_TF_DISABLED;
 
@@ -583,7 +583,7 @@ int sithPlayer_FindPlayerByName(wchar_t *pwStr)
     v1 = 0;
     if ( !jkPlayer_maxPlayers )
         return -1;
-    for ( i = jkPlayer_playerInfos; (i->flags & 1) == 0 || __wcsicmp(i->player_name, pwStr); ++i )
+    for ( i = jkPlayer_playerInfos; (i->flags & SITH_PLAYER_JOINEDGAME) == 0 || __wcsicmp(i->player_name, pwStr); ++i )
     {
         if ( ++v1 >= (unsigned int)jkPlayer_maxPlayers )
             return -1;

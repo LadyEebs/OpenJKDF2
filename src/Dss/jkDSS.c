@@ -1029,7 +1029,7 @@ LABEL_6:
         sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, v2, 255, 1);
         return;
     }
-    if ( a2 < jkPlayer_maxPlayers && (jkPlayer_playerInfos[a2].flags & 1) != 0 )
+    if ( a2 < jkPlayer_maxPlayers && (jkPlayer_playerInfos[a2].flags & SITH_PLAYER_JOINEDGAME) != 0 )
     {
         v2 = jkPlayer_playerInfos[a2].net_id;
         if ( v2 )

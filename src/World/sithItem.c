@@ -62,7 +62,7 @@ void sithItem_Take(sithThing *item, sithThing *actor, int a3)
                 float val = item->itemParams.respawn;
                 if (item->itemParams.respawnFactor != 1.0 && sithNet_isMulti) {
                     for (int i = 0; i < jkPlayer_maxPlayers; i++) {
-                        if ((jkPlayer_playerInfos[i].flags & 1) && (i != playerThingIdx)) {
+                        if ((jkPlayer_playerInfos[i].flags & SITH_PLAYER_JOINEDGAME) && (i != playerThingIdx)) {
                             val *= item->itemParams.respawnFactor;
                         }
                     }

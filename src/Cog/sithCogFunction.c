@@ -1241,7 +1241,7 @@ void sithCogFunction_SendTrigger(sithCog *ctx)
             playerinfo = sourceThing->actorParams.playerinfo;
             if ( playerinfo )
             {
-                if ( playerinfo->flags & 1 )
+                if ( playerinfo->flags & SITH_PLAYER_JOINEDGAME)
                 {
                     if ( sourceThing == sithPlayer_pLocalPlayerThing )
                         sithCog_SendMessageToAll(SITH_MESSAGE_TRIGGER, SENDERTYPE_THING, sithPlayer_pLocalPlayerThing->thingIdx, 0, sourceType, arg0, arg1, arg2, arg3);

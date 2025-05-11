@@ -1030,7 +1030,7 @@ debug_controls:
         }
         else {
             for (sithControl_followingPlayer++; sithControl_followingPlayer < jkPlayer_maxPlayers; sithControl_followingPlayer++) {
-                if (!sithControl_followingPlayer || jkPlayer_playerInfos[sithControl_followingPlayer].flags & 1) {
+                if (!sithControl_followingPlayer || jkPlayer_playerInfos[sithControl_followingPlayer].flags & SITH_PLAYER_JOINEDGAME) {
                     break;
                 }
             }

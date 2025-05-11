@@ -134,7 +134,7 @@ int sithComm_SendMsgToPlayer(sithCogMsg *msg, DPID a2, int mpFlags, int a4)
             msg->netMsg.field_14 = 0;
             for (int i = 0; i < jkPlayer_maxPlayers; i++)
             {
-                if ( i != playerThingIdx && (jkPlayer_playerInfos[i].net_id == a2 || (a2 == INVALID_DPID || !a2) && (jkPlayer_playerInfos[i].flags & 1) != 0) )
+                if ( i != playerThingIdx && (jkPlayer_playerInfos[i].net_id == a2 || (a2 == INVALID_DPID || !a2) && (jkPlayer_playerInfos[i].flags & SITH_PLAYER_JOINEDGAME) != 0) )
                     msg->netMsg.field_14 |= 1 << i;
 				#ifndef PLATFORM_STEAM
                 if (!i && i != playerThingIdx) {

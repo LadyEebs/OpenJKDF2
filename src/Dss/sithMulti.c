@@ -152,7 +152,7 @@ int sithMulti_StartupServer()
 	// Added: dedicated server
 	if (jkGuiNetHost_bIsDedicated)
 	{
-		jkPlayer_playerInfos[0].flags = 6;
+		jkPlayer_playerInfos[0].flags = SITH_PLAYER_PLACED | SITH_PLAYER_NETWORKED;
 		jkPlayer_playerInfos[0].playerThing->thingflags |= SITH_TF_DISABLED;
 		jkPlayer_playerInfos[0].playerThing->attach_flags = 0;
 	}
@@ -642,7 +642,7 @@ int sithMulti_LobbyMessage()
             v0 = 0;
             for (int i = 0; i < jkPlayer_maxPlayers; i++ )
             {
-                if ( (jkPlayer_playerInfos[i].flags & 1) != 0 )
+                if ( (jkPlayer_playerInfos[i].flags & SITH_PLAYER_JOINEDGAME) != 0 )
                     ++v0;
             }
             NETMSG_PUSHS16(v0);
@@ -650,7 +650,7 @@ int sithMulti_LobbyMessage()
             for (int i = 0; i < jkPlayer_maxPlayers; i++)
             {
                 sithPlayerInfo* v6 = &jkPlayer_playerInfos[i];
-                if ( (v6->flags & 1) != 0 )
+                if ( (v6->flags & SITH_PLAYER_JOINEDGAME) != 0 )
                 {
                     NETMSG_PUSHWSTR(v6->multi_name, 0x20);
                     NETMSG_PUSHS16(v6->numKills);
@@ -682,7 +682,7 @@ int sithMulti_ProcessJoinLeave(sithCogMsg *msg)
 
     if (dpId != stdComm_dplayIdSelf )
     {
-        if ( (jkPlayer_playerInfos[playerIdx].flags & 1) == 0 )
+        if ( (jkPlayer_playerInfos[playerIdx].flags & SITH_PLAYER_JOINEDGAME) == 0 )
         {
             sithPlayer_sub_4C87C0(playerIdx, dpId);
             wchar_t* joinMsg = sithStrTable_GetUniStringWithFallback("%s_HAS_JOINED_THE_GAME");
@@ -825,7 +825,7 @@ int sithMulti_ServerLeft(int a, sithEventInfo* b)
             v1 = &jkPlayer_playerInfos[1];
             do
             {
-                if ( (v1->flags & 1) != 0 && sithTime_curMs > v1->lastUpdateMs + MULTI_TIMEOUT_MS )
+                if ( (v1->flags & SITH_PLAYER_JOINEDGAME) != 0 && sithTime_curMs > v1->lastUpdateMs + MULTI_TIMEOUT_MS )
                 {
                     v2 = v1->net_id;
                     if ( sithNet_isServer )
@@ -917,8 +917,8 @@ void sithMulti_SendLeaveJoin(DPID sendtoId, int bSync)
     for (int i = 0; i < jkPlayer_maxPlayers; i++)
     {
         sithPlayerInfo* v6 = &jkPlayer_playerInfos[i];
-        NETMSG_PUSHS32((sithNet_isServer && jkGuiNetHost_bIsDedicated && !i) ? v6->flags & ~2 : v6->flags);
-        if ( (v6->flags & 4) != 0 )
+        NETMSG_PUSHS32((sithNet_isServer && jkGuiNetHost_bIsDedicated && !i) ? v6->flags & ~SITH_PLAYER_PLACED : v6->flags);
+        if ( (v6->flags & SITH_PLAYER_NETWORKED) != 0 )
         {
 #ifdef PLATFORM_STEAM
 			NETMSG_PUSHU64(v6->net_id);
@@ -987,16 +987,16 @@ int sithMulti_ProcessLeaveJoin(sithCogMsg *msg)
         v6 = &jkPlayer_playerInfos[v3];
         v7 = v6->flags;
         v6->flags = NETMSG_POPS32();
-        if ( (v6->flags & 4) != 0 )
+        if ( (v6->flags & SITH_PLAYER_NETWORKED) != 0 )
         {
 #ifdef PLATFORM_STEAM
 			v6->net_id = NETMSG_POPU64();
 #else
 			v6->net_id = NETMSG_POPS32();
 #endif
-            if ( (v6->flags & 1) == 0 || (v7 & 1) != 0 || (g_submodeFlags & SITH_SUBMODE_JOINING) != 0 )
+            if ( (v6->flags & SITH_PLAYER_JOINEDGAME) == 0 || (v7 & SITH_PLAYER_JOINEDGAME) != 0 || (g_submodeFlags & SITH_SUBMODE_JOINING) != 0 )
             {
-                if ( !v6->net_id && (v7 & 1) != 0 && (g_submodeFlags & SITH_SUBMODE_JOINING) == 0 )
+                if ( !v6->net_id && (v7 & SITH_PLAYER_JOINEDGAME) != 0 && (g_submodeFlags & SITH_SUBMODE_JOINING) == 0 )
                 {
                     v12 = sithStrTable_GetUniStringWithFallback("%s_HAS_LEFT_THE_GAME");
                     jk_snwprintf(v22, 0x80u, v12, v6);
@@ -1251,7 +1251,7 @@ int sithMulti_ProcessJoinRequest(sithCogMsg *msg)
         for (v5 = 0; v5 < jkPlayer_maxPlayers; v5++)
         {
             v6 = &jkPlayer_playerInfos[v5];
-            if ( (v6->flags & 2) != 0 && !v6->net_id )
+            if ( (v6->flags & SITH_PLAYER_PLACED) != 0 && !v6->net_id )
                 break;
         }
         if ( v5 == jkPlayer_maxPlayers )

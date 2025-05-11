@@ -732,7 +732,7 @@ int sithCommand_CmdKick(stdDebugConsoleCmd *pCmd, const char *pArgStr)
         v3 = jkPlayer_playerInfos;
         do
         {
-            if ( (v3->flags & 1) != 0 && !__wcsicmp(v3->player_name, a1) )
+            if ( (v3->flags & SITH_PLAYER_JOINEDGAME) != 0 && !__wcsicmp(v3->player_name, a1) )
             {
                 _sprintf(std_genBuffer, "Kicked %S", v3->player_name);
                 sithConsole_Print(std_genBuffer);
@@ -758,7 +758,7 @@ int sithCommand_CmdMute(stdDebugConsoleCmd* pCmd, const char* pArgStr)
 	for (int i = 0; i < jkPlayer_maxPlayers; ++i)
 	{
 		sithPlayerInfo* playerInfo = &jkPlayer_playerInfos[i];
-		if ((playerInfo->flags & 1) != 0 && !__wcsicmp(playerInfo->player_name, wname))
+		if ((playerInfo->flags & SITH_PLAYER_JOINEDGAME) != 0 && !__wcsicmp(playerInfo->player_name, wname))
 		{
 			_sprintf(std_genBuffer, "Muted %S", playerInfo->player_name);
 			sithConsole_Print(std_genBuffer);

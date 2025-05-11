@@ -1659,6 +1659,13 @@ enum SITH_SUBMODE_FLAGS
 	SITH_SUBMODE_JOINING = 0x8, // synchronizing the game state from the host
 };
 
+enum SITH_PLAYER_FLAGS
+{
+	SITH_PLAYER_JOINEDGAME = 0x1,
+	SITH_PLAYER_PLACED     = 0x2,
+	SITH_PLAYER_NETWORKED  = 0x4, // has a DPID/network information?
+};
+
 #ifdef PLATFORM_STEAM
 enum NetUserState
 {

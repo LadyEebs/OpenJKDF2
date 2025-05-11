@@ -232,7 +232,7 @@ int jkGuiMultiTally_Show(int a1)
         v4 = jkPlayer_maxPlayers;
         do
         {
-            if ( (pPlayerInfoIter2->flags & 2) != 0 && (pPlayerInfoIter2->flags & 4) != 0 )
+            if ( (pPlayerInfoIter2->flags & SITH_PLAYER_PLACED) != 0 && (pPlayerInfoIter2->flags & SITH_PLAYER_NETWORKED) != 0 )
                 ++v2;
             ++pPlayerInfoIter2;
             --v4;
@@ -253,7 +253,7 @@ int jkGuiMultiTally_Show(int a1)
         v37 = v33;
         do
         {
-            if ( (pPlayerInfoIter->flags & 2) != 0 && (pPlayerInfoIter->flags & 4) != 0)
+            if ( (pPlayerInfoIter->flags & SITH_PLAYER_PLACED) != 0 && (pPlayerInfoIter->flags & SITH_PLAYER_NETWORKED) != 0)
             {
                 if ( pPlayerInfoIter->net_id == jkPlayer_playerInfos[playerThingIdx].net_id )
                 {
@@ -355,7 +355,7 @@ int jkGuiMultiTally_Show(int a1)
         v36 = v19;
         do
         {
-            if ( (v21->flags & 2) != 0 && (v21->flags & 4) != 0 )
+            if ( (v21->flags & SITH_PLAYER_PLACED) != 0 && (v21->flags & SITH_PLAYER_NETWORKED) != 0 )
             {
                 jk_snwprintf(&wtmp2[v22], 0x20u, L"%ls", v21);
                 v23 = v21->score;
@@ -452,10 +452,10 @@ int jkGuiMultiTally_SortPlayerScore(const sithPlayerInfo *pA, const sithPlayerIn
     v2 = 0;
     v3 = pA->flags;
     v4 = 0;
-    if ( (v3 & 2) == 0 || (v3 & 4) == 0 )
+    if ( (v3 & SITH_PLAYER_PLACED) == 0 || (v3 & SITH_PLAYER_NETWORKED) == 0 )
         v2 = 1;
     v5 = pB->flags;
-    if ( (v5 & 2) == 0 || (v5 & 4) == 0 )
+    if ( (v5 & SITH_PLAYER_PLACED) == 0 || (v5 & SITH_PLAYER_NETWORKED) == 0 )
         v4 = 1;
     if ( v2 )
         return v4 == 0;
@@ -566,7 +566,7 @@ int jkGuiMultiTally_ShowTeamScores(int a1)
     for (int i = 0; i < jkPlayer_maxPlayers; i++)
     {
         sithPlayerInfo* pPlayerInfoIter = &jkPlayer_playerInfos[i];
-        if ( (pPlayerInfoIter->flags & 4) != 0 )
+        if ( (pPlayerInfoIter->flags & SITH_PLAYER_NETWORKED) != 0 )
             aTmpTeamScores[pPlayerInfoIter->teamNum].field_8 = 1;
     }
 

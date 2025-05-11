@@ -105,7 +105,7 @@ void sithCogFunctionPlayer_GetNumPlayers(sithCog *ctx)
 
     for (int i = 0; i < jkPlayer_maxPlayers; i++)
     {
-        if (jkPlayer_playerInfos[i].flags & 1)
+        if (jkPlayer_playerInfos[i].flags & SITH_PLAYER_JOINEDGAME)
             ++numPlayers;
     }
 
@@ -530,7 +530,7 @@ void sithCogFunctionPlayer_GetNumPlayersInTeam(sithCog *ctx)
     int teamNum = sithCogExec_PopInt(ctx);
     for (int i = 0; i < jkPlayer_maxPlayers; i++)
     {
-        if ((jkPlayer_playerInfos[i].flags & 1) && jkPlayer_playerInfos[i].teamNum == teamNum )
+        if ((jkPlayer_playerInfos[i].flags & SITH_PLAYER_JOINEDGAME) && jkPlayer_playerInfos[i].teamNum == teamNum )
             ++numPlayers;
     }
     sithCogExec_PushInt(ctx, numPlayers);
@@ -543,7 +543,7 @@ void sithCogFunctionPlayer_AddScoreToTeamMembers(sithCog *ctx)
     
     for (int i = 0; i < jkPlayer_maxPlayers; i++)
     {
-        if ((jkPlayer_playerInfos[i].flags & 1) && jkPlayer_playerInfos[i].teamNum == teamNum )
+        if ((jkPlayer_playerInfos[i].flags & SITH_PLAYER_JOINEDGAME) && jkPlayer_playerInfos[i].teamNum == teamNum )
             jkPlayer_playerInfos[i].score += scoreAdd;
     }
 }
