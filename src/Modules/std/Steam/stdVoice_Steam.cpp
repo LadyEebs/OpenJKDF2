@@ -16,7 +16,7 @@ void stdVoice_StopRecording()
 }
 
 // todo: reconcile SteamAPI_Init here and in stdComm_Steam
-int stdVoice_GetVoice(uint8_t* buffer, size_t bufferSize)
+int stdVoice_GetVoice(uint8_t* buffer, uint32_t bufferSize)
 {
 	if (!SteamAPI_IsSteamRunning())
 		return 0;
@@ -36,7 +36,7 @@ int stdVoice_GetVoice(uint8_t* buffer, size_t bufferSize)
 	return 0;
 }
 
-int stdVoice_Decompress(uint8_t* decompressed, size_t decompressedSize, const uint8_t* buffer, size_t bufferSize)
+int stdVoice_Decompress(uint8_t* decompressed, uint32_t decompressedSize, const uint8_t* buffer, uint32_t bufferSize)
 {
 	uint32 numUncompressedBytes = 0;
 	EVoiceResult res = SteamUser()->DecompressVoice(buffer, bufferSize, decompressed, decompressedSize, &numUncompressedBytes, VOICE_OUTPUT_SAMPLE_RATE);

@@ -14,10 +14,10 @@ void stdVoice_StartRecording();
 void stdVoice_StopRecording();
 
 // reads voice data to the input buffer, data may be compressed
-int stdVoice_GetVoice(uint8_t* buffer, size_t bufferSize);
+int stdVoice_GetVoice(uint8_t* buffer, uint32_t bufferSize);
 
 // decompress voice data
-int stdVoice_Decompress(uint8_t* decompressed, size_t decompressedSize, const uint8_t* buffer, size_t bufferSize);
+int stdVoice_Decompress(uint8_t* decompressed, uint32_t decompressedSize, const uint8_t* buffer, uint32_t bufferSize);
 
 #ifdef __cplusplus
 }
