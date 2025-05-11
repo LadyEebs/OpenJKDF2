@@ -1817,7 +1817,7 @@ sithPlayer_Startup	.text	004C8750	00000068	00000004	00000004	R	.	.	.	.	.	T	.
 sithPlayer_sub_4C87C0	.text	004C87C0	0000004E	00000000	00000008	R	.	.	.	.	.	T	.
 sithPlayer_idk	.text	004C8810	000000B3	00000008	00000004	R	.	.	.	.	.	T	.
 sithPlayer_ResetPalEffects	.text	004C88D0	00000032			R	.	.	.	.	.	T	.
-sithPlayer_sub_4C8910	.text	004C8910	000000B9	00000004	00000004	R	.	.	.	.	.	T	.
+sithPlayer_InitPlayerInfo	.text	004C8910	000000B9	00000004	00000004	R	.	.	.	.	.	T	.
 sithPlayer_Tick	.text	004C89D0	0000023C	00000004	00000008	R	.	.	.	.	.	T	.
 sithPlayer_AddDynamicTint	.text	004C8C10	000000BF	00000000	0000000C	R	.	.	.	.	.	T	.
 sithPlayer_AddDyamicAdd	.text	004C8CD0	00000060	00000000	0000000C	R	.	.	.	.	.	T	.

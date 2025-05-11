@@ -12,7 +12,7 @@
 #define sithPlayer_sub_4C87C0_ADDR (0x004C87C0)
 #define sithPlayer_idk_ADDR (0x004C8810)
 #define sithPlayer_ResetPalEffects_ADDR (0x004C88D0)
-#define sithPlayer_sub_4C8910_ADDR (0x004C8910)
+#define sithPlayer_InitPlayerInfo_ADDR (0x004C8910)
 #define sithPlayer_Tick_ADDR (0x004C89D0)
 #define sithPlayer_AddDynamicTint_ADDR (0x004C8C10)
 #define sithPlayer_AddDyamicAdd_ADDR (0x004C8CD0)
@@ -53,7 +53,7 @@ void sithPlayer_HandleSentDeathPkt(sithThing *thing);
 void sithPlayer_sub_4C9150(sithThing *player, sithThing *killedBy);
 int sithPlayer_GetNumidk(int a1);
 void sithPlayer_SetBinCarries(int binIdx, int bCarries);
-void sithPlayer_sub_4C8910(unsigned int idx);
+void sithPlayer_InitPlayerInfo(unsigned int idx);
 int sithPlayer_sub_4C87C0(int idx, DPID netId);
 void sithPlayer_debug_ToNextCheckpoint(sithThing *player);
 uint32_t sithPlayer_ThingIdxToPlayerIdx(DPID thingIdx);

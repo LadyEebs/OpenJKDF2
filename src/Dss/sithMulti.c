@@ -138,7 +138,7 @@ int sithMulti_StartupServer()
 	sithNet_multiplayer_timelimit = sithMulti_multiplayerTimelimit;
 	for (uint32_t i = 0; i < 32; ++i)
 	{
-		sithPlayer_sub_4C8910(i);
+		sithPlayer_InitPlayerInfo(i);
 		sithPlayer_Startup(i);
 	}
 	sithNet_teamScore[0] = 0;
@@ -169,7 +169,7 @@ int sithMulti_StartupClient()
 	sithNet_isMulti = 1;
 	for (uint32_t i = 0; i < 32; ++i)
 	{
-		sithPlayer_sub_4C8910(i);
+		sithPlayer_InitPlayerInfo(i);
 		sithPlayer_Startup(i);
 	}
 	sithNet_teamScore[0] = 0;
@@ -1275,7 +1275,7 @@ int sithMulti_ProcessJoinRequest(sithCogMsg *msg)
         if ( v7 != DirectPlay_numPlayers )
         {
             sithMulti_verbosePrintf("aaaaaa %x\n", sithMulti_requestConnectIdx);
-            sithPlayer_sub_4C8910(sithMulti_requestConnectIdx);
+			sithPlayer_InitPlayerInfo(sithMulti_requestConnectIdx);
 
             NETMSG_POPWSTR(jkPlayer_playerInfos[sithMulti_requestConnectIdx].player_name, 0x10);
             NETMSG_POPWSTR(jkPlayer_playerInfos[sithMulti_requestConnectIdx].multi_name, 0x20);

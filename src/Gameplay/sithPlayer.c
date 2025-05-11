@@ -456,7 +456,7 @@ void sithPlayer_SetBinCarries(int binIdx, int bCarries)
         v2->state = v3 & ~8u;
 }
 
-void sithPlayer_sub_4C8910(unsigned int idx)
+void sithPlayer_InitPlayerInfo(unsigned int idx)
 {
     sithPlayerInfo *pPlayerInfo;
 
