@@ -49,6 +49,13 @@ uint32_t stdPlatform_GetTimeMsec();
 uint32_t stdPlatform_GetTimeSinceStart();
 #endif
 
+#ifdef PLATFORM_STEAM
+// some platforms (like Steam) can identify the game by an AppID
+uint64_t stdPlatform_GetAppID();
+uint64_t stdPlatform_GetJKAppID();
+uint64_t stdPlatform_GetMotSAppID();
+#endif
+
 int stdConsolePrintf(const char *fmt, ...);
 
 #ifdef __cplusplus

@@ -265,6 +265,13 @@ int Main_StartupDedicated(int bFullyDedicated)
 }
 #endif // QOL_IMPROVEMENTS
 
+#ifdef PLATFORM_STEAM
+int CheckApp()
+{
+	return stdPlatform_GetAppID() == stdPlatform_GetMotSAppID();
+}
+#endif
+
 int Main_Startup(const char *cmdline)
 {
     int result; // eax
@@ -321,6 +328,9 @@ int Main_Startup(const char *cmdline)
     Main_bNoHUD = 0;
     Main_logLevel = 0;
     Main_verboseLevel = 0;
+#ifdef PLATFORM_STEAM
+	Main_bMotsCompat = CheckApp();
+#endif
     Main_bDevMode = 0;
     jkGuiSound_musicVolume = 1.0;
     stdPlatform_Printf("%s\n", Main_path);

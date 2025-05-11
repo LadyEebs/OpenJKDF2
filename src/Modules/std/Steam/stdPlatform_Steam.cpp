@@ -26,4 +26,19 @@ extern "C" {
 	{
 		SteamAPI_Shutdown();
 	}
+
+	uint64_t stdPlatform_GetAppID()
+	{
+		return SteamUtils()->GetAppID();
+	}
+
+	uint64_t stdPlatform_GetJKAppID()
+	{
+		return 32380;
+	}
+
+	uint64_t stdPlatform_GetMotSAppID()
+	{
+		return 32390;
+	}
 }
