@@ -34,6 +34,7 @@ void stdShutdown()
     asm volatile ("fldcw\t%0" : "=m" (word_860800));
 #endif
 #endif
+	stdPlatform_Shutdown();
     std_bInitialized = 1;
 }
 

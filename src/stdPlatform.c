@@ -170,7 +170,7 @@ uint32_t stdPlatform_GetTimeMsec()
     return Linux_TimeMs();
 }
 
-static uint32_t timeAtStart;
+uint32_t timeAtStart;
 
 uint32_t stdPlatform_GetTimeSinceStart()
 {
@@ -225,12 +225,17 @@ void stdPlatform_InitServices(HostServices *handlers)
 #endif
 }
 
+#ifndef PLATFORM_STEAM
 int stdPlatform_Startup()
 {
 	timeAtStart = Linux_TimeMs();
-
     return 1;
 }
+
+void stdPlatform_Shutdown()
+{
+}
+#endif
 
 #ifdef PLATFORM_POSIX
 int stdPrintf(void* a1, char *a2, int line, char *fmt, ...)

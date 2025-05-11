@@ -25,6 +25,7 @@ extern "C" {
 
 void stdPlatform_InitServices(HostServices *handlers);
 int stdPlatform_Startup();
+void stdPlatform_Shutdown();
 
 #ifndef __cplusplus
 static void (*stdPlatform_Assert)(const char* a1, const char *a2, int a3) = (void*)stdPlatform_Assert_ADDR;

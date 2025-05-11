@@ -439,7 +439,7 @@ void DirectPlay_ClearFriends()
 
 void stdComm_Steam_Startup()
 {
-	if (!SteamAPI_Init())
+	if (!SteamAPI_IsSteamRunning())
 	{
 		jkGuiMultiplayer_numConnections = 1;
 		jk_snwprintf(jkGuiMultiplayer_aConnections[0].name, 0x80, L"Local Play");
@@ -475,6 +475,9 @@ void stdComm_Steam_Shutdown()
 
 int DirectPlay_Receive(DPID* pIdOut, void* pMsgIdOut, int* pLenOut)
 {
+	if (!SteamAPI_IsSteamRunning())
+		return -1;
+
 	SteamAPI_RunCallbacks();
 	SteamNetworkingSockets()->RunCallbacks();
 
@@ -528,6 +531,9 @@ int DirectPlay_Receive(DPID* pIdOut, void* pMsgIdOut, int* pLenOut)
 
 BOOL DirectPlay_Send(DPID idFrom, DPID idTo, void* lpData, DWORD dwDataSize)
 {
+	if (!SteamAPI_IsSteamRunning())
+		return 0;
+
 	SteamAPI_RunCallbacks();
 	SteamNetworkingSockets()->RunCallbacks();
 
@@ -612,6 +618,9 @@ int DirectPlay_EnumSessions2()
 
 void DirectPlay_SetSessionDesc(const char* a1, DWORD maxPlayers)
 {
+	if (!SteamAPI_IsSteamRunning())
+		return;
+
 	SteamMatchmaking()->SetLobbyData(stdComm_steamLobbyID, "mapJklFname", a1);
 	SteamMatchmaking()->SetLobbyMemberLimit(stdComm_steamLobbyID, maxPlayers);
 }
@@ -664,11 +673,17 @@ int DirectPlay_EarlyInit(wchar_t* pwIdk, wchar_t* pwPlayerName)
 
 DPID DirectPlay_CreatePlayer(wchar_t* pwIdk, int idk2)
 {
+	if (!SteamAPI_IsSteamRunning())
+		return 0;
+
 	return SteamUser()->GetSteamID().ConvertToUint64();
 }
 
 void DirectPlay_Close()
 {
+	if (!SteamAPI_IsSteamRunning())
+		return;
+
 	SteamMatchmaking()->LeaveLobby(stdComm_steamLobbyID);
 	stdComm_steamLobbyID.Clear();
 }
@@ -717,6 +732,9 @@ int stdComm_EnumSessions(int a, void* b)
 
 void DirectPlayer_AddPlayer(CSteamID steamID)
 {
+	if (!SteamAPI_IsSteamRunning())
+		return;
+
 	const char* nickname = SteamMatchmaking()->GetLobbyMemberData(stdComm_steamLobbyID, steamID, "nickname");
 	if (!nickname)
 		nickname = SteamFriends()->GetFriendPersonaName(steamID);
@@ -745,6 +763,9 @@ void DirectPlayer_AddPlayer(CSteamID steamID)
 
 void DirectPlay_EnumPlayers(int a)
 {
+	if (!SteamAPI_IsSteamRunning())
+		return;
+
 	DirectPlay_numPlayers = 0;
 	memset(DirectPlay_aPlayers, 0, sizeof(sithDplayPlayer));
 
@@ -794,6 +815,9 @@ int DirectPlay_EnumFriends()
 {
 	DirectPlay_ClearFriends();
 
+	if (!SteamAPI_IsSteamRunning())
+		return 0;
+
 	DirectPlay_numFriends = SteamFriends()->GetFriendCount(k_EFriendFlagImmediate);
 	DirectPlay_apFriends = (stdComm_Friend*)pHS->alloc(sizeof(stdComm_Friend) * DirectPlay_numFriends);
 	memset(DirectPlay_apFriends, 0, sizeof(stdComm_Friend) * DirectPlay_numFriends);
@@ -824,6 +848,9 @@ int DirectPlay_EnumFriends()
 
 int DirectPlay_Invite(DPID id)
 {
+	if (!SteamAPI_IsSteamRunning())
+		return 0;
+
 	CSteamID steamID(id);
 	if(steamID.IsValid())
 		return SteamMatchmaking()->InviteUserToLobby(stdComm_steamLobbyID, steamID);
