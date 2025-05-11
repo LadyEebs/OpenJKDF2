@@ -285,6 +285,9 @@ void jkGuiBuildMulti_ShutdownEditCharacter()
     jkGuiBuildMulti_bRendering = 0;
 
     ;
+#ifdef MENU_16BIT
+	jkGuiBuildMulti_menu.bkBm16 = NULL;
+#endif
 }
 
 rdModel3* jkGuiBuildMulti_ModelLoader(const char *pCharFpath, int unused)
