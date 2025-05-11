@@ -266,8 +266,12 @@ int Main_StartupDedicated(int bFullyDedicated)
 #endif // QOL_IMPROVEMENTS
 
 #ifdef PLATFORM_STEAM
-int CheckApp()
+int CheckMotS()
 {
+	// only do this check when we're not using the restart mode
+	if (openjkdf2_restartMode != OPENJKDF2_RESTART_NONE)
+		return 0;
+
 	return stdPlatform_GetAppID() == stdPlatform_GetMotSAppID();
 }
 #endif
@@ -331,7 +335,8 @@ int Main_Startup(const char *cmdline)
     Main_logLevel = 0;
     Main_verboseLevel = 0;
 #ifdef PLATFORM_STEAM
-	Main_bMotsCompat = CheckApp();
+	if (CheckMotS())
+		Main_bMotsCompat = 1;
 #endif
     Main_bDevMode = 0;
     jkGuiSound_musicVolume = 1.0;

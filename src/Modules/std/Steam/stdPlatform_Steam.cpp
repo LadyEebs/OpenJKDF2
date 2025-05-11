@@ -29,6 +29,8 @@ extern "C" {
 
 	uint64_t stdPlatform_GetAppID()
 	{
+		if (!SteamAPI_IsSteamRunning())
+			return 0;
 		return SteamUtils()->GetAppID();
 	}
 
