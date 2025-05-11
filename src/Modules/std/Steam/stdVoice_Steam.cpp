@@ -15,7 +15,6 @@ void stdVoice_StopRecording()
 	SteamUser()->StopVoiceRecording();
 }
 
-// todo: reconcile SteamAPI_Init here and in stdComm_Steam
 int stdVoice_GetVoice(uint8_t* buffer, uint32_t bufferSize)
 {
 	if (!SteamAPI_IsSteamRunning())
