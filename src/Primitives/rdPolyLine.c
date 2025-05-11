@@ -470,7 +470,9 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 	//if (thing->parentSithThing->sector != sithCamera_currentCamera->sector)
 		//tint = thing->parentSithThing->sector->tint;
 
-	rdVector3 cmpTint = pCurThing->parentSithThing->sector->colormap->tint;
+	rdVector3 cmpTint = { 1,1,1 };
+	if (pCurThing->parentSithThing && pCurThing->parentSithThing->sector)
+		cmpTint = pCurThing->parentSithThing->sector->colormap->tint;
 
 	rdVector3 halfTint;
 	halfTint.x = tint.x * 0.5f;

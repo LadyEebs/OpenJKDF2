@@ -285,7 +285,9 @@ int rdSprite_Draw(rdThing* thing, rdMatrix34* mat)
 	if (thing->spriteRot != 0.0)
 		stdMath_SinCos(thing->spriteRot, &s, &c);
 
-	rdVector3 cmpTint = pCurThing->parentSithThing->sector->colormap->tint;
+	rdVector3 cmpTint = { 1,1,1 };
+	if (pCurThing->parentSithThing && pCurThing->parentSithThing->sector)
+		cmpTint = pCurThing->parentSithThing->sector->colormap->tint;
 
 	rdVector3 rgb;
 	if (sprite->face.type & RD_FF_VERTEX_COLORS)

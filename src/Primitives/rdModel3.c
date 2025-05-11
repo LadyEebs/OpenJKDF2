@@ -1735,7 +1735,9 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 	//if (pCurThing->parentSithThing->sector != sithCamera_currentCamera->sector)
 		//tint = pCurThing->parentSithThing->sector->tint;
 
-	rdVector3 cmpTint = pCurThing->parentSithThing->sector->colormap->tint;
+	rdVector3 cmpTint = {1,1,1};
+	if (pCurThing->parentSithThing && pCurThing->parentSithThing->sector)
+		cmpTint = pCurThing->parentSithThing->sector->colormap->tint;
 
 	rdVector3 halfTint;
 	halfTint.x = tint.x * 0.5f;
