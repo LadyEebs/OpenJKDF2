@@ -282,6 +282,8 @@ int Main_Startup(const char *cmdline)
 #endif
 
     stdInitServices(&hs);    
+	stdStartup(&hs); // Added
+
     jkGuiNetHost_maxRank = 4;
     jkGuiNetHost_maxPlayers = 4;
     Video_modeStruct.geoMode = 4;
@@ -383,7 +385,6 @@ int Main_Startup(const char *cmdline)
             hs.errorPrint = Main_FPrintf;
         }
     }
-    stdStartup(&hs); // Added
     InstallHelper_SetCwd(); // Added
 
 #ifdef JOB_SYSTEM
