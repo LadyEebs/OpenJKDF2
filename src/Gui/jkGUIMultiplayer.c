@@ -117,8 +117,8 @@ static jkGuiElement jkGuiMultiplayer_aElements3[] = {
 
 	{ ELEMENT_TEXT,        0,            0, "GUI_RANKLABEL",  2,  {380, 175, 300, 0x14}, 1,  0, 0, 0, 0, 0, {0}, 0},
 	{ ELEMENT_TEXT,        0,            0, NULL,                    2,  { 455, 205, 160, 30 }, 1, 0, NULL, NULL, NULL, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
-	{ ELEMENT_PICBUTTON, 103,            0, NULL,                    33, { 380, 205, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_RankArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
-	{ ELEMENT_PICBUTTON, 104,            0, NULL,                    34, { 410, 205, 24, 24 }, 1, 0, NULL, NULL, jkGuiMultiplayer_RankArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_PICBUTTON, 103,            0, NULL,                    33, { 380, 205, 24, 30 }, 1, 0, NULL, NULL, jkGuiMultiplayer_RankArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
+	{ ELEMENT_PICBUTTON, 104,            0, NULL,                    34, { 410, 205, 24, 30 }, 1, 0, NULL, NULL, jkGuiMultiplayer_RankArrowHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
 	
 	{ ELEMENT_CHECKBOX,     0, 0, "GUIEXT_FRIENDS_ONLY", 0, { 0x28, 65, 120, 40 }, 1, 0, 0, NULL, jkGuiMultiplayer_FilterClickHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
 	{ ELEMENT_CHECKBOX,     1, 0, "GUIEXT_FREE_FOR_ALL", 0, { 0x28+ 150, 65, 120, 40 }, 1, 0, 0, NULL, jkGuiMultiplayer_FilterClickHandler, NULL, { 0, 0, 0, 0, 0, { 0, 0, 0, 0 } }, 0 },
