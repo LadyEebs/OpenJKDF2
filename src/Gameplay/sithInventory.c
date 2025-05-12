@@ -955,7 +955,7 @@ sithThing* sithInventory_CreateBackpack(sithThing *player)
     
 
     sithDSSThing_SendCreateThing(templateThing, backpack, player, 0, 0, 0, 255, 1);
-    sithDSSThing_SendSyncThing(backpack, -1, 255);
+    sithDSSThing_SendSyncThing(backpack, INVALID_DPID, 255);
     return backpack;
 }
 

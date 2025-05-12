@@ -598,7 +598,7 @@ void stdComm_CloseConnection()
 			DirectPlay_Close();
 			stdComm_dword_8321E0 = 0;
 			stdComm_bIsServer = 0;
-			stdComm_dplayIdSelf = 0;
+			stdComm_dplayIdSelf = DPID_ALLPLAYERS;
 		}
 		//DirectPlay_CloseConnection();
 		stdComm_dword_8321DC = 0;

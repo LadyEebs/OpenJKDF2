@@ -9,7 +9,7 @@
 stdComm_Friend* DirectPlay_apFriends = NULL;
 uint32_t DirectPlay_numFriends = 0;
 
-DPID stdComm_dplayIdSelf = 0;
+DPID stdComm_dplayIdSelf = DPID_ALLPLAYERS;
 
 #ifdef PLATFORM_STEAM
 stdCommSession* jkGuiMultiplayer_aEntries = NULL;

@@ -284,7 +284,7 @@ void sithCogFunctionThing_DamageThing(sithCog *ctx)
             pThing = pThing2;
         if ( COG_SHOULD_SYNC(ctx) )
         {
-            sithDSSThing_SendDamage(pThing2, pThing, a5, a4, -1, 1);
+            sithDSSThing_SendDamage(pThing2, pThing, a5, a4, INVALID_DPID, 1);
         }
         sithCogExec_PushFlex(ctx, sithThing_Damage(pThing2, pThing, a5, a4, -1));
     }
@@ -347,7 +347,7 @@ void sithCogFunctionThing_DestroyThing(sithCog *ctx)
     //printf("destroy %x %s\n", pThing->thing_id, ctx->cogscript_fpath);
 
     if (COG_SHOULD_SYNC(ctx) )
-        sithDSSThing_SendDestroyThing(pThing->thing_id, -1);
+        sithDSSThing_SendDestroyThing(pThing->thing_id, INVALID_DPID);
 
     sithThing_Destroy(pThing);
 }
@@ -387,7 +387,7 @@ void sithCogFunctionThing_MoveToFrame(sithCog *ctx)
         sithTrackThing_MoveToFrame(pThing, frame, speed);
 
         if (COG_SHOULD_SYNC(ctx))
-            sithDSSThing_SendPathMove(pThing, frame, speed, 0, -1, 255);
+            sithDSSThing_SendPathMove(pThing, frame, speed, 0, INVALID_DPID, 255);
     }
 }
 
@@ -404,7 +404,7 @@ void sithCogFunctionThing_SkipToFrame(sithCog *ctx)
         sithTrackThing_SkipToFrame(pThing, frame, speed);
 
         if (COG_SHOULD_SYNC(ctx))
-            sithDSSThing_SendPathMove(pThing, frame, speed, 1, -1, 255);
+            sithDSSThing_SendPathMove(pThing, frame, speed, 1, INVALID_DPID, 255);
     }
 }
 
@@ -564,7 +564,7 @@ void sithCogFunctionThing_StopThing(sithCog *ctx)
     {
         sithTrackThing_Stop(pThing);
         if (COG_SHOULD_SYNC(ctx))
-            sithDSSThing_SendPathMove(pThing, 0, 0.0, 2, -1, 255);
+            sithDSSThing_SendPathMove(pThing, 0, 0.0, 2, INVALID_DPID, 255);
     }
     else if (pThing->moveType == SITH_MT_PHYSICS)
     {
@@ -709,7 +709,7 @@ void sithCogFunctionThing_SetThingPos(sithCog *ctx)
         rdVector_Copy3(&pThing->position, &poppedVec);
         if (COG_SHOULD_SYNC(ctx))
         {
-            sithDSSThing_SendPos(pThing, -1, 1);
+            sithDSSThing_SendPos(pThing, INVALID_DPID,, 1);
         }
         sithCogExec_PushInt(ctx, 1);
     }
@@ -742,7 +742,7 @@ void sithCogFunctionThing_SetThingPosEx(sithCog *ctx)
 
         if (COG_SHOULD_SYNC(ctx))
         {
-            sithDSSThing_SendPos(pThing, -1, 1);
+            sithDSSThing_SendPos(pThing, INVALID_DPID, 1);
         }
         sithCogExec_PushInt(ctx, 1);
     }
@@ -1053,7 +1053,7 @@ void sithCogFunctionThing_PlayMode(sithCog *ctx)
             sithCogExec_PushInt(ctx, track);
             if (COG_SHOULD_SYNC(ctx))
             {
-                sithDSSThing_SendPlayKeyMode(pThing, mode, pThing->rdthing.puppet->tracks[track].field_130, -1, 255);
+                sithDSSThing_SendPlayKeyMode(pThing, mode, pThing->rdthing.puppet->tracks[track].field_130, INVALID_DPID, 255);
             }
         }
     }
@@ -1100,7 +1100,7 @@ void sithCogFunctionThing_PlayKey(sithCog *ctx)
         }
         if (COG_SHOULD_SYNC(ctx))
         {
-            sithDSSThing_SendPlayKey(pThing, keyframe, trackNum, popInt, pThing->rdthing.puppet->tracks[track].field_130, -1, 255);
+            sithDSSThing_SendPlayKey(pThing, keyframe, trackNum, popInt, pThing->rdthing.puppet->tracks[track].field_130, INVALID_DPID, 255);
         }
         return;
     }
@@ -1128,7 +1128,7 @@ void sithCogFunctionThing_StopKey(sithCog *ctx)
         {
             if (COG_SHOULD_SYNC(ctx))
             {
-                sithDSSThing_SendStopKey(pThing, v6, poppedFlex, -1, 255);
+                sithDSSThing_SendStopKey(pThing, v6, poppedFlex, INVALID_DPID, 255);
             }
         }
     }
@@ -1156,7 +1156,7 @@ void sithCogFunctionThing_SetThingModel(sithCog *ctx)
 
         if (COG_SHOULD_SYNC(ctx))
         {
-            sithDSSThing_SendSetThingModel(pThing, -1);
+            sithDSSThing_SendSetThingModel(pThing, INVALID_DPID);
         }
     }
     else
@@ -1186,7 +1186,7 @@ void sithCogFunctionThing_SetArmedMode(sithCog *ctx)
 
         if (COG_SHOULD_SYNC(ctx))
         {
-            sithDSSThing_SendSyncThing(pThing, -1, 255);
+            sithDSSThing_SendSyncThing(pThing, INVALID_DPID, 255);
         }
     }
 }
@@ -1251,7 +1251,7 @@ void sithCogFunctionThing_TeleportThing(sithCog *ctx)
 
         if (COG_SHOULD_SYNC(ctx))
         {
-            sithDSSThing_SendPos(pThing, -1, 1);
+            sithDSSThing_SendPos(pThing, INVALID_DPID, 1);
         }
     }
 }

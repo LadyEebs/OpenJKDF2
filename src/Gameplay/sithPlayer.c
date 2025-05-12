@@ -284,7 +284,7 @@ void sithPlayer_debug_RespawnInPlace(sithThing* player)
 			sithWeapon_SyncPuppet(player);
 			sithCog_SendSimpleMessageToAll(SITH_MESSAGE_NEWPLAYER, SENDERTYPE_THING, player->thingIdx, SENDERTYPE_THING, player->thingIdx);
 			if (sithComm_multiplayerFlags)
-				sithDSSThing_SendSyncThing(player, -1, 255);
+				sithDSSThing_SendSyncThing(player, INVALID_DPID, 255);
 		}
 	}
 }

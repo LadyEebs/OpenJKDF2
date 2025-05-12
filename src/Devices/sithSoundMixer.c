@@ -1198,7 +1198,7 @@ void sithSoundMixer_SyncSounds()
                         iter->maxPosition,
                         iter->flags,
                         iter->refid,
-                        -1,
+                        INVALID_DPID,
                         255);
             }
         }

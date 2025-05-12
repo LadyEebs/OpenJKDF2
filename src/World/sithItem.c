@@ -132,8 +132,8 @@ void sithItem_Remove(sithThing *item)
 
     if ( sithComm_multiplayerFlags )
     {
-        sithDSSThing_SendSyncThing(item, -1, 255);
-        sithDSSThing_SendPos(item, -1, 1);
+        sithDSSThing_SendSyncThing(item, INVALID_DPID, 255);
+        sithDSSThing_SendPos(item, INVALID_DPID, 1);
     }
 }
 

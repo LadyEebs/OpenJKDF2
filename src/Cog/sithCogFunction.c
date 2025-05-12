@@ -234,7 +234,7 @@ void sithCogFunction_StopAnim(sithCog *ctx)
     {
         sithSurface_StopAnim(v2);
         if ( sithComm_multiplayerFlags )
-            sithDSS_SendSurface(v2, -1, 255); // TODO ??
+            sithDSS_SendSurface(v2, INVALID_DPID, 255); // TODO ??
     }
 }
 
@@ -251,7 +251,7 @@ void sithCogFunction_StopSurfaceAnim(sithCog *ctx)
         {
             sithSurface_StopAnim(v2);
             if ( sithComm_multiplayerFlags )
-                sithDSS_SendSurface(v2, -1, 255); // TODO ??
+                sithDSS_SendSurface(v2, INVALID_DPID, 255); // TODO ??
         }
     }
 }
@@ -269,7 +269,7 @@ void sithCogFunction_GetSurfaceAnim(sithCog *ctx)
     }
     else
     {
-        sithCogExec_PushInt(ctx, -1);
+        sithCogExec_PushInt(ctx, INVALID_DPID);
     }
 }
 

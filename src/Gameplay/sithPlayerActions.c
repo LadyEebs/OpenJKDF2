@@ -43,7 +43,7 @@ void sithPlayerActions_Activate(sithThing *thing)
         {
             v5 = sithPuppet_PlayMode(thing, SITH_ANIM_ACTIVATE, 0);
             if ( sithComm_multiplayerFlags && v5 >= 0 )
-                sithDSSThing_SendPlayKeyMode(thing, SITH_ANIM_ACTIVATE, thing->rdthing.puppet->tracks[v5].field_130, -1, 255);
+                sithDSSThing_SendPlayKeyMode(thing, SITH_ANIM_ACTIVATE, thing->rdthing.puppet->tracks[v5].field_130, INVALID_DPID, 255);
             a6 = thing->moveSize - -0.1;
 
 			int searchFlags = /*SITH_THING_ACTOR*/SITH_RAYCAST_IGNORE_ADJOINS;

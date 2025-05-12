@@ -630,7 +630,7 @@ int sithMulti_LobbyMessage()
                 sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, sithMulti_sendto_id, 1, 0);
             }
             sithNet_bNeedsFullThingSyncForLeaveJoin = 0;
-            sithMulti_sendto_id = 0;
+            sithMulti_sendto_id = DPID_ALLPLAYERS;
             stdComm_currentBigSyncStage = 2;
             stdComm_dword_832208 = 0;
         }
@@ -1092,7 +1092,7 @@ void sithMulti_sub_4CA470(DPID a1)
             sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, sithMulti_sendto_id, 1, 0);
         }
         sithNet_bNeedsFullThingSyncForLeaveJoin = 0;
-        sithMulti_sendto_id = 0;
+        sithMulti_sendto_id = DPID_ALLPLAYERS;
         stdComm_currentBigSyncStage = 2;
         stdComm_dword_832208 = 0;
     }
@@ -1470,7 +1470,7 @@ void sithMulti_HandleTimeLimit(int deltaMs)
                     sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, sithMulti_sendto_id, 1, 0);
                 }
                 sithNet_bNeedsFullThingSyncForLeaveJoin = 0;
-                sithMulti_sendto_id = 0;
+                sithMulti_sendto_id = DPID_ALLPLAYERS;
                 stdComm_currentBigSyncStage = 2;
                 stdComm_dword_832208 = 0;
             }
@@ -1577,7 +1577,7 @@ void sithMulti_HandleTimeLimit(int deltaMs)
                             sithMulti_SendWelcome(sithMulti_sendto_id, sithMulti_requestConnectIdx, sithMulti_sendto_id);
 
                             sithNet_bNeedsFullThingSyncForLeaveJoin = 0;
-                            sithMulti_sendto_id = 0;
+                            sithMulti_sendto_id = DPID_ALLPLAYERS;
                             stdComm_currentBigSyncStage = 2;
                             stdComm_dword_832208 = 0;
                             sithNet_bSyncScores = 1;

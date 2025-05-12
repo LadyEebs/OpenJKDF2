@@ -299,9 +299,9 @@ void sithSector_Sync()
     for ( i = 0; i < sithSector_numSync; ++i )
     {
         if ( (sithSector_aSyncIdk2[i] & 1) != 0 )
-            sithDSS_SendSectorStatus(sithSector_aSyncIdk[i], -1, 255);
+            sithDSS_SendSectorStatus(sithSector_aSyncIdk[i], INVALID_DPID, 255);
         else
-            sithDSS_SendSectorFlags(sithSector_aSyncIdk[i], -1, 255);
+            sithDSS_SendSectorFlags(sithSector_aSyncIdk[i], INVALID_DPID, 255);
     }
     sithSector_numSync = 0;
 }

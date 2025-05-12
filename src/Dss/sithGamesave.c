@@ -316,9 +316,9 @@ int sithGamesave_SerializeAllThings(int mpFlags)
         sithThing* v4 = &sithWorld_pCurrentWorld->things[i];
         if ( sithThing_ShouldSync(v4) )
         {
-            sithDSSThing_SendFullDesc(v4, 0, mpFlags);
+            sithDSSThing_SendFullDesc(v4, DPID_ALLPLAYERS, mpFlags);
             if ( v4->rdthing.puppet )
-                sithDSS_SendSyncPuppet(v4, 0, mpFlags);
+                sithDSS_SendSyncPuppet(v4, DPID_ALLPLAYERS, mpFlags);
         }
     }
 
@@ -331,9 +331,9 @@ int sithGamesave_SerializeAllThings(int mpFlags)
             {
                 // MOTS altered: Jail Key
                 if (!Main_bMotsCompat && (v7->attach_flags & SITH_ATTACH_NO_MOVE) != 0 || v7->moveType != SITH_MT_PHYSICS )
-                    sithDSSThing_SendSyncThingAttachment(v7, 0, mpFlags, 1);
+                    sithDSSThing_SendSyncThingAttachment(v7, DPID_ALLPLAYERS, mpFlags, 1);
                 else if (Main_bMotsCompat && v7->attach_flags && (v7->attach_flags & (SITH_ATTACH_NO_MOVE|SITH_ATTACH_FORCE_SERIALIZE)) != 0 || v7->moveType != SITH_MT_PHYSICS )
-                    sithDSSThing_SendSyncThingAttachment(v7, 0, mpFlags, 1);
+                    sithDSSThing_SendSyncThingAttachment(v7, DPID_ALLPLAYERS, mpFlags, 1);
             }
         }
     }
@@ -341,48 +341,48 @@ int sithGamesave_SerializeAllThings(int mpFlags)
     for (uint32_t i = 0; i < 256; i++) // TODO define this maximum
     {
         if ( sithAI_actors[i].pAIClass ) {
-            sithDSS_SendAIStatus(&sithAI_actors[i], 0, mpFlags);
+            sithDSS_SendAIStatus(&sithAI_actors[i], DPID_ALLPLAYERS, mpFlags);
         }
     }
 
     for (uint32_t i = 0; i < sithWorld_pCurrentWorld->numCogsLoaded; i++)
     {
-        sithDSSCog_SendSyncCog(&sithWorld_pCurrentWorld->cogs[i], 0, mpFlags);
+        sithDSSCog_SendSyncCog(&sithWorld_pCurrentWorld->cogs[i], DPID_ALLPLAYERS, mpFlags);
     }
 
     if ( sithWorld_pStatic )
     {
         for (uint32_t i = 0; i < sithWorld_pStatic->numCogsLoaded; i++)
         {
-            sithDSSCog_SendSyncCog(&sithWorld_pStatic->cogs[i], 0, mpFlags);
+            sithDSSCog_SendSyncCog(&sithWorld_pStatic->cogs[i], DPID_ALLPLAYERS, mpFlags);
         }
     }
 
     for (uint32_t i = 0; i < sithWorld_pCurrentWorld->numSurfaces; i++)
     {
-        sithDSS_SendSurfaceStatus(&sithWorld_pCurrentWorld->surfaces[i], 0, mpFlags);
+        sithDSS_SendSurfaceStatus(&sithWorld_pCurrentWorld->surfaces[i], DPID_ALLPLAYERS, mpFlags);
     }
 
     for (uint32_t i = 0; i < sithWorld_pCurrentWorld->numSectors; i++)
     {
-        sithDSS_SendSectorStatus(&sithWorld_pCurrentWorld->sectors[i], 0, mpFlags);
+        sithDSS_SendSectorStatus(&sithWorld_pCurrentWorld->sectors[i], DPID_ALLPLAYERS, mpFlags);
     }
 
     for (v19 = 0; v19 < SITHBIN_NUMBINS; v19++) // TODO define this maximum
     {
         if ( (sithInventory_aDescriptors[v19].flags & ITEMINFO_VALID) != 0 )
-            sithDSS_SendInventory(sithPlayer_pLocalPlayerThing, v19, 0, mpFlags);
+            sithDSS_SendInventory(sithPlayer_pLocalPlayerThing, v19, DPID_ALLPLAYERS, mpFlags);
     }
 
     sithSurface_SyncFull(mpFlags);
 
     for (sithEvent* timerIter = sithEvent_list; timerIter; timerIter = timerIter->nextTimer )
-        sithDSS_SendSyncEvents(timerIter, 0, mpFlags);
+        sithDSS_SendSyncEvents(timerIter, DPID_ALLPLAYERS, mpFlags);
 
-    sithDSS_SendSyncPalEffects(0, mpFlags);
-    sithDSS_SendSyncCameras(0, mpFlags);
+    sithDSS_SendSyncPalEffects(DPID_ALLPLAYERS, mpFlags);
+    sithDSS_SendSyncCameras(DPID_ALLPLAYERS, mpFlags);
     sithSoundMixer_SyncSounds();
-    sithDSS_SendMisc(0, mpFlags);
+    sithDSS_SendMisc(DPID_ALLPLAYERS, mpFlags);
 
     return 1;
 }

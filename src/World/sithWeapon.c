@@ -536,7 +536,7 @@ sithThing* sithWeapon_FireMots(sithThing *weapon, sithThing *projectile, rdVecto
     spawned = sithWeapon_FireProjectile_0(weapon, projectile, fireOffset, aimError, fireSound, anim, scale, scaleFlags, a9, 0);
 
     if ( spawned && sithComm_multiplayerFlags )
-        sithDSSThing_SendFireProjectile(weapon, projectile, fireOffset, aimError, fireSound, anim, scale, scaleFlags, a9, spawned->thing_id, -1, 255, extra);
+        sithDSSThing_SendFireProjectile(weapon, projectile, fireOffset, aimError, fireSound, anim, scale, scaleFlags, a9, spawned->thing_id, INVALID_DPID, 255, extra);
 
     return spawned;
 }
@@ -551,7 +551,7 @@ sithThing* sithWeapon_Fire(sithThing *weapon, sithThing *projectile, rdVector3 *
     spawned = sithWeapon_FireProjectile_0(weapon, projectile, fireOffset, aimError, fireSound, anim, scale, scaleFlags, a9, 0);
 
     if ( spawned && sithComm_multiplayerFlags )
-        sithDSSThing_SendFireProjectile(weapon, projectile, fireOffset, aimError, fireSound, anim, scale, scaleFlags, a9, spawned->thing_id, -1, 255, 0);
+        sithDSSThing_SendFireProjectile(weapon, projectile, fireOffset, aimError, fireSound, anim, scale, scaleFlags, a9, spawned->thing_id, INVALID_DPID, 255, 0);
 
     return spawned;
 }
@@ -1550,7 +1550,7 @@ sithThing* sithWeapon_FireProjectile(sithThing *sender, sithThing *projectileTem
 			sithThing* result = sithWeapon_FireProjectile_0(sender, projectileTemplate, &projectileLookat.lvec, fireOffset, 0, mode, scale, scaleFlags, fireRateDeltaTime, extra);
 				
 			if (result && sithComm_multiplayerFlags )
-				sithDSSThing_SendFireProjectile(sender, projectileTemplate, &projectileLookat.lvec, fireOffset, 0, mode, scale, scaleFlags, fireRateDeltaTime, result->thing_id, -1, 255, extra);
+				sithDSSThing_SendFireProjectile(sender, projectileTemplate, &projectileLookat.lvec, fireOffset, 0, mode, scale, scaleFlags, fireRateDeltaTime, result->thing_id, INVALID_DPID, 255, extra);
 		}
 	}
 
@@ -1562,7 +1562,7 @@ sithThing* sithWeapon_FireProjectile(sithThing *sender, sithThing *projectileTem
 		if ( sithComm_multiplayerFlags )
 		{
 			sithDSSThing_SendFireProjectile(sender, projectileTemplate, &projectileLookat.lvec, fireOffset, fireSound,
-				mode, scale, scaleFlags, fireRateDeltaTime, result->thing_id, -1, 255, extra);
+				mode, scale, scaleFlags, fireRateDeltaTime, result->thing_id, INVALID_DPID, 255, extra);
 		}
 	}
 	return result;
