@@ -556,8 +556,8 @@ void sithMain_AutoSave()
     if ( sithNet_isMulti )
     {
         sithPlayer_debug_ToNextCheckpoint(sithPlayer_pLocalPlayerThing);
-        sithMulti_SendWelcome(stdComm_dplayIdSelf, playerThingIdx, -1);
-        sithMulti_SendWelcome(stdComm_dplayIdSelf, playerThingIdx, -1);
+        sithMulti_SendWelcome(stdComm_dplayIdSelf, playerThingIdx, INVALID_DPID);
+        sithMulti_SendWelcome(stdComm_dplayIdSelf, playerThingIdx, INVALID_DPID);
         sithTime_Startup();
     }
     else
