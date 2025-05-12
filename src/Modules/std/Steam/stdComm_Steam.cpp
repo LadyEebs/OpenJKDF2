@@ -69,6 +69,8 @@ void Steam_GetLobbyWideString(CSteamID lobbyID, const char* key, wchar_t(&wStr)[
 
 extern "C" {
 
+	extern int Main_bVerboseNetworking;
+
 	// todo: move this
 	extern wchar_t jkGuiMultiplayer_ipText[256];
 	extern int jkGuiMultiplayer_searchDistance;
@@ -421,8 +423,6 @@ LobbySystem lobbyFuncs;
 
 extern "C" {
 	
-extern int Main_bVerboseNetworking;
-
 void DirectPlay_ClearFriends()
 {
 	if (DirectPlay_apFriends)
