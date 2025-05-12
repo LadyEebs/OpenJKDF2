@@ -322,12 +322,14 @@ struct LobbySystem
 
 	void OnLobbyChatUpdate(LobbyChatUpdate_t* update)
 	{
-		char nonce[16];
 		switch(update->m_rgfChatMemberStateChange)
 		{
 		case k_EChatMemberStateChangeEntered:
 			if (stdComm_connectionSet.find(update->m_ulSteamIDUserChanged) == stdComm_connectionSet.end())
 			{
+				if (Main_bVerboseNetworking)
+					stdPlatform_Printf("User %llu connected\n", update->m_ulSteamIDUserChanged);
+				
 				stdComm_connections.push(update->m_ulSteamIDUserChanged);
 				stdComm_connectionSet.insert(std::ref(stdComm_connections.back()));
 			}
@@ -338,6 +340,9 @@ struct LobbySystem
 		case k_EChatMemberStateChangeBanned:
 			if (stdComm_disconnectionSet.find(update->m_ulSteamIDUserChanged) == stdComm_disconnectionSet.end())
 			{
+				if (Main_bVerboseNetworking)
+					stdPlatform_Printf("User %llu disconnected\n", update->m_ulSteamIDUserChanged);
+
 				stdComm_disconnections.push(update->m_ulSteamIDUserChanged);
 				stdComm_disconnectionSet.insert(std::ref(stdComm_disconnections.back()));
 			}
@@ -485,6 +490,10 @@ int DirectPlay_Receive(DPID* pIdOut, void* pMsgIdOut, int* pLenOut)
 	if (!stdComm_connections.empty()) // emulate DPSYS_CREATEPLAYERORGROUP
 	{
 		CSteamID dcID = stdComm_connections.front();
+
+		if (Main_bVerboseNetworking)
+			stdPlatform_Printf("Processing connection %llu\n", dcID.ConvertToUint64());
+
 		stdComm_connectionSet.erase(dcID);
 		stdComm_connections.pop();
 		*pIdOut = dcID.ConvertToUint64();
@@ -494,6 +503,10 @@ int DirectPlay_Receive(DPID* pIdOut, void* pMsgIdOut, int* pLenOut)
 	if (!stdComm_disconnections.empty()) // emulate DPSYS_DESTROYPLAYERORGROUP
 	{
 		CSteamID dcID = stdComm_disconnections.front();
+		
+		if (Main_bVerboseNetworking)
+			stdPlatform_Printf("Processing disconnection %llu\n", dcID.ConvertToUint64());
+
 		stdComm_disconnectionSet.erase(dcID);
 		stdComm_disconnections.pop();
 		*pIdOut = dcID.ConvertToUint64();

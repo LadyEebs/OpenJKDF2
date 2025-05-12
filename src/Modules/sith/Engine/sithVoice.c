@@ -143,7 +143,7 @@ void sithVoice_AddVoicePacket(DPID id, const uint8_t* pVoiceData, size_t length)
 
 	if (idx < 0)
 	{
-		stdPrintf(pSithHS->errorPrint, ".\\Engine\\sithVoice.c", __LINE__, "Failed to get or create voice channel for ID %ull.\n", id);
+		stdPrintf(pSithHS->errorPrint, ".\\Engine\\sithVoice.c", __LINE__, "Failed to get or create voice channel for ID %llu.\n", id);
 		return;
 	}
 
@@ -229,7 +229,7 @@ void sithVoice_Playback()
 		sithVoiceChannel* channel = &sithVoice_channels[i];
 		if (!channel->stream)
 		{
-			sithVoice_verbosePrintf("Voice channel stream for %ull is NULL\n", channel->dpId);
+			sithVoice_verbosePrintf("Voice channel stream for %llu is NULL\n", channel->dpId);
 			continue;
 		}
 
