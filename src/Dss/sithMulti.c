@@ -530,8 +530,12 @@ void sithMulti_SendQuit(DPID idx)
 
     NETMSG_START;
 
-    NETMSG_PUSHS32(idx);
-    NETMSG_END(DSS_QUIT);
+#ifdef PLATFORM_STEAM
+	NETMSG_PUSHU64(idx);
+#else
+	NETMSG_PUSHS32(idx);
+#endif
+	NETMSG_END(DSS_QUIT);
 
     sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, idx, 1, 1);
 }
@@ -755,7 +759,16 @@ int sithMulti_ProcessQuit(sithCogMsg *msg)
 {
     if ( msg->netMsg.thingIdx != sithNet_serverNetId )
         return 0;
-    if ( msg->pktData[0] == stdComm_dplayIdSelf )
+
+	NETMSG_IN_START(msg);
+
+#ifdef PLATFORM_STEAM
+	DPID dpId = NETMSG_POPU64();
+#else
+	DPID dpId = NETMSG_POPU32();
+#endif
+
+    if ( dpId == stdComm_dplayIdSelf )
     {
         if ( sithMulti_leaveJoinType != 2 )
         {
