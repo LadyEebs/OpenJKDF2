@@ -1677,7 +1677,14 @@ void sithDSSThing_SendMOTSNew1(sithThing* pThing1, sithThing* pThing2, sithThing
 
     NETMSG_START;
 
-    NETMSG_PUSHS16(pThing1->thingIdx);
+	if (sithComm_version == OPENJKDF2_SAVE_VERSION)
+	{
+		NETMSG_PUSHS32(pThing1->thingIdx);
+	}
+	else
+	{
+		NETMSG_PUSHS16(pThing1->thingIdx);
+	}
 
     if (pThing3 == NULL)
     {
