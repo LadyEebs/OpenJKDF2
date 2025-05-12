@@ -7,9 +7,9 @@
 #include "stdPlatform.h"
 
 stdComm_Friend* DirectPlay_apFriends = NULL;
-uint32_t DirectPlay_numFriends;
+uint32_t DirectPlay_numFriends = 0;
 
-DPID stdComm_dplayIdSelf;
+DPID stdComm_dplayIdSelf = 0;
 
 #ifdef PLATFORM_STEAM
 stdCommSession* jkGuiMultiplayer_aEntries = NULL;
@@ -105,12 +105,10 @@ int stdComm_seed_idk(stdCommSession *pEntry)
 
 int stdComm_CreatePlayer(stdCommSession *pEntry)
 {
-    HRESULT result; // eax
-
     jkGuiMultiplayer_checksumSeed = (__int64)(_frand() * 4294967300.0);
     pEntry->checksumSeed = jkGuiMultiplayer_checksumSeed;
     pEntry->field_E0 = 10;
-    result = DirectPlay_OpenHost(pEntry);
+    int result = DirectPlay_OpenHost(pEntry);
     if ( !result )
     {
         stdComm_dplayIdSelf = DirectPlay_CreatePlayer(jkPlayer_playerShortName, 0);
@@ -206,9 +204,9 @@ int stdComm_SendToPlayer(sithCogMsg *msg, DPID sendto_id)
     {
         sithPlayerInfo* v5 = &jkPlayer_playerInfos[i];
 	#ifdef PLATFORM_STEAM
-		if ((v5->flags & 1) != 0 && v5->net_id != stdComm_dplayIdSelf)
+		if ((v5->flags & SITH_PLAYER_JOINEDGAME) != 0 && v5->net_id != stdComm_dplayIdSelf)
 	#else
-        if ( !i || ((v5->flags & 1) != 0 && v5->net_id != stdComm_dplayIdSelf) ) // Added: always allow sending to 0, for dedicated servers' fake player
+        if ( !i || ((v5->flags & SITH_PLAYER_JOINEDGAME) != 0 && v5->net_id != stdComm_dplayIdSelf) ) // Added: always allow sending to 0, for dedicated servers' fake player
 	#endif
         {
             DirectPlay_Send(stdComm_dplayIdSelf, v5->net_id, &msg->netMsg.cogMsgId, v2);
