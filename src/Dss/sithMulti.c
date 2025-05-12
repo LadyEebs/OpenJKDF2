@@ -729,7 +729,7 @@ int sithMulti_ProcessJoinLeave(sithCogMsg *msg)
 int sithMulti_ProcessPing(sithCogMsg *msg)
 {
     msg->netMsg.cogMsgId = DSS_PINGREPLY;
-    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, msg->netMsg.thingIdx, 1, 0);
+    sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, msg->netMsg.dpId, 1, 0);
     return 1;
 }
 
@@ -743,7 +743,7 @@ int sithMulti_ProcessPingResponse(sithCogMsg *msg)
         v1 = 0;
         if ( jkPlayer_maxPlayers )
         {
-            for ( i = &jkPlayer_playerInfos[0]; i->net_id != msg->netMsg.thingIdx; ++i )
+            for ( i = &jkPlayer_playerInfos[0]; i->net_id != msg->netMsg.dpId; ++i )
             {
                 if ( ++v1 >= jkPlayer_maxPlayers )
                     return 1;
@@ -757,7 +757,7 @@ int sithMulti_ProcessPingResponse(sithCogMsg *msg)
 
 int sithMulti_ProcessQuit(sithCogMsg *msg)
 {
-    if ( msg->netMsg.thingIdx != sithNet_serverNetId )
+    if ( msg->netMsg.dpId != sithNet_serverNetId )
         return 0;
 
 	NETMSG_IN_START(msg);
@@ -1178,16 +1178,16 @@ int sithMulti_ProcessJoinRequest(sithCogMsg *msg)
 
     NETMSG_IN_START(msg);
 
-	DPID v1 = msg->netMsg.thingIdx;
+	DPID dpId = msg->netMsg.dpId;
 
-    if ( stdComm_bIsServer && v1 )
+    if ( stdComm_bIsServer && msg->netMsg.dpId)
     {
         NETMSG_POPSTR(v11, 32);
 
-        sithMulti_verbosePrintf("sithMulti_ProcessJoinRequest, id %llu map %s\n", v1, v11);
+        sithMulti_verbosePrintf("sithMulti_ProcessJoinRequest, id %llu map %s\n", dpId, v11);
 
 	#ifdef PLATFORM_STEAM
-		if (sithMulti_IsBanned(v1))
+		if (sithMulti_IsBanned(dpId))
 		{
 			sithMulti_verbosePrintf("Banned player attempted to join %s\n", v11);
 
@@ -1196,7 +1196,7 @@ int sithMulti_ProcessJoinRequest(sithCogMsg *msg)
 			NETMSG_PUSHS32(0);
 			NETMSG_END(DSS_JOINING);
 
-			sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, v1, 1, 0);
+			sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, dpId, 1, 0);
 			return 1;
 		}
 	#endif
@@ -1210,23 +1210,23 @@ int sithMulti_ProcessJoinRequest(sithCogMsg *msg)
             NETMSG_PUSHS32(0);
             NETMSG_END(DSS_JOINING);
 
-            sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, v1, 1, 0);
+            sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, dpId, 1, 0);
             return 1;
         }
         for (v3 = 0; v3 < jkPlayer_maxPlayers; v3++)
         {
             v4 = &jkPlayer_playerInfos[v3];
-            if ( v4->net_id == v1 )
+            if ( v4->net_id == dpId)
                 break;
         }
         if ( v3 < jkPlayer_maxPlayers )
         {
             sithMulti_verbosePrintf("Idk 2, %x %x\n", v3, jkPlayer_maxPlayers);
-            sithMulti_SendWelcome(v1, v3, v1);
+            sithMulti_SendWelcome(dpId, v3, dpId);
             return 1;
         }
 
-        stdComm_cogMsg_SendEnumPlayers(v1);
+        stdComm_cogMsg_SendEnumPlayers(dpId);
         if ( sithMulti_leaveJoinType )
         {
             sithMulti_verbosePrintf("Idk 1\n");
@@ -1235,19 +1235,19 @@ int sithMulti_ProcessJoinRequest(sithCogMsg *msg)
             NETMSG_PUSHS32(0);
             NETMSG_END(DSS_JOINING);
 
-            sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, v1, 1, 0);
+            sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, dpId, 1, 0);
             return 1;
         }
         if ( sithNet_bNeedsFullThingSyncForLeaveJoin )
         {
-            if ( sithMulti_sendto_id == v1 )
+            if ( sithMulti_sendto_id == dpId)
             {
                 sithMulti_verbosePrintf("idk 2\n");
                 NETMSG_START;
                 NETMSG_PUSHS32(0);
                 NETMSG_PUSHF32(0.5);
                 NETMSG_END(DSS_JOINING);
-                sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, v1, 1, 0);
+                sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, dpId, 1, 0);
                 return 1;
             }
             else
@@ -1257,7 +1257,7 @@ int sithMulti_ProcessJoinRequest(sithCogMsg *msg)
                 NETMSG_PUSHS32(1);
                 NETMSG_PUSHS32(0);
                 NETMSG_END(DSS_JOINING);
-                sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, v1, 1, 0);
+                sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, dpId, 1, 0);
                 return 1;
             }
         }
@@ -1274,7 +1274,7 @@ int sithMulti_ProcessJoinRequest(sithCogMsg *msg)
             NETMSG_PUSHS32(5);
             NETMSG_PUSHS32(0);
             NETMSG_END(DSS_JOINING);
-            sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, v1, 1, 0);
+            sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, dpId, 1, 0);
 
             return 1;
         }
@@ -1283,7 +1283,7 @@ int sithMulti_ProcessJoinRequest(sithCogMsg *msg)
         v7 = 0;
         for (v7 = 0; v7 < DirectPlay_numPlayers; v7++)
         {
-            if (DirectPlay_aPlayers[v7].dpId == v1) break;
+            if (DirectPlay_aPlayers[v7].dpId == dpId) break;
         }
         if ( v7 != DirectPlay_numPlayers )
         {
@@ -1292,7 +1292,7 @@ int sithMulti_ProcessJoinRequest(sithCogMsg *msg)
 
             NETMSG_POPWSTR(jkPlayer_playerInfos[sithMulti_requestConnectIdx].player_name, 0x10);
             NETMSG_POPWSTR(jkPlayer_playerInfos[sithMulti_requestConnectIdx].multi_name, 0x20);
-            //jkPlayer_playerInfos[sithMulti_requestConnectIdx].net_id = v1; // Added?
+            //jkPlayer_playerInfos[sithMulti_requestConnectIdx].net_id = dpId; // Added?
             //jkPlayer_playerInfos[sithMulti_requestConnectIdx].flags = 5;
 
             uint32_t popped_check = NETMSG_POPS32();
@@ -1305,7 +1305,7 @@ int sithMulti_ProcessJoinRequest(sithCogMsg *msg)
                 NETMSG_PUSHS32(4);
                 NETMSG_PUSHS32(0);
                 NETMSG_END(DSS_JOINING);
-                sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, v1, 1, 0);
+                sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, dpId, 1, 0);
                 return 1;
 #endif
             }
@@ -1315,11 +1315,11 @@ int sithMulti_ProcessJoinRequest(sithCogMsg *msg)
             NETMSG_PUSHS32(0);
             NETMSG_PUSHF32(0.25);
             NETMSG_END(DSS_JOINING);
-            sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, v1, 1, 0);
+            sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, dpId, 1, 0);
 
-            sithMulti_SendLeaveJoin(v1, 0);
+            sithMulti_SendLeaveJoin(dpId, 0);
             sithNet_bNeedsFullThingSyncForLeaveJoin = 1;
-            sithMulti_sendto_id = v1;
+            sithMulti_sendto_id = dpId;
             stdComm_currentBigSyncStage = 2;
             stdComm_dword_832208 = 0;
             stdComm_dword_832200 = 0;

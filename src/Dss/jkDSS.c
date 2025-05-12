@@ -1075,7 +1075,7 @@ void jkDSS_SendEndLevel()
 
 int jkDSS_ProcessEndLevel(sithCogMsg *msg)
 {
-    if ( msg->netMsg.thingIdx != sithNet_serverNetId )
+    if ( msg->netMsg.dpId != sithNet_serverNetId )
         return 0;
 
     NETMSG_IN_START(msg);

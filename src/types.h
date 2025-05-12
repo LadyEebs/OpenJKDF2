@@ -2133,7 +2133,7 @@ typedef struct net_msg
 	uint32_t timeMs2;
     uint32_t field_14;
     uint32_t field_18;
-	DPID thingIdx;
+	DPID dpId;
     uint32_t msg_size;
     uint16_t cogMsgId;
     uint16_t msgId;
@@ -2141,7 +2141,7 @@ typedef struct net_msg
 
 typedef struct sithCogMsg_Pair
 {
-	DPID thingIdx;
+	DPID dpId;
     uint32_t msgId;
 } sithCogMsg_Pair;
 

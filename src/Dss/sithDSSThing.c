@@ -827,7 +827,7 @@ void sithDSSThing_SendDamage(sithThing *pDamagedThing, sithThing *pDamagedBy, fl
 
 int sithDSSThing_ProcessDamage(sithCogMsg *msg)
 {
-    if ( msg->netMsg.thingIdx != sithNet_serverNetId )
+    if ( msg->netMsg.dpId != sithNet_serverNetId )
         return 0;
 
     NETMSG_IN_START(msg);
@@ -1438,7 +1438,7 @@ void sithDSSThing_SendTakeItem(sithThing *pItemThing, sithThing *pActor, int mpF
         sithComm_netMsgTmp.netMsg.flag_maybe = 0;
         sithComm_netMsgTmp.netMsg.cogMsgId = DSS_DESTROYTHING;
         sithComm_netMsgTmp.netMsg.msg_size = 4;
-        sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, sithComm_netMsgTmp.netMsg.thingIdx, 255, 1);
+        sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, sithComm_netMsgTmp.netMsg.dpId, 255, 1);
         return;
     }
     pActor2 = sithThing_GetById(sithComm_netMsgTmp.pktData[1]);
@@ -1464,18 +1464,16 @@ int sithDSSThing_ProcessTakeItem(sithCogMsg *msg)
     int v1; // ebx
     sithThing *v2; // edi
     sithThing *v4; // eax
-	DPID v6; // [esp-Ch] [ebp-1Ch]
 
     v1 = msg->pktData[0];
     v2 = sithThing_GetById(v1);
     if ( !v2 && sithNet_isServer )
     {
-        v6 = msg->netMsg.thingIdx;
         sithComm_netMsgTmp.pktData[0] = v1;
         sithComm_netMsgTmp.netMsg.flag_maybe = 0;
         sithComm_netMsgTmp.netMsg.cogMsgId = DSS_DESTROYTHING;
         sithComm_netMsgTmp.netMsg.msg_size = 4;
-        sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, v6, 255, 1);
+        sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, msg->netMsg.dpId, 255, 1);
         return 0;
     }
     v4 = sithThing_GetById(msg->pktData[1]);
