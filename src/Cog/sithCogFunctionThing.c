@@ -709,7 +709,7 @@ void sithCogFunctionThing_SetThingPos(sithCog *ctx)
         rdVector_Copy3(&pThing->position, &poppedVec);
         if (COG_SHOULD_SYNC(ctx))
         {
-            sithDSSThing_SendPos(pThing, INVALID_DPID,, 1);
+            sithDSSThing_SendPos(pThing, INVALID_DPID, 1);
         }
         sithCogExec_PushInt(ctx, 1);
     }
