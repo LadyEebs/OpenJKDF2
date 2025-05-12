@@ -1524,7 +1524,7 @@ void sithSurface_Sync()
 
     for (uint32_t v0 = 0; v0 < sithSurface_numSurfaces_0; v0++)
     {
-        sithDSS_SendSurfaceStatus(aSithSurfaces[v0], -1, RDSURFACE_MAX-1);
+        sithDSS_SendSurfaceStatus(aSithSurfaces[v0], INVALID_DPID, RDSURFACE_MAX-1);
     }
 
     sithSurface_numSurfaces_0 = 0;

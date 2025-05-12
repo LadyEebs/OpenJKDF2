@@ -550,11 +550,21 @@ BOOL DirectPlay_Send(DPID idFrom, DPID idTo, void* lpData, DWORD dwDataSize)
 	SteamAPI_RunCallbacks();
 	SteamNetworkingSockets()->RunCallbacks();
 
+	if (idTo == DPID_ALLPLAYERS)
+	{
+		int numPlayers = SteamMatchmaking()->GetNumLobbyMembers(stdComm_steamLobbyID);
+		for (int i = 0; i < numPlayers; ++i)
+		{
+			SteamNetworkingIdentity id;
+			id.SetSteamID(SteamMatchmaking()->GetLobbyMemberByIndex(stdComm_steamLobbyID, i));
+			EResult result = SteamNetworkingMessages()->SendMessageToUser(id, lpData, dwDataSize, k_nSteamNetworkingSend_Reliable, 0);
+			if(result != k_EResultOK)
+				return 0;
+		}
+	}
+
 	SteamNetworkingIdentity id;
-	if (idTo == 0)
-		id.SetSteamID(SteamMatchmaking()->GetLobbyOwner(stdComm_steamLobbyID));
-	else
-		id.SetSteamID64(idTo);
+	id.SetSteamID64(idTo);
 
 	if (idFrom == idTo)
 	{
