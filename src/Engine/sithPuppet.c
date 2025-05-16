@@ -134,11 +134,16 @@ static const char* sithPuppet_jointNames[] =
 
 enum MARKERS
 {
+	MARKER_STOP                 = 0,
+	MARKER_WALK_LEFT            = 1,
+	MARKER_WALK_RIGHT           = 2,
 	MARKER_AI_FIRE              = 3,
 	MARKER_ENABLE_SABER_DAMAGE  = 4,
 	MARKER_DISABLE_SABER_DAMAGE = 5,
 	MARKER_SWIM_LEFT            = 6,
 	MARKER_TREAD_WATER          = 7,
+	MARKER_RUN_LEFT             = 8,
+	MARKER_RUN_RIGHT            = 9,
 	MARKER_CORPSE_HIT           = 10,
 	MARKER_JUMP_LOW             = 11,
 	MARKER_JUMP_HIGH            = 12,
@@ -725,17 +730,17 @@ void sithPuppet_DefaultCallback(sithThing *thing, int track, uint32_t markerID)
     uint32_t v3 = 0;
     switch (markerID)
     {
-        case 0u:
+        case MARKER_STOP:
             if (thing->puppet)
             {
                 if ( track == thing->puppet->currentTrack )
 					thing->puppet->currentTrack = -1;
             }
             return;
-        case 1u:
-        case 2u:
-        case 8u:
-        case 9u:
+        case MARKER_WALK_LEFT:
+        case MARKER_WALK_RIGHT:
+        case MARKER_RUN_LEFT:
+        case MARKER_RUN_RIGHT:
             if ( thing->rdthing.puppet->tracks[track].playSpeed < 0.5 )
                 return;
 
