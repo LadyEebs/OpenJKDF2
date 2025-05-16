@@ -614,12 +614,12 @@ void  jkSaber_UpdateCollision2(sithThing *pPlayerThing,rdVector3 *pSaberPos,rdVe
 	doDamage = (pPlayerThing->jkFlags & JKFLAG_SABERDAMAGE);
 #endif
 #ifdef REGIONAL_DAMAGE
-	doDamage = doDamage || (jkSaber_dismember == 2); // always damage if jkSaber_dismember = 2
+	doDamage = doDamage || (jkSaber_dismember == 2 && !sithNet_isMulti); // always damage if jkSaber_dismember = 2
 #endif
 
 	float saberLength = !(pPlayerThing->jkFlags & JKFLAG_SABERDAMAGE) ? pPlayerThing->playerInfo->polyline.length : pCollideInfo->bladeLength;
 #ifdef REGIONAL_DAMAGE
-	if(jkSaber_dismember == 2)
+	if(jkSaber_dismember == 2 && !sithNet_isMulti)
 		saberLength = pPlayerThing->playerInfo->polyline.length;
 #endif
 	sithCollision_SearchRadiusForThings(pSector, pPlayerThing, pSaberPos, pSaberDir, saberLength, 0.0, 0);
@@ -858,7 +858,7 @@ void jkSaber_UpdateEffectCollision(sithThing* pPlayerThing, rdVector3* pSaberPos
 			{
 				jkSaber_SpawnSparks(playerInfo, &local_54, pSectorIter, SPARKTYPE_BLOOD);
 #ifdef REGIONAL_DAMAGE
-				if(jkSaber_dismember == 2)
+				if(jkSaber_dismember == 2 && !sithNet_isMulti)
 					sithThing_Damage(searchResult->receiver, pPlayerThing, pCollideInfo->damage, SITH_DAMAGE_SABER, jointIndex);
 #endif
 				pCollideInfo->damagedThings[pCollideInfo->numDamagedThings++] = searchResult->receiver;
@@ -898,7 +898,7 @@ void jkSaber_UpdateEffectCollision(sithThing* pPlayerThing, rdVector3* pSaberPos
 
 			jkSaber_SpawnSparks(playerInfo, &local_54, pSectorIter, SPARKTYPE_BLOOD);
 #ifdef REGIONAL_DAMAGE
-			if (jkSaber_dismember == 2)
+			if (jkSaber_dismember == 2 && !sithNet_isMulti)
 				sithThing_Damage(resultThing, pPlayerThing, pCollideInfo->damage, SITH_DAMAGE_SABER, jointIndex);
 #endif
 			pCollideInfo->damagedThings[pCollideInfo->numDamagedThings++] = searchResult->receiver;
@@ -1101,7 +1101,7 @@ void jkSaber_Disable(sithThing *player)
     player->playerInfo->jkmUnk1 = 0; // MOTS added
 #endif
 #ifdef REGIONAL_DAMAGE
-	player->playerInfo->saberCollideInfo.damage = (jkSaber_dismember == 2) ? 25.0f : 0.0f;
+	player->playerInfo->saberCollideInfo.damage = (jkSaber_dismember == 2 && !sithNet_isMulti) ? 25.0f : 0.0f;
 #elif LIGHTSABER_MARKS
 	player->playerInfo->saberCollideInfo.damage = 0;
 #endif
