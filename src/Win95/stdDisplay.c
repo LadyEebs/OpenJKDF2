@@ -114,21 +114,17 @@ int stdDisplay_SetMode(unsigned int modeIdx, const void *palette, int paged)
         Video_overlayMapBuffer.sdlSurface = 0;
 
 #ifdef HW_VBUFFER
-		std3D_FreeDrawSurface(Video_otherBuf.device_surface);
-		std3D_FreeDrawSurface(Video_menuBuffer.device_surface);
-		std3D_FreeDrawSurface(Video_overlayMapBuffer.device_surface);
-
-		Video_otherBuf.device_surface = 0;
-		Video_menuBuffer.device_surface = 0;
-		Video_overlayMapBuffer.device_surface = 0;
+		std3D_FreeDrawSurface(&Video_otherBuf);
+		std3D_FreeDrawSurface(&Video_menuBuffer);
+		std3D_FreeDrawSurface(&Video_overlayMapBuffer);
 #endif
     }
 
 #ifdef HW_VBUFFER
 //if(create_ddraw_surface)
-	Video_otherBuf.device_surface = std3D_AllocDrawSurface(&stdDisplay_pCurVideoMode->format, newW, newH);
-	Video_menuBuffer.device_surface = std3D_AllocDrawSurface(&stdDisplay_pCurVideoMode->format, newW, newH);
-	Video_overlayMapBuffer.device_surface = std3D_AllocDrawSurface(&stdDisplay_pCurVideoMode->format, newW, newH);
+	std3D_AllocDrawSurface(&Video_otherBuf, newW, newH);
+	std3D_AllocDrawSurface(&Video_menuBuffer, newW, newH);
+	std3D_AllocDrawSurface(&Video_overlayMapBuffer, newW, newH);
 #endif
 
     SDL_Surface* otherSurface = SDL_CreateRGBSurface(0, newW, newH, 8,
@@ -293,7 +289,7 @@ stdVBuffer* stdDisplay_VBufferNew(stdVBufferTexFmt *fmt, int create_ddraw_surfac
 #ifdef HW_VBUFFER
 	//memcpy(out->palette, palette, );
 	//if(create_ddraw_surface)
-		out->device_surface = std3D_AllocDrawSurface(&out->format, fmt->width, fmt->height);
+		std3D_AllocDrawSurface(out, fmt->width, fmt->height);
 #endif
     
     return out;
@@ -526,7 +522,7 @@ void stdDisplay_VBufferFree(stdVBuffer *vbuf)
     stdDisplay_VBufferUnlock(vbuf);
     SDL_FreeSurface(vbuf->sdlSurface);
 #ifdef HW_VBUFFER
-	std3D_FreeDrawSurface(vbuf->device_surface);
+	std3D_FreeDrawSurface(vbuf);
 #endif
     std_pHS->free(vbuf);
 }

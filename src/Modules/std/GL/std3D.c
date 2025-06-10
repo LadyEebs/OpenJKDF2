@@ -1153,7 +1153,7 @@ void std3D_deleteExtraFramebuffers()
 #ifdef HW_VBUFFER
 typedef struct std3D_DrawSurface
 {
-	stdVBufferTexFmt fmt;
+	stdVBuffer* parent;
 
 	GLuint fbo;
 	GLuint tex;
@@ -1246,11 +1246,11 @@ void std3D_PurgeDrawSurfaces()
 }
 
 // todo: use the format...
-std3D_DrawSurface* std3D_AllocDrawSurface(stdVBufferTexFmt* fmt, int32_t width, int32_t height)
+int std3D_AllocDrawSurface(stdVBuffer* vbuffer, int32_t width, int32_t height)
 {
 	std3D_DrawSurface* surface = malloc(sizeof(std3D_DrawSurface));
 	if(!surface)
-		return NULL;
+		return 0;
 	memset(surface, 0, sizeof(std3D_DrawSurface));
 
 	surface->next = drawSurfaces;
@@ -1267,15 +1267,17 @@ std3D_DrawSurface* std3D_AllocDrawSurface(stdVBufferTexFmt* fmt, int32_t width, 
 	surface->h = height;
 	surface->iw = width;
 	surface->ih = height;
-	memcpy(&surface->fmt, fmt, sizeof(stdVBufferTexFmt));
+	surface->parent = vbuffer;
 
 //	std3D_SetupDrawSurface(surface);
 
-	return surface;
+	vbuffer->device_surface = surface;
+	return 1;
 }
 
-void std3D_FreeDrawSurface(std3D_DrawSurface* surface)
+void std3D_FreeDrawSurface(stdVBuffer* vbuffer)
 {
+	std3D_DrawSurface* surface = vbuffer->device_surface;
 	if(!surface)
 		return;
 
@@ -1347,7 +1349,7 @@ void std3D_UploadDrawSurface(std3D_DrawSurface* src, int width, int height, void
 				uint32_t val_rgba = 0x00000000;
 
 				uint16_t val = image_16bpp[index];
-				if (!src->fmt.format.g_bits == 6) // RGB565
+				if (!src->parent->format.format.g_bits == 6) // RGB565
 				{
 					uint8_t val_a1 = 1;
 					uint8_t val_r5 = (val >> 11) & 0x1F;

@@ -92,8 +92,8 @@ void std3D_SendDecalsToHardware(rdClusterDecal* decals, uint32_t decalOffset, ui
 void std3D_SendClusterBitsToHardware(uint32_t* clusterBits, float znear, float zfar, uint32_t tileSizeX, uint32_t tileSizeY);
 
 #ifdef HW_VBUFFER
-std3D_DrawSurface* std3D_AllocDrawSurface(stdVBufferTexFmt* fmt, int32_t width, int32_t height);
-void  std3D_FreeDrawSurface(std3D_DrawSurface* surface);
+int std3D_AllocDrawSurface(stdVBuffer* vbuffer, int32_t width, int32_t height);
+void  std3D_FreeDrawSurface(stdVBuffer* vbuffer);
 void  std3D_BlitDrawSurface(std3D_DrawSurface* src, rdRect* srcRect, std3D_DrawSurface* dst, rdRect* dstRect);
 void  std3D_ClearDrawSurface(std3D_DrawSurface* surface, int fillColor, rdRect* rect);
 void std3D_UploadDrawSurface(std3D_DrawSurface* src, int width, int height, void* pixels, uint8_t* palette);
