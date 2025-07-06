@@ -151,7 +151,7 @@ int jkGuiGameplay_Show()
     jkGuiGameplay_buttons[41].selectedTextEntry = jkPlayer_crosshairScale * 5;
 
 #ifdef DYNAMIC_POV
-    jkGuiGameplay_buttons[43].selectedTextEntry = jkPlayer_aimLock;
+    jkGuiGameplay_buttons[44].selectedTextEntry = jkPlayer_aimLock;
 #endif
 #endif /* QOL_IMPROVEMENTS */
     
@@ -199,7 +199,7 @@ int jkGuiGameplay_Show()
         jkPlayer_crosshairScale = ((flex_t)jkGuiGameplay_buttons[41].selectedTextEntry)*0.2f; // FLEXTODO
 		
 	#ifdef DYNAMIC_POV
-		jkPlayer_aimLock = (float)jkGuiGameplay_buttons[43].selectedTextEntry;
+		jkPlayer_aimLock = (float)jkGuiGameplay_buttons[44].selectedTextEntry;
 	#endif
 #endif /* QOL_IMPROVEMENTS */
     
