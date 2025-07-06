@@ -41,9 +41,9 @@ int sithVoice_bIsOpen = 0;
 int sithVoice_bIsRecording = 0;
 
 uint8_t sithVoice_uncompressedVoice[VOICE_OUTPUT_SAMPLE_RATE * VOICE_OUTPUT_BYTES_PER_SAMPLE]; // too big for the stack
-float sithVoice_volume = 1.0;
+flex_t sithVoice_volume = 1.0;
 
-void sithVoice_SetVolume(float volume)
+void sithVoice_SetVolume(flex_t volume)
 {
 	sithVoice_volume = volume;
 }

@@ -21,7 +21,7 @@ void sithVoice_AddVoicePacket(DPID id, const uint8_t* pVoiceData, size_t length)
 
 void sithVoice_Tick();
 
-void sithVoice_SetVolume(float volume);
+void sithVoice_SetVolume(flex_t volume);
 #endif
 
 #endif // _SITH_VOICE_H
