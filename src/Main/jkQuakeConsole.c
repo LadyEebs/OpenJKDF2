@@ -45,7 +45,7 @@ stdFont* jkQuakeConsole_pFont = NULL;
 int jkQuakeConsole_bOpen = 0;
 uint64_t jkQuakeConsole_lastTimeUs = 0;
 uint64_t jkQuakeConsole_blinkCounter = 0;
-float jkQuakeConsole_shadeY = 0.0;
+flex_t jkQuakeConsole_shadeY = 0.0;
 
 char jkQuakeConsole_chatStrSaved[JKQUAKECONSOLE_CHAT_LEN+16];
 
@@ -173,9 +173,9 @@ void jkQuakeConsole_Render()
         deltaUs = 0;
     }
 
-    float screenW = Video_menuBuffer.format.width;
-    float screenH = Video_menuBuffer.format.height;
-    float fontHeight = ((*jkQuakeConsole_pFont->bitmap->mipSurfaces)->format.height + jkQuakeConsole_pFont->marginY) * jkPlayer_hudScale;
+    flex_t screenW = Video_menuBuffer.format.width;
+    flex_t screenH = Video_menuBuffer.format.height;
+    flex_t fontHeight = ((*jkQuakeConsole_pFont->bitmap->mipSurfaces)->format.height + jkQuakeConsole_pFont->marginY) * jkPlayer_hudScale;
     if (fontHeight <= 0.0) {
         fontHeight = 1.0;
     }
@@ -205,13 +205,13 @@ void jkQuakeConsole_Render()
 
     if (jkQuakeConsole_bOpen)
     {
-        jkQuakeConsole_shadeY += (float)deltaUs * 0.005;
+        jkQuakeConsole_shadeY += (flex_t)deltaUs * 0.005;
         if (jkQuakeConsole_shadeY > screenH / 2) {
             jkQuakeConsole_shadeY = screenH / 2;
         }
     }
     else {
-        jkQuakeConsole_shadeY -= (float)deltaUs * 0.005;
+        jkQuakeConsole_shadeY -= (flex_t)deltaUs * 0.005;
         if (jkQuakeConsole_shadeY <= 0.0) {
             jkQuakeConsole_shadeY = 0.0f;
             return;
@@ -239,20 +239,20 @@ void jkQuakeConsole_Render()
     
     int realScrollY = jkQuakeConsole_scrollPos;
 
-    float realShadeY = -(screenH / 2) + jkQuakeConsole_shadeY;
-    float realShadeBottom = realShadeY + (screenH / 2);
+    flex_t realShadeY = -(screenH / 2) + jkQuakeConsole_shadeY;
+    flex_t realShadeBottom = realShadeY + (screenH / 2);
 
     if (jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]) {
-        float scaleX = screenW / jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->mipSurfaces[0]->format.width;
-        float scaleY = screenH / jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->mipSurfaces[0]->format.height;
+        flex_t scaleX = screenW / jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->mipSurfaces[0]->format.width;
+        flex_t scaleY = screenH / jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->mipSurfaces[0]->format.height;
         rdRect srcRect = {0,20,jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->mipSurfaces[0]->format.width, jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->mipSurfaces[0]->format.height*0.5};
         std3D_DrawUIBitmapRGBAZ(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN], 0, 0.0, realShadeY, &srcRect, scaleX, scaleY, 0, 80, 80, 80, 192, 0.3f);
 
         rdRect srcRect2 = {0,jkGui_stdBitmaps[JKGUI_BM_BK_MAIN]->mipSurfaces[0]->format.height-4, 1, 2};
-        std3D_DrawUIBitmapRGBAZ(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN], 0, 0.0, realShadeBottom, &srcRect2, (float)screenW, scaleY, 0, 255, 255, 255, 255, 0.3f);
+        std3D_DrawUIBitmapRGBAZ(jkGui_stdBitmaps[JKGUI_BM_BK_MAIN], 0, 0.0, realShadeBottom, &srcRect2, (flex_t)screenW, scaleY, 0, 255, 255, 255, 255, 0.3f);
     }
     else {
-        rdRect rect = {0, realShadeY, screenW, screenH / 2};
+        rdRect rect = {0, (int)(realShadeY), (int)(screenW), (int)(screenH / 2)};
         std3D_DrawUIClearedRectRGBA(0, 0, 0, 128, &rect);
     }
 
@@ -284,7 +284,7 @@ void jkQuakeConsole_Render()
         char* pLine = jkQuakeConsole_aLines[i];
         if (!pLine) continue;
 
-        float outY = realShadeY + (screenH / 2) - fontHeight * (i+3-realScrollY);
+        flex_t outY = realShadeY + (screenH / 2) - fontHeight * (i+3-realScrollY);
         if (outY + fontHeight < 0.0) {
             continue;
         }
@@ -443,7 +443,7 @@ void jkQuakeConsole_ExecuteCommand(const char* pCmd)
     }
 }
 
-void jkQuakeConsole_SendInput(char wParam, int bIsChar)
+void jkQuakeConsole_SendInput(WPARAM wParam, int bIsChar)
 {
     wchar_t tmp[256]; // [esp+4h] [ebp-100h] BYREF
     char tmp_cvar[SITHCVAR_MAX_STRLEN];
@@ -592,7 +592,7 @@ void jkQuakeConsole_SendInput(char wParam, int bIsChar)
             
             int shouldPrint = !jkQuakeConsole_bHasTabbed;
             int bPrintOnce = 0;
-            char* tabbedStr = NULL;
+            const char* tabbedStr = NULL;
 
             char* baseCmd = (char*)malloc(strlen(jkQuakeConsole_chatStr)+1);
             strcpy(baseCmd, jkQuakeConsole_chatStr);
@@ -787,7 +787,7 @@ void jkQuakeConsole_PrintLine(const char* pLine)
         jkQuakeConsole_aLines[i] = jkQuakeConsole_aLines[i-1];
     }
 
-    char* pNewLine = malloc(strlen(pLine)+2);
+    char* pNewLine = (char*)malloc(strlen(pLine)+2);
     strcpy(pNewLine, pLine);
 
     jkQuakeConsole_aLines[0] = pNewLine;
@@ -816,7 +816,7 @@ void jkQuakeConsole_RecordHistory(const char* pLine)
         jkQuakeConsole_aLastCommands[i] = jkQuakeConsole_aLastCommands[i-1];
     }
 
-    char* pNewLine = malloc(strlen(pLine)+2);
+    char* pNewLine = (char*)malloc(strlen(pLine)+2);
     strcpy(pNewLine, pLine);
 
     jkQuakeConsole_aLastCommands[0] = pNewLine;

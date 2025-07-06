@@ -205,6 +205,7 @@ void crash_handler_basic(int sig);
 
 #ifdef TARGET_TWL
 #include <nds.h>
+#include <fat.h>
 
 volatile int frame = 0;
 //---------------------------------------------------------------------------------
@@ -502,7 +503,7 @@ void print_backtrace(void)
     }
     full_write(STDERR_FILENO, end, strlen(end));
 
-    char* crash_print = malloc(1024);
+    char* crash_print = (char*)malloc(1024);
     strcpy(crash_print, start);
     for (i = 1; i < bt_size; i++) {
         strcat(crash_print, bt_syms[i]);
@@ -2370,7 +2371,7 @@ void do_hooks()
 
     //hook_function(Darray_sub_520CB0_ADDR, Darray_sub_520CB0);
     // test saber time
-    //*(float*)0x5220C4 = 0.01f;
+    //*(flex_t*)0x5220C4 = 0.01f;
     
     //hook_function();
     

@@ -10,7 +10,7 @@
 
 void sithCogFunctionAI_AISetMoveSpeed(sithCog *ctx)
 {
-    float moveSpeed = stdMath_Clamp(sithCogExec_PopFlex(ctx), 0.0, 2.0);
+    cog_flex_t moveSpeed = stdMath_Clamp(sithCogExec_PopFlex(ctx), 0.0, 2.0);
     sithThing* pThing = sithCogExec_PopThing(ctx);
     if (pThing && pThing->controlType == SITH_CT_AI && pThing->actor)
     {
@@ -53,7 +53,7 @@ void sithCogFunctionAI_AIJump(sithCog *ctx)
     // Added
     if (g_debugmodeFlags & DEBUGFLAG_NO_AIEVENTS) return;
     
-    if ( v3 && v2 && v3->attach_flags && v3->controlType == SITH_CT_AI)
+    if ( v3 && v2 && v3->attach_flags && v3->controlType == SITH_CT_AI )
     {
         v4 = v3->actor;
         if ( v4 )
@@ -76,7 +76,7 @@ void sithCogFunctionAI_AISetMoveFrame(sithCog *ctx)
     
     if ( v2 )
     {
-        if ( v2->controlType == SITH_CT_AI)
+        if ( v2->controlType == SITH_CT_AI )
         {
             v3 = v2->actor;
             if ( v3 )
@@ -104,7 +104,7 @@ void sithCogFunctionAI_AISetMoveThing(sithCog *ctx)
     // Added
     if (g_debugmodeFlags & DEBUGFLAG_NO_AIEVENTS) return;
     
-    if ( v2 && v1 && v2->controlType == SITH_CT_AI)
+    if ( v2 && v1 && v2->controlType == SITH_CT_AI )
     {
         v3 = v2->actor;
         if ( v3 )
@@ -131,7 +131,7 @@ void sithCogFunctionAI_AISetLookPos(sithCog *ctx)
         
         if ( v1 )
         {
-            if ( v1->controlType == SITH_CT_AI)
+            if ( v1->controlType == SITH_CT_AI )
             {
                 v2 = v1->actor;
                 if ( v2 )
@@ -156,7 +156,7 @@ void sithCogFunctionAI_AISetLookFrame(sithCog *ctx)
     
     if ( v2 )
     {
-        if ( v2->controlType == SITH_CT_AI)
+        if ( v2->controlType == SITH_CT_AI )
         {
             v3 = v2->actor;
             if ( v3 )
@@ -178,7 +178,7 @@ void sithCogFunctionAI_GetMovePos(sithCog *ctx)
     sithActor *v2; // eax
 
     v1 = sithCogExec_PopThing(ctx);
-    if ( v1 && v1->controlType == SITH_CT_AI)
+    if ( v1 && v1->controlType == SITH_CT_AI )
     {
         v2 = v1->actor;
         if ( v2 )
@@ -201,7 +201,7 @@ void sithCogFunctionAI_AISetMode(sithCog *ctx)
     
     if ( v2 )
     {
-        if ( v2->controlType == SITH_CT_AI)
+        if ( v2->controlType == SITH_CT_AI )
         {
             v3 = v2->actor;
             if ( v3 )
@@ -243,7 +243,7 @@ void sithCogFunctionAI_AIClearMode(sithCog *ctx)
     
     if ( thing )
     {
-        if ( thing->controlType == SITH_CT_AI)
+        if ( thing->controlType == SITH_CT_AI )
         {
             v3 = thing->actor;
             if ( v3 )
@@ -317,7 +317,7 @@ void sithCogFunctionAI_ThingViewDot(sithCog *ctx)
     sithThing *v1; // ebp
     sithThing *v2; // eax
     sithThing *v3; // ebx
-    float a2; // [esp+0h] [ebp-5Ch]
+    cog_flex_t a2; // [esp+0h] [ebp-5Ch]
     rdVector3 v6; // [esp+14h] [ebp-48h] BYREF
     rdVector3 v7; // [esp+20h] [ebp-3Ch] BYREF
     rdMatrix34 v8; // [esp+2Ch] [ebp-30h] BYREF
@@ -408,7 +408,7 @@ void sithCogFunctionAI_sub_501330(sithCog *ctx)
         goto LABEL_12;
     if ( !v1 )
         goto LABEL_12;
-    if ( v2->controlType != SITH_CT_AI)
+    if ( v2->controlType != SITH_CT_AI )
         goto LABEL_12;
     v3 = v2->actor;
     if ( !v3 )
@@ -572,7 +572,7 @@ void sithCogFunctionAI_AIAddAlignmentPriority(sithCog *ctx)
     int *piVar3;
     int val;
     int iVar5;
-    float local_4;
+    cog_flex_t local_4;
 
     local_4 = 1.0;
     iVar5 = -1000;
@@ -623,7 +623,7 @@ void sithCogFunctionAI_AIRemoveAlignmentPriority(sithCog *ctx)
 
     if ((-1 < iVar1) && (iVar1 < 11)) 
     {
-        float tmp = 1.0;
+        cog_flex_t tmp = 1.0;
         iVar4 = -1000;
         sithAI_aAlignments[iVar1].bValid = 0;
         for (int i = 0; i < 10; i++) {
@@ -643,9 +643,9 @@ void sithCogFunctionAI_FirstThingInCone(sithCog *ctx)
     sithThing *v3; // ebx
     int v4; // eax
     signed int v5; // [esp+10h] [ebp-38h]
-    float v6; // [esp+14h] [ebp-34h]
+    cog_flex_t v6; // [esp+14h] [ebp-34h]
     rdMatrix34 v7; // [esp+18h] [ebp-30h] BYREF
-    float a1; // [esp+4Ch] [ebp+4h]
+    cog_flex_t a1; // [esp+4Ch] [ebp+4h]
 
     v5 = sithCogExec_PopInt(ctx);
     a1 = sithCogExec_PopFlex(ctx);
@@ -698,7 +698,7 @@ void sithCogFunctionAI_NextThingInCone(sithCog *ctx)
 
 
 
-void sithCogFunctionAI_Startup(void* ctx)
+void sithCogFunctionAI_Startup(sithCogSymboltable* ctx)
 {
     sithCogScript_RegisterVerb(ctx, sithCogFunctionAI_AIGetMode, "aigetmode");
     sithCogScript_RegisterVerb(ctx, sithCogFunctionAI_AISetMode, "aisetmode");

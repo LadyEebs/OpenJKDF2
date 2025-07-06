@@ -264,7 +264,7 @@ int sithSoundClass_LoadEntry(sithSoundClass *soundClass, char *fpath)
             continue;
         }
 
-        soundIdx = (uint32_t)((intptr_t)stdHashTable_GetKeyVal(sithSoundClass_nameToKeyHashtable, (void*)(intptr_t)stdConffile_entry.args[0].value) & 0xFFFFFFFF);
+        soundIdx = (uint32_t)((intptr_t)stdHashTable_GetKeyVal(sithSoundClass_nameToKeyHashtable, (const char*)(intptr_t)stdConffile_entry.args[0].value) & 0xFFFFFFFF);
         if (soundIdx < 0 || soundIdx >= SITH_SC_MAX) {
             continue;
         }
@@ -338,7 +338,7 @@ void sithSoundClass_ThingPlaySoundclass4(sithThing *thing, unsigned int soundcla
     }
 }
 
-sithPlayingSound* sithSoundClass_ThingPlaySoundclass5(sithThing *thing, int sc_id, float a3)
+sithPlayingSound* sithSoundClass_ThingPlaySoundclass5(sithThing *thing, int sc_id, flex_t a3)
 {
     sithSoundClassEntry *v4; // esi
     unsigned int v5; // edi
@@ -355,7 +355,7 @@ sithPlayingSound* sithSoundClass_ThingPlaySoundclass5(sithThing *thing, int sc_i
             v5 = v4->listIdx;
             if ( v5 > 1 )
             {
-                v6 = (uint32_t)((double)v5 * a3);
+                v6 = (uint32_t)((flex_d_t)v5 * a3);
                 if ( v6 > v5 - 1 )
                     v6 = v5 - 1;
                 if ( v6 > 1 )
@@ -375,7 +375,7 @@ sithPlayingSound* sithSoundClass_ThingPlaySoundclass5(sithThing *thing, int sc_i
     return NULL;
 }
 
-void sithSoundClass_PlayThingSoundclass(sithThing *thing, int sc_id, float a3)
+void sithSoundClass_PlayThingSoundclass(sithThing *thing, int sc_id, flex_t a3)
 {
     sithSoundClassEntry *entry; // eax
 
@@ -452,7 +452,7 @@ sithPlayingSound* sithSoundClass_PlayModeRandom(sithThing *thing, uint32_t a2)
         {
             if ( v3->listIdx > 1u )
             {
-                v5 = (uint32_t)(_frand() * (double)v3->listIdx);
+                v5 = (uint32_t)(_frand() * (flex_d_t)v3->listIdx);
                 if ( v5 > v3->listIdx - 1 )
                     v5 = v3->listIdx - 1;
                 for ( ; v5; v5-- )
@@ -465,7 +465,7 @@ sithPlayingSound* sithSoundClass_PlayModeRandom(sithThing *thing, uint32_t a2)
     return NULL;
 }
 
-sithPlayingSound* sithSoundClass_PlayMode(sithThing *thing, sithSoundClassEntry *entry, float a3)
+sithPlayingSound* sithSoundClass_PlayMode(sithThing *thing, sithSoundClassEntry *entry, flex_t a3)
 {
     sithSound* pSithSound = entry->sound;
     if ( !entry->sound )

@@ -62,7 +62,7 @@ void sithCamera_Shutdown()
     sithCamera_bInitted = 0;
 }
 
-int sithCamera_Open(rdCanvas *canvas, float aspect)
+int sithCamera_Open(rdCanvas *canvas, flex_t aspect)
 {
     if ( sithCamera_bOpen )
         return 0;
@@ -172,7 +172,7 @@ void sithCamera_SetsFocus()
 }
 
 // MOTS altered
-int sithCamera_NewEntry(sithCamera *camera, uint32_t a2, uint32_t a3, float fov, float aspectRatio, rdCanvas *canvas, sithThing *focus_far, sithThing *focus_near)
+int sithCamera_NewEntry(sithCamera *camera, uint32_t a2, uint32_t a3, flex_t fov, flex_t aspectRatio, rdCanvas *canvas, sithThing *focus_far, sithThing *focus_near)
 {
     camera->cameraPerspective = a3;
     camera->dword4 = a2;
@@ -220,8 +220,8 @@ void sithCamera_FollowFocus(sithCamera *cam)
     rdMatrix34 out; // [esp+5Ch] [ebp-30h] BYREF
 
     sithThing* focusThing = cam->primaryFocus;
-    float v77 = sithCamera_povShakeF2 * sithTime_deltaSeconds;
-    float v78 = sithCamera_povShakeF1 * sithTime_deltaSeconds;
+    flex_t v77 = sithCamera_povShakeF2 * sithTime_deltaSeconds;
+    flex_t v78 = sithCamera_povShakeF1 * sithTime_deltaSeconds;
     switch ( cam->cameraPerspective )
     {
         case 1:
@@ -319,7 +319,7 @@ void sithCamera_FollowFocus(sithCamera *cam)
             rdMatrix_PostTranslate34(&out, &focusThing->position);
             if ( focusThing->type == SITH_THING_ACTOR || focusThing->type == SITH_THING_PLAYER )
                 rdMatrix_PostTranslate34(&out, &focusThing->actorParams.eyeOffset);
-            cam->sector = sithCamera_create_unk_struct(0, focusThing->sector, &focusThing->position, &out.scale, 0.02, 8704);
+            cam->sector = sithCamera_create_unk_struct(0, focusThing->sector, &focusThing->position, &out.scale, 0.02, RAYCAST_2000 | RAYCAST_200);
             rdVector_Copy3(&v84, &out.scale);
             rdMatrix_Copy34(&cam->viewMat, &out);
 
@@ -331,7 +331,7 @@ void sithCamera_FollowFocus(sithCamera *cam)
             rdMatrix_PreTranslate34(&out, &sithCamera_trans);
             rdMatrix_PreTranslate34(&cam->viewMat, &cam->collisionOffset);
             rdMatrix_LookAt(&cam->viewMat, &cam->viewMat.scale, &out.scale, 0.0);
-            cam->sector = sithCamera_create_unk_struct(0, cam->sector, &v84, &cam->viewMat.scale, 0.02, 8704);
+            cam->sector = sithCamera_create_unk_struct(0, cam->sector, &v84, &cam->viewMat.scale, 0.02, RAYCAST_2000 | RAYCAST_200);
             break;
         case 32:
             rdMatrix_TransformVector34(&a1, &sithCamera_trans2, &sithCamera_focusMat);
@@ -339,7 +339,7 @@ void sithCamera_FollowFocus(sithCamera *cam)
             rdVector_Sub3(&v2, &focusThing->position, &v2);
             rdVector_Add3Acc(&a1, &v2);
             rdMatrix_LookAt(&cam->viewMat, &a1, &v2, 0.0);
-            cam->sector = sithCamera_create_unk_struct(0, focusThing->sector, &focusThing->position, &cam->viewMat.scale, 0.02, 8704);
+            cam->sector = sithCamera_create_unk_struct(0, focusThing->sector, &focusThing->position, &cam->viewMat.scale, 0.02, RAYCAST_2000 | RAYCAST_200);
             rot.x = 0.0;
             rot.y = sithTime_deltaSeconds * 8.0;
             rot.z = 0.0;
@@ -365,7 +365,7 @@ void sithCamera_FollowFocus(sithCamera *cam)
             rdVector_Scale3(&cam->viewMat.scale, &sithCamera_trans3, 0.2);
 
             rdMatrix_PostTranslate34(&cam->viewMat, &focusThing->position);
-            cam->sector = sithCamera_create_unk_struct(0, focusThing->sector, &focusThing->position, &cam->viewMat.scale, 0.02, 8704);
+            cam->sector = sithCamera_create_unk_struct(0, focusThing->sector, &focusThing->position, &cam->viewMat.scale, 0.02, RAYCAST_2000 | RAYCAST_200);
             break;
         case 128:
             rdMatrix_Copy34(&cam->viewMat, &sithCamera_viewMat);
@@ -383,7 +383,7 @@ void sithCamera_FollowFocus(sithCamera *cam)
     {
         if ( sithCamera_povShakeVector1.x < 0.0 )
         {
-            float v42 = v78 + sithCamera_povShakeVector1.x;
+            flex_t v42 = v78 + sithCamera_povShakeVector1.x;
             if ( v42 < 0.0 )
             {
                 sithCamera_povShakeVector1.x = v42;
@@ -396,7 +396,7 @@ void sithCamera_FollowFocus(sithCamera *cam)
     }
     else
     {
-        float v41 = sithCamera_povShakeVector1.x - v78;
+        flex_t v41 = sithCamera_povShakeVector1.x - v78;
         if ( v41 > 0.0 )
         {
             sithCamera_povShakeVector1.x = v41;
@@ -410,7 +410,7 @@ void sithCamera_FollowFocus(sithCamera *cam)
     {
         if ( sithCamera_povShakeVector1.y < 0.0 )
         {
-            float v48 = v78 + sithCamera_povShakeVector1.y;
+            flex_t v48 = v78 + sithCamera_povShakeVector1.y;
             if ( v48 < 0.0 )
             {
                 sithCamera_povShakeVector1.y = v48;
@@ -422,7 +422,7 @@ void sithCamera_FollowFocus(sithCamera *cam)
     }
     else
     {
-        float v47 = sithCamera_povShakeVector1.y - v78;
+        flex_t v47 = sithCamera_povShakeVector1.y - v78;
         if ( v47 > 0.0 )
         {
             sithCamera_povShakeVector1.y = v47;
@@ -436,7 +436,7 @@ void sithCamera_FollowFocus(sithCamera *cam)
     {
         if ( sithCamera_povShakeVector1.z < 0.0 )
         {
-            float v54 = v78 + sithCamera_povShakeVector1.z;
+            flex_t v54 = v78 + sithCamera_povShakeVector1.z;
             if ( v54 < 0.0 )
             {
                 sithCamera_povShakeVector1.z = v54;
@@ -448,7 +448,7 @@ void sithCamera_FollowFocus(sithCamera *cam)
     }
     else
     {
-        float v53 = sithCamera_povShakeVector1.z - v78;
+        flex_t v53 = sithCamera_povShakeVector1.z - v78;
         if ( v53 > 0.0 )
         {
             sithCamera_povShakeVector1.z = v53;
@@ -462,7 +462,7 @@ void sithCamera_FollowFocus(sithCamera *cam)
     {
         if ( sithCamera_povShakeVector2.x < 0.0 )
         {
-            float v60 = v77 + sithCamera_povShakeVector2.x;
+            flex_t v60 = v77 + sithCamera_povShakeVector2.x;
             if ( v60 < 0.0 )
             {
                 sithCamera_povShakeVector2.x = v60;
@@ -474,7 +474,7 @@ void sithCamera_FollowFocus(sithCamera *cam)
     }
     else
     {
-        float v59 = sithCamera_povShakeVector2.x - v77;
+        flex_t v59 = sithCamera_povShakeVector2.x - v77;
         if ( v59 > 0.0 )
         {
             sithCamera_povShakeVector2.x = v59;
@@ -488,7 +488,7 @@ void sithCamera_FollowFocus(sithCamera *cam)
     {
         if ( sithCamera_povShakeVector2.y < 0.0 )
         {
-            float v66 = v77 + sithCamera_povShakeVector2.y;
+            flex_t v66 = v77 + sithCamera_povShakeVector2.y;
             if ( v66 < 0.0 )
             {
                 sithCamera_povShakeVector2.y = v66;
@@ -501,7 +501,7 @@ void sithCamera_FollowFocus(sithCamera *cam)
     }
     else
     {
-        float v65 = sithCamera_povShakeVector2.y - v77;
+        flex_t v65 = sithCamera_povShakeVector2.y - v77;
         if ( v65 > 0.0 )
         {
             sithCamera_povShakeVector2.y = v65;
@@ -515,7 +515,7 @@ void sithCamera_FollowFocus(sithCamera *cam)
     {
         if ( sithCamera_povShakeVector2.z < 0.0 )
         {
-            float v72 = v77 + sithCamera_povShakeVector2.z;
+            flex_t v72 = v77 + sithCamera_povShakeVector2.z;
             if ( v72 < 0.0 )
             {
                 sithCamera_povShakeVector2.z = v72;
@@ -528,7 +528,7 @@ void sithCamera_FollowFocus(sithCamera *cam)
     }
     else
     {
-        float v71 = sithCamera_povShakeVector2.z - v77;
+        flex_t v71 = sithCamera_povShakeVector2.z - v77;
         if ( v71 > 0.0 )
         {
             sithCamera_povShakeVector2.z = v71;
@@ -586,13 +586,13 @@ void sithCamera_SetCameraFocus(sithCamera *camera, sithThing *primary, sithThing
     camera->secondaryFocus = secondary;
 }
 
-sithSector* sithCamera_create_unk_struct(sithThing *a3, sithSector *a2, rdVector3 *a4, rdVector3 *a6, float a7, int flags)
+sithSector* sithCamera_create_unk_struct(sithThing *a3, sithSector *a2, rdVector3 *a4, rdVector3 *a6, flex_t a7, int flags)
 {
-    double v7; // st7
+    flex_d_t v7; // st7
     sithSector *v9; // ebx
     sithCollisionSearchEntry *i; // ecx
     rdVector3 a5; // [esp+Ch] [ebp-Ch] BYREF
-    float a6a; // [esp+28h] [ebp+10h]
+    flex_t a6a; // [esp+28h] [ebp+10h]
 
     rdVector_Sub3(&a5, a6, a4);
     v7 = rdVector_Normalize3Acc(&a5);
@@ -616,7 +616,7 @@ sithSector* sithCamera_create_unk_struct(sithThing *a3, sithSector *a2, rdVector
     return v9;
 }
 
-void sithCamera_SetPovShake(rdVector3 *a1, rdVector3 *a2, float a3, float a4)
+void sithCamera_SetPovShake(rdVector3 *a1, rdVector3 *a2, flex_t a3, flex_t a4)
 {
     rdVector_Copy3(&sithCamera_povShakeVector1, a1);
     rdVector_Copy3(&sithCamera_povShakeVector2, a2);
@@ -675,18 +675,18 @@ void sithCamera_CycleCamera()
 }
 
 // MOTS added
-void sithCamera_SetZoom(sithCamera *pCamera, float zoomScale, float zoomSpeed)
+void sithCamera_SetZoom(sithCamera *pCamera, flex_t zoomScale, flex_t zoomSpeed)
 {
     if (!pCamera) return;
     if (!pCamera->rdCam.canvas) return;
 
 #ifdef JKM_CAMERA
 #ifdef QOL_IMPROVEMENTS
-    float zoomScaleNew = zoomScale;
+    flex_t zoomScaleNew = zoomScale;
     if (jkPlayer_fovIsVertical && pCamera->rdCam.screenAspectRatio != 0.0) {
-        float horFov = (stdMath_ArcTan3(1.0, stdMath_Tan(jkPlayer_fov * 0.5) / pCamera->rdCam.screenAspectRatio) *
+        flex_t horFov = (stdMath_ArcTan3(1.0, stdMath_Tan(jkPlayer_fov * 0.5) / pCamera->rdCam.screenAspectRatio) *
  -2.0);
-        float zoomFov = zoomScale * horFov;
+        flex_t zoomFov = zoomScale * horFov;
         zoomScaleNew = zoomFov / horFov;
     }
 
@@ -706,7 +706,7 @@ void sithCamera_SetZoom(sithCamera *pCamera, float zoomScale, float zoomSpeed)
     pCamera->zoomFov = zoomScale;
 #else
     // I have no idea what's going on here
-    float zoomFov = stdMath_ArcTan4(zoomScale * 0.5, 0.0);
+    flex_t zoomFov = stdMath_ArcTan4(zoomScale * 0.5, 0.0);
     zoomFov = -zoomFov * 2.0;
 
     if (zoomFov != pCamera->rdCam.fov) 
@@ -733,8 +733,8 @@ void sithCamera_SetZoom(sithCamera *pCamera, float zoomScale, float zoomSpeed)
 // MOTS added (overhauled, zoomFov is now used as a stored scale value)
 void sithCamera_UpdateZoom(sithCamera *pCamera)
 {
-    float currentScale;
-    float fVar2;
+    flex_t currentScale;
+    flex_t fVar2;
     int iVar3;
     int iVar4;
     int zoomDirection;
@@ -743,9 +743,9 @@ void sithCamera_UpdateZoom(sithCamera *pCamera)
 
     // Fix zoomscale if screen size changed mid-zoom
     if (jkPlayer_fovIsVertical && pCamera->rdCam.screenAspectRatio != 0.0) {
-        float horFov = (stdMath_ArcTan3(1.0, stdMath_Tan(jkPlayer_fov * 0.5) / pCamera->rdCam.screenAspectRatio) *
+        flex_t horFov = (stdMath_ArcTan3(1.0, stdMath_Tan(jkPlayer_fov * 0.5) / pCamera->rdCam.screenAspectRatio) *
  -2.0);
-        float zoomFov = pCamera->zoomScaleOrig * horFov;
+        flex_t zoomFov = pCamera->zoomScaleOrig * horFov;
         pCamera->zoomScale = zoomFov / horFov;
     }
 
@@ -770,7 +770,7 @@ void sithCamera_UpdateZoom(sithCamera *pCamera)
     }
     fVar2 = currentScale - pCamera->zoomScale;
 
-    float newScale = ((float)zoomDirection * pCamera->zoomSpeed * sithTime_deltaSeconds + currentScale);
+    flex_t newScale = ((flex_t)zoomDirection * pCamera->zoomSpeed * sithTime_deltaSeconds + currentScale);
     if (fVar2 >= 0.0) {
         if (fVar2 < 0.0) {
             iVar4 = 0;
@@ -826,8 +826,8 @@ void sithCamera_UpdateZoom(sithCamera *pCamera)
 // MOTS added (original)
 void sithCamera_UpdateZoom(sithCamera *pCamera)
 {
-    float currentFov;
-    float fVar2;
+    flex_t currentFov;
+    flex_t fVar2;
     int iVar3;
     int iVar4;
     int zoomDirection;
@@ -855,7 +855,7 @@ void sithCamera_UpdateZoom(sithCamera *pCamera)
     }
     fVar2 = currentFov - pCamera->zoomFov;
 
-    float newFov = ((float)zoomDirection * pCamera->zoomSpeed * sithTime_deltaSeconds + currentFov);
+    flex_t newFov = ((flex_t)zoomDirection * pCamera->zoomSpeed * sithTime_deltaSeconds + currentFov);
     if (fVar2 >= 0.0) {
         if (fVar2 < 0.0) {
             iVar4 = 0;

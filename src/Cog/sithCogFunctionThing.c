@@ -426,7 +426,7 @@ void sithCogFunctionThing_RotatePivot(sithCog *ctx)
             rdVector3 negRot;
 
             rdVector_Neg3(&negRot, rot);
-            float negSpeed = -speed;
+            cog_flex_t negSpeed = -speed;
             sithTrackThing_RotatePivot(pThing, pos, &negRot, negSpeed);
         }
         else
@@ -484,7 +484,7 @@ void sithCogFunctionThing_SetThingLight(sithCog *ctx)
 
 void sithCogFunctionThing_ThingLightAnim(sithCog *ctx)
 {
-    float idk_; // ST08_4
+    cog_flex_t idk_; // ST08_4
     rdSurface *surface; // eax
 
     cog_flex_t idk = sithCogExec_PopFlex(ctx);
@@ -492,7 +492,7 @@ void sithCogFunctionThing_ThingLightAnim(sithCog *ctx)
     cog_flex_t light = sithCogExec_PopFlex(ctx);
     sithThing* pThing = sithCogExec_PopThing(ctx);
     if ( pThing
-      && light2 >= (double)light
+      && light2 >= (flex_d_t)light
       && idk > 0.0
       && (idk_ = idk * 0.5, pThing->light = light, (surface = sithSurface_SetThingLight(pThing, light2, idk_, 1)) != 0) )
     {
@@ -1069,11 +1069,13 @@ void sithCogFunctionThing_PlayKey(sithCog *ctx)
     int popInt = sithCogExec_PopInt(ctx);
     rdKeyframe* keyframe = sithCogExec_PopKeyframe(ctx);
     sithThing* pThing = sithCogExec_PopThing(ctx);
+    rdPuppet* puppet = NULL;
+    int track = 0;
 
     if ( !pThing )
         goto fail;
 
-    rdPuppet* puppet = pThing->rdthing.puppet;
+    puppet = pThing->rdthing.puppet;
     if ( !puppet ) {
         goto fail;
     }
@@ -1088,7 +1090,7 @@ void sithCogFunctionThing_PlayKey(sithCog *ctx)
        goto fail;
     }
     
-    int track = sithPuppet_StartKey(puppet, keyframe, popInt, popInt + 2, trackNum, 0);
+    track = sithPuppet_StartKey(puppet, keyframe, popInt, popInt + 2, trackNum, 0);
     if ( track >= 0 )
     {
         sithCogExec_PushInt(ctx, track);
@@ -1649,7 +1651,7 @@ void sithCogFunctionThing_GetLifeLeft(sithCog *ctx)
     sithThing* pThing = sithCogExec_PopThing(ctx);
     if (pThing)
     {
-        sithCogExec_PushFlex(ctx, (double)(unsigned int)pThing->lifeLeftMs * 0.001);
+        sithCogExec_PushFlex(ctx, (flex_d_t)(unsigned int)pThing->lifeLeftMs * 0.001);
     }
 }
 
@@ -2477,7 +2479,7 @@ void sithCogFunctionThing_TakeItem(sithCog *ctx)
 {
     sithThing* player = sithCogExec_PopThing(ctx);
     sithThing* itemThing = sithCogExec_PopThing(ctx);
-    if ( itemThing && MOTS_ONLY_COND(player) && itemThing->type == SITH_THING_ITEM )
+    if ( itemThing && (Main_bMotsCompat || player) && itemThing->type == SITH_THING_ITEM )
         sithItem_Take(itemThing, player, 0);
 }
 
@@ -2816,7 +2818,7 @@ void sithCogFunctionThing_GetThingJointAngle(sithCog *ctx)
 {
     rdVector3 *prVar1;
 
-    float local_4 = -1.0;
+    flex_t local_4 = -1.0;
     int arg1 = sithCogExec_PopInt(ctx);
     sithThing* pThing = sithCogExec_PopThing(ctx);
     if (pThing)
@@ -2875,7 +2877,7 @@ void sithCogFunctionThing_GetThingInsertOffset(sithCog *ctx)
 
 
 
-void sithCogFunctionThing_Startup(void* ctx)
+void sithCogFunctionThing_Startup(sithCogSymboltable* ctx)
 {
     sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_WaitForStop, "waitforstop");
     sithCogScript_RegisterVerb(ctx, sithCogFunctionThing_StopThing, "stopthing");

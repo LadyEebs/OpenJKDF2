@@ -3,6 +3,10 @@
 
 #include "types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define rdVector_Set2_ADDR    (0x00449280)
 #define rdVector_Set3_ADDR    (0x004492A0)
 #define rdVector_Set4_ADDR    (0x004492C0)
@@ -65,9 +69,9 @@ extern const rdVector3 rdroid_xVector3;
 extern const rdVector3 rdroid_yVector3;
 extern const rdVector3 rdroid_zVector3;
 
-rdVector2* rdVector_Set2(rdVector2* v, float x, float y);
-rdVector3* rdVector_Set3(rdVector3* v, float x, float y, float z);
-rdVector4* rdVector_Set4(rdVector4* v, float x, float y, float z, float w);
+rdVector2* rdVector_Set2(rdVector2* v, flex_t x, flex_t y);
+rdVector3* rdVector_Set3(rdVector3* v, flex_t x, flex_t y, flex_t z);
+rdVector4* rdVector_Set4(rdVector4* v, flex_t x, flex_t y, flex_t z, flex_t w);
 void rdVector_Copy2(rdVector2* v1, const rdVector2* v2);
 void rdVector_Copy3(rdVector3* v1, const rdVector3* v2);
 void rdVector_Copy4(rdVector4* v1, const rdVector4* v2);
@@ -89,57 +93,57 @@ rdVector4* rdVector_Sub4(rdVector4* v1, const rdVector4* v2, const rdVector4* v3
 rdVector2* rdVector_Sub2Acc(rdVector2* v1, const rdVector2* v2);
 rdVector3* rdVector_Sub3Acc(rdVector3* v1, const rdVector3* v2);
 rdVector4* rdVector_Sub4Acc(rdVector4* v1, const rdVector4* v2);
-float rdVector_Dot2(const rdVector2* v1, const rdVector2* v2);
-float rdVector_Dot3(const rdVector3* v1, const rdVector3* v2);
-float rdVector_Dot4(const rdVector4* v1, const rdVector4* v2);
+flex_t rdVector_Dot2(const rdVector2* v1, const rdVector2* v2);
+flex_t rdVector_Dot3(const rdVector3* v1, const rdVector3* v2);
+flex_t rdVector_Dot4(const rdVector4* v1, const rdVector4* v2);
 void rdVector_Cross3(rdVector3 *v1, const rdVector3 *v2, const rdVector3 *v3);
 void rdVector_Cross3Acc(rdVector3 *v1, const rdVector3 *v2);
-float rdVector_Len2(const rdVector2* v);
-float rdVector_Len3(const rdVector3* v);
-float rdVector_Len4(const rdVector4* v);
-float rdVector_Normalize2(rdVector2 *v1, const rdVector2 *v2);
-float rdVector_Normalize3(rdVector3 *v1, const rdVector3 *v2);
-float rdVector_Normalize3Quick(rdVector3 *v1, const rdVector3 *v2);
-float rdVector_Normalize4(rdVector4 *v1, const rdVector4 *v2);
-float rdVector_Normalize2Acc(rdVector2 *v1);
-float rdVector_Normalize3Acc(rdVector3 *v1);
-float rdVector_Normalize3QuickAcc(rdVector3 *v1);
-float rdVector_Normalize4Acc(rdVector4 *v1);
-rdVector2* rdVector_Scale2(rdVector2 *v1, const rdVector2 *v2, float scale);
-rdVector3* rdVector_Scale3(rdVector3 *v1, const rdVector3 *v2, float scale);
-rdVector4* rdVector_Scale4(rdVector4 *v1, const rdVector4 *v2, float scale);
-rdVector2* rdVector_Scale2Acc(rdVector2 *v1, float scale);
-rdVector3* rdVector_Scale3Acc(rdVector3 *v1, float scale);
-rdVector4* rdVector_Scale4Acc(rdVector4 *v1, float scale);
-rdVector2* rdVector_InvScale2(rdVector2 *v1, const rdVector2 *v2, float scale);
-rdVector3* rdVector_InvScale3(rdVector3 *v1, const rdVector3 *v2, float scale);
-rdVector4* rdVector_InvScale4(rdVector4 *v1, const rdVector4 *v2, float scale);
-rdVector2* rdVector_InvScale2Acc(rdVector2 *v1, float scale);
-rdVector3* rdVector_InvScale3Acc(rdVector3 *v1, float scale);
-rdVector4* rdVector_InvScale4Acc(rdVector4 *v1, float scale);
+flex_t rdVector_Len2(const rdVector2* v);
+flex_t rdVector_Len3(const rdVector3* v);
+flex_t rdVector_Len4(const rdVector4* v);
+flex_t rdVector_Normalize2(rdVector2 *v1, const rdVector2 *v2);
+flex_t rdVector_Normalize3(rdVector3 *v1, const rdVector3 *v2);
+flex_t rdVector_Normalize3Quick(rdVector3 *v1, const rdVector3 *v2);
+flex_t rdVector_Normalize4(rdVector4 *v1, const rdVector4 *v2);
+flex_t rdVector_Normalize2Acc(rdVector2 *v1);
+flex_t rdVector_Normalize3Acc(rdVector3 *v1);
+flex_t rdVector_Normalize3QuickAcc(rdVector3 *v1);
+flex_t rdVector_Normalize4Acc(rdVector4 *v1);
+rdVector2* rdVector_Scale2(rdVector2 *v1, const rdVector2 *v2, flex_t scale);
+rdVector3* rdVector_Scale3(rdVector3 *v1, const rdVector3 *v2, flex_t scale);
+rdVector4* rdVector_Scale4(rdVector4 *v1, const rdVector4 *v2, flex_t scale);
+rdVector2* rdVector_Scale2Acc(rdVector2 *v1, flex_t scale);
+rdVector3* rdVector_Scale3Acc(rdVector3 *v1, flex_t scale);
+rdVector4* rdVector_Scale4Acc(rdVector4 *v1, flex_t scale);
+rdVector2* rdVector_InvScale2(rdVector2 *v1, const rdVector2 *v2, flex_t scale);
+rdVector3* rdVector_InvScale3(rdVector3 *v1, const rdVector3 *v2, flex_t scale);
+rdVector4* rdVector_InvScale4(rdVector4 *v1, const rdVector4 *v2, flex_t scale);
+rdVector2* rdVector_InvScale2Acc(rdVector2 *v1, flex_t scale);
+rdVector3* rdVector_InvScale3Acc(rdVector3 *v1, flex_t scale);
+rdVector4* rdVector_InvScale4Acc(rdVector4 *v1, flex_t scale);
 void rdVector_Rotate3(rdVector3 *out, const rdVector3 *in, const rdVector3 *vAngs);
 void rdVector_Rotate3Acc(rdVector3 *out, const rdVector3 *vAngs);
 void rdVector_ExtractAngle(const rdVector3 *v1, rdVector3 *out);
 
 // Added
-float rdVector_Dist3(const rdVector3 *v1, const rdVector3 *v2);
-float rdVector_DistSquared3(const rdVector3 *v1, const rdVector3 *v2);
-rdVector3* rdVector_MultAcc3(rdVector3 *v1, const rdVector3 *v2, float scale);
+flex_t rdVector_Dist3(const rdVector3 *v1, const rdVector3 *v2);
+flex_t rdVector_DistSquared3(const rdVector3 *v1, const rdVector3 *v2);
+rdVector3* rdVector_MultAcc3(rdVector3 *v1, const rdVector3 *v2, flex_t scale);
 void rdVector_Zero3(rdVector3 *v);
 void rdVector_Zero2(rdVector2 *v);
 int rdVector_IsZero3(rdVector3* v);
 int rdVector_IsNotZero3(rdVector3* v);
-float rdVector_NormalDot(const rdVector3* v1, const rdVector3* v2, const rdVector3* norm);
+flex_t rdVector_NormalDot(const rdVector3* v1, const rdVector3* v2, const rdVector3* norm);
 void rdVector_AbsRound3(rdVector3* v);
 void rdVector_ClipPrecision3(rdVector3* v);
 void rdVector_NormalizeAngleAcute3(rdVector3* v);
 void rdVector_NormalizeDeltaAngle3(rdVector3* v, const rdVector3* a, const rdVector3* b);
-void rdVector_ClampRange3(rdVector3* v, float minVal, float maxVal);
-void rdVector_ClampValue3(rdVector3* v, float val);
+void rdVector_ClampRange3(rdVector3* v, flex_t minVal, flex_t maxVal);
+void rdVector_ClampValue3(rdVector3* v, flex_t val);
 void rdVector_Clamp3(rdVector3* v, const rdVector3* minVal, const rdVector3* maxVal);
 void rdVector_Reflect3(rdVector3* v, const rdVector3* incidentVec, const rdVector3* normal);
 void rdVector_Average3(rdVector3* out, rdVector3* a, rdVector3* b, rdVector3* c);
-void rdVector_Lerp3(rdVector3* out, rdVector3* a, rdVector3* b, float f);
+void rdVector_Lerp3(rdVector3* out, rdVector3* a, rdVector3* b, flex_t f);
 void rdVector_Project3(rdVector3* out, rdVector3* p, rdVector3* o, rdVector3* n);
 void rdVector_ProjectDir3(rdVector3* out, rdVector3* v, rdVector3* n);
 int rdVector_Compare3(const rdVector3* a, const rdVector3* b);
@@ -149,5 +153,10 @@ void rdVector_FromPYR(rdVector3* v, const rdVector3* pyr);
 void rdVector_Perpendicular3(rdVector3* perp, const rdVector3* v);
 void rdVector_Copy3To4(rdVector4* out, rdVector3* in);
 void rdVector_Copy4To3(rdVector3* out, rdVector4* in);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // _RDVECTOR_H

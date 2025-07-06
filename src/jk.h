@@ -1,10 +1,6 @@
 #ifndef _OPENJKDF2_JK_H
 #define _OPENJKDF2_JK_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "engine_config.h"
 #include "types.h"
 #include <stdio.h>
@@ -34,6 +30,10 @@ extern "C" {
 #define VM_VAR(name, type, ptr) \
     type* name ## _ptr = (type*)ptr;
 #define VM_VAR_DECL(name, type) extern type* name ## _ptr;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 //static void (*jk_main)(uint32_t a, uint32_t b, char* c, int d, char* e) = (void*)0x50E750;
 
@@ -243,7 +243,7 @@ static size_t (__cdecl *_wcslen)(const wchar_t *) = (void*)0x512FE0;
 static wchar_t* (__cdecl *_wcscpy)(wchar_t *, const wchar_t *) = (void*)0x5130A0;
 static int (*_rand)() = (void*)0x512D00;
 static size_t (__cdecl *_strspn)(const char *, const char *) = (void*)0x00514510;
-static char* (__cdecl *_strpbrk)(const char *, const char *) = (void*)0x5144D0;
+static const char* (__cdecl *_strpbrk)(const char *, const char *) = (void*)0x5144D0;
 static int (__cdecl *__tolower)(char SrcStr) = (void*)0x514550;
 static void* (__cdecl *_malloc)(size_t) = (void*)0x514210;
 static void (__cdecl *_free)(void *) = (void*)0x00513740;
@@ -301,7 +301,7 @@ char* _strrchr(char * a, char b);
 char* _strtok(char * a, const char * b);
 char* _strncat(char* a, const char* b, size_t c);
 size_t _strspn(const char* a, const char* b);
-char* _strpbrk(const char* a, const char* b);
+const char* _strpbrk(const char* a, const char* b);
 size_t _wcslen(const wchar_t * a);
 size_t __wcslen(const wchar_t * strarg);
 int jk_snwprintf(wchar_t *a1, size_t a2, const wchar_t *fmt, ...);
@@ -369,7 +369,7 @@ int _strncmp(const char *s1, const char *s2, size_t n);
 int __wcscmp(const wchar_t *a, const wchar_t *b);
 int __wcsicmp(const wchar_t *a, const wchar_t *b);
 
-float _frand();
+flex_t _frand();
 
 void jk_init();
 int _iswspace(int a);

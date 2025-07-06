@@ -1758,7 +1758,7 @@ LABEL_47:
             jkGuiRend_Paint(jkGuiRend_activeMenu);
             if ( ret )
             {
-                jk_EndPaint(hWnd, &Paint);
+                jk_EndPaint(hWnd, (const PAINTSTRUCT *)&Paint);
                 return 1;
             }
             return 1;
@@ -2295,7 +2295,7 @@ int jkGuiRend_TextBoxEventHandler(jkGuiElement *element, jkGuiMenu *menu, int ev
         {
             if ( _wcslen((const wchar_t *)v7) < v5->selectedTextEntry - 1 )
             {
-                wchar_t tmp_wchar[2] = {a4, 0}; // Added: ensure null terminator
+                wchar_t tmp_wchar[2] = {(wchar_t)a4, 0}; // Added: ensure null terminator
                 stdString_wstrncat((wchar_t *)v7, v5->selectedTextEntry, v5->texInfo.textHeight, tmp_wchar);
                 v11 = v5->texInfo.textHeight + 1;
                 if ( v11 >= v5->selectedTextEntry - 1 )
@@ -2619,7 +2619,7 @@ void jkGuiRend_FocusElementDir(jkGuiMenu *pMenu, int dir)
         iter++;
     }
 
-    printf("%u->%u, %u %u, %u %u\n", (int)(focusedElement - pMenu->paElements), (int)(bestCandidate - pMenu->paElements), focusedElement->rect.x, focusedElement->rect.y, bestCandidate->rect.x, bestCandidate->rect.y);
+    //printf("%u->%u, %u %u, %u %u\n", (int)(focusedElement - pMenu->paElements), (int)(bestCandidate - pMenu->paElements), focusedElement->rect.x, focusedElement->rect.y, bestCandidate->rect.x, bestCandidate->rect.y);
 
     jkGuiElement* element = bestCandidate;
     if (!element) return;

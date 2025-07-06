@@ -29,7 +29,7 @@ static int sithControl_curDebugCam = 0;
 static wchar_t sithControl_debugWStrTmp[256];
 
 // MOTS added
-static float sithControl_008d7f44 = 0.0;
+static flex_t sithControl_008d7f44 = 0.0;
 static int sithControl_008d7f4c = 0;
 static int sithControl_008d7f50 = 0;
 static int sithControl_008d7f54 = 0;
@@ -238,7 +238,7 @@ void sithControl_InitFuncToControlType()
 }
 
 // MOTS altered
-void sithControl_Tick(float deltaSecs, int deltaMs)
+void sithControl_Tick(flex_t deltaSecs, int deltaMs)
 {
     if ( !sithControl_bOpened )
         return;
@@ -532,7 +532,7 @@ int sithControl_ReadConf()
     uint32_t v14; // eax
     stdControlKeyInfoEntry *v15; // ecx
     stdControlKeyInfoEntry *v16; // ecx
-    float v18; // [esp+10h] [ebp-10h]
+    flex_t v18; // [esp+10h] [ebp-10h]
     unsigned int v19; // [esp+14h] [ebp-Ch] BYREF
     unsigned int dxKeyNum_; // [esp+18h] [ebp-8h]
     int v21; // [esp+1Ch] [ebp-4h]
@@ -710,13 +710,13 @@ void sithControl_FinishRead()
     stdControl_FinishRead();
 }
 
-float sithControl_GetAxis2(int axisNum)
+flex_t sithControl_GetAxis2(int axisNum)
 {
     uint32_t v1; // ebp
     stdControlKeyInfoEntry *entryIter; // esi
     int v3; // ebx
-    double v4; // st7
-    float v6; // [esp+10h] [ebp-4h]
+    flex_d_t v4; // st7
+    flex_t v6; // [esp+10h] [ebp-4h]
 
     v1 = 0;
     v6 = 0.0;
@@ -771,13 +771,13 @@ LABEL_23:
     return v6;
 }
 
-float sithControl_ReadAxisStuff(int funcIdx)
+flex_t sithControl_ReadAxisStuff(int funcIdx)
 {
     uint32_t v1; // ebp
     stdControlKeyInfoEntry *v2; // esi
     int v3; // ebx
-    double v4; // st7
-    float v6; // [esp+8h] [ebp-4h]
+    flex_d_t v4; // st7
+    flex_t v6; // [esp+8h] [ebp-4h]
 
     v1 = 0;
     v6 = 0.0;
@@ -821,14 +821,14 @@ LABEL_18:
     return v6;
 }
 
-float sithControl_GetAxis(int funcIdx)
+flex_t sithControl_GetAxis(int funcIdx)
 {
     stdControlKeyInfoEntry *v1; // edi
     stdControlKeyInfoEntry *v2; // esi
     uint32_t v3; // ebp
     int v4; // ebx
-    double v5; // st7
-    float v7; // [esp+4h] [ebp-4h]
+    flex_d_t v5; // st7
+    flex_t v7; // [esp+4h] [ebp-4h]
 
     v7 = 0.0;
     v1 = sithControl_aInputFuncToKeyinfo[funcIdx].aEntries;
@@ -841,7 +841,7 @@ float sithControl_GetAxis(int funcIdx)
             v4 = v2->flags;
             if ( (v4 & 8) != 0 && ((sithWeapon_controlOptions & 0x20) == 0 || v1->dxKeyNum >= AXIS_MOUSE_X) )
             {
-                v5 = (double)stdControl_ReadAxisRaw(v2->dxKeyNum);
+                v5 = (flex_d_t)stdControl_ReadAxisRaw(v2->dxKeyNum);
                 if ( (v4 & 4) != 0 )
                     v5 = -v5;
                 if ( v2->binaryAxisVal != 0.0 )
@@ -867,22 +867,22 @@ void sithControl_AddInputHandler(sithControl_handler_t a1)
 }
 
 // MOTS altered
-int sithControl_HandlePlayer(sithThing *player, float deltaSecs)
+int sithControl_HandlePlayer(sithThing *player, flex_t deltaSecs)
 {
     int v3; // esi
     int result; // eax
-    double v7; // st7
-    double v8; // st6
-    double v9; // st7
-    double v10; // st5
-    double v11; // st4
-    double v12; // st3
-    double v13; // st4
-    double v14; // st3
-    double v15; // rt0
-    double v16; // st3
+    flex_d_t v7; // st7
+    flex_d_t v8; // st6
+    flex_d_t v9; // st7
+    flex_d_t v10; // st5
+    flex_d_t v11; // st4
+    flex_d_t v12; // st3
+    flex_d_t v13; // st4
+    flex_d_t v14; // st3
+    flex_d_t v15; // rt0
+    flex_d_t v16; // st3
     wchar_t *v17; // eax
-    float v18; // [esp+8h] [ebp-40h]
+    flex_t v18; // [esp+8h] [ebp-40h]
     rdVector3 a3a; // [esp+Ch] [ebp-3Ch] BYREF
     rdMatrix34 a; // [esp+18h] [ebp-30h] BYREF
     int input_read;
@@ -1125,15 +1125,17 @@ debug_controls:
     return result;
 }
 
-void sithControl_PlayerLook(sithThing *player, float deltaSecs)
+void sithControl_PlayerLook(sithThing *player, flex_t deltaSecs)
 {
     int v3; // edi
-    double v5; // st7
-    double v6; // st7
-    double v9;
-    double v8; // st6
-    double v12; // st6
+    flex_d_t v5; // st7
+    flex_d_t v6; // st7
+    flex_d_t v9;
+    flex_d_t v8; // st6
+    flex_d_t v12; // st6
     rdVector3 a2; // [esp+8h] [ebp-Ch] BYREF
+
+    flex_t local_10 = 0.0;
 
     v3 = 0;
     if ( (player->type == SITH_THING_ACTOR || player->type == SITH_THING_PLAYER) && deltaSecs != 0.0 )
@@ -1143,7 +1145,7 @@ void sithControl_PlayerLook(sithThing *player, float deltaSecs)
             if ( (sithWeapon_controlOptions & 4) == 0 && !sithControl_ReadFunctionMap(INPUT_FUNC_MLOOK, 0) )
                 goto LABEL_20;
 
-            float local_10 = 0.0;
+            
             a2 = player->actorParams.eyePYR;
 
             // Map directly to axis, the value we have is an angular velocity
@@ -1221,14 +1223,14 @@ void sithControl_PlayerMovementMots(sithThing *player)
 {
     uint32_t uVar1;
     int iVar2;
-    float fVar3;
-    float fVar4;
-    float local_8;
+    flex_t fVar3;
+    flex_t fVar4;
+    flex_t local_8;
     int local_4;
     sithThing *thing;
     
     thing = player;
-    float move_multiplier = 1.0;
+    flex_t move_multiplier = 1.0;
     if (((sithWeapon_controlOptions & 2) != 0) ||
        (iVar2 = sithControl_ReadFunctionMap(INPUT_FUNC_FAST,(int *)0x0), iVar2 != 0)) {
         move_multiplier = 2.0;
@@ -1419,16 +1421,16 @@ void sithControl_PlayerMovement(sithThing *player)
     }
 
     int new_state; // eax
-    double v6; // st7
-    double v7; // st6
-    double v11; // st7
-    double y_vel; // st6
+    flex_d_t v6; // st7
+    flex_d_t v7; // st6
+    flex_d_t v11; // st7
+    flex_d_t y_vel; // st6
     int v16; // eax
-    double v17; // st7
-    float move_multiplier_a; // [esp+4h] [ebp-8h]
-    float move_multiplier_; // [esp+4h] [ebp-8h]
+    flex_d_t v17; // st7
+    flex_t move_multiplier_a; // [esp+4h] [ebp-8h]
+    flex_t move_multiplier_; // [esp+4h] [ebp-8h]
     int v20; // [esp+8h] [ebp-4h] BYREF
-    float move_multiplier; // [esp+10h] [ebp+4h]
+    flex_t move_multiplier; // [esp+10h] [ebp+4h]
 
     move_multiplier = 1.0;
     if ( (sithWeapon_controlOptions & 2) != 0 || sithControl_ReadFunctionMap(INPUT_FUNC_FAST, 0) )
@@ -1524,13 +1526,13 @@ void sithControl_FreeCam(sithThing *player)
     sithThing *v1; // esi
     int v2; // ebp
     sithSector *v3; // eax
-    double v5; // st7
-    double v6; // st6
+    flex_d_t v5; // st7
+    flex_d_t v6; // st6
     rdVector3 *v7; // edi
-    double v9; // st7
-    double v11; // st7
-    double v12; // st6
-    float v15; // [esp+Ch] [ebp-34h]
+    flex_d_t v9; // st7
+    flex_d_t v11; // st7
+    flex_d_t v12; // st6
+    flex_t v15; // [esp+Ch] [ebp-34h]
     rdMatrix34 a; // [esp+10h] [ebp-30h] BYREF
     int tmp;
 
@@ -1602,7 +1604,7 @@ void sithControl_FreeCam(sithThing *player)
                 rdMatrix34 a;
                 rdVector3 addVec;
 
-                float mult = 1.0;
+                flex_t mult = 1.0;
                 if (sithControl_ReadFunctionMap(INPUT_FUNC_FAST, 0)) {
                     mult *= 5.0;
                 }
@@ -1826,7 +1828,7 @@ void sithControl_sub_4D6930(int funcIdx)
     sithControl_inputFuncToControlType[funcIdx] = 5;
 }
 
-stdControlKeyInfo* sithControl_EnumBindings(sithControlEnumFunc_t pfEnumFunction, int a2, int a3, int a4, void *a5)
+stdControlKeyInfo* sithControl_EnumBindings(sithControlEnumFunc_t pfEnumFunction, int a2, int a3, int a4, Darray *a5)
 {
     stdControlKeyInfo *result; // eax
     int v6; // ebp
@@ -1836,7 +1838,7 @@ stdControlKeyInfo* sithControl_EnumBindings(sithControlEnumFunc_t pfEnumFunction
     int v10; // ecx
     int v11; // ebx
     stdControlKeyInfoEntry *v12; // edi
-    void *v13; // edi
+    Darray *v13; // edi
     stdControlKeyInfoEntry *i; // [esp+10h] [ebp-1Ch]
     unsigned int v16; // [esp+14h] [ebp-18h]
     int v17; // [esp+18h] [ebp-14h]

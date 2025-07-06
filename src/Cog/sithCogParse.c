@@ -293,7 +293,7 @@ LABEL_16:
                         case COG_OPCODE_PUSHVECTOR:
                             v17 = &script_prog_next[stack_pos];
                             next_stackpos = stack_pos + 3;
-                            _memcpy(v17, &cur_instr->vector, sizeof(rdVector3));
+                            _memcpy(v17, &cur_instr->vector, sizeof(cog_flex_t)*3);
                             goto LABEL_32;
                         case COG_OPCODE_GOFALSE:
                         case COG_OPCODE_GOTRUE:
@@ -517,12 +517,12 @@ void sithCogParse_SetSymbolVal(sithCogSymbol *a1, sithCogStackvar *a2)
 
 sithCogSymbol* sithCogParse_GetSymbolVal(sithCogSymboltable *pSymbolTable, char *a2)
 {
-    void *result; // eax
+    sithCogSymbol *result; // eax
 
     if (!pSymbolTable->hashtable)
         return NULL;
     
-    if (result = stdHashTable_GetKeyVal(pSymbolTable->hashtable, a2))
+    if (result = (sithCogSymbol*)stdHashTable_GetKeyVal(pSymbolTable->hashtable, a2))
         return result;
 
     if (pSymbolTable == sithCog_pSymbolTable) {
@@ -562,7 +562,7 @@ sith_cog_parser_node* sithCogParse_AddLeaf(int op, int val)
     return sithCogParse_AddLinkingNode(NULL, NULL, op, (int)val);
 }
 
-sith_cog_parser_node* sithCogParse_AddLeafVector(int opcode, rdVector3* vector)
+sith_cog_parser_node* sithCogParse_AddLeafVector(int opcode, cog_flex_t* vector)
 {
     if (!cogparser_nodes_alloc)
     {
@@ -579,7 +579,9 @@ sith_cog_parser_node* sithCogParse_AddLeafVector(int opcode, rdVector3* vector)
     sith_cog_parser_node* node = &cogparser_nodes_alloc[cogparser_current_nodeidx++];
     _memset(node, 0, sizeof(sith_cog_parser_node));
     node->opcode = opcode;
-    node->vector = *vector;
+    node->vector[0] = vector[0];
+    node->vector[1] = vector[1];
+    node->vector[2] = vector[2];
     
     cogparser_topnode = node;
     //printf("Add node %p w/ op %x, %p %p\n", node, opcode, parent, child);
@@ -664,10 +666,17 @@ void sithCogParse_LexAddSymbol(const char *symName)
 
 void sithCogParse_LexScanVector3(char* text)
 {
-    rdVector3 scan_in;
-    _memset(&scan_in, 0, sizeof(scan_in));
-    _sscanf(text, "'%f %f %f'", &scan_in.x, &scan_in.y, &scan_in.z);
-    yylval.as_vector = scan_in;
+    // Added: flex_t
+    flex32_t scan_x = 0.0;
+    flex32_t scan_y = 0.0;
+    flex32_t scan_z = 0.0;
+
+    _sscanf(text, "'%f %f %f'", &scan_x, &scan_y, &scan_z);
+
+    // Added: flex_t
+    yylval.as_vector[0] = scan_x;
+    yylval.as_vector[1] = scan_y;
+    yylval.as_vector[2] = scan_z;
 }
 
 int sithCogParse_RecurseStackdepth(sith_cog_parser_node *node)
@@ -738,7 +747,7 @@ void sithCogParse_RecurseWrite(sith_cog_parser_node *node)
             cogvm_stackpos++;
             break;
         case COG_OPCODE_PUSHVECTOR:
-            _memcpy(&cogvm_stack[cogvm_stackpos], &node->vector, sizeof(rdVector3));
+            _memcpy(&cogvm_stack[cogvm_stackpos], &node->vector, sizeof(cog_flex_t)*3);
             cogvm_stackpos += 3;
             break;
         case COG_OPCODE_GOFALSE:

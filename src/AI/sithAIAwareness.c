@@ -33,7 +33,7 @@ void sithAIAwareness_Shutdown()
     sithAIAwareness_bInitted = 0;
 }
 
-int sithAIAwareness_AddEntry(sithSector *sector, rdVector3 *pos, int a3, float a4, sithThing *thing)
+int sithAIAwareness_AddEntry(sithSector *sector, rdVector3 *pos, int a3, flex_t a4, sithThing *thing)
 {
     if (!sithAI_bOpened) {
         return 0;
@@ -105,7 +105,7 @@ int sithAIAwareness_Tick(int a, sithEventInfo* b)
     return 1;
 }
 
-void sithAIAwareness_sub_4F2C30(sithSectorEntry *pSectorEntry, sithSector *pSector, rdVector3 *pPos1, rdVector3 *pPos2, float a5, float a6, sithThing *pThing)
+void sithAIAwareness_sub_4F2C30(sithSectorEntry *pSectorEntry, sithSector *pSector, rdVector3 *pPos1, rdVector3 *pPos2, flex_t a5, flex_t a6, sithThing *pThing)
 {
     // Added: potential crash maybe?
     OPENJKDF2_WARN_NULL_AND_RETURN(pSectorEntry);
@@ -120,7 +120,7 @@ void sithAIAwareness_sub_4F2C30(sithSectorEntry *pSectorEntry, sithSector *pSect
         pSectorAlloc->field_0 = sithAIAwareness_timerTicks;
     }
 
-    if (pSectorAlloc->field_4[pSectorEntry->field_14] < (double)a5)
+    if (pSectorAlloc->field_4[pSectorEntry->field_14] < (flex_d_t)a5)
     {
         pSectorAlloc->field_4[pSectorEntry->field_14] = a5;
         pSectorAlloc->field_10[pSectorEntry->field_14] = *pPos1;
@@ -130,7 +130,7 @@ void sithAIAwareness_sub_4F2C30(sithSectorEntry *pSectorEntry, sithSector *pSect
         {
             for (sithAdjoin* i = pSector->adjoins; i; i = i->next)
             {
-                float a6a = (i->mirror ? a6 - i->mirror->dist : a6);
+                flex_t a6a = (i->mirror ? a6 - i->mirror->dist : a6);
 
                 sithAIAwareness_sub_4F2C30(pSectorEntry, i->sector, pPos1, &i->field_1C, a6, a6a, pThing);
             }

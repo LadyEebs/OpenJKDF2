@@ -19,9 +19,9 @@
 #include "Modules/sith/Engine/sithVoice.h"
 
 // Added
-float jkGuiSound_cutsceneVolume = 1.0;
+flex_t jkGuiSound_cutsceneVolume = 1.0;
 #ifdef PLATFORM_STEAM
-float jkGuiSound_voiceVolume = 1.0;
+flex_t jkGuiSound_voiceVolume = 1.0;
 #endif
 
 static int slider_images[2] = {JKGUI_BM_SLIDER_BACK, JKGUI_BM_SLIDER_THUMB};
@@ -77,7 +77,7 @@ static jkGuiElement jkGuiSound_elements[] = {
     {ELEMENT_TEXT, 0, 0, "GUI_24", 2, {590, 370, 40, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},
 #endif
     {ELEMENT_TEXTBUTTON, 1, 2, "GUI_OK", 3, {440, 430, 200, 40}, 1, 0, 0, 0, 0, 0, {0}, 0},
-    {ELEMENT_TEXTBUTTON, 0XFFFFFFFF, 2, "GUI_CANCEL", 3, {0, 430, 200, 40}, 1, 0, 0, 0, 0, 0, {0}, 0},
+    {ELEMENT_TEXTBUTTON, -1, 2, "GUI_CANCEL", 3, {0, 430, 200, 40}, 1, 0, 0, 0, 0, 0, {0}, 0},
     {ELEMENT_END, 0, 0, 0, 0, {0}, 0, 0, 0, 0, 0, 0, {0}, 0}
 };
 
@@ -104,7 +104,7 @@ void jkGuiSound_Startup()
 	sithVoice_SetVolume(jkGuiSound_voiceVolume);
 #endif
     jkGuiSound_b3DSound_2 = jkGuiSound_b3DSound;
-    sithSoundMixer_UpdateMusicVolume(jkGuiSound_musicVolume); // TODO
+    sithSoundMixer_UpdateMusicVolume(jkGuiSound_musicVolume);
 
     stdSound_SetMenuVolume(jkGuiSound_sfxVolume);
 }
@@ -167,11 +167,11 @@ int jkGuiSound_Show()
     v1 = jkGuiRend_DisplayAndReturnClicked(&jkGuiSound_menu);
     if ( v1 != -1 )
     {
-        jkGuiSound_musicVolume = (double)jkGuiSound_elements[10].selectedTextEntry * 0.01;
-        jkGuiSound_sfxVolume = (double)jkGuiSound_elements[14].selectedTextEntry * 0.01;
+        jkGuiSound_musicVolume = (flex_d_t)jkGuiSound_elements[10].selectedTextEntry * 0.01;
+        jkGuiSound_sfxVolume = (flex_d_t)jkGuiSound_elements[14].selectedTextEntry * 0.01;
         
 #ifdef SDL2_RENDER
-        jkGuiSound_cutsceneVolume = (double)jkGuiSound_elements[18].selectedTextEntry * 0.01;
+        jkGuiSound_cutsceneVolume = (flex_d_t)jkGuiSound_elements[18].selectedTextEntry * 0.01;
         jkGuiSound_numChannels = 256;
         jkGuiSound_b3DSound_2 = jkGuiSound_elements[7].selectedTextEntry;
         jkGuiSound_b3DSound = jkGuiSound_b3DSound_2;
@@ -182,7 +182,7 @@ int jkGuiSound_Show()
         wuRegistry_SaveInt("numChannels", jkGuiSound_numChannels);
         wuRegistry_SaveFloat("cutsceneVolume", jkGuiSound_cutsceneVolume);
 	#ifdef PLATFORM_STEAM
-		jkGuiSound_voiceVolume = (double)jkGuiSound_elements[23].selectedTextEntry * 0.01;
+		jkGuiSound_voiceVolume = (flex_d_t)jkGuiSound_elements[23].selectedTextEntry * 0.01;
 		wuRegistry_SaveFloat("voiceVolume", jkGuiSound_voiceVolume);
 	#endif
 #else

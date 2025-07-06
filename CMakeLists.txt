@@ -73,6 +73,7 @@ else()
 endif()
 
 set(DEBUG_QOL_CHEATS $ENV{DEBUG_QOL_CHEATS})
+set(EXPERIMENTAL_FIXED_POINT $ENV{EXPERIMENTAL_FIXED_POINT})
 
 # Options for compiling
 if(DEFINED ENV{OPENJKDF2_NO_ASAN})
@@ -220,6 +221,17 @@ include(cmake_modules/precompile_globals.cmake)
 
 #set( CMAKE_VERBOSE_MAKEFILE on )
 
+# Force CXX compilation for all files
+file(GLOB ENGINE_SOURCE_FILES_REGLOB ${PROJECT_SOURCE_DIR}/src/*.c
+                       ${PROJECT_SOURCE_DIR}/src/*/*.c
+                       ${PROJECT_SOURCE_DIR}/src/General/*.cpp
+                       ${PROJECT_SOURCE_DIR}/src/Platform/*/*.c
+                       ${PROJECT_SOURCE_DIR}/src/Platform/*/*.cpp)
+list(REMOVE_ITEM ENGINE_SOURCE_FILES_REGLOB ${TEST_SRCS})
+if (EXPERIMENTAL_FIXED_POINT)
+    set_source_files_properties(${ENGINE_SOURCE_FILES_REGLOB} PROPERTIES LANGUAGE CXX )
+endif()
+
 add_library(sith_engine OBJECT ${ENGINE_SOURCE_FILES})
 plat_specific_deps()
 
@@ -239,14 +251,18 @@ else()
     add_executable(${BIN_NAME} ${GAME_MAIN_SOURCE_FILES})
     target_link_libraries(${BIN_NAME} PRIVATE ${SDL2_COMMON_LIBS} sith_engine)
 
-    if(TARGET_BUILD_TESTS)
-        add_executable(rle_test src/Tests/rle_test.c)
-        target_link_libraries(rle_test PRIVATE ${SDL2_COMMON_LIBS} sith_engine)
-        macos_target_add_standard_deps(rle_test)
+    if(TARGET_BUILD_TESTS AND TARGET_MACOS)
+        if(NOT EXPERIMENTAL_FIXED_POINT)
+            add_executable(rle_test src/Tests/rle_test.c)
+            target_link_libraries(rle_test PRIVATE ${SDL2_COMMON_LIBS} sith_engine)
+            macos_target_add_standard_deps(rle_test)
+        endif()
     endif()
 endif()
 
 # TODO byacc and flex
+# maxamillion@Maxs-MacBook-Pro Cog % ../../flex/flex -i cog.l
+# maxamillion@Maxs-MacBook-Pro Cog % ../../byacc/yacc -d cog.y
 
 # Allow platforms to add extra dependencies, ie Frameworks on macOS or PkgConfig on Linux
 plat_extra_deps()

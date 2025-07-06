@@ -9,6 +9,10 @@
 #include "Engine/rdMaterial.h"
 #include "Primitives/rdMatrix.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define rdModel3_RegisterLoader_ADDR (0x00443DA0)
 #define rdModel3_RegisterUnloader_ADDR (0x00443DB0)
 #define rdModel3_ClearFrameCounters_ADDR (0x00443DC0)
@@ -102,9 +106,9 @@ typedef struct rdModel3
     uint32_t geosetSelect;
     uint32_t numHierarchyNodes;
     rdHierarchyNode* hierarchyNodes;
-    float radius;
+    flex_t radius;
     uint32_t field_60;
-    float field_64;
+    flex_t field_64;
     uint32_t field_68;
     uint32_t field_6C;
     uint32_t field_70;
@@ -125,16 +129,16 @@ typedef struct rdMesh
     int textureMode;
     rdVector3* vertices;
     rdVector2* vertexUVs;
-    float* vertices_i;
-    float* vertices_unk;
+    flex_t* vertices_i;
+    flex_t* vertices_unk;
 #ifdef JKM_LIGHTING
-    float* paRedIntensities;
-    float* paGreenIntensities;
-    float* paBlueIntensities;
+    flex_t* paRedIntensities;
+    flex_t* paGreenIntensities;
+    flex_t* paBlueIntensities;
 #ifdef RGB_THING_LIGHTS
-	float* vertices_r;
-	float* vertices_g;
-	float* vertices_b;
+	flex_t* vertices_r;
+	flex_t* vertices_g;
+	flex_t* vertices_b;
 #endif
 #endif
     rdFace* faces;
@@ -143,18 +147,18 @@ typedef struct rdMesh
     int numUVs;
     int numFaces;
 #ifdef JKM_LIGHTING
-    float extraLight;
+    flex_t extraLight;
 #endif
-    float radius;
+    flex_t radius;
     int field_58;
     int field_5C;
     int field_60;
-    float field_64;
+    flex_t field_64;
     int field_68;
     int field_6C;
 #ifdef PUPPET_PHYSICS
-	float minRadius;
-	float maxRadius;
+	flex_t minRadius;
+	flex_t maxRadius;
 	rdVector3 center;
 #endif
 } rdMesh;
@@ -169,28 +173,28 @@ typedef struct rdMesh
     int textureMode;
     rdVector3* vertices;
     rdVector2* vertexUVs;
-    float* vertices_i;
-    float* vertices_unk;
-    float* paRedIntensities;
-    float* paGreenIntensities;
-    float* paBlueIntensities;
+    flex_t* vertices_i;
+    flex_t* vertices_unk;
+    flex_t* paRedIntensities;
+    flex_t* paGreenIntensities;
+    flex_t* paBlueIntensities;
     int unk4;
     rdFace* faces;
     rdVector3* vertexNormals;
     int numVertices;
     int numUVs;
     int numFaces;
-    float extraLight;
-    float radius;
+    flex_t extraLight;
+    flex_t radius;
     int field_58;
     int field_5C;
     int field_60;
-    float field_64;
+    flex_t field_64;
     int field_68;
     int field_6C;
 #ifdef PUPPET_PHYSICS
-	float minRadius;
-	float maxRadius;
+	flex_t minRadius;
+	flex_t maxRadius;
 #endif
 } rdMesh;
 #endif
@@ -222,6 +226,9 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags);
 
 #ifdef RENDER_DROID2
 void rdModel3_DrawOccluders(rdThing* pThing, rdMatrix34* pMat);
+#endif
+#ifdef __cplusplus
+}
 #endif
 
 //static int (__cdecl *rdModel3_CalcVertexNormals)(rdModel3 *model) = (void*)rdModel3_CalcVertexNormals_ADDR;

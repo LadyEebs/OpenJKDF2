@@ -34,12 +34,12 @@ static jkGuiElement jkGuiSaveLoad_aElements[15] = {
     {ELEMENT_TEXT, 0, 0, jkGuiSaveLoad_wtextHealth, 0x0, {0x190, 0x14A, 0x0C8, 0x14}, 1, 0, 0, 0, 0, 0, {0}, 0},
     {ELEMENT_TEXT, 0, 0, jkGuiSaveLoad_wtextShields, 0, {0x190, 0x168, 0x0C8, 0x14}, 1, 0, 0, 0, 0, 0, {0}, 0},
     {ELEMENT_TEXTBUTTON, 1, 2, "GUI_OK", 3, {0x1B8, 0x1AE, 0x0C8, 0x28}, 1, 0, 0, 0, 0, 0, {0}, 0},
-    {ELEMENT_TEXTBUTTON, 0xFFFFFFFF, 0x2, "GUI_CANCEL", 3, {0, 0x1AE, 0x0C8, 0x28}, 1, 0, 0, 0, 0, 0, {0}, 0},
+    {ELEMENT_TEXTBUTTON, -1, 0x2, "GUI_CANCEL", 3, {0, 0x1AE, 0x0C8, 0x28}, 1, 0, 0, 0, 0, 0, {0}, 0},
     {ELEMENT_TEXTBUTTON, 0, 2, "GUI_SLDELETE", 3, {0xE6, 0x1AE, 0x0B4, 0x28}, 1, 0, 0, 0, jkGuiSaveLoad_DeleteOnClick, 0, {0}, 0},
     {ELEMENT_END, 0, 0, 0, 0, {0}, 0, 0, 0, 0, 0, 0, {0}, 0},
 };
 
-static jkGuiMenu jkGuiSaveLoad_menu = {jkGuiSaveLoad_aElements, 0xFFFFFFFF, 0xFFFF, 0xFFFF, 0xF, 0, 0, jkGui_stdBitmaps, jkGui_stdFonts, 0, 0, "thermloop01.wav", "thrmlpu2.wav", 0, 0, 0, 0, 0, 0};
+static jkGuiMenu jkGuiSaveLoad_menu = {jkGuiSaveLoad_aElements, -1, 0xFFFF, 0xFFFF, 0xF, 0, 0, jkGui_stdBitmaps, jkGui_stdFonts, 0, 0, "thermloop01.wav", "thrmlpu2.wav", 0, 0, 0, 0, 0, 0};
 
 int jkGuiSaveLoad_ListClick(jkGuiElement *element, jkGuiMenu *menu, int mouseX, int mouseY, BOOL redraw)
 {
@@ -53,20 +53,20 @@ int jkGuiSaveLoad_ListClick(jkGuiElement *element, jkGuiMenu *menu, int mouseX, 
 void jkGuiSaveLoad_PopulateInfo(int bRedraw)
 {
     char *v1; // ebx
-    float shieldsAmt; // edx
+    flex_t shieldsAmt; // edx
     jkGuiSaveLoad_Entry *entry; // esi
     wchar_t *v4; // eax
-    float playerHealth; // eax
-    float playerMaxHealth; // ecx
+    flex_t playerHealth; // eax
+    flex_t playerMaxHealth; // ecx
     jkGuiSaveLoad_Entry* v7; // eax
     int v8; // esi
     jkEpisode *episodeIter; // edi
     wchar_t *v10; // eax
     wchar_t *v11; // eax
     wchar_t *saveName; // [esp+10h] [ebp-10h]
-    float playerMaxHealth_; // [esp+14h] [ebp-Ch]
-    float playerHealth_; // [esp+18h] [ebp-8h]
-    float shieldsAmt_; // [esp+1Ch] [ebp-4h]
+    flex_t playerMaxHealth_; // [esp+14h] [ebp-Ch]
+    flex_t playerHealth_; // [esp+18h] [ebp-8h]
+    flex_t shieldsAmt_; // [esp+1Ch] [ebp-4h]
 
     if ( jkGuiSaveLoad_bIsSaveMenu && jkGuiSaveLoad_menu.focusedElement == &jkGuiSaveLoad_aElements[2] )
     {
@@ -293,7 +293,7 @@ int jkGuiSaveLoad_Show(int bIsSave)
     signed int result; // eax
     wchar_t *v26; // [esp-4h] [ebp-298h]
     wchar_t *v27; // [esp-4h] [ebp-298h]
-    wchar_t *v28; // [esp-4h] [ebp-298h]
+    const wchar_t *v28; // [esp-4h] [ebp-298h]
     int v29; // [esp+10h] [ebp-284h] BYREF
     char v30[128]; // [esp+14h] [ebp-280h] BYREF
     wchar_t v31[256]; // [esp+94h] [ebp-200h] BYREF

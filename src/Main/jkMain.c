@@ -1524,7 +1524,7 @@ void jkMain_FixRes()
 
     //if (jkGame_isDDraw)
     {
-        newW = (uint32_t)((float)Window_xSize * ((480.0*2.0)/Window_ySize));
+        newW = (uint32_t)((flex_t)Window_xSize * ((480.0*2.0)/Window_ySize));
         newH = 480*2;
     }
 
@@ -1630,7 +1630,7 @@ int jkMain_SetVideoMode()
 
     //if (jkGame_isDDraw)
     {
-        newW = (uint32_t)((float)Window_xSize * ((480.0*2.0)/Window_ySize));
+        newW = (uint32_t)((flex_t)Window_xSize * ((480.0*2.0)/Window_ySize));
         newH = 480*2;
     }
 

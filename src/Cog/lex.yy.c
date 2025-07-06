@@ -22,7 +22,7 @@
 #ifdef __cplusplus
 
 #include <stdlib.h>
-#include <osfcn.h>
+//#include <osfcn.h>
 
 /* use prototypes in function declarations */
 #define YY_USE_PROTOS
@@ -67,11 +67,11 @@ void free( void* );
  * so it's got to be a K&R compiler, and therefore there's no standard
  * place from which to include these definitions
  */
-#if !defined(_MSC_VER)
+ #if !defined(_MSC_VER)
 char *malloc();
 int free();
 int read();
-#endif
+#endif // !defined(_MSC_VER)
 #endif
 
 
@@ -173,7 +173,6 @@ typedef struct yy_buffer_state *YY_BUFFER_STATE;
 #define INITIAL 0
 # line 7 "cog.l"
 #include <stdio.h>
-#include "Primitives/rdVector.h"
 #include "Cog/sithCogParse.h"
 #include "jk.h"
 #include "y.tab.h"
@@ -188,7 +187,7 @@ typedef struct yy_buffer_state *YY_BUFFER_STATE;
 #define strlen(x) _strlen(x)
 #define strcpy(x,y) _strcpy(x,y)
 
-# line 25 "cog.l"
+# line 24 "cog.l"
 
 /* done after the current pattern has been matched and before the
  * corresponding action - sets up yytext
@@ -471,9 +470,9 @@ static int input YY_PROTO(( void ));
 
 YY_DECL
     {
-    register yy_state_type yy_current_state;
-    register YY_CHAR *yy_cp, *yy_bp;
-    register int yy_act;
+    /*register*/ yy_state_type yy_current_state;
+    /*register*/ YY_CHAR *yy_cp, *yy_bp;
+    /*register*/ int yy_act;
 
 
 
@@ -518,7 +517,7 @@ YY_DECL
 yy_match:
 	do
 	    {
-	    register YY_CHAR yy_c = yy_ec[*yy_cp];
+	    /*register*/ YY_CHAR yy_c = yy_ec[*yy_cp];
 	    if ( yy_accept[yy_current_state] )
 		{
 		yy_last_accepting_state = yy_current_state;
@@ -556,227 +555,227 @@ do_action:	/* this label is used only to access EOF actions */
 	    goto yy_find_action;
 
 case 1:
-# line 27 "cog.l"
+# line 26 "cog.l"
 { return(BREAK); }
 	YY_BREAK
 case 2:
-# line 28 "cog.l"
+# line 27 "cog.l"
 { return(CONTINUE); }
 	YY_BREAK
 case 3:
-# line 29 "cog.l"
+# line 28 "cog.l"
 { return(DO); }
 	YY_BREAK
 case 4:
-# line 30 "cog.l"
+# line 29 "cog.l"
 { return(ELSE); }
 	YY_BREAK
 case 5:
-# line 31 "cog.l"
+# line 30 "cog.l"
 { return(FOR); }
 	YY_BREAK
 case 6:
-# line 32 "cog.l"
+# line 31 "cog.l"
 { return(GOTO); }
 	YY_BREAK
 case 7:
-# line 33 "cog.l"
+# line 32 "cog.l"
 { return(IF); }
 	YY_BREAK
 case 8:
-# line 34 "cog.l"
+# line 33 "cog.l"
 { return(RETURN); }
 	YY_BREAK
 case 9:
-# line 35 "cog.l"
+# line 34 "cog.l"
 { return(RETURN); }
 	YY_BREAK
 case 10:
-# line 36 "cog.l"
+# line 35 "cog.l"
 { return(WHILE); }
 	YY_BREAK
 case 11:
-# line 37 "cog.l"
+# line 36 "cog.l"
 { yyterminate(); }
 	YY_BREAK
 case 12:
-# line 38 "cog.l"
+# line 37 "cog.l"
 { return(CALL); }
 	YY_BREAK
 case 13:
-# line 40 "cog.l"
+# line 39 "cog.l"
 { sithCogParse_LexGetSym(yytext); return(IDENTIFIER); }
 	YY_BREAK
 case 14:
-# line 42 "cog.l"
+# line 41 "cog.l"
 { _sscanf(yytext, "%x", &yylval.as_int); return(CONSTANT_INT); }
 	YY_BREAK
 case 15:
-# line 43 "cog.l"
+# line 42 "cog.l"
 { _sscanf(yytext, "%i", &yylval.as_int); return(CONSTANT_INT); }
 	YY_BREAK
 case 16:
-# line 44 "cog.l"
+# line 43 "cog.l"
 { yylval.as_int = _atoi(yytext); return(CONSTANT_INT); }
 	YY_BREAK
 case 17:
-# line 47 "cog.l"
+# line 46 "cog.l"
 { yylval.as_float = _atof(yytext); return(CONSTANT_FLOAT); }
 	YY_BREAK
 case 18:
-# line 48 "cog.l"
+# line 47 "cog.l"
 { yylval.as_float = _atof(yytext); return(CONSTANT_FLOAT); }
 	YY_BREAK
 case 19:
-# line 49 "cog.l"
+# line 48 "cog.l"
 { yylval.as_float = _atof(yytext); return(CONSTANT_FLOAT); }
 	YY_BREAK
 case 20:
-# line 51 "cog.l"
+# line 50 "cog.l"
 { sithCogParse_LexAddSymbol(yytext); return(STRING_LITERAL); }
 	YY_BREAK
 case 21:
-# line 52 "cog.l"
+# line 51 "cog.l"
 { sithCogParse_LexScanVector3(yytext); return(VECTOR_LITERAL); }
 	YY_BREAK
 case 22:
-# line 54 "cog.l"
+# line 53 "cog.l"
 { return(AND_OP); }
 	YY_BREAK
 case 23:
-# line 55 "cog.l"
+# line 54 "cog.l"
 { return(OR_OP); }
 	YY_BREAK
 case 24:
-# line 56 "cog.l"
+# line 55 "cog.l"
 { return(LE_OP); }
 	YY_BREAK
 case 25:
-# line 57 "cog.l"
+# line 56 "cog.l"
 { return(GE_OP); }
 	YY_BREAK
 case 26:
-# line 58 "cog.l"
+# line 57 "cog.l"
 { return(EQ_OP); }
 	YY_BREAK
 case 27:
-# line 59 "cog.l"
+# line 58 "cog.l"
 { return(NE_OP); }
 	YY_BREAK
 case 28:
-# line 60 "cog.l"
+# line 59 "cog.l"
 { return(';'); }
 	YY_BREAK
 case 29:
-# line 61 "cog.l"
+# line 60 "cog.l"
 { return('{'); }
 	YY_BREAK
 case 30:
-# line 62 "cog.l"
+# line 61 "cog.l"
 { return('}'); }
 	YY_BREAK
 case 31:
-# line 63 "cog.l"
+# line 62 "cog.l"
 { return(','); }
 	YY_BREAK
 case 32:
-# line 64 "cog.l"
+# line 63 "cog.l"
 { return(':'); }
 	YY_BREAK
 case 33:
-# line 65 "cog.l"
+# line 64 "cog.l"
 { return('='); }
 	YY_BREAK
 case 34:
-# line 66 "cog.l"
+# line 65 "cog.l"
 { return('('); }
 	YY_BREAK
 case 35:
-# line 67 "cog.l"
+# line 66 "cog.l"
 { return(')'); }
 	YY_BREAK
 case 36:
-# line 68 "cog.l"
+# line 67 "cog.l"
 { return('['); }
 	YY_BREAK
 case 37:
-# line 69 "cog.l"
+# line 68 "cog.l"
 { return(']'); }
 	YY_BREAK
 case 38:
-# line 70 "cog.l"
+# line 69 "cog.l"
 { return('.'); }
 	YY_BREAK
 case 39:
-# line 71 "cog.l"
+# line 70 "cog.l"
 { return('&'); }
 	YY_BREAK
 case 40:
-# line 72 "cog.l"
+# line 71 "cog.l"
 { return('!'); }
 	YY_BREAK
 case 41:
-# line 73 "cog.l"
+# line 72 "cog.l"
 { return('~'); }
 	YY_BREAK
 case 42:
-# line 74 "cog.l"
+# line 73 "cog.l"
 { return('-'); }
 	YY_BREAK
 case 43:
-# line 75 "cog.l"
+# line 74 "cog.l"
 { return('+'); }
 	YY_BREAK
 case 44:
-# line 76 "cog.l"
+# line 75 "cog.l"
 { return('*'); }
 	YY_BREAK
 case 45:
-# line 77 "cog.l"
+# line 76 "cog.l"
 { /* comment */ }
 	YY_BREAK
 case 46:
-# line 78 "cog.l"
+# line 77 "cog.l"
 { /* comment */ }
 	YY_BREAK
 case 47:
-# line 79 "cog.l"
+# line 78 "cog.l"
 { return('/'); }
 	YY_BREAK
 case 48:
-# line 80 "cog.l"
+# line 79 "cog.l"
 { return('%'); }
 	YY_BREAK
 case 49:
-# line 81 "cog.l"
+# line 80 "cog.l"
 { return('<'); }
 	YY_BREAK
 case 50:
-# line 82 "cog.l"
+# line 81 "cog.l"
 { return('>'); }
 	YY_BREAK
 case 51:
-# line 83 "cog.l"
+# line 82 "cog.l"
 { return('^'); }
 	YY_BREAK
 case 52:
-# line 84 "cog.l"
+# line 83 "cog.l"
 { return('|'); }
 	YY_BREAK
 case 53:
-# line 86 "cog.l"
+# line 85 "cog.l"
 { yacc_linenum++; }
 	YY_BREAK
 case 54:
-# line 87 "cog.l"
+# line 86 "cog.l"
 { }
 	YY_BREAK
 case 55:
-# line 88 "cog.l"
+# line 87 "cog.l"
 { /* ignore bad characters */ }
 	YY_BREAK
 case 56:
-# line 90 "cog.l"
+# line 89 "cog.l"
 ECHO;
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
@@ -911,9 +910,9 @@ case YY_STATE_EOF(INITIAL):
 static int yy_get_next_buffer()
 
     {
-    register YY_CHAR *dest = yy_current_buffer->yy_ch_buf;
-    register YY_CHAR *source = yytext - 1; /* copy prev. char, too */
-    register int number_to_move, i;
+    /*register*/ YY_CHAR *dest = yy_current_buffer->yy_ch_buf;
+    /*register*/ YY_CHAR *source = yytext - 1; /* copy prev. char, too */
+    /*register*/ int number_to_move, i;
     int ret_val;
 
     if ( yy_c_buf_p > &yy_current_buffer->yy_ch_buf[yy_n_chars + 1] )
@@ -992,14 +991,14 @@ static int yy_get_next_buffer()
 static yy_state_type yy_get_previous_state()
 
     {
-    register yy_state_type yy_current_state;
-    register YY_CHAR *yy_cp;
+    /*register*/ yy_state_type yy_current_state;
+    /*register*/ YY_CHAR *yy_cp;
 
     yy_current_state = yy_start;
 
     for ( yy_cp = yytext + YY_MORE_ADJ; yy_cp < yy_c_buf_p; ++yy_cp )
 	{
-	register YY_CHAR yy_c = (*yy_cp ? yy_ec[*yy_cp] : 1);
+	/*register*/ YY_CHAR yy_c = (*yy_cp ? yy_ec[*yy_cp] : 1);
 	if ( yy_accept[yy_current_state] )
 	    {
 	    yy_last_accepting_state = yy_current_state;
@@ -1025,17 +1024,17 @@ static yy_state_type yy_get_previous_state()
  */
 
 #ifdef YY_USE_PROTOS
-static yy_state_type yy_try_NUL_trans( register yy_state_type yy_current_state )
+static yy_state_type yy_try_NUL_trans( /*register*/ yy_state_type yy_current_state )
 #else
 static yy_state_type yy_try_NUL_trans( yy_current_state )
-register yy_state_type yy_current_state;
+/*register*/ yy_state_type yy_current_state;
 #endif
 
     {
-    register int yy_is_jam;
-    register YY_CHAR *yy_cp = yy_c_buf_p;
+    /*register*/ int yy_is_jam;
+    /*register*/ YY_CHAR *yy_cp = yy_c_buf_p;
 
-    register YY_CHAR yy_c = 1;
+    /*register*/ YY_CHAR yy_c = 1;
     if ( yy_accept[yy_current_state] )
 	{
 	yy_last_accepting_state = yy_current_state;
@@ -1055,25 +1054,25 @@ register yy_state_type yy_current_state;
 
 
 #ifdef YY_USE_PROTOS
-static void yyunput( YY_CHAR c, register YY_CHAR *yy_bp )
+static void yyunput( YY_CHAR c, /*register*/ YY_CHAR *yy_bp )
 #else
 static void yyunput( c, yy_bp )
 YY_CHAR c;
-register YY_CHAR *yy_bp;
+/*register*/ YY_CHAR *yy_bp;
 #endif
 
     {
-    register YY_CHAR *yy_cp = yy_c_buf_p;
+    /*register*/ YY_CHAR *yy_cp = yy_c_buf_p;
 
     /* undo effects of setting up yytext */
     *yy_cp = yy_hold_char;
 
     if ( yy_cp < yy_current_buffer->yy_ch_buf + 2 )
 	{ /* need to shift things up to make room */
-	register int number_to_move = yy_n_chars + 2; /* +2 for EOB chars */
-	register YY_CHAR *dest =
+	/*register*/ int number_to_move = yy_n_chars + 2; /* +2 for EOB chars */
+	/*register*/ YY_CHAR *dest =
 	    &yy_current_buffer->yy_ch_buf[yy_current_buffer->yy_buf_size + 2];
-	register YY_CHAR *source =
+	/*register*/ YY_CHAR *source =
 	    &yy_current_buffer->yy_ch_buf[number_to_move];
 
 	while ( source > yy_current_buffer->yy_ch_buf )
@@ -1302,5 +1301,5 @@ FILE *file;
 
     b->yy_eof_status = EOF_NOT_SEEN;
     }
-# line 90 "cog.l"
+# line 89 "cog.l"
 

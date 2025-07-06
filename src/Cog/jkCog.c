@@ -104,8 +104,8 @@ void jkCog_computeCatapaultVelocity(sithCog *ctx)
     cog_flex_t d = sithCogExec_PopFlex(ctx);
     
     rdVector_Sub3(&ret, &b->position, &c->position);
-    float v4 = rdVector_Normalize3Acc(&ret);
-    float ctxb = sqrt(v4 * v4 * a / d);
+    cog_flex_t v4 = rdVector_Normalize3Acc(&ret);
+    cog_flex_t ctxb = stdMath_Sqrt(v4 * v4 * a / d);
     rdVector_Scale3Acc(&ret, ctxb);
     sithCogExec_PushVector3(ctx, &ret);
 }
@@ -867,7 +867,7 @@ void jkCog_StringConcatFormattedInt(sithCog *ctx)
 
 void jkCog_StringConcatFlex(sithCog *pCog)
 {
-    double v1; // st7
+    flex_d_t v1; // st7
     size_t finalLen; // esi
     wchar_t v3[130]; // [esp+Ch] [ebp-104h] BYREF
 
@@ -1054,7 +1054,7 @@ void jkCog_DestroyBubble(sithCog *ctx)
 void jkCog_GetBubbleDistance(sithCog *ctx)
 {
     int iVar1;
-    cog_flex_t tmp;
+    flex_t tmp;
     
     sithThing* pThing = sithCogExec_PopThing(ctx);
     if (pThing == sithPlayer_pLocalPlayerThing) {
@@ -1384,7 +1384,7 @@ void jkCogExt_Absolute(sithCog* ctx)
         sithCogExec_PushInt(ctx, abs((int)val));
     }
     else {
-        sithCogExec_PushFlex(ctx, fabs(val));
+        sithCogExec_PushFlex(ctx, stdMath_Fabs(val));
     }
 }
 
@@ -1457,7 +1457,7 @@ void jkCogExt_Sine(sithCog* ctx)
 void jkCogExt_Squareroot(sithCog* ctx)
 {
     cog_flex_t val = sithCogExec_PopFlex(ctx);
-    sithCogExec_PushFlex(ctx, sqrtf(val));
+    sithCogExec_PushFlex(ctx, stdMath_Sqrt(val));
 }
 
 void jkCogExt_GetHotkeyCog(sithCog* ctx)

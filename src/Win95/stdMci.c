@@ -83,7 +83,7 @@ int stdMci_Play(uint8_t trackFrom, uint8_t trackTo)
     return 0;
 }
 
-void stdMci_SetVolume(float vol)
+void stdMci_SetVolume(flex_t vol)
 {
     if (!stdMci_bInitted)
         return;
@@ -114,7 +114,7 @@ int stdMci_CheckStatus()
     return statusParms.dwReturn != MCI_MODE_STOP;
 }
 
-double stdMci_GetTrackLength(int track)
+flex_d_t stdMci_GetTrackLength(int track)
 {
     MCI_STATUS_PARMS statusParms;
 
@@ -127,7 +127,7 @@ double stdMci_GetTrackLength(int track)
     statusParms.dwTrack = track;
     jk_mciSendCommandA(stdMci_mciId, MCI_STATUS, 0x110u, &statusParms);
 
-    return (double)((statusParms.dwReturn >> 16) & 0xFF) + (double)((statusParms.dwReturn >> 8) & 0xFF) * 60.0;
+    return (flex_d_t)((statusParms.dwReturn >> 16) & 0xFF) + (flex_d_t)((statusParms.dwReturn >> 8) & 0xFF) * 60.0;
 }
 
 #else // LINUX
@@ -186,7 +186,7 @@ int stdMci_Play(uint8_t trackFrom, uint8_t trackTo)
     return 1;
 }
 
-void stdMci_SetVolume(float vol)
+void stdMci_SetVolume(flex_t vol)
 {
 }
 
@@ -204,7 +204,7 @@ int stdMci_CheckStatus()
     return stdMci_music;
 }
 
-double stdMci_GetTrackLength(int track)
+flex_d_t stdMci_GetTrackLength(int track)
 {
     return 0.0;
 }
@@ -255,7 +255,7 @@ int stdMci_TryPlay(const char* fpath) {
     strncpy(tmp, fpath, 255);
 
 #ifdef FS_POSIX
-    char *r = malloc(strlen(tmp) + 16);
+    char *r = (char*)malloc(strlen(tmp) + 16);
     if (casepath(tmp, r))
     {
         strcpy(tmp, r);
@@ -422,10 +422,10 @@ int stdMci_PlayFromPath(const char* path)
 }
 
 
-void stdMci_SetVolume(float vol)
+void stdMci_SetVolume(flex_t vol)
 {
     stdPlatform_Printf("stdMci: Set vol %f\n", vol);
-    uint8_t volQuantized = (uint16_t)(vol * (double)MIX_MAX_VOLUME);
+    uint8_t volQuantized = (uint16_t)(vol * (flex_d_t)MIX_MAX_VOLUME);
     Mix_VolumeMusic(volQuantized);
 }
 
@@ -445,7 +445,7 @@ int stdMci_CheckStatus()
     return (stdMci_music != NULL);
 }
 
-double stdMci_GetTrackLength(int track)
+flex_d_t stdMci_GetTrackLength(int track)
 {
     return 0.0;
 }

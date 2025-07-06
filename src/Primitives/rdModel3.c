@@ -100,7 +100,7 @@ void rdModel3_CalculateMeshRadii(rdModel3* model)
 		for (int j = 0; j < mesh->numVertices; j++)
 		{
 			rdVector3* vtx = &mesh->vertices[j];
-			float dist = rdVector_Len3(vtx);
+			flex_t dist = rdVector_Len3(vtx);
 			if (dist < mesh->minRadius)
 				mesh->minRadius = dist;
 
@@ -109,7 +109,7 @@ void rdModel3_CalculateMeshRadii(rdModel3* model)
 
 			rdVector_Add3Acc(&mesh->center, vtx);
 		}
-		rdVector_InvScale3Acc(&mesh->center, (float)mesh->numVertices);
+		rdVector_InvScale3Acc(&mesh->center, (flex_t)mesh->numVertices);
 	}
 }
 #endif
@@ -130,24 +130,24 @@ int rdModel3_Load(char *model_fpath, rdModel3 *model)
     int v55; // edi
     unsigned int idx; // edi
     rdHierarchyNode *node; // esi
-    float v_z; // [esp+14h] [ebp-80h]
-    float v_y; // [esp+18h] [ebp-7Ch]
-    float v_x; // [esp+1Ch] [ebp-78h]
+    flex32_t v_z; // [esp+14h] [ebp-80h]
+    flex32_t v_y; // [esp+18h] [ebp-7Ch]
+    flex32_t v_x; // [esp+1Ch] [ebp-78h]
     rdFace *face; // [esp+34h] [ebp-60h]
     int v78; // [esp+50h] [ebp-44h]
     int sibling; // [esp+54h] [ebp-40h]
-    float pitch; // [esp+58h] [ebp-3Ch]
-    float v_i; // [esp+5Ch] [ebp-38h]
-    float yaw; // [esp+60h] [ebp-34h]
-    float v_v; // [esp+64h] [ebp-30h]
-    float roll; // [esp+68h] [ebp-2Ch]
+    flex32_t pitch; // [esp+58h] [ebp-3Ch]
+    flex32_t v_i; // [esp+5Ch] [ebp-38h]
+    flex32_t yaw; // [esp+60h] [ebp-34h]
+    flex32_t v_v; // [esp+64h] [ebp-30h]
+    flex32_t roll; // [esp+68h] [ebp-2Ch]
     int parent; // [esp+6Ch] [ebp-28h]
-    float pivot_x; // [esp+70h] [ebp-24h]
-    float radius; // [esp+74h] [ebp-20h]
-    float pivot_y; // [esp+78h] [ebp-1Ch]
-    int extralight; // [esp+7Ch] [ebp-18h]
-    float pivot_z; // [esp+80h] [ebp-14h]
-    float v_u; // [esp+84h] [ebp-10h]
+    flex32_t pivot_x; // [esp+70h] [ebp-24h]
+    flex32_t radius; // [esp+74h] [ebp-20h]
+    flex32_t pivot_y; // [esp+78h] [ebp-1Ch]
+    flex32_t extralight; // [esp+7Ch] [ebp-18h]
+    flex32_t pivot_z; // [esp+80h] [ebp-14h]
+    flex32_t v_u; // [esp+84h] [ebp-10h]
     int child; // [esp+88h] [ebp-Ch]
     int version_minor; // [esp+8Ch] [ebp-8h]
     int version_major; // [esp+90h] [ebp-4h]
@@ -209,16 +209,16 @@ int rdModel3_Load(char *model_fpath, rdModel3 *model)
     if ( _sscanf(stdConffile_aLine, " radius %f", &radius) != 1 )
         goto fail;
 
-    model->radius = radius;
+    model->radius = radius; // FLEXTODO
     if (!stdConffile_ReadLine())
         goto fail;
 
     if ( _sscanf(stdConffile_aLine, " insert offset %f %f %f", &v_x, &v_y, &v_z) != 3 )
         goto fail;
 
-    model->insertOffset.x = v_x;
-    model->insertOffset.y = v_y;
-    model->insertOffset.z = v_z;
+    model->insertOffset.x = v_x; // FLEXTODO
+    model->insertOffset.y = v_y; // FLEXTODO
+    model->insertOffset.z = v_z; // FLEXTODO
     if (!stdConffile_ReadLine())
         goto fail;
 
@@ -259,7 +259,7 @@ int rdModel3_Load(char *model_fpath, rdModel3 *model)
             mesh->name[31] = 0;
 
             if ( !stdConffile_ReadLine()
-              || _sscanf(stdConffile_aLine, " radius %f", &mesh->radius) != 1
+              || _sscanf(stdConffile_aLine, " radius %f", &radius) != 1
               || !stdConffile_ReadLine()
               || _sscanf(stdConffile_aLine, " geometrymode %d", &mesh->geometryMode) != 1
               || !stdConffile_ReadLine()
@@ -272,6 +272,7 @@ int rdModel3_Load(char *model_fpath, rdModel3 *model)
             {
                 goto fail;
             }
+            mesh->radius = radius; // FLEXTODO
             
             mesh->vertices = 0;
             mesh->vertices_i = 0;
@@ -286,21 +287,21 @@ int rdModel3_Load(char *model_fpath, rdModel3 *model)
                 mesh->vertices = (rdVector3 *)rdroid_pHS->alloc(sizeof(rdVector3) * mesh->numVertices);
                 if ( !mesh->vertices )
                     goto fail;
-                mesh->vertices_i = (float *)rdroid_pHS->alloc(sizeof(float) * mesh->numVertices);
+                mesh->vertices_i = (flex_t *)rdroid_pHS->alloc(sizeof(flex_t) * mesh->numVertices);
                 if ( !mesh->vertices_i )
                     goto fail;
-                mesh->vertices_unk  = (float *)rdroid_pHS->alloc(sizeof(float) * mesh->numVertices);
+                mesh->vertices_unk  = (flex_t *)rdroid_pHS->alloc(sizeof(flex_t) * mesh->numVertices);
                 if ( !mesh->vertices_unk  )
                     goto fail;
                 _memset(mesh->vertices_unk, 0, mesh->numVertices); // bug?
 #ifdef RGB_THING_LIGHTS
-				mesh->vertices_r = (float*)rdroid_pHS->alloc(sizeof(float) * mesh->numVertices);
+				mesh->vertices_r = (flex_t*)rdroid_pHS->alloc(sizeof(flex_t) * mesh->numVertices);
 				if (!mesh->vertices_r)
 					goto fail;
-				mesh->vertices_g = (float*)rdroid_pHS->alloc(sizeof(float) * mesh->numVertices);
+				mesh->vertices_g = (flex_t*)rdroid_pHS->alloc(sizeof(flex_t) * mesh->numVertices);
 				if (!mesh->vertices_g)
 					goto fail;
-				mesh->vertices_b = (float*)rdroid_pHS->alloc(sizeof(float) * mesh->numVertices);
+				mesh->vertices_b = (flex_t*)rdroid_pHS->alloc(sizeof(flex_t) * mesh->numVertices);
 				if (!mesh->vertices_b)
 					goto fail;
 
@@ -322,14 +323,14 @@ int rdModel3_Load(char *model_fpath, rdModel3 *model)
                             &v_i) != 5 )
                     goto fail;
 
-                mesh->vertices[vertex_num].x = v_x;
-                mesh->vertices[vertex_num].y = v_y;
-                mesh->vertices[vertex_num].z = v_z;
-                mesh->vertices_i[vertex_num] = v_i;
+                mesh->vertices[vertex_num].x = v_x; // FLEXTODO
+                mesh->vertices[vertex_num].y = v_y; // FLEXTODO
+                mesh->vertices[vertex_num].z = v_z; // FLEXTODO
+                mesh->vertices_i[vertex_num] = v_i; // FLEXTODO
 #ifdef RGB_THING_LIGHTS
-				mesh->vertices_r[vertex_num] = v_i;
-				mesh->vertices_g[vertex_num] = v_i;
-				mesh->vertices_b[vertex_num] = v_i;
+				mesh->vertices_r[vertex_num] = v_i; // FLEXTODO
+				mesh->vertices_g[vertex_num] = v_i; // FLEXTODO
+				mesh->vertices_b[vertex_num] = v_i; // FLEXTODO
 #endif
             }
 
@@ -380,9 +381,9 @@ int rdModel3_Load(char *model_fpath, rdModel3 *model)
                     goto fail;
 
                 vertex_normal = &mesh->vertexNormals[v29];
-                vertex_normal->x = v_x;
-                vertex_normal->y = v_y;
-                vertex_normal->z = v_z;                    
+                vertex_normal->x = v_x; // FLEXTODO
+                vertex_normal->y = v_y; // FLEXTODO
+                vertex_normal->z = v_z; // FLEXTODO
             }
 
             if ( !stdConffile_ReadLine()
@@ -425,8 +426,9 @@ int rdModel3_Load(char *model_fpath, rdModel3 *model)
                 if ( _sscanf(tmpTxt, "%d", &face->textureMode) != 1 )
                     goto fail;
                 tmpTxt = _strtok(0, " \t");
-                if ( _sscanf(tmpTxt, "%f", &face->extraLight) != 1 )
+                if ( _sscanf(tmpTxt, "%f", &extralight) != 1 )
                     goto fail;
+                face->extraLight = extralight; // FLEXTODO
                 to_num_verts = _strtok(0, " \t");
                 face->numVertices = _atoi(to_num_verts);
                 if ( !face->numVertices )
@@ -478,9 +480,9 @@ int rdModel3_Load(char *model_fpath, rdModel3 *model)
                     goto fail;
 
 
-                mesh->faces[v55].normal.x = v_x;
-                mesh->faces[v55].normal.y = v_y;
-                mesh->faces[v55].normal.z = v_z;
+                mesh->faces[v55].normal.x = v_x; // FLEXTODO
+                mesh->faces[v55].normal.y = v_y; // FLEXTODO
+                mesh->faces[v55].normal.z = v_z; // FLEXTODO
             }
         }
     }
@@ -550,15 +552,15 @@ int rdModel3_Load(char *model_fpath, rdModel3 *model)
         else
             node->nextSibling = &model->hierarchyNodes[sibling];
 
-        node->pos.x = v_x;
-        node->pos.y = v_y;
-        node->pos.z = v_z;
-        node->rot.x = pitch;
-        node->rot.y = yaw;
-        node->rot.z = roll;
-        node->pivot.x = pivot_x;
-        node->pivot.y = pivot_y;
-        node->pivot.z = pivot_z;
+        node->pos.x = v_x; // FLEXTODO
+        node->pos.y = v_y; // FLEXTODO
+        node->pos.z = v_z; // FLEXTODO
+        node->rot.x = pitch; // FLEXTODO
+        node->rot.y = yaw; // FLEXTODO
+        node->rot.z = roll; // FLEXTODO
+        node->pivot.x = pivot_x; // FLEXTODO
+        node->pivot.y = pivot_y; // FLEXTODO
+        node->pivot.z = pivot_z; // FLEXTODO
     }
 
     rdModel3_CalcNumParents(model); // MOTS added
@@ -1033,7 +1035,7 @@ rdModel3* rdModel3_Validate(rdModel3 *model)
 
 void rdModel3_CalcBoundingBoxes(rdModel3 *model)
 {
-    float maxDist;
+    flex_t maxDist;
 
     for (int i = 0; i < model->geosets[0].numMeshes; i++)
     {
@@ -1042,7 +1044,7 @@ void rdModel3_CalcBoundingBoxes(rdModel3 *model)
         for (int j = 0; j < mesh->numVertices; j++)
         {
             rdVector3* vtx = &mesh->vertices[j];
-            float dist = rdVector_Len3(vtx);
+            flex_t dist = rdVector_Len3(vtx);
             if ( dist > maxDist )
             {
                 maxDist = dist;
@@ -1082,7 +1084,7 @@ void rdModel3_BuildExpandedRadius(rdModel3 *model, rdHierarchyNode *node, const 
         {
             rdVector3* vtx = &mesh->vertices[i];
             rdMatrix_TransformPoint34(&vertex_out, vtx, &out);
-            float dist = rdVector_Len3(&vertex_out);
+            flex_t dist = rdVector_Len3(&vertex_out);
             if ( dist > rdModel3_fRadius )
                 rdModel3_fRadius = dist;
         }
@@ -1138,10 +1140,10 @@ void rdModel3_CalcFaceNormals(rdModel3 *model)
 
 void rdModel3_CalcVertexNormals(rdModel3 *model)
 {
-    double v10; // st7
-    double v11; // st6
-    double v12; // st5
-    double v13; // st4
+    flex_d_t v10; // st7
+    flex_d_t v11; // st6
+    flex_d_t v12; // st5
+    flex_d_t v13; // st4
     unsigned int v15; // eax
     rdVector3 *v19; // ecx
     int v22; // edx
@@ -1452,7 +1454,7 @@ void rdModel3_DrawMesh(rdMesh *meshIn, rdMatrix34 *mat)
                 
                 // MOTS added
                 if ((*pGeoLight)->type == 3) {
-                    float tmpZ = mat->scale.z;
+                    flex_t tmpZ = mat->scale.z;
                     rdVector_Zero3(&mat->scale);
 
                     rdVector3 tmpDir;
@@ -1484,7 +1486,7 @@ void rdModel3_DrawMesh(rdMesh *meshIn, rdMatrix34 *mat)
                     
                     // MOTS added
                     if ((*pGeoLight)->type == 3) {
-                        float tmpZ = mat->scale.z;
+                        flex_t tmpZ = mat->scale.z;
                         rdVector_Zero3(&mat->scale);
 
                         rdVector3 tmpDir;
@@ -1708,7 +1710,7 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 
 	int isIdentityMap = (rdColormap_pCurMap == rdColormap_pIdentityMap);
 
-	float alpha = 1.0f;
+	flex_t alpha = 1.0f;
 	if ((face->type & RD_FF_TEX_TRANSLUCENT) != 0)
 	{
 		alpha = 90.0f / 255.0f;
@@ -1729,7 +1731,7 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 
 	rdViewportRect viewport;
 	rdGetViewport(&viewport);
-	float aspect = viewport.height / viewport.width;
+	flex_t aspect = viewport.height / viewport.width;
 
 	rdVector3 tint = {1,1,1};
 	//if (pCurThing->parentSithThing->sector != sithCamera_currentCamera->sector)
@@ -1772,7 +1774,7 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 			}
 			else if (rdGetVertexColorMode() == 0)
 			{
-				float intensity = pCurMesh->vertices_i[posidx];
+				flex_t intensity = pCurMesh->vertices_i[posidx];
 
 				rdVector3 rgb;
 				rgb.x = intensity * tint.x + intensity;
@@ -1783,9 +1785,9 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 			}
 			else
 			{
-				float r = pCurMesh->vertices_r[posidx];
-				float g = pCurMesh->vertices_g[posidx];
-				float b = pCurMesh->vertices_b[posidx];
+				flex_t r = pCurMesh->vertices_r[posidx];
+				flex_t g = pCurMesh->vertices_g[posidx];
+				flex_t b = pCurMesh->vertices_b[posidx];
 
 				rdVector3 rgb;
 				rgb.x = r * tint.x + r;
@@ -1963,7 +1965,7 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 
         for (int i = 1; i < vertexDst.numVertices; i++ )
         {
-                float level = procEntry->vertexIntensities[i] - procEntry->vertexIntensities[0];
+                flex_t level = procEntry->vertexIntensities[i] - procEntry->vertexIntensities[0];
                 if ( level < 0.0 )
                     level = -level;
 

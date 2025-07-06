@@ -69,7 +69,7 @@ int stdStrTable_Load(stdStrTable *strtable, char *fpath)
         return 0;
     }
     strtable->numMsgs = numMsgs;
-    strtable->msgs = std_pHS->alloc(sizeof(stdStrMsg) * numMsgs);
+    strtable->msgs = (stdStrMsg*)std_pHS->alloc(sizeof(stdStrMsg) * numMsgs);
     if ( !strtable->msgs )
         std_pHS->assert("Out of memory--cannot load string table", ".\\General\\stdStrTable.c", 120);
     _memset(strtable->msgs, 0, sizeof(stdStrMsg) * numMsgs);
@@ -237,7 +237,7 @@ wchar_t* stdStrTable_GetUniString(stdStrTable* pTable, const char *key)
     return result;
 }
 
-wchar_t* stdStrTable_GetStringWithFallback(stdStrTable* pTable, char *key)
+wchar_t* stdStrTable_GetStringWithFallback(stdStrTable* pTable, const char *key)
 {
     stdStrMsg *v2; // eax
     wchar_t *result; // eax

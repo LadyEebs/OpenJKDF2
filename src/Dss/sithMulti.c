@@ -49,7 +49,7 @@ void sithMulti_SetHandleridk(sithMultiHandler_t a1)
     sithMulti_handlerIdk = a1;
 }
 
-void sithMulti_SendChat(char *pStr, int arg0, int arg1)
+void sithMulti_SendChat(const char *pStr, int arg0, int arg1)
 {
     uint32_t pStr_len = strlen(pStr) + 1;
     if ( pStr_len >= 0x80 )
@@ -163,6 +163,7 @@ int sithMulti_StartupServer()
 	stdComm_DoReceive();
 	return 1;
 }
+
 int sithMulti_StartupClient()
 {
 	sithNet_isServer = 0;
@@ -180,6 +181,7 @@ int sithMulti_StartupClient()
 	stdComm_DoReceive();
 	return 1;
 }
+
 void sithMulti_RemoveAllActorsFromWorld(sithWorld* pWorld)
 {
 	// Added: nullptr check
@@ -219,10 +221,10 @@ int sithMulti_Startup()
     sithMulti_bTimelimitMet = 0;
     sithComm_multiplayerFlags |= 1u;
     sithComm_bSyncMultiplayer |= 1u;
-    sithMulti_dword_83265C = 0;
 
     // Remove all actor things from the world
 	sithMulti_RemoveAllActorsFromWorld(sithWorld_pCurrentWorld);
+	
 	sithNet_checksum = sithWorld_CalcChecksum(sithWorld_pCurrentWorld, 0/*jkGuiMultiplayer_checksumSeed*/); // Added: TODO fix the checksum seed
     sithNet_syncIdx = 0;
     sithSurface_numSurfaces_0 = 0;
@@ -239,7 +241,7 @@ int sithMulti_Startup()
     else
     {
 		return sithMulti_StartupClient();
-    }
+	}
 }
 
 void sithMulti_FreeThing(int a1)
@@ -328,7 +330,7 @@ int sithMulti_GetSpawnIdx(sithThing *pPlayerThing)
         return 0;
     if ( v2 == 1 )
         return v12[0];
-    v7 = (__int64)(_frand() * (double)v2);
+    v7 = (__int64)(_frand() * (flex_d_t)v2);
     if ( v7 > v2 - 1 )
         v7 = v2 - 1;
     while ( 1 )
@@ -342,7 +344,7 @@ int sithMulti_GetSpawnIdx(sithThing *pPlayerThing)
             &rdroid_zeroVector3,
             0.0,
             pPlayerThing->moveSize,
-            1154);
+            RAYCAST_400 | RAYCAST_80 | RAYCAST_2);
         for ( i = sithCollision_NextSearchResult(); i; i = sithCollision_NextSearchResult() )
         {
             if ( (i->hitType & SITHCOLLISION_THING) != 0 )
@@ -368,7 +370,7 @@ void sithMulti_SyncScores()
 
 void sithMulti_HandleDeath(sithPlayerInfo *pPlayerInfo, sithThing *pKilledThing, sithThing *pKilledByThing)
 {
-    double v3; // st7
+    flex_d_t v3; // st7
     wchar_t *v4; // eax
     wchar_t *v5; // eax
     wchar_t *v6; // eax

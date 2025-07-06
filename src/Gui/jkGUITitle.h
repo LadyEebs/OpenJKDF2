@@ -20,12 +20,12 @@ char jkGuiTitle_sub_4189A0(char *a1);
 wchar_t* jkGuiTitle_quicksave_related_func1(stdStrTable *strTable, char *jkl_fname);
 void jkGuiTitle_UnkDraw(jkGuiElement *element, jkGuiMenu *menu, stdVBuffer *vbuf, int a4);
 void jkGuiTitle_LoadBarDraw(jkGuiElement *element, jkGuiMenu *menu, stdVBuffer *vbuf, int a4);
-void jkGuiTitle_WorldLoadCallback(float percentage);
+void jkGuiTitle_WorldLoadCallback(flex_t percentage);
 void jkGuiTitle_ShowLoadingStatic();
 void jkGuiTitle_ShowLoading(char *a1, wchar_t *a2);
 void jkGuiTitle_LoadingFinalize();
 
-static int (*jkGuiTitle_UnkDraw_)(jkGuiElement *a1, jkGuiMenu *a2, stdVBuffer *a3, int a4) = (void*)jkGuiTitle_UnkDraw_ADDR;
-static int (*jkGuiTitle_LoadBarDraw_)(jkGuiElement *element, jkGuiMenu *menu, stdVBuffer *vbuf, int a4) = (void*)jkGuiTitle_LoadBarDraw_ADDR;
+//static int (*jkGuiTitle_UnkDraw_)(jkGuiElement *a1, jkGuiMenu *a2, stdVBuffer *a3, int a4) = (void*)jkGuiTitle_UnkDraw_ADDR;
+//static int (*jkGuiTitle_LoadBarDraw_)(jkGuiElement *element, jkGuiMenu *menu, stdVBuffer *vbuf, int a4) = (void*)jkGuiTitle_LoadBarDraw_ADDR;
 
 #endif // _JKGUITITLE_H

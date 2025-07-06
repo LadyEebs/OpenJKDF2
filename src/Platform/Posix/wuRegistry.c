@@ -21,7 +21,7 @@ int wuRegistry_SaveInt(LPCSTR lpValueName, int val)
     return 1;
 }
 
-int wuRegistry_SaveFloat(LPCSTR lpValueName, float val)
+int wuRegistry_SaveFloat(LPCSTR lpValueName, flex_t val)
 {
     return stdJSON_SaveFloat(REGISTRY_FNAME, lpValueName, val);
 }
@@ -31,7 +31,7 @@ int wuRegistry_GetInt(LPCSTR lpValueName, int defaultVal)
     return stdJSON_GetInt(REGISTRY_FNAME, lpValueName, defaultVal);
 }
 
-float wuRegistry_GetFloat(LPCSTR lpValueName, float defaultVal)
+flex_t wuRegistry_GetFloat(LPCSTR lpValueName, flex_t defaultVal)
 {
     return stdJSON_GetFloat(REGISTRY_FNAME, lpValueName, defaultVal);
 }
@@ -68,10 +68,10 @@ int wuRegistry_GetString(LPCSTR lpValueName, char* lpData, int outSize, const ch
 
 int wuRegistry_SetWString(LPCSTR lpValueName, const wchar_t *lpData)
 {
-    return stdJSON_SetWString(REGISTRY_FNAME, lpValueName, lpData);
+    return stdJSON_SetWString(REGISTRY_FNAME, (const char*)lpValueName, (const char16_t*)lpData);
 }
 
 int wuRegistry_GetWString(LPCSTR lpValueName, wchar_t* lpData, int outSize, const wchar_t *outDefault)
 {
-    return stdJSON_GetWString(REGISTRY_FNAME, lpValueName, lpData, outSize, outDefault);
+    return stdJSON_GetWString(REGISTRY_FNAME, (const char*)lpValueName, (char16_t*)lpData, outSize, (const char16_t*)outDefault);
 }

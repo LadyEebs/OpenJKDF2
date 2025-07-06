@@ -18,7 +18,7 @@ void rdParticle_RegisterLoader(rdParticleLoader_t loader)
     rdParticle_loader = loader;
 }
 
-rdParticle* rdParticle_New(int numVertices, float size, rdMaterial *material, int lightingMode, int allocateVertices)
+rdParticle* rdParticle_New(int numVertices, flex_t size, rdMaterial *material, int lightingMode, int allocateVertices)
 {
     rdParticle *particle;
 
@@ -29,7 +29,7 @@ rdParticle* rdParticle_New(int numVertices, float size, rdMaterial *material, in
     return particle;
 }
 
-int rdParticle_NewEntry(rdParticle *particle, int numVertices, float size, rdMaterial *material, int lightingMode, int allocateVertices)
+int rdParticle_NewEntry(rdParticle *particle, int numVertices, flex_t size, rdMaterial *material, int lightingMode, int allocateVertices)
 {
 	particle->name[0] = '\0';
     particle->material = material;
@@ -130,9 +130,11 @@ int rdParticle_LoadEntry(char *fpath, rdParticle *pParticle)
     int v15; // eax
     rdVector3 *v16; // esi
     int *v17; // edi
-    rdVector3 v19; // [esp+10h] [ebp-20h]
-    float size; // [esp+1Ch] [ebp-14h]
-    int v21; // [esp+20h] [ebp-10h]
+    flex32_t fx;
+    flex32_t fy;
+    flex32_t fz;
+    flex32_t size; // [esp+1Ch] [ebp-14h]
+    flex32_t v21; // [esp+20h] [ebp-10h]
     int versMinor; // [esp+24h] [ebp-Ch]
     int versMajor; // [esp+28h] [ebp-8h]
     int v24; // [esp+2Ch] [ebp-4h]
@@ -158,8 +160,8 @@ int rdParticle_LoadEntry(char *fpath, rdParticle *pParticle)
     if (_sscanf(stdConffile_aLine, " size %f", &size) != 1)
         goto done_close;
 
-    pParticle->diameter = size;
-    pParticle->radius = size * 0.5;
+    pParticle->diameter = size; // FLEXTODO
+    pParticle->radius = size * 0.5; // FLEXTODO
     if (!stdConffile_ReadLine())
         goto done_close;
 
@@ -190,16 +192,16 @@ int rdParticle_LoadEntry(char *fpath, rdParticle *pParticle)
     if ( _sscanf(stdConffile_aLine, " radius %f", &v21) != 1 )
         goto done_close;
 
-    pParticle->cloudRadius = v21;
+    pParticle->cloudRadius = v21; // FLEXTODO
     if (!stdConffile_ReadLine())
         goto done_close;
 
-    if ( _sscanf(stdConffile_aLine, " insert offset %f %f %f", &v19, &v19.y, &v19.z) != 3 )
+    if ( _sscanf(stdConffile_aLine, " insert offset %f %f %f", &fx, &fy, &fz) != 3 )
         goto done_close;
 
-    pParticle->insertOffset.x = v19.x;
-    pParticle->insertOffset.y = v19.y;
-    pParticle->insertOffset.z = v19.z;
+    pParticle->insertOffset.x = fx; // FLEXTODO
+    pParticle->insertOffset.y = fy; // FLEXTODO
+    pParticle->insertOffset.z = fz; // FLEXTODO
     if (!stdConffile_ReadLine())
         goto done_close;
 
@@ -226,14 +228,16 @@ LABEL_28:
                         stdConffile_aLine,
                         " %d: %f %f %f %d",
                         &v24,
-                        &v19,
-                        &v19.y,
-                        &v19.z,
+                        &fx,
+                        &fy,
+                        &fz,
                         v17) == 5
                  && *v17 < v8 )
             {
                 ++v17;
-                *v16 = v19;
+                v16->x = fx; // FLEXTODO
+                v16->y = fy; // FLEXTODO
+                v16->z = fz; // FLEXTODO
                 ++v16;
                 if ( ++v5 >= numVertices )
                     goto LABEL_28;
@@ -406,11 +410,11 @@ int rdParticle_Draw(rdThing* thing, rdMatrix34* mat)
 
 		rdBindMaterial(particle->material, particle->vertexCel[j]);
 
-		float left = aParticleVertices[j].x - particle->radius;
-		float bottom = aParticleVertices[j].z - particle->radius;
-		float right = aParticleVertices[j].x + particle->radius;
-		float top = aParticleVertices[j].z + particle->radius;
-		float depth = aParticleVertices[j].y;
+		flex_t left = aParticleVertices[j].x - particle->radius;
+		flex_t bottom = aParticleVertices[j].z - particle->radius;
+		flex_t right = aParticleVertices[j].x + particle->radius;
+		flex_t top = aParticleVertices[j].z + particle->radius;
+		flex_t depth = aParticleVertices[j].y;
 
 		if (rdBeginPrimitive(RD_PRIMITIVE_POLYGON))
 		{
@@ -441,28 +445,28 @@ int rdParticle_Draw(rdThing *thing, rdMatrix34 *matrix_4_3)
 {
     rdParticle *particle; // edi
     int v3; // eax
-    float *v4; // ebx
+    flex_t *v4; // ebx
     rdProcEntry *v5; // esi
-    double v6; // st6
-    double v7; // st5
-    double v8; // st7
-    double v9; // st4
-    double v10; // st3
-    double v11; // st2
-    double v12; // st1
-    double v13; // st3
-    double v14; // rt1
-    float v15; // ST24_4
-    double v16; // st2
-    double v17; // st7
-    float v18; // edx
-    float v19; // ST24_4
-    double v20; // st5
-    double v21; // st2
-    double v22; // st7
+    flex_d_t v6; // st6
+    flex_d_t v7; // st5
+    flex_d_t v8; // st7
+    flex_d_t v9; // st4
+    flex_d_t v10; // st3
+    flex_d_t v11; // st2
+    flex_d_t v12; // st1
+    flex_d_t v13; // st3
+    flex_d_t v14; // rt1
+    flex_t v15; // ST24_4
+    flex_d_t v16; // st2
+    flex_d_t v17; // st7
+    flex_t v18; // edx
+    flex_t v19; // ST24_4
+    flex_d_t v20; // st5
+    flex_d_t v21; // st2
+    flex_d_t v22; // st7
     rdClipFrustum *v23; // ecx
-    float v24; // eax
-    float v25; // ST24_4
+    flex_t v24; // eax
+    flex_t v25; // ST24_4
     unsigned int v26; // eax
     unsigned int v27; // ebp
     int *v29; // ecx
@@ -474,7 +478,7 @@ int rdParticle_Draw(rdThing *thing, rdMatrix34 *matrix_4_3)
 #ifdef RGB_AMBIENT
 	rdVector3 matrix_4_3a;
 #else
-    float matrix_4_3a; // [esp+5Ch] [ebp+8h]
+    flex_t matrix_4_3a; // [esp+5Ch] [ebp+8h]
 #endif
 
     particle = thing->particlecloud;

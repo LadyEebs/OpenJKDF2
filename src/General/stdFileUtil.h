@@ -1,11 +1,11 @@
 #ifndef _STDFILEUTIL_H
 #define _STDFILEUTIL_H
 
+#include "types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "types.h"
 
 #define stdFileUtil_NewFind_ADDR (0x00431740)
 #define stdFileUtil_DisposeFind_ADDR (0x004317E0)
@@ -40,7 +40,7 @@ typedef struct stdFileSearchResult
     int time_write;
 } stdFileSearchResult;
 
-stdFileSearch* stdFileUtil_NewFind(char *path, int a2, char *extension);
+stdFileSearch* stdFileUtil_NewFind(const char *path, int a2, const char *extension);
 int stdFileUtil_FindNext(stdFileSearch *a1, stdFileSearchResult *a2);
 void stdFileUtil_DisposeFind(stdFileSearch *search);
 

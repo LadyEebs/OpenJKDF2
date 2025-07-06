@@ -30,55 +30,56 @@
 #define stdMath_Floor_ADDR (0x00433650)
 #define stdMath_Sqrt_ADDR (0x00433670)
 
-float stdMath_FlexPower(float num, int32_t exp);
-float stdMath_NormalizeAngle(float angle);
-float stdMath_NormalizeAngleAcute(float angle);
-float stdMath_NormalizeDeltaAngle(float a1, float a2);
-void stdMath_SinCos(float angle, float *pSinOut, float *pCosOut);
-float stdMath_Tan(float a1);
-float stdMath_ArcSin1(float val);
-float stdMath_ArcSin2(float val);
-float stdMath_ArcSin3(float val);
-float stdMath_ArcTan1(float a1, float a2);
-float stdMath_ArcTan2(float a1, float a2);
-float stdMath_ArcTan3(float a1, float a2);
-float stdMath_ArcTan4(float a1, float a2);
+flex_t stdMath_FlexPower(flex_t num, int32_t exp);
+flex_t stdMath_NormalizeAngle(flex_t angle);
+flex_t stdMath_NormalizeAngleAcute(flex_t angle);
+flex_t stdMath_NormalizeDeltaAngle(flex_t a1, flex_t a2);
+void stdMath_SinCos(flex_t angle, flex_t *pSinOut, flex_t *pCosOut);
+flex_t stdMath_Tan(flex_t a1);
+flex_t stdMath_ArcSin1(flex_t val);
+flex_t stdMath_ArcSin2(flex_t val);
+flex_t stdMath_ArcSin3(flex_t val);
+flex_t stdMath_ArcTan1(flex_t a1, flex_t a2);
+flex_t stdMath_ArcTan2(flex_t a1, flex_t a2);
+flex_t stdMath_ArcTan3(flex_t a1, flex_t a2);
+flex_t stdMath_ArcTan4(flex_t a1, flex_t a2);
 int32_t stdMath_FloorDivMod(int32_t in1, int32_t in2, int32_t *out1, int32_t *out2);
 
-//IMPORT_FUNC(stdMath_SinCos, void, (float, float*, float*), stdMath_SinCos_ADDR)
-//IMPORT_FUNC(stdMath_Tan, float, (float), stdMath_Tan_ADDR)
-//IMPORT_FUNC(stdMath_ArcSin1, float, (float), stdMath_ArcSin1_ADDR)
-//IMPORT_FUNC(stdMath_ArcSin2, float, (float), stdMath_ArcSin2_ADDR)
-//IMPORT_FUNC(stdMath_ArcSin3, float, (float), stdMath_ArcSin3_ADDR)
-//IMPORT_FUNC(stdMath_ArcTan1, float, (float, float), stdMath_ArcTan1_ADDR)
-//IMPORT_FUNC(stdMath_ArcTan2, float, (float, float), stdMath_ArcTan2_ADDR)
-//IMPORT_FUNC(stdMath_ArcTan3, float, (float, float), stdMath_ArcTan3_ADDR)
-//IMPORT_FUNC(stdMath_ArcTan4, float, (float, float), stdMath_ArcTan4_ADDR)
+//IMPORT_FUNC(stdMath_SinCos, void, (flex_t, flex_t*, flex_t*), stdMath_SinCos_ADDR)
+//IMPORT_FUNC(stdMath_Tan, flex_t, (flex_t), stdMath_Tan_ADDR)
+//IMPORT_FUNC(stdMath_ArcSin1, flex_t, (flex_t), stdMath_ArcSin1_ADDR)
+//IMPORT_FUNC(stdMath_ArcSin2, flex_t, (flex_t), stdMath_ArcSin2_ADDR)
+//IMPORT_FUNC(stdMath_ArcSin3, flex_t, (flex_t), stdMath_ArcSin3_ADDR)
+//IMPORT_FUNC(stdMath_ArcTan1, flex_t, (flex_t, flex_t), stdMath_ArcTan1_ADDR)
+//IMPORT_FUNC(stdMath_ArcTan2, flex_t, (flex_t, flex_t), stdMath_ArcTan2_ADDR)
+//IMPORT_FUNC(stdMath_ArcTan3, flex_t, (flex_t, flex_t), stdMath_ArcTan3_ADDR)
+//IMPORT_FUNC(stdMath_ArcTan4, flex_t, (flex_t, flex_t), stdMath_ArcTan4_ADDR)
 //IMPORT_FUNC(stdMath_FloorDivMod, int, (int, int, int*, int*), stdMath_FloorDivMod_ADDR)
 
-static void (*_stdMath_SinCos)(float angle, float *pSinOut, float *pCosOut) = (void*)stdMath_SinCos_ADDR;
+//static void (*_stdMath_SinCos)(flex_t angle, flex_t *pSinOut, flex_t *pCosOut) = (void*)stdMath_SinCos_ADDR;
 
-float stdMath_Dist2D1(float a1, float a2);
-float stdMath_Dist2D2(float a1, float a2);
-float stdMath_Dist2D3(float a1, float a2);
-float stdMath_Dist2D4(float a1, float a2);
-float stdMath_Dist3D1(float a1, float a2, float a3);
-float stdMath_Dist3D2(float a1, float a2, float a3);
-float stdMath_Dist3D3(float a1, float a2, float a3);
-float stdMath_Floor(float a);
-float stdMath_Sqrt(float a);
-float stdMath_Frac(float a);
+flex_t stdMath_Dist2D1(flex_t a1, flex_t a2);
+flex_t stdMath_Dist2D2(flex_t a1, flex_t a2);
+flex_t stdMath_Dist2D3(flex_t a1, flex_t a2);
+flex_t stdMath_Dist2D4(flex_t a1, flex_t a2);
+flex_t stdMath_Dist3D1(flex_t a1, flex_t a2, flex_t a3);
+flex_t stdMath_Dist3D2(flex_t a1, flex_t a2, flex_t a3);
+flex_t stdMath_Dist3D3(flex_t a1, flex_t a2, flex_t a3);
+flex_t stdMath_Floor(flex_t a);
+flex_t stdMath_Sqrt(flex_t a);
+flex_t stdMath_Frac(flex_t a);
 
 // Added
-float stdMath_ClipPrecision(float val);
-float stdMath_Clamp(float val, float valMin, float valMax);
-float stdMath_ClampValue(float val, float valAbsMax);
-static inline float stdMath_Fabs(float val)
+flex_t stdMath_ClipPrecision(flex_t val);
+flex_t stdMath_Clamp(flex_t val, flex_t valMin, flex_t valMax);
+flex_t stdMath_ClampValue(flex_t val, flex_t valAbsMax);
+static inline flex_t stdMath_Fabs(flex_t val)
 {
-    return fabs(val);
+    //return fabs(val);
+    return (val < 0.0) ? -val : val;
 }
 
-static inline float stdMath_Lerp(float x, float y, float f)
+static inline flex_t stdMath_Lerp(flex_t x, flex_t y, flex_t f)
 {
 	return x + (y - x) * f;
 }
@@ -113,24 +114,24 @@ float stdMath_Sin(float angle);
 float stdMath_Cos(float angle);
 
 // signed 16 bit half precision float
-uint16_t stdMath_FloatToHalf(float val);
-float stdMath_HalfToFloat(uint16_t value);
+uint16_t stdMath_FloatToHalf(float val); // fixme: flex_t
+float stdMath_HalfToFloat(uint16_t value); // fixme: flex_t
 
-uint32_t stdMath_PackHalf2x16(float x, float y);
+uint32_t stdMath_PackHalf2x16(float x, float y); // fixme: flex_t
 
 // unsigned 8 bit mini float, 4 bits exponent and 4 bits significand
-uint8_t stdMath_FloatToMini8(float x);
-float stdMath_Mini8ToFloat(uint8_t x);
+uint8_t stdMath_FloatToMini8(float x); // fixme: flex_t
+float stdMath_Mini8ToFloat(uint8_t x); // fixme: flex_t
 
-uint32_t stdMath_FloatBitsToUint(float x);
+uint32_t stdMath_FloatBitsToUint(float x); // fixme: flex_t
 
-uint8_t stdMath_PackUnorm1x8(float f);
+uint8_t stdMath_PackUnorm1x8(float f); // fixme: flex_t
 uint32_t stdMath_PackUnorm4x8(const rdVector4* unpackedInput);
 
-int8_t stdMath_PackSnorm1x8(float f);
+int8_t stdMath_PackSnorm1x8(float f); // fixme: flex_t
 uint32_t stdMath_PackSnorm4x8(const rdVector4* unpackedInput);
 
-extern const float aSinTable[4096];
-extern const float aTanTable[4096];
+extern const flex_t aSinTable[4096];
+extern const flex_t aTanTable[4096];
 
 #endif // _STDMATH_H

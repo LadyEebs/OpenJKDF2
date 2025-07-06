@@ -471,6 +471,7 @@ int sithCog_Open()
     v12 = 0;
     if ( world->numCogsLoaded )
     {
+        sithCogReference* idk = NULL;
         while ( 1 )
         {
             v10 = 0;
@@ -486,7 +487,7 @@ LABEL_25:
         v13 = cogs->field_4BC;
         while ( 1 )
         {
-            sithCogReference* idk = &cogs->cogscript->aIdk[v10];
+            idk = &cogs->cogscript->aIdk[v10];
             v8 = &cogs->pSymbolTable->buckets[idk->hash];
             v14 = v8;
             if ( (idk->flags & 1) != 0 )
@@ -690,7 +691,7 @@ int sithCog_LoadEntry(sithCogSymbol *cogSymbol, sithCogReference *cogIdk, char *
     {
         case COG_TYPE_FLEX:
             cogSymbol->val.type = COG_VARTYPE_FLEX;
-            cogSymbol->val.dataAsFloat[0] = _atof(val);
+            cogSymbol->val.dataAsFloat[0] = _atof(val); // FLEXTODO
             return 1;
 
         case COG_TYPE_TEMPLATE:
@@ -892,20 +893,20 @@ void sithCog_SendMessageFromThing(sithThing *a1, sithThing *a2, int msg)
     sithCog_SendMessageFromThingEx(a1, a2, msg, 0.0, 0.0, 0.0, 0.0);
 }
 
-float sithCog_SendMessageFromThingEx(sithThing *sender, sithThing *receiver, SITH_MESSAGE message, float param0, float param1, float param2, float param3)
+cog_flex_t sithCog_SendMessageFromThingEx(sithThing *sender, sithThing *receiver, SITH_MESSAGE message, cog_flex_t param0, cog_flex_t param1, cog_flex_t param2, cog_flex_t param3)
 {
     //return _sithCog_SendMessageFromThingEx(sender, receiver, message, param0, param1, param2, param3);
     int v7; // ebx
     int v8; // ebp
     sithCog *v9; // eax
-    float v10; // st7
-    float v11; // st7
+    cog_flex_t v10; // st7
+    cog_flex_t v11; // st7
     sithCog *v12; // eax
-    float v13; // st7
-    float v14; // st7
-    float v16; // st7
-    float v17; // st7
-    float v19; // [esp+10h] [ebp-8h]
+    cog_flex_t v13; // st7
+    cog_flex_t v14; // st7
+    cog_flex_t v16; // st7
+    cog_flex_t v17; // st7
+    cog_flex_t v19; // [esp+10h] [ebp-8h]
     int receivera; // [esp+20h] [ebp+8h]
 
     v19 = 0.0;
@@ -1031,13 +1032,13 @@ void sithCog_SendMessageFromSurface(sithSurface *surface, sithThing *thing, int 
     sithCog_SendMessageFromSurfaceEx(surface, thing, msg, 0.0, 0.0, 0.0, 0.0);
 }
 
-double sithCog_SendMessageFromSurfaceEx(sithSurface *sender, sithThing *thing, SITH_MESSAGE msg, float a4, float a5, float a6, float a7)
+cog_flex_t sithCog_SendMessageFromSurfaceEx(sithSurface *sender, sithThing *thing, SITH_MESSAGE msg, cog_flex_t a4, cog_flex_t a5, cog_flex_t a6, cog_flex_t a7)
 {
     int v8; // ebp
-    float v9; // ebx
-    double v11; // st7
-    double v12; // st7
-    float v14; // [esp+10h] [ebp-Ch]
+    cog_flex_t v9; // ebx
+    cog_flex_t v11; // st7
+    cog_flex_t v12; // st7
+    cog_flex_t v14; // [esp+10h] [ebp-Ch]
     int v15; // [esp+14h] [ebp-8h]
     int sourceType; // [esp+24h] [ebp+8h]
 
@@ -1105,12 +1106,12 @@ void sithCog_SendMessageFromSector(sithSector *sector, sithThing *thing, int mes
     sithCog_SendMessageFromSectorEx(sector, thing, message, 0.0, 0.0, 0.0, 0.0);
 }
 
-float sithCog_SendMessageFromSectorEx(sithSector *a1, sithThing *sourceType, SITH_MESSAGE message, float param0, float param1, float param2, float param3)
+cog_flex_t sithCog_SendMessageFromSectorEx(sithSector *a1, sithThing *sourceType, SITH_MESSAGE message, cog_flex_t param0, cog_flex_t param1, cog_flex_t param2, cog_flex_t param3)
 {
     int v8; // ebp
-    double v11; // st7
-    double v12; // st7
-    float v13; // [esp+10h] [ebp-Ch]
+    cog_flex_t v11; // st7
+    cog_flex_t v12; // st7
+    cog_flex_t v13; // [esp+10h] [ebp-Ch]
     int v14; // [esp+14h] [ebp-8h]
     int sourceTypea; // [esp+24h] [ebp+8h]
 
@@ -1176,7 +1177,7 @@ void sithCog_SendSimpleMessageToAll(int a1, int a2, int a3, int a4, int a5)
     sithCog_SendMessageToAll(a1, a2, a3, a4, a5, 0.0, 0.0, 0.0, 0.0);
 }
 
-void sithCog_SendMessageToAll(int cmdid, int senderType, int senderIdx, int sourceType, int sourceIdx, float arg0, float arg1, float arg2, float arg3)
+void sithCog_SendMessageToAll(int cmdid, int senderType, int senderIdx, int sourceType, int sourceIdx, cog_flex_t arg0, cog_flex_t arg1, cog_flex_t arg2, cog_flex_t arg3)
 {
     sithCog *v9; // esi
     unsigned int i; // edi
@@ -1321,9 +1322,9 @@ execute:
     }
 }
 
-float sithCog_SendMessageEx(sithCog *cog, int message, int senderType, int senderIndex, int sourceType, int sourceIndex, int linkId, float param0, float param1, float param2, float param3)
+cog_flex_t sithCog_SendMessageEx(sithCog *cog, int message, int senderType, int senderIndex, int sourceType, int sourceIndex, int linkId, cog_flex_t param0, cog_flex_t param1, cog_flex_t param2, cog_flex_t param3)
 {
-    double result; // st7
+    cog_flex_t result; // st7
     sithCogScript *v12; // ebp
     int v13; // edx
     unsigned int trigIdxMax; // ecx
@@ -1616,7 +1617,7 @@ sithCogScript* sithCogScript_LoadEntry(const char *pFpath, int unk)
     return result;
 }
 
-void sithCogScript_RegisterVerb(sithCogSymboltable *a1, cogSymbolFunc_t a2, char *a3)
+void sithCogScript_RegisterVerb(sithCogSymboltable *a1, cogSymbolFunc_t a2, const char *a3)
 {
     sithCogStackvar a2a;
 
@@ -1800,7 +1801,7 @@ int sithCogScript_DevCmdCogStatus(stdDebugConsoleCmd *cmd, const char *extra)
                     v7 = "<null>";
                 _sprintf(std_genBuffer, "  Symbol %d: '%s' ", v6->symbol_id, v7);
                 if ( v6->val.type == 2 )
-                    _sprintf(&std_genBuffer[_strlen(std_genBuffer)], " = %f\n", &v6->val.dataAsFloat[0]);
+                    _sprintf(&std_genBuffer[_strlen(std_genBuffer)], " = %f\n", v6->val.dataAsFloat[0]);
                 else
                     _sprintf(&std_genBuffer[_strlen(std_genBuffer)], " = %d\n", v6->val.data[0]);
                 sithConsole_Print(std_genBuffer);

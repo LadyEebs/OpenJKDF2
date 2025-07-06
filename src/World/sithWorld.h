@@ -41,7 +41,7 @@ extern sithWorld* sithWorld_pStaticWorlds[4];
 int sithWorld_Startup();
 void sithWorld_Shutdown();
 void sithWorld_SetLoadPercentCallback(sithWorldProgressCallback_t func);
-void sithWorld_UpdateLoadPercent(float percent);
+void sithWorld_UpdateLoadPercent(flex_t percent);
 int sithWorld_Load(sithWorld *pWorld, char *map_jkl_fname);
 sithWorld* sithWorld_New();
 int sithWorld_NewEntry(sithWorld *pWorld);
@@ -57,11 +57,10 @@ int sithWorld_LoadGeoresource(sithWorld *pWorld, int a2);
 void sithWorld_sub_4D0A20(sithWorld *pWorld);
 void sithWorld_Free();
 void sithWorld_ResetSectorRuntimeAlteredVars(sithWorld *pWorld);
-
+void sithWorld_GetMemorySize(sithWorld *pWorld, int *outAllocated, int *outQuantity);
 void sithWorld_SetChecksumExtraFunc(sithWorld_ChecksumHandler_t handler); // MOTS added
 
 void sithWorld_GetMemorySize(sithWorld* pWorld, sithWorld_MemoryCounters* outAllocated, sithWorld_MemoryCounters* outQuantity);
-
 
 //static int (*sithWorld_NewEntry)(sithWorld *pWorld) = (void*)sithWorld_NewEntry_ADDR;
 //static void (*sithWorld_sub_4D0A20)(sithWorld *pWorld) = (void*)sithWorld_sub_4D0A20_ADDR;

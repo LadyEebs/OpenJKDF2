@@ -1049,8 +1049,8 @@ GLuint std3D_loadProgram(const char* fpath_base, const char* userDefines)
     GLuint out;
     GLint link_ok = GL_FALSE;
     
-    char* tmp_vert = malloc(strlen(fpath_base) + 32);
-    char* tmp_frag = malloc(strlen(fpath_base) + 32);
+    char* tmp_vert = (char*)malloc(strlen(fpath_base) + 32);
+    char* tmp_frag = (char*)malloc(strlen(fpath_base) + 32);
     
     strcpy(tmp_vert, fpath_base);
     strcat(tmp_vert, "_v.glsl");
@@ -1484,11 +1484,12 @@ int init_resources()
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, 256, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, displaypal_data);
 
     // Tiled random
+    // FLEXTODO
     glGenTextures(1, &tiledrand_texture);
     if (tiledrand_data) {
         free(tiledrand_data);
     }
-    tiledrand_data = malloc(3 * 4 * 4 * sizeof(float));
+    tiledrand_data = (rdVector3*)malloc(3 * 4 * 4 * sizeof(float));
     memset(tiledrand_data, 0, 3 * 4 * 4 * sizeof(float));
 
     for (int i = 0; i < 4*4; i++)
@@ -1513,11 +1514,11 @@ int init_resources()
     glGenVertexArrays( 1, &vao );
     glBindVertexArray( vao ); 
 
-    world_data_all = malloc(STD3D_MAX_VERTICES * sizeof(D3DVERTEX));
-    world_data_elements = malloc(sizeof(GLushort) * 3 * STD3D_MAX_TRIS);
+    world_data_all = (D3DVERTEX*)malloc(STD3D_MAX_VERTICES * sizeof(D3DVERTEX));
+    world_data_elements = (GLushort*)malloc(sizeof(GLushort) * 3 * STD3D_MAX_TRIS);
 
-    menu_data_all = malloc(STD3D_MAX_UI_VERTICES * sizeof(D3DVERTEX));
-    menu_data_elements = malloc(sizeof(GLushort) * 3 * STD3D_MAX_UI_TRIS);
+    menu_data_all = (D3DVERTEX*)malloc(STD3D_MAX_UI_VERTICES * sizeof(D3DVERTEX));
+    menu_data_elements = (GLushort*)malloc(sizeof(GLushort) * 3 * STD3D_MAX_UI_TRIS);
 
     glGenBuffers(1, &world_vbo_all);
     glGenBuffers(1, &world_ibo_triangle);
@@ -1807,7 +1808,7 @@ int std3D_RenderListVerticesFinish()
     return 1;
 }
 
-void std3D_DrawMenuSubrect(float x, float y, float w, float h, float dstX, float dstY, float scale)
+void std3D_DrawMenuSubrect(flex_t x, flex_t y, flex_t w, flex_t h, flex_t dstX, flex_t dstY, flex_t scale)
 {
     //double tex_w = (double)Window_xSize;
     //double tex_h = (double)Window_ySize;
@@ -1881,7 +1882,7 @@ void std3D_DrawMenuSubrect(float x, float y, float w, float h, float dstX, float
     GL_tmpTrisAmt += 2;
 }
 
-void std3D_DrawMenuSubrect2(float x, float y, float w, float h, float dstX, float dstY, float scale)
+void std3D_DrawMenuSubrect2(flex_t x, flex_t y, flex_t w, flex_t h, flex_t dstX, flex_t dstY, flex_t scale)
 {
     //double tex_w = (double)Window_xSize;
     //double tex_h = (double)Window_ySize;
@@ -1956,7 +1957,7 @@ void std3D_DrawMenuSubrect2(float x, float y, float w, float h, float dstX, floa
 }
 
 static rdDDrawSurface* test_idk = NULL;
-void std3D_DrawSimpleTex(std3DSimpleTexStage* pStage, std3DIntermediateFbo* pFbo, GLuint texId, GLuint texId2, GLuint texId3, float param1, float param2, float param3, int gen_mips);
+void std3D_DrawSimpleTex(std3DSimpleTexStage* pStage, std3DIntermediateFbo* pFbo, GLuint texId, GLuint texId2, GLuint texId3, flex_t param1, flex_t param2, flex_t param3, int gen_mips);
 void std3D_DrawMapOverlay();
 void std3D_DrawUIRenderList();
 
@@ -2258,7 +2259,7 @@ void std3D_DrawMenu()
     
     rdTri* tris = GL_tmpTris;
     
-    rdDDrawSurface* last_tex = (void*)-1;
+    rdDDrawSurface* last_tex = (rdDDrawSurface*)(intptr_t)-1;
     int last_tex_idx = 0;
     //GLushort* data_elements = malloc(sizeof(GLushort) * 3 * GL_tmpTrisAmt);
     for (int j = 0; j < GL_tmpTrisAmt; j++)
@@ -2367,7 +2368,7 @@ void std3D_DrawMapOverlay()
     
     rdTri* tris = GL_tmpTris;
     
-    rdDDrawSurface* last_tex = (void*)-1;
+    rdDDrawSurface* last_tex = (rdDDrawSurface*)(intptr_t)-1;
     int last_tex_idx = 0;
     //GLushort* data_elements = malloc(sizeof(GLushort) * 3 * GL_tmpTrisAmt);
     for (int j = 0; j < GL_tmpTrisAmt; j++)
@@ -2387,7 +2388,7 @@ void std3D_DrawMapOverlay()
 	glBindVertexArray(vao);
 }
 
-void std3D_DrawUIBitmapRGBA(stdBitmap* pBmp, int mipIdx, float dstX, float dstY, rdRect* srcRect, float scaleX, float scaleY, int bAlphaOverwrite, uint8_t color_r, uint8_t color_g, uint8_t color_b, uint8_t color_a)
+void std3D_DrawUIBitmapRGBA(stdBitmap* pBmp, int mipIdx, flex_t dstX, flex_t dstY, rdRect* srcRect, flex_t scaleX, flex_t scaleY, int bAlphaOverwrite, uint8_t color_r, uint8_t color_g, uint8_t color_b, uint8_t color_a)
 {
     float internalWidth = Video_menuBuffer.format.width;
     float internalHeight = Video_menuBuffer.format.height;
@@ -2523,7 +2524,7 @@ void std3D_DrawUIBitmapRGBA(stdBitmap* pBmp, int mipIdx, float dstX, float dstY,
     GL_tmpUITrisAmt += 2;
 }
 
-void std3D_DrawUIBitmap(stdBitmap* pBmp, int mipIdx, float dstX, float dstY, rdRect* srcRect, float scale, int bAlphaOverwrite)
+void std3D_DrawUIBitmap(stdBitmap* pBmp, int mipIdx, flex_t dstX, flex_t dstY, rdRect* srcRect, flex_t scale, int bAlphaOverwrite)
 {
     std3D_DrawUIBitmapRGBA(pBmp, mipIdx, dstX, dstY, srcRect, scale, scale, bAlphaOverwrite, 0xFF, 0xFF, 0xFF, 0xFF);
 }
@@ -2840,7 +2841,7 @@ void std3D_DrawUIRenderList()
     std3D_ResetUIRenderList();
 }
 
-void std3D_DrawSimpleTex(std3DSimpleTexStage* pStage, std3DIntermediateFbo* pFbo, GLuint texId, GLuint texId2, GLuint texId3, float param1, float param2, float param3, int gen_mips)
+void std3D_DrawSimpleTex(std3DSimpleTexStage* pStage, std3DIntermediateFbo* pFbo, GLuint texId, GLuint texId2, GLuint texId3, flex_t param1, flex_t param2, flex_t param3, int gen_mips)
 {
     glBindFramebuffer(GL_FRAMEBUFFER, pFbo->fbo);
     glDepthFunc(GL_ALWAYS);
@@ -2912,7 +2913,68 @@ void std3D_DrawSimpleTex(std3DSimpleTexStage* pStage, std3DIntermediateFbo* pFbo
 #endif
     }
     
-	glDrawArrays(GL_TRIANGLES, 0, 3);
+    rdTri* tris = GL_tmpTris;
+    glEnableVertexAttribArray(pStage->attribute_coord3d);
+    glEnableVertexAttribArray(pStage->attribute_v_color);
+    glEnableVertexAttribArray(pStage->attribute_v_uv);
+
+    glBindBuffer(GL_ARRAY_BUFFER, menu_vbo_all);
+    glBufferData(GL_ARRAY_BUFFER, GL_tmpVerticesAmt * sizeof(D3DVERTEX), GL_tmpVertices, GL_STREAM_DRAW);
+    glVertexAttribPointer(
+        programMenu_attribute_coord3d, // attribute
+        3,                 // number of elements per vertex, here (x,y,z)
+        GL_FLOAT,          // the type of each element
+        GL_FALSE,          // normalize fixed-point data?
+        sizeof(D3DVERTEX),                 // data stride
+        (GLvoid*)offsetof(D3DVERTEX, x)                  // offset of first element
+    );
+    
+    glVertexAttribPointer(
+        programMenu_attribute_v_color, // attribute
+        4,                 // number of elements per vertex, here (R,G,B,A)
+        GL_UNSIGNED_BYTE,  // the type of each element
+        GL_TRUE,          // normalize fixed-point data?
+        sizeof(D3DVERTEX),                 // no extra data between each position
+        (GLvoid*)offsetof(D3DVERTEX, color) // offset of first element
+    );
+
+    glVertexAttribPointer(
+        programMenu_attribute_v_uv,    // attribute
+        2,                 // number of elements per vertex, here (U,V)
+        GL_FLOAT,          // the type of each element
+        GL_FALSE,          // take our values as-is
+        sizeof(D3DVERTEX),                 // no extra data between each position
+        (GLvoid*)offsetof(D3DVERTEX, tu)                  // offset of first element
+    );
+
+    glEnableVertexAttribArray(pStage->attribute_coord3d);
+    glEnableVertexAttribArray(pStage->attribute_v_color);
+    glEnableVertexAttribArray(pStage->attribute_v_uv);
+    
+    rdDDrawSurface* last_tex = (rdDDrawSurface*)(intptr_t)-1;
+    int last_tex_idx = 0;
+    //GLushort* data_elements = malloc(sizeof(GLushort) * 3 * GL_tmpTrisAmt);
+    for (int j = 0; j < GL_tmpTrisAmt; j++)
+    {
+        data_elements[(j*3)+0] = tris[j].v1;
+        data_elements[(j*3)+1] = tris[j].v2;
+        data_elements[(j*3)+2] = tris[j].v3;
+    }
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, menu_ibo_triangle);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, GL_tmpTrisAmt * 3 * sizeof(GLushort), data_elements, GL_STREAM_DRAW);
+
+    int tris_size;  
+    glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &tris_size);
+    glDrawElements(GL_TRIANGLES, tris_size / sizeof(GLushort), GL_UNSIGNED_SHORT, 0);
+
+    glDisableVertexAttribArray(pStage->attribute_v_uv);
+    glDisableVertexAttribArray(pStage->attribute_v_color);
+    glDisableVertexAttribArray(pStage->attribute_coord3d);
+    
+    //free(data_elements);
+        
+    //glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void std3D_DrawSceneFbo()
@@ -2936,7 +2998,7 @@ void std3D_DrawSceneFbo()
 
     float add_luma = (((float)rdroid_curColorEffects.add.x / 255.0f) * 0.2125)
                      + (((float)rdroid_curColorEffects.add.y / 255.0f)* 0.7154)
-                     + (((float)rdroid_curColorEffects.add.z / 255.0f) * 0.0721);
+                     + (((float)rdroid_curColorEffects.add.z / 255.0f) * 0.0721); // FLEXTODO
 
     // HACK: Force blinding shouldn't show the SSAO
     if (add_luma >= 0.7) {
@@ -3294,10 +3356,10 @@ void std3D_DrawRenderList()
     {
     
     float d3dmat[16] = {
-       maxX*scaleX*zoom_xaspect,      0,                                          0,      0, // right
-       0,                                       -maxY*scaleY*zoom_yaspect,               0,      0, // up
+       (float)(maxX*scaleX*zoom_xaspect),      0,                                          0,      0, // right
+       0,                                       (float)(-maxY*scaleY*zoom_yaspect),               0,      0, // up
        0,                                       0,                                          1,     0, // forward
-       -(internalWidth/2)*scaleX*zoom_xaspect + shift_add_x,  (internalHeight/2)*scaleY*zoom_yaspect + shift_add_y,     (!rdCamera_pCurCamera || rdCamera_pCurCamera->projectType == rdCameraProjectType_Perspective) ? -1 : 1,      1  // pos
+       (float)(-(internalWidth/2)*scaleX*zoom_xaspect + shift_add_x),  (float)((internalHeight/2)*scaleY*zoom_yaspect + shift_add_y),     (float)((!rdCamera_pCurCamera || rdCamera_pCurCamera->projectType == rdCameraProjectType_Perspective) ? -1 : 1),      1  // pos
     };
     
     glUniformMatrix4fv(uniform_mvp, 1, GL_FALSE, d3dmat);
@@ -3799,9 +3861,10 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
     
     GLuint image_texture;
     glGenTextures(1, &image_texture);
-    uint8_t* image_8bpp = (*vbuf)->sdlSurface->pixels;
-    uint16_t* image_16bpp = (*vbuf)->sdlSurface->pixels;
-    uint8_t* pal = (*vbuf)->palette;
+
+    uint8_t* image_8bpp = (uint8_t*)vbuf->sdlSurface->pixels;
+    uint16_t* image_16bpp = (uint16_t*)vbuf->sdlSurface->pixels;
+    uint8_t* pal = (uint8_t*)vbuf->palette;
     
     uint32_t width, height;
     width = (*vbuf)->format.width;
@@ -4006,9 +4069,9 @@ int std3D_AddBitmapToTextureCache(stdBitmap *texture, int mipIdx, int is_alpha_t
     
     GLuint image_texture;
     glGenTextures(1, &image_texture);
-    uint8_t* image_8bpp = vbuf->sdlSurface->pixels;
-    uint16_t* image_16bpp = vbuf->sdlSurface->pixels;
-    uint8_t* pal = vbuf->palette;
+    uint8_t* image_8bpp = (uint8_t*)vbuf->sdlSurface->pixels;
+    uint16_t* image_16bpp = (uint16_t*)vbuf->sdlSurface->pixels;
+    uint8_t* pal = (uint8_t*)vbuf->palette;
     
     uint32_t width, height;
     width = vbuf->format.width;
@@ -4360,10 +4423,11 @@ void std3D_Screenshot(const char* pFpath)
 #ifdef TARGET_CAN_JKGM
     if (!std3D_pFb) return;
 
-    uint8_t* data = malloc(std3D_pFb->window.w * std3D_pFb->window.h * 3 * sizeof(uint8_t));
+    uint8_t* data = (uint8_t*)malloc(std3D_pFb->window.w * std3D_pFb->window.h * 3 * sizeof(uint8_t));
     glBindFramebuffer(GL_FRAMEBUFFER, std3D_pFb->window.fbo);
     glReadPixels(0, 0, std3D_pFb->window.w, std3D_pFb->window.h, GL_RGB, GL_UNSIGNED_BYTE, data);
     jkgm_write_png(pFpath, std3D_pFb->window.w, std3D_pFb->window.h, data);
+
     free(data);
 #endif
 }

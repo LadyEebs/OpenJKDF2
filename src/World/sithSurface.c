@@ -63,7 +63,7 @@ int sithSurface_Load(sithWorld *world)
     int adjoinIdx; // eax
     sithAdjoin *surfaceAdjoin; // ecx
     int wallCel; // edx
-    double v32; // st7
+    flex_d_t v32; // st7
     char *v33; // eax
     unsigned int v34; // ebp
     unsigned int v40; // ebx
@@ -251,19 +251,19 @@ int sithSurface_Load(sithWorld *world)
         if ( v34 > 0x18 )
             return 0;
 
-        face->vertexPosIdx = pSithHS->alloc(sizeof(int) * v34);
+        face->vertexPosIdx = (int*)pSithHS->alloc(sizeof(int) * v34);
         if ( !face->vertexPosIdx )
             return 0;
 
 #ifndef JKM_LIGHTING
-        surfaceInfo->intensities = pSithHS->alloc(sizeof(float) * v34);
+        surfaceInfo->intensities = (flex_t*)pSithHS->alloc(sizeof(flex_t) * v34);
         if ( !surfaceInfo->intensities )
             return 0;
 #endif
 
         if (face->material && (face->material->tex_type & 2))
         {
-            face->vertexUVIdx = pSithHS->alloc(sizeof(int) * v34);
+            face->vertexUVIdx = (int*)pSithHS->alloc(sizeof(int) * v34);
             if ( !face->vertexUVIdx )
                 return 0;
 
@@ -297,10 +297,10 @@ int sithSurface_Load(sithWorld *world)
         {
             if (v61+(v45*4)+3 >= stdConffile_entry.numArgs) break; // Added
 
-            float test1 = _atof(stdConffile_entry.args[v61+(v45*4)+0].value);
-            float test2 = _atof(stdConffile_entry.args[v61+(v45*4)+1].value);
-            float test3 = _atof(stdConffile_entry.args[v61+(v45*4)+2].value);
-            float test4 = _atof(stdConffile_entry.args[v61+(v45*4)+3].value);
+            flex_t test1 = _atof(stdConffile_entry.args[v61+(v45*4)+0].value);
+            flex_t test2 = _atof(stdConffile_entry.args[v61+(v45*4)+1].value);
+            flex_t test3 = _atof(stdConffile_entry.args[v61+(v45*4)+2].value);
+            flex_t test4 = _atof(stdConffile_entry.args[v61+(v45*4)+3].value);
 
             if (test1 != test2 || (test1 != test3)) break;
 
@@ -309,13 +309,13 @@ int sithSurface_Load(sithWorld *world)
         testAmt = stdConffile_entry.numArgs - v61;
 
         if (testAmt < v34 * 4) {
-            surfaceInfo->intensities = pSithHS->alloc(sizeof(float) * ((v34 * 4) + 1)); // Added: extra
-            memset(surfaceInfo->intensities, 0, sizeof(float) * ((v34 * 4) + 1)); // Added
+            surfaceInfo->intensities = (flex_t*)pSithHS->alloc(sizeof(flex_t) * ((v34 * 4) + 1)); // Added: extra
+            memset(surfaceInfo->intensities, 0, sizeof(flex_t) * ((v34 * 4) + 1)); // Added
             if ( !surfaceInfo->intensities )
                 return 0;
             for (int v45 = 0; v45 < v34; v45++)
             {
-                float val = _atof(stdConffile_entry.args[v61+v45].value);
+                flex_t val = _atof(stdConffile_entry.args[v61+v45].value);
                 surfaceInfo->intensities[(v34*0)+v45] = val; // Added
                 surfaceInfo->intensities[(v34*1)+v45] = val; // Added
                 surfaceInfo->intensities[(v34*2)+v45] = val; // Added 
@@ -329,8 +329,8 @@ int sithSurface_Load(sithWorld *world)
 			#endif
         }
         else {
-            surfaceInfo->intensities = pSithHS->alloc(sizeof(float) * ((v34 * 4) + 1));
-            memset(surfaceInfo->intensities, 0, sizeof(float) * ((v34 * 4) + 1)); // Added
+            surfaceInfo->intensities = (flex_t*)pSithHS->alloc(sizeof(flex_t) * ((v34 * 4) + 1));
+            memset(surfaceInfo->intensities, 0, sizeof(flex_t) * ((v34 * 4) + 1)); // Added
             if ( !surfaceInfo->intensities )
                 return 0;
 
@@ -355,7 +355,7 @@ int sithSurface_Load(sithWorld *world)
             return 0;
         
         int idx_unused;
-        float norm_x, norm_y, norm_z;
+        flex32_t norm_x, norm_y, norm_z;
         if (_sscanf(stdConffile_aLine, "%d: %f %f %f", &idx_unused, &norm_x, &norm_y, &norm_z) != 4)
             return 0;
         
@@ -410,14 +410,14 @@ void sithSurface_SetAdjoins(sithAdjoin *adjoin)
     }
 }
 
-void sithSurface_SetSectorLight(sithSector *sector, float extraLight, float a3, int a4)
+void sithSurface_SetSectorLight(sithSector *sector, flex_t extraLight, flex_t a3, int a4)
 {
-    double v5; // st7
+    flex_d_t v5; // st7
     rdSurface *v6; // eax
     int v7; // edx
     rdSurface *v8; // esi
-    double v9; // st7
-    float a1a; // [esp+4h] [ebp+4h]
+    flex_d_t v9; // st7
+    flex_t a1a; // [esp+4h] [ebp+4h]
 
     v5 = extraLight - sector->extraLight;
     if ( v5 != 0.0 )
@@ -449,7 +449,7 @@ void sithSurface_SetSectorLight(sithSector *sector, float extraLight, float a3, 
     }
 }
 
-rdSurface* sithSurface_SurfaceAnim(sithSurface *parent, float a2, uint16_t flags)
+rdSurface* sithSurface_SurfaceAnim(sithSurface *parent, flex_t a2, uint16_t flags)
 {
     rdMaterial *material; // ebp
     rdSurface *result; // eax
@@ -547,7 +547,7 @@ void sithSurface_Free(sithWorld *world)
     }
 }
 
-void sithSurface_Tick(float deltaSecs)
+void sithSurface_Tick(flex_t deltaSecs)
 {
     int v2; // ebx
     int flags; // ecx
@@ -568,11 +568,11 @@ void sithSurface_Tick(float deltaSecs)
     int v27; // eax
     rdSurface *v28; // ecx
     int v29; // edx
-    double v31; // st7
+    flex_d_t v31; // st7
     int v33; // ecx
     sithSurface* v34; // eax
     sithThing* v35; // eax
-    double v37; // st7
+    flex_d_t v37; // st7
 
     v2 = 0;
     for (v2 = 0; v2 <= sithSurface_numSurfaces; v2++)
@@ -592,8 +592,8 @@ void sithSurface_Tick(float deltaSecs)
                     v10 = surface->sithSurfaceParent;
                     if ( v10 )
                     {
-                        float scroll_x = surface->scrollVector.x * deltaSecs;
-                        float scroll_y = surface->scrollVector.y * deltaSecs;
+                        flex_t scroll_x = surface->scrollVector.x * deltaSecs;
+                        flex_t scroll_y = surface->scrollVector.y * deltaSecs;
                         //printf("%x: %f %f %x\n", surface->index, scroll_x, scroll_y, surface->flags);
 
                         v10->surfaceInfo.face.clipIdk.x = scroll_x + v10->surfaceInfo.face.clipIdk.x;
@@ -751,15 +751,15 @@ void sithSurface_Tick(float deltaSecs)
     }
 }
 
-void sithSurface_ScrollSky(rdSurface *surface, int skyType, float deltaSecs, uint8_t a4)
+void sithSurface_ScrollSky(rdSurface *surface, int skyType, flex_t deltaSecs, uint8_t a4)
 {
-    float scroll_x = surface->scrollVector.x * deltaSecs;
-    float scroll_y = surface->scrollVector.y * deltaSecs;
+    flex_t scroll_x = surface->scrollVector.x * deltaSecs;
+    flex_t scroll_y = surface->scrollVector.y * deltaSecs;
 
     if ( skyType == SITH_SURFACE_HORIZONSKY )
     {
-        float offs_x = scroll_x + sithWorld_pCurrentWorld->horizontalSkyOffs.x;
-        float offs_y = scroll_y + sithWorld_pCurrentWorld->horizontalSkyOffs.y;
+        flex_t offs_x = scroll_x + sithWorld_pCurrentWorld->horizontalSkyOffs.x;
+        flex_t offs_y = scroll_y + sithWorld_pCurrentWorld->horizontalSkyOffs.y;
 
         sithWorld_pCurrentWorld->horizontalSkyOffs.x = offs_x;
         sithWorld_pCurrentWorld->horizontalSkyOffs.y = offs_y;
@@ -772,8 +772,8 @@ void sithSurface_ScrollSky(rdSurface *surface, int skyType, float deltaSecs, uin
     }
     else
     {
-        float offs_x = scroll_x + sithWorld_pCurrentWorld->ceilingSkyOffs.x;
-        float offs_y = scroll_y + sithWorld_pCurrentWorld->ceilingSkyOffs.y;
+        flex_t offs_x = scroll_x + sithWorld_pCurrentWorld->ceilingSkyOffs.x;
+        flex_t offs_y = scroll_y + sithWorld_pCurrentWorld->ceilingSkyOffs.y;
 
         sithWorld_pCurrentWorld->ceilingSkyOffs.x = offs_x;
         sithWorld_pCurrentWorld->ceilingSkyOffs.y = offs_y;
@@ -838,14 +838,14 @@ uint32_t sithSurface_GetSurfaceAnim(sithSurface *surface)
     return ((intptr_t)v3 - (intptr_t)sithSurface_aSurfaces) / sizeof(rdSurface);
 }
 
-rdSurface* sithSurface_SurfaceLightAnim(sithSurface *surface, float a2, float a3)
+rdSurface* sithSurface_SurfaceLightAnim(sithSurface *surface, flex_t a2, flex_t a3)
 {
-    double v3; // st7
+    flex_d_t v3; // st7
     rdSurface *result; // eax
     int v5; // edx
     rdSurface *v6; // esi
-    float v7; // edx
-    float surfacea; // [esp+4h] [ebp+4h]
+    flex_t v7; // edx
+    flex_t surfacea; // [esp+4h] [ebp+4h]
 
     v3 = a2 - surface->surfaceInfo.face.extraLight;
     if ( v3 == 0.0 )
@@ -884,25 +884,25 @@ rdSurface* sithSurface_SlideWall(sithSurface *surface, rdVector3 *a2)
     rdSurface *v5; // ebx
     sithWorld *v6; // edi
     int v7; // ebp
-    float v8; // edx
+    flex_t v8; // edx
     int *v9; // eax
     rdVector3 *v10; // ecx
     rdVector2 *v11; // eax
     int *v12; // ecx
     int v13; // edx
     int v14; // ecx
-    float v15; // eax
+    flex_t v15; // eax
     int v16; // ecx
     rdVector2 *v17; // edx
-    double v18; // st7
+    flex_d_t v18; // st7
 //    char v20; // c3
 //    char v22; // c0
     rdSurface *result; // eax
-    float v25; // [esp+10h] [ebp-BCh]
-    float v26; // [esp+10h] [ebp-BCh]
-    float v27; // [esp+10h] [ebp-BCh]
-    float v28; // [esp+14h] [ebp-B8h]
-    float v29; // [esp+14h] [ebp-B8h]
+    flex_t v25; // [esp+10h] [ebp-BCh]
+    flex_t v26; // [esp+10h] [ebp-BCh]
+    flex_t v27; // [esp+10h] [ebp-BCh]
+    flex_t v28; // [esp+14h] [ebp-B8h]
+    flex_t v29; // [esp+14h] [ebp-B8h]
     rdVector3 v30; // [esp+18h] [ebp-B4h]
     rdVector3 v31; // [esp+24h] [ebp-A8h]
     rdSurface *v32; // [esp+30h] [ebp-9Ch]
@@ -1032,7 +1032,7 @@ rdSurface* sithSurface_SlideWall(sithSurface *surface, rdVector3 *a2)
     return result;
 }
 
-rdSurface* sithSurface_MaterialAnim(rdMaterial *material, float a2, int a3)
+rdSurface* sithSurface_MaterialAnim(rdMaterial *material, flex_t a2, int a3)
 {
     int v3; // ebx
     rdSurface *v4; // esi
@@ -1256,10 +1256,10 @@ int sithSurface_GetCenter(sithSurface *surface, rdVector3 *out)
     //for (uint32_t i = 0; i < surface->surfaceInfo.face.numVertices; ++i )
     //    rdVector_Add3Acc(&a1a, &sithWorld_pCurrentWorld->vertices[surface->surfaceInfo.face.vertexPosIdx[i]]);
 	//
-    //rdVector_InvScale3(out, &a1a, (float)(unsigned int)surface->surfaceInfo.face.numVertices);
+    //rdVector_InvScale3(out, &a1a, (flex_t)(unsigned int)surface->surfaceInfo.face.numVertices);
 
 	// more accurate centroid
-	float totalArea = 0.0f;
+	flex_t totalArea = 0.0f;
 	rdVector3 centroid = { 0.0f, 0.0f, 0.0f };
 
 	rdVector3* v0 = sithSurface_GetVertexPosition(surface, 0);
@@ -1271,7 +1271,7 @@ int sithSurface_GetCenter(sithSurface *surface, rdVector3 *out)
 		rdVector3* v1 = sithSurface_GetVertexPosition(surface, i);
 		rdVector3* v2 = sithSurface_GetVertexPosition(surface, next);
 
-		float area = sithSurface_TriangleArea(v0, v1, v2);
+		flex_t area = sithSurface_TriangleArea(v0, v1, v2);
 
 		// Compute the centroid of this triangle
 		rdVector3 triangleCentroid = {
@@ -1350,7 +1350,7 @@ rdSurface* sithSurface_SlideHorizonSky(int skyType, rdVector2 *a2)
     return result;
 }
 
-rdSurface* sithSurface_sub_4F00A0(sithThing *thing, float a2, uint32_t a3)
+rdSurface* sithSurface_sub_4F00A0(sithThing *thing, flex_t a2, uint32_t a3)
 {
     rdSurface *v3; // esi
     int v4; // edx
@@ -1394,13 +1394,13 @@ rdSurface* sithSurface_sub_4F00A0(sithThing *thing, float a2, uint32_t a3)
     return result;
 }
 
-rdSurface* sithSurface_SetThingLight(sithThing *thing, float a2, float a3, int a4)
+rdSurface* sithSurface_SetThingLight(sithThing *thing, flex_t a2, flex_t a3, int a4)
 {
-    double v5; // st7
+    flex_d_t v5; // st7
     rdSurface *result; // eax
     int v9; // edx
-    double v11; // st7
-    float a1a; // [esp+4h] [ebp+4h]
+    flex_d_t v11; // st7
+    flex_t a1a; // [esp+4h] [ebp+4h]
 
     v5 = a2 - thing->light;
     if ( v5 == 0.0 )
@@ -1425,13 +1425,13 @@ rdSurface* sithSurface_SetThingLight(sithThing *thing, float a2, float a3, int a
     return result;
 }
 
-void sithSurface_SendDamageToThing(sithSurface *sender, sithThing *receiver, float damage, int damageType)
+void sithSurface_SendDamageToThing(sithSurface *sender, sithThing *receiver, flex_t damage, int damageType)
 {
-    float v4; // [esp+0h] [ebp-14h]
+    flex_t v4; // [esp+0h] [ebp-14h]
 
-    if ( (!sithNet_isMulti || !receiver || (receiver->thingflags & SITH_TF_INVULN) == 0) && (sender->surfaceFlags & 2) != 0 )
+    if ( (!sithNet_isMulti || !receiver || (receiver->thingflags & SITH_TF_INVULN) == 0) && (sender->surfaceFlags & SITH_SURFACE_COG_LINKED) != 0 )
     {
-        v4 = (float)(unsigned int)damageType;
+        v4 = (flex_t)(unsigned int)damageType; // FLEXTODO
         sithCog_SendMessageFromSurfaceEx(sender, receiver, SITH_MESSAGE_DAMAGED, damage, v4, 0.0, 0.0);
     }
 }

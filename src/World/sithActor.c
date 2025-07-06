@@ -77,12 +77,12 @@ void sithActor_Tick(sithThing *thing, int deltaMs)
 
 // MOTS altered
 // Added: joint
-float sithActor_Hit(sithThing *sender, sithThing *receiver, float amount, int flags, int joint)
+flex_t sithActor_Hit(sithThing *sender, sithThing *receiver, flex_t amount, int flags, int joint)
 {
     sithThing *receiver_; // edi
-    double v6; // st7
+    flex_d_t v6; // st7
     sithThing *v7; // eax
-    float fR; // [esp+0h] [ebp-1Ch]
+    flex_t fR; // [esp+0h] [ebp-1Ch]
 
     if ( sithNet_isMulti && (sender->thingflags & SITH_TF_INVULN) != 0 )
     {
@@ -103,7 +103,7 @@ float sithActor_Hit(sithThing *sender, sithThing *receiver, float amount, int fl
                  SITH_MESSAGE_DAMAGED,
                  0x10,
                  amount,
-                 (float)flags,
+                 (flex_t)flags, // FLEXTODO
                  0.0,
                  0.0);
         amount = v6;
@@ -117,7 +117,7 @@ float sithActor_Hit(sithThing *sender, sithThing *receiver, float amount, int fl
         v7 = sithThing_GetParent(receiver);
         receiver_ = v7;
 
-        float damageMult = 1.0;
+        flex_t damageMult = 1.0;
         if ( v7
           && flags != 0x20
           && flags != 0x40
@@ -170,12 +170,12 @@ LABEL_32:
     return amount - sender->actorParams.health;
 }
 
-void sithActor_HurtSound(sithThing *thing, float amount, int hurtType)
+void sithActor_HurtSound(sithThing *thing, flex_t amount, int hurtType)
 {
     if ( thing->actorParams.health <= 0.0 || amount < 3.0 ) return;
 
 
-    float hurt_vol = amount / thing->actorParams.health * 1.5;
+    flex_t hurt_vol = amount / thing->actorParams.health * 1.5;
     if (hurt_vol >= 0.01)
     {
         if (hurt_vol < 0.0)
@@ -310,7 +310,7 @@ void sithActor_SpawnDeadBodyMaybe(sithThing *thing, sithThing *a3, int a4, int j
 					int removeAsap = (jkPlayer_ragdolls == 2); // immediately remove
 
 					// if the actor is moving quickly, immediately ragdoll
-					float vellen = rdVector_Len3(&thing->physicsParams.vel);
+					flex_t vellen = rdVector_Len3(&thing->physicsParams.vel);
 					if (vellen > 0.5f)
 						removeAsap = 1;
 
@@ -358,7 +358,7 @@ void sithActor_SpawnDeadBodyMaybe(sithThing *thing, sithThing *a3, int a4, int j
 							rdKeyframe* key = mode->keyframe[anim].keyframe;
 							if (key)
 							{
-								deathMs = ((float)key->numFrames / key->fps) * 1000.0f * 0.5f;
+								deathMs = ((flex_t)key->numFrames / key->fps) * 1000.0f * 0.5f;
 							}
 						}
 						thing->lifeLeftMs = deathMs;
@@ -614,16 +614,16 @@ void sithActor_RemoveCorpse(sithThing *corpse)
 int sithActor_LoadParams(stdConffileArg *arg, sithThing *thing, unsigned int param)
 {
     int result; // eax
-    double v6; // st7
-    double v9; // st7
-    double v10; // st7
-    double v11; // st7
-    double v12; // st7
+    flex_d_t v6; // st7
+    flex_d_t v9; // st7
+    flex_d_t v10; // st7
+    flex_d_t v11; // st7
+    flex_d_t v12; // st7
     int v13; // eax
-    double v19; // st7
-    double v20; // st7
-    double v21; // st7
-    float tmp;
+    flex_d_t v19; // st7
+    flex_d_t v20; // st7
+    flex_d_t v21; // st7
+    flex32_t tmp, vx, vy, vz;
     int tmpInt;
 
     switch (param)
@@ -639,7 +639,7 @@ int sithActor_LoadParams(stdConffileArg *arg, sithThing *thing, unsigned int par
                 goto LABEL_38;
 
             thing->actorParams.health = tmp;
-            if ( tmp < (double)thing->actorParams.maxHealth )
+            if ( tmp < (flex_d_t)thing->actorParams.maxHealth )
                 thing->actorParams.maxHealth = thing->actorParams.maxHealth;
             else
                 thing->actorParams.maxHealth = tmp;
@@ -686,10 +686,14 @@ int sithActor_LoadParams(stdConffileArg *arg, sithThing *thing, unsigned int par
             v13 = _sscanf(
                       arg->value,
                       "(%f/%f/%f)",
-                      &thing->actorParams.eyeOffset.x,
-                      &thing->actorParams.eyeOffset.y,
-                      &thing->actorParams.eyeOffset.z);
-            goto LABEL_25;
+                      &vx, &vy, &vz);
+            thing->actorParams.eyeOffset.x = vx;
+            thing->actorParams.eyeOffset.y = vy;
+            thing->actorParams.eyeOffset.z = vz;
+            if ( v13 != 3 )
+                goto LABEL_38;
+            result = 1;
+            break;
         case THINGPARAM_MINHEADPITCH:
             result = _sscanf(arg->value, "%f", &tmp);
             if ( result != 1 )
@@ -706,22 +710,23 @@ int sithActor_LoadParams(stdConffileArg *arg, sithThing *thing, unsigned int par
             v13 = _sscanf(
                       arg->value,
                       "(%f/%f/%f)",
-                      &thing->actorParams.fireOffset.x,
-                      &thing->actorParams.fireOffset.y,
-                      &thing->actorParams.fireOffset.z);
-LABEL_25:
+                      &vx, &vy, &vz);
             if ( v13 != 3 )
                 goto LABEL_38;
+            thing->actorParams.fireOffset.x = vx;
+            thing->actorParams.fireOffset.y = vy;
+            thing->actorParams.fireOffset.z = vz;
             result = 1;
             break;
         case THINGPARAM_LIGHTOFFSET:
             if ( _sscanf(
                      arg->value,
                      "(%f/%f/%f)",
-                     &thing->actorParams.lightOffset.x,
-                     &thing->actorParams.lightOffset.y,
-                     &thing->actorParams.lightOffset.z) != 3 )
+                     &vx, &vy, &vz) != 3 )
                 goto LABEL_38;
+            thing->actorParams.lightOffset.x = vx;
+            thing->actorParams.lightOffset.y = vy;
+            thing->actorParams.lightOffset.z = vz;
             thing->thingflags |= SITH_TF_LIGHT;
             result = 1;
             break;

@@ -5,6 +5,10 @@
 #include "rdVector.h"
 #include "hook.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define rdMatrix_Build34_ADDR (0x0043F6F0)
 #define rdMatrix_BuildFromLook34_ADDR (0x0043F820)
 #define rdMatrix_BuildCamera34_ADDR (0x0043F990)
@@ -74,8 +78,8 @@ void rdMatrix_BuildTranslate34(rdMatrix34 *out, const rdVector3 *tV);
 void rdMatrix_BuildTranslate44(rdMatrix44 *out, const rdVector3 *tV);
 void rdMatrix_BuildScale34(rdMatrix34 *out, const rdVector3 *scale);
 void rdMatrix_BuildScale44(rdMatrix44 *out, const rdVector3 *scale);
-void rdMatrix_BuildFromVectorAngle34(rdMatrix34 *out, const rdVector3 *v, float angle);
-void rdMatrix_LookAt(rdMatrix34 *out, const rdVector3 *v1, const rdVector3 *v2, float angle);
+void rdMatrix_BuildFromVectorAngle34(rdMatrix34 *out, const rdVector3 *v, flex_t angle);
+void rdMatrix_LookAt(rdMatrix34 *out, const rdVector3 *v1, const rdVector3 *v2, flex_t angle);
 void rdMatrix_ExtractAngles34(const rdMatrix34 *in, rdVector3 *out);
 void rdMatrix_Normalize34(rdMatrix34 *m);
 void rdMatrix_Identity34(rdMatrix34 *out);
@@ -135,6 +139,10 @@ void rdMatrix_TransformPoint44Acc3(rdVector3* a1, const rdMatrix44* a2);
 
 extern const rdMatrix34 rdroid_identMatrix34;
 extern const rdMatrix44 rdroid_identMatrix44;
+
+#ifdef __cplusplus
+}
+#endif
 
 //static void (*_rdMatrix_ExtractAngles34)(const rdMatrix34 *in, rdVector3 *out) = (void*)rdMatrix_ExtractAngles34_ADDR;
 

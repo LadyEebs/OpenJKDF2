@@ -9,6 +9,7 @@
 
 static rdMaterial rdDebug_solidMat = {0};
 static rdTexture rdDebug_solidTex = {0};
+static rdTexinfo rdDebug_solidTexTexinfo = { .header = {0}, .texext_unk00 = 0, .texture_ptr = &rdDebug_solidTex };
 
 void rdDebug_DrawScreenLine3(rdVector3* v1, rdVector3* v2, uint32_t color)
 {
@@ -24,7 +25,7 @@ void rdDebug_DrawScreenLine3(rdVector3* v1, rdVector3* v2, uint32_t color)
     rdDebug_solidMat.celIdx = 0;
     for (int i = 0; i < 8; i++)
     {
-        rdDebug_solidMat.texinfos[i] = &rdDebug_solidTex;
+        rdDebug_solidMat.texinfos[i] = &rdDebug_solidTexTexinfo;
     }
     
     //printf("%f %f %f, %f %f %f\n", v1->x, v1->y, v1->z, v2->x, v2->y, v2->z);
@@ -69,18 +70,18 @@ void rdDebug_DrawLine3(rdVector3* v1, rdVector3* v2, uint32_t color)
     rdClip_Line3Project(rdCamera_pCurCamera->pClipFrustum, &verts[0], &verts[1], &out1, &out2);
 
     // And project to screen coords
-    rdCamera_pCurCamera->fnProjectLst(&vertsOut, &verts, 2);
+    rdCamera_pCurCamera->fnProjectLst(vertsOut, verts, 2);
     
-    vertsOut[0].x = (float)(int)vertsOut[0].x + 0.0001;
-    vertsOut[0].y = (float)(int)vertsOut[0].y + 0.0001;
-    vertsOut[1].x = (float)(int)vertsOut[1].x - 0.0001;
-    vertsOut[1].y = (float)(int)vertsOut[1].y - 0.0001;
+    vertsOut[0].x = (flex_t)(int)vertsOut[0].x + 0.0001; // FLEXTODO
+    vertsOut[0].y = (flex_t)(int)vertsOut[0].y + 0.0001; // FLEXTODO
+    vertsOut[1].x = (flex_t)(int)vertsOut[1].x - 0.0001; // FLEXTODO
+    vertsOut[1].y = (flex_t)(int)vertsOut[1].y - 0.0001; // FLEXTODO
     
     rdDebug_DrawScreenLine3(&vertsOut[0], &vertsOut[1], color);
 #endif
 }
 
-void rdDebug_DrawBoundingBox(rdMatrix34* m, float radius, uint32_t color)
+void rdDebug_DrawBoundingBox(rdMatrix34* m, flex_t radius, uint32_t color)
 {
 #ifndef RENDER_DROID2
 
@@ -90,7 +91,7 @@ void rdDebug_DrawBoundingBox(rdMatrix34* m, float radius, uint32_t color)
     rdVector3 verts[8];
     
     rdVector3 v1, v2;
-    rdVector3 r3 = {0.3*radius, 0.3*radius, 0.3*radius};
+    rdVector3 r3 = {0.3f*radius, 0.3f*radius, 0.3f*radius};
     rdVector_Zero3(&v1);
     rdVector_Zero3(&v2);
     rdVector_Sub3Acc(&v1, &r3);

@@ -82,7 +82,7 @@ void sithCogFunctionPlayer_SetGoalFlags(sithCog *ctx)
     sithThing* player = sithCogExec_PopThing(ctx);
     if (player && player->type == SITH_THING_PLAYER && player->actorParams.playerinfo && binIdx < SITHBIN_NUMBINS)
     {
-        float amt = (float)((int)sithInventory_GetBinAmount(player, binIdx) | flags);
+        cog_flex_t amt = (cog_flex_t)((int)sithInventory_GetBinAmount(player, binIdx) | flags); // FLEXTODO
         sithInventory_SetBinAmount(player, binIdx, amt);
     }
 }
@@ -94,7 +94,7 @@ void sithCogFunctionPlayer_ClearGoalFlags(sithCog *ctx)
     sithThing* player = sithCogExec_PopThing(ctx);
     if (player && player->type == SITH_THING_PLAYER && player->actorParams.playerinfo && binIdx < SITHBIN_NUMBINS)
     {
-        float amt = (float)((int)sithInventory_GetBinAmount(player, binIdx) & ~flags);
+        cog_flex_t amt = (cog_flex_t)((int)sithInventory_GetBinAmount(player, binIdx) & ~flags); // FLEXTODO
         sithInventory_SetBinAmount(player, binIdx, amt);
     }
 }
@@ -577,7 +577,7 @@ void sithCogFunctionPlayer_KillPlayerQuietly(sithCog *ctx)
 
 
 
-void sithCogFunctionPlayer_Startup(void* ctx)
+void sithCogFunctionPlayer_Startup(sithCogSymboltable* ctx)
 {
     sithCogScript_RegisterVerb(ctx, sithCogFunctionPlayer_SetInvActivate, "setinvactivated");
 

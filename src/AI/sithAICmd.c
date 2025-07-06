@@ -27,7 +27,7 @@ sithThing* sithAICmd_NearestPlayer(sithActor *actor)
         return sithPlayer_pLocalPlayerThing;
 
     sithThing* closest = sithPlayer_pLocalPlayerThing;
-    float closestDist = 999999.0;
+    flex_t closestDist = FLEX(999999.0);
     for (int i = 0; i < jkPlayer_maxPlayers; i++)
     {
         sithPlayerInfo* playerInfo = &jkPlayer_playerInfos[i];
@@ -37,7 +37,7 @@ sithThing* sithAICmd_NearestPlayer(sithActor *actor)
         if ((playerThing->thingflags & (SITH_TF_DISABLED|SITH_TF_DEAD|SITH_TF_WILLBEREMOVED)) || playerThing->type != SITH_THING_PLAYER)
             continue;
 
-        float dist = rdVector_Dist3(&playerThing->position, &actor->thing->position);
+        flex_t dist = rdVector_Dist3(&playerThing->position, &actor->thing->position);
         if (dist < closestDist) {
             closestDist = dist;
             closest = playerThing;
@@ -48,107 +48,107 @@ sithThing* sithAICmd_NearestPlayer(sithActor *actor)
 
 void sithAICmd_Startup()
 {
-    sithAI_RegisterCommand("listen", sithAICmd_Listen, 
+    sithAI_RegisterCommand("listen", (sithAICommandFunc_t)sithAICmd_Listen, 
         0, // allowed flags...?
         0, // disallowed flags
         SITHAI_MODE_SEARCHING|SITHAI_MODE_ATTACKING|SITHAI_MODE_MOVING);
     
-    sithAI_RegisterCommand("lookfortarget", sithAICmd_LookForTarget, 
+    sithAI_RegisterCommand("lookfortarget", (sithAICommandFunc_t)sithAICmd_LookForTarget, 
         SITHAI_MODE_ACTIVE|SITHAI_MODE_SEARCHING, // allowed flags
         0,                              // disallowed flags
         0);
     
     if (Main_bMotsCompat) {
-        sithAI_RegisterCommand("lookforopposingtarget", sithAICmd_LookForOpposingTarget, 
+        sithAI_RegisterCommand("lookforopposingtarget", (sithAICommandFunc_t)sithAICmd_LookForOpposingTarget, 
             SITHAI_MODE_ACTIVE|SITHAI_MODE_SEARCHING, // allowed flags
             0,                              // disallowed flags
             0);
     }
 
-    sithAI_RegisterCommand("primaryfire", sithAICmd_PrimaryFire, 
+    sithAI_RegisterCommand("primaryfire", (sithAICommandFunc_t)sithAICmd_PrimaryFire, 
         SITHAI_MODE_ATTACKING,   // allowed flags
         0,                              // disallowed flags
         SITHAI_MODE_UNK100);
 
     if (Main_bMotsCompat) {
-        sithAI_RegisterCommand("leap", sithAICmd_Leap, 
+        sithAI_RegisterCommand("leap", (sithAICommandFunc_t)sithAICmd_Leap, 
             SITHAI_MODE_ATTACKING,   // allowed flags
             0,                              // disallowed flags
             SITHAI_MODE_UNK100|SITHAI_MODE_SEARCHING);
-        sithAI_RegisterCommand("charge", sithAICmd_Charge, 
+        sithAI_RegisterCommand("charge", (sithAICommandFunc_t)sithAICmd_Charge, 
             SITHAI_MODE_ATTACKING,   // allowed flags
             0,                              // disallowed flags
             SITHAI_MODE_UNK100|SITHAI_MODE_SEARCHING);
     }
-    sithAI_RegisterCommand("follow", sithAICmd_Follow,
+    sithAI_RegisterCommand("follow", (sithAICommandFunc_t)sithAICmd_Follow,
         SITHAI_MODE_ATTACKING,   // allowed flags
         SITHAI_MODE_FLEEING,            // disallowed flags
         SITHAI_MODE_FLEEING|SITHAI_MODE_TARGET_VISIBLE|SITHAI_MODE_ACTIVE);
-    sithAI_RegisterCommand("turretfire", sithAICmd_TurretFire, 
+    sithAI_RegisterCommand("turretfire", (sithAICommandFunc_t)sithAICmd_TurretFire, 
         SITHAI_MODE_ATTACKING,   // allowed flags
         SITHAI_MODE_FLEEING,            // disallowed flags
         SITHAI_MODE_UNK100);
-    sithAI_RegisterCommand("opendoors", sithAICmd_OpenDoors, 
+    sithAI_RegisterCommand("opendoors", (sithAICommandFunc_t)sithAICmd_OpenDoors, 
         SITHAI_MODE_ATTACKING,   // allowed flags
         0,                              // disallowed flags
         0);
-    sithAI_RegisterCommand("jump", sithAICmd_Jump, 
+    sithAI_RegisterCommand("jump", (sithAICommandFunc_t)sithAICmd_Jump, 
         0,                      // allowed flags
         0,                      // disallowed flags
         SITHAI_MODE_TARGET_VISIBLE|SITHAI_MODE_ACTIVE|SITHAI_MODE_SEARCHING);
-    sithAI_RegisterCommand("randomturn", sithAICmd_RandomTurn, 
+    sithAI_RegisterCommand("randomturn", (sithAICommandFunc_t)sithAICmd_RandomTurn, 
         SITHAI_MODE_SEARCHING,  // allowed flags
         0,                      // disallowed flags
         0);
-    sithAI_RegisterCommand("roam", sithAICmd_Roam, 
+    sithAI_RegisterCommand("roam", (sithAICommandFunc_t)sithAICmd_Roam, 
         SITHAI_MODE_SEARCHING,  // allowed flags
         0,                      // disallowed flags
         0);
-    sithAI_RegisterCommand("flee", sithAICmd_Flee,
+    sithAI_RegisterCommand("flee", (sithAICommandFunc_t)sithAICmd_Flee,
         SITHAI_MODE_FLEEING,    // allowed flags
         0,                      // disallowed flags
         SITHAI_MODE_FLEEING|SITHAI_MODE_TARGET_VISIBLE|SITHAI_MODE_ACTIVE|SITHAI_MODE_UNK100|SITHAI_MODE_SEARCHING|SITHAI_MODE_MOVING);
-    sithAI_RegisterCommand("sensedanger", sithAICmd_SenseDanger,
+    sithAI_RegisterCommand("sensedanger", (sithAICommandFunc_t)sithAICmd_SenseDanger,
         SITHAI_MODE_SEARCHING, // SenseDanger allowed flags
         SITHAI_MODE_FLEEING,   // SenseDanger disallowed flags
         SITHAI_MODE_SEARCHING|SITHAI_MODE_ATTACKING|SITHAI_MODE_MOVING); // SenseDanger idk?
-    sithAI_RegisterCommand("hitandrun", sithAICmd_HitAndRun, 
+    sithAI_RegisterCommand("hitandrun", (sithAICommandFunc_t)sithAICmd_HitAndRun, 
         SITHAI_MODE_FLEEING|SITHAI_MODE_TARGET_VISIBLE, // HitAndRun allowed flags
         0,                            // HitAndRun disallowed flags
         0);                           // HitAndRun idk?
-    sithAI_RegisterCommand("retreat", sithAICmd_Retreat, 
+    sithAI_RegisterCommand("retreat", (sithAICommandFunc_t)sithAICmd_Retreat, 
         SITHAI_MODE_ATTACKING, // allowed flags
         SITHAI_MODE_FLEEING,          // disallowed flags
         0);
-    sithAI_RegisterCommand("circlestrafe", sithAICmd_CircleStrafe, 
+    sithAI_RegisterCommand("circlestrafe", (sithAICommandFunc_t)sithAICmd_CircleStrafe, 
         SITHAI_MODE_ATTACKING, // allowed flags
         SITHAI_MODE_FLEEING,          // disallowed flags
         0);
-    sithAI_RegisterCommand("blindfire", sithAICmd_BlindFire, 
+    sithAI_RegisterCommand("blindfire", (sithAICommandFunc_t)sithAICmd_BlindFire, 
         SITHAI_MODE_ATTACKING, // allowed flags
         SITHAI_MODE_FLEEING|SITHAI_MODE_TARGET_VISIBLE, // disallowed flags
         0);
-    sithAI_RegisterCommand("returnhome", sithAICmd_ReturnHome, 
+    sithAI_RegisterCommand("returnhome", (sithAICommandFunc_t)sithAICmd_ReturnHome, 
         0, // allowed flags
         0, // disallowed flags
         SITHAI_MODE_FLEEING|SITHAI_MODE_UNK100);
-    sithAI_RegisterCommand("lobfire", sithAICmd_LobFire, 
+    sithAI_RegisterCommand("lobfire", (sithAICommandFunc_t)sithAICmd_LobFire, 
         SITHAI_MODE_ATTACKING,   // allowed flags
         0,                              // disallowed flags
         SITHAI_MODE_UNK100);
-    sithAI_RegisterCommand("talk", sithAICmd_Talk, 
+    sithAI_RegisterCommand("talk", (sithAICommandFunc_t)sithAICmd_Talk, 
         0xFFFF, // allowed flags (any)
         0,      // disallowed flags
         0);
-    sithAI_RegisterCommand("crouch", sithAICmd_Crouch, 
+    sithAI_RegisterCommand("crouch", (sithAICommandFunc_t)sithAICmd_Crouch, 
         SITHAI_MODE_ATTACKING, // allowed flags
         0, // disallowed flags
         SITHAI_MODE_UNK100);
-    sithAI_RegisterCommand("withdraw", sithAICmd_Withdraw,
+    sithAI_RegisterCommand("withdraw", (sithAICommandFunc_t)sithAICmd_Withdraw,
         SITHAI_MODE_FLEEING, // allowed flags
         0, // disallowed flags
         SITHAI_MODE_FLEEING|SITHAI_MODE_TARGET_VISIBLE|SITHAI_MODE_ACTIVE|SITHAI_MODE_UNK100|SITHAI_MODE_SEARCHING|SITHAI_MODE_MOVING);
-    sithAI_RegisterCommand("dodge", sithAICmd_Dodge, 
+    sithAI_RegisterCommand("dodge", (sithAICommandFunc_t)sithAICmd_Dodge, 
         0, // allowed flags
         0, // disallowed flags
         SITHAI_MODE_SLEEPING|SITHAI_MODE_ATTACKING|SITHAI_MODE_MOVING);
@@ -167,16 +167,16 @@ int sithAICmd_Follow(sithActor *actor, sithAIClassEntry *aiclass, sithActorInsti
     sithAIClassEntry *v8; // ebx
     sithActorInstinct *v9; // edi
     int v10; // eax
-    double v16; // st7
+    flex_d_t v16; // st7
     rdVector3 a4a; // [esp+10h] [ebp-3Ch] BYREF
     rdVector3 arg8a; // [esp+1Ch] [ebp-30h] BYREF
     rdVector3 a1; // [esp+28h] [ebp-24h] BYREF
     rdVector3 a2; // [esp+34h] [ebp-18h] BYREF
     rdVector3 a5; // [esp+40h] [ebp-Ch] BYREF
-    float argMaxDistToAllow; // [esp+50h] [ebp+4h]
-    float argMaxMeleeDist;
-    float argMinDistToAllow;
-    float tmp;
+    flex_t argMaxDistToAllow; // [esp+50h] [ebp+4h]
+    flex_t argMaxMeleeDist;
+    flex_t argMinDistToAllow;
+    flex_t tmp;
 
     if ( flags > SITHAI_MODE_ACTIVE )
     {
@@ -184,10 +184,10 @@ int sithAICmd_Follow(sithActor *actor, sithAIClassEntry *aiclass, sithActorInsti
         {
             if ( flags != SITHAI_MODE_FLEEING || (actor->flags & SITHAI_MODE_ACTIVE) == 0 || instinct->param0 == 0.0 )
                 return 0;
-            a4a.x = 0.0;
-            a4a.z = 0.0;
-            a4a.y = (_frand() - 0.5) * 90.0;
-            if ( _frand() >= 0.5 )
+            a4a.x = FLEX(0.0);
+            a4a.z = FLEX(0.0);
+            a4a.y = (_frand() - FLEX(0.5)) * FLEX(90.0);
+            if ( _frand() >= FLEX(0.5) )
             {
                 sithAI_sub_4EAF40(actor);
                 rdVector_Rotate3(&a1, &actor->field_228, &a4a);
@@ -197,9 +197,9 @@ int sithAICmd_Follow(sithActor *actor, sithAIClassEntry *aiclass, sithActorInsti
                 rdVector_Rotate3(&a1, &actor->thing->lookOrientation.lvec, &a4a);
             }
             rdVector_Copy3(&a2, &actor->thing->position);
-            rdVector_MultAcc3(&a2, &a1, 0.7);
+            rdVector_MultAcc3(&a2, &a1, FLEX(0.7));
             sithAI_SetLookFrame(actor, &a2);
-            sithAI_SetMoveThing(actor, &a2, 2.0);
+            sithAI_SetMoveThing(actor, &a2, FLEX(2.0));
             return 0;
         }
     }
@@ -317,20 +317,20 @@ p4 - 0 single dir strafe, 1 random strafe
 int sithAICmd_CircleStrafe(sithActor *actor, sithAIClassEntry *aiclass, sithActorInstinct *instinct, int flags, intptr_t otherFlags)
 {
     int v8; // edi
-    double v13; // st7
+    flex_d_t v13; // st7
     sithAIClass *v15; // edx
     rdVector3 movePos; // [esp+10h] [ebp-30h] BYREF
     rdVector3 a2a; // [esp+1Ch] [ebp-24h] BYREF
     rdVector3 a4; // [esp+28h] [ebp-18h] BYREF
     rdVector3 a5; // [esp+34h] [ebp-Ch] BYREF
-    float unused;
+    flex_t unused;
 
     instinct->nextUpdate = sithTime_curMs + aiclass->argsAsInt[0];
     if ( actor->pMoveThing )
     {
         v8 = aiclass->argsAsInt[4];
         sithAI_sub_4EAF40(actor);
-        if ( aiclass->argsAsFloat[2] >= (double)actor->currentDistanceFromTarget && !actor->field_238 )
+        if ( aiclass->argsAsFloat[2] >= (flex_d_t)actor->currentDistanceFromTarget && !actor->field_238 )
         {
             rdVector_Scale3(&a2a, &actor->field_228, -actor->currentDistanceFromTarget);
             if ( v8
@@ -403,7 +403,7 @@ int sithAICmd_BlindFire(sithActor *actor, sithAIClassEntry *aiclass, sithActorIn
     sithThing *v11; // eax
     int v13; // eax
     rdVector3 fireOffs; // [esp+2Ch] [ebp-Ch] BYREF
-    float fOut;
+    flex_t fOut;
 
     weapon = actor->thing;
     if ( aiclass->argsAsFloat[1] < _frand() || actor->field_288 > sithTime_curMs )
@@ -426,7 +426,7 @@ int sithAICmd_BlindFire(sithActor *actor, sithAIClassEntry *aiclass, sithActorIn
             return 1;
         }
         if ( !sithAI_sub_4EB300(weapon, &weapon->position, &actor->field_1F8, aiclass->argsAsFloat[3], 10.0, projectile->moveSize, &fireOffs, &fOut)
-          && fOut >= (double)aiclass->argsAsFloat[4] )
+          && fOut >= (flex_d_t)aiclass->argsAsFloat[4] )
         {
             if ( actor->attackDistance != 0.0 && aiclass->argsAsFloat[5] != 0.0 )
             {
@@ -645,22 +645,22 @@ int sithAICmd_TurretFire(sithActor *actor, sithAIClassEntry *aiclass, sithActorI
     sithThing *v15; // eax
     sithThing *v16; // ecx
     rdMatrix34 *v20; // esi
-    double v23; // st7
-    double v24; // st7
-    double v25; // st7
-    double v28; // st7
+    flex_d_t v23; // st7
+    flex_d_t v24; // st7
+    flex_d_t v25; // st7
+    flex_d_t v28; // st7
     sithThing *v29; // eax
-    float v31; // [esp+10h] [ebp-60h]
-    float v32; // [esp+14h] [ebp-5Ch]
+    flex_t v31; // [esp+10h] [ebp-60h]
+    flex_t v32; // [esp+14h] [ebp-5Ch]
     rdVector3 a3; // [esp+1Ch] [ebp-54h] BYREF
     rdVector3 v35; // [esp+28h] [ebp-48h] BYREF
     rdVector3 a1; // [esp+34h] [ebp-3Ch] BYREF
     rdMatrix34 v37; // [esp+40h] [ebp-30h] BYREF
-    float actora; // [esp+74h] [ebp+4h]
-    float actorb; // [esp+74h] [ebp+4h]
-    float actorc; // [esp+74h] [ebp+4h]
-    float actord; // [esp+74h] [ebp+4h]
-    float flagsa; // [esp+80h] [ebp+10h]
+    flex_t actora; // [esp+74h] [ebp+4h]
+    flex_t actorb; // [esp+74h] [ebp+4h]
+    flex_t actorc; // [esp+74h] [ebp+4h]
+    flex_t actord; // [esp+74h] [ebp+4h]
+    flex_t flagsa; // [esp+80h] [ebp+10h]
 
     v7 = actor->pDistractor;
     v8 = actor->thing->actorParams.templateWeapon;
@@ -712,7 +712,7 @@ int sithAICmd_TurretFire(sithActor *actor, sithAIClassEntry *aiclass, sithActorI
         {
             a3.y = -flagsa;
         }
-        else if ( a3.y > (double)flagsa )
+        else if ( a3.y > (flex_d_t)flagsa )
         {
             a3.y = flagsa;
         }
@@ -720,7 +720,7 @@ int sithAICmd_TurretFire(sithActor *actor, sithAIClassEntry *aiclass, sithActorI
         {
             a3.x = -actora;
         }
-        else if ( a3.x > (double)actora )
+        else if ( a3.x > (flex_d_t)actora )
         {
             a3.x = actora;
         }
@@ -764,7 +764,7 @@ LABEL_41:
         actor->thing->actorParams.eyePYR.x = v28;
         sithActor_RotateTurretToEyePYR(actor->thing);
 LABEL_50:
-        if ( sithTime_curSeconds > (double)instinct->param0 && (g_debugmodeFlags & DEBUGFLAG_NO_AI) == 0 )
+        if ( sithTime_curSeconds > (flex_d_t)instinct->param0 && (g_debugmodeFlags & DEBUGFLAG_NO_AI) == 0 )
         {
             rdMatrix_Copy34(&v37, v20);
             rdMatrix_PreRotate34(&v37, &actor->thing->actorParams.eyePYR);
@@ -783,7 +783,7 @@ LABEL_50:
         instinct->param0 = sithTime_curSeconds - 1.0;
         instinct->param1 = aiclass->argsAsFloat[7] * 0.001 + sithTime_curSeconds;
     }
-    else if ( sithTime_curSeconds > (double)instinct->param1 )
+    else if ( sithTime_curSeconds > (flex_d_t)instinct->param1 )
     {
         sithActor_SpawnDeadBodyMaybe(actor->thing, actor->thing, 2, -1);
         return 0;
@@ -791,7 +791,7 @@ LABEL_50:
     actor->thing->actorParams.eyePYR.y = _frand() * (flagsa + flagsa) - flagsa;
     actor->thing->actorParams.eyePYR.x = _frand() * (actora + actora) - actora;
     sithActor_RotateTurretToEyePYR(actor->thing);
-    if ( sithTime_curSeconds > (double)instinct->param0 )
+    if ( sithTime_curSeconds > (flex_d_t)instinct->param0 )
     {
         _memcpy(&v37, &actor->thing->lookOrientation, sizeof(v37));
         rdMatrix_PreRotate34(&v37, &actor->thing->actorParams.eyePYR);
@@ -818,10 +818,10 @@ int sithAICmd_Listen(sithActor *actor, sithAIClassEntry *aiclass, sithActorInsti
     sithSectorAlloc *v8; // ecx
     int result; // eax
     rdVector3 *v10; // ebp
-    float *v11; // ecx
+    flex_t *v11; // ecx
     int v12; // edi
     int v13; // ecx
-    double v14; // st7
+    flex_d_t v14; // st7
     sithThing *v15; // ebp
     sithActorInstinct *instinct_; // edi
     sithThing *v17; // ebx
@@ -829,7 +829,7 @@ int sithAICmd_Listen(sithActor *actor, sithAIClassEntry *aiclass, sithActorInsti
     rdVector3 movePos; // [esp+14h] [ebp-24h] BYREF
     rdVector3 lookPos; // [esp+20h] [ebp-18h] BYREF
     rdVector3 a5; // [esp+2Ch] [ebp-Ch] BYREF
-    float tmp;
+    flex_t tmp;
 
     actor_ = actor;
     if ( (actor->flags & SITHAI_MODE_SEARCHING) == 0 )
@@ -893,7 +893,7 @@ LABEL_26:
         if ( *v11 != 0.0 )
         {
             v13 = sithAI_sub_4EB300(v6, &v6->position, v10, -1.0, actor_->pAIClass->sightDist, 0.0, &a5, &tmp);
-            if ( tmp <= (double)actor_->pAIClass->hearDist
+            if ( tmp <= (flex_d_t)actor_->pAIClass->hearDist
               && (!v13
                || tmp < 1.0 && v6->lookOrientation.lvec.y * a5.y + v6->lookOrientation.lvec.z * a5.z + v6->lookOrientation.lvec.x * a5.x > 0.5) )
             {
@@ -906,7 +906,7 @@ LABEL_26:
         if ( v12 < 0 )
         {
             // TODO ??????
-            //v14 = *(float *)&instinct;
+            //v14 = *(flex_t *)&instinct;
             //v15 = (sithThing *)instinct;
             
             v14 = 0.0;
@@ -991,7 +991,7 @@ int sithAICmd_LookForTarget(sithActor *actor, sithAIClassEntry *aiclass, sithAct
                 psVar3 = sithAICmd_NearestPlayer(actor);
             }
             actor->pDistractor = psVar3;
-            if ((psVar3->thingflags & 0x202) == 0) 
+            if ((psVar3->thingflags & (SITH_TF_DEAD|SITH_TF_WILLBEREMOVED)) == 0)
             {
                 sithAI_sub_4EAD60(actor);
                 if (actor->field_1F4 == 0) 
@@ -1067,10 +1067,10 @@ int sithAICmd_Jump(sithActor *actor, sithAIClassEntry *aiclass, sithActorInstinc
     if ( rdVector_Dot3(&actor->field_228, &actorThing->physicsParams.vel) > 0.02 )
         return 0;
     //*(_QWORD *)&pos.x = sithTime_curMs;
-    if ( (double)sithTime_curMs < instinct->param0 )
+    if ( (flex_d_t)sithTime_curMs < instinct->param0 )
         return 0;
 
-    instinct->param0 = aiclass->argsAsFloat[0] + (double)sithTime_curMs;
+    instinct->param0 = aiclass->argsAsFloat[0] + (flex_d_t)sithTime_curMs;
     if ( flags != SITHAI_MODE_SEARCHING && flags != SITHAI_MODE_ACTIVE )
     {
         if ( flags != SITHAI_MODE_TARGET_VISIBLE )
@@ -1118,7 +1118,7 @@ p2 - Duration of flee in seconds (10s is default)
 int sithAICmd_Flee(sithActor *actor, sithAIClassEntry *aiclass, sithActorInstinct *instinct, int flags, void *extra)
 {
     int v7; // ecx
-    double v8; // st7
+    flex_d_t v8; // st7
     int result; // eax
     sithThing *v11; // edi
     int v12; // eax
@@ -1127,8 +1127,8 @@ int sithAICmd_Flee(sithActor *actor, sithAIClassEntry *aiclass, sithActorInstinc
     rdVector3 a5; // [esp+Ch] [ebp-24h] BYREF
     rdVector3 v19; // [esp+18h] [ebp-18h] BYREF
     rdVector3 movePos; // [esp+24h] [ebp-Ch] BYREF
-    float aiclass1a; // [esp+38h] [ebp+8h]
-    float tmp;
+    flex_t aiclass1a; // [esp+38h] [ebp+8h]
+    flex_t tmp;
 
     v7 = actor->flags;
     aiclass1a = aiclass->argsAsFloat[0];
@@ -1203,7 +1203,7 @@ int sithAICmd_Withdraw(sithActor *actor, sithAIClassEntry *aiclass, sithActorIns
     rdVector3 a5; // [esp+4h] [ebp-24h] BYREF
     rdVector3 v17; // [esp+10h] [ebp-18h] BYREF
     rdVector3 movePos; // [esp+1Ch] [ebp-Ch] BYREF
-    float tmp;
+    flex_t tmp;
 
     if ( (actor->flags & SITHAI_MODE_FLEEING) == 0 )
         return 0;
@@ -1268,7 +1268,7 @@ int sithAICmd_Dodge(sithActor *actor, sithAIClassEntry *aiclass, sithActorInstin
     rdVector3 a5; // [esp+10h] [ebp-24h] BYREF
     rdVector3 movePos; // [esp+1Ch] [ebp-18h] BYREF
     rdVector3 vAngs; // [esp+28h] [ebp-Ch] BYREF
-    float tmp;
+    flex_t tmp;
 
     if ( !flags )
         return 0;
@@ -1317,7 +1317,7 @@ int sithAICmd_Dodge(sithActor *actor, sithAIClassEntry *aiclass, sithActorInstin
 
     if ( aiclass->argsAsFloat[1] == 0.0
       || !extra
-      || sithAI_CheckSightThing(actor->thing, &actor->thing->position, extra, actor->pAIClass->fov, actor->pAIClass->sightDist, 0.0, &a5, (float *)&extra) )
+      || sithAI_CheckSightThing(actor->thing, &actor->thing->position, extra, actor->pAIClass->fov, actor->pAIClass->sightDist, 0.0, &a5, (flex_t *)&extra) ) // FLEXTODO
     {
         return 0;
     }
@@ -1343,7 +1343,7 @@ int sithAICmd_RandomTurn(sithActor *actor, sithAIClassEntry *aiclass, sithActorI
     rdVector3 vAngs; // [esp+2Ch] [ebp-24h] BYREF
     rdVector3 arg8; // [esp+38h] [ebp-18h] BYREF
     rdVector3 a5; // [esp+44h] [ebp-Ch] BYREF
-    float tmp;
+    flex_t tmp;
 
     if ( aiclass->argsAsInt[0] )
         instinct->nextUpdate = sithTime_curMs + aiclass->argsAsInt[0];
@@ -1368,7 +1368,7 @@ p1 - Radius to roam from home
 */
 int sithAICmd_Roam(sithActor *actor, sithAIClassEntry *aiclass, sithActorInstinct *instinct, int flags, void *extra)
 {
-    double randVal; // st6
+    flex_d_t randVal; // st6
     rdVector3 *v13; // [esp-8h] [ebp-30h]
     rdVector3 movePos; // [esp+4h] [ebp-24h] BYREF
     rdVector3 v16; // [esp+10h] [ebp-18h] BYREF
@@ -1411,7 +1411,7 @@ int sithAICmd_SenseDanger(sithActor *actor, sithAIClassEntry *aiclass, sithActor
     int v9; // eax
     int result; // eax
     rdVector3 a5; // [esp+Ch] [ebp-Ch] BYREF
-    float tmp;
+    flex_t tmp;
 
     v7 = &sithAIAwareness_aSectors[actor->thing->sector->id];
     if ( (actor->flags & SITHAI_MODE_FLEEING) != 0 || (actor->flags & SITHAI_MODE_SEARCHING) == 0 )
@@ -1449,7 +1449,7 @@ int sithAICmd_SenseDanger(sithActor *actor, sithAIClassEntry *aiclass, sithActor
     }
     if ( flags != 1 )
     {
-        if ( flags == 2 && v7->field_4[1] > (double)aiclass->argsAsFloat[0] )
+        if ( flags == 2 && v7->field_4[1] > (flex_d_t)aiclass->argsAsFloat[0] )
         {
             v8 = v7->field_58[1];
             if ( v8 )
@@ -1487,7 +1487,7 @@ p1 - Time till reengaging (msec)
 int sithAICmd_HitAndRun(sithActor *actor, sithAIClassEntry *aiclass, sithActorInstinct *instinct, int flags, void *extra)
 {
     int result; // eax
-    double v8; // st7
+    flex_d_t v8; // st7
 
     if ( flags )
         return 0;
@@ -1537,7 +1537,7 @@ int sithAICmd_Retreat(sithActor *actor, sithAIClassEntry *aiclass, sithActorInst
     if ( (actor->flags & SITHAI_MODE_ATTACKING) == 0 )
         return 0;
 
-    if ( aiclass->argsAsFloat[3] != 0.0 && aiclass->argsAsFloat[3] < (double)instinct->param0 )
+    if ( aiclass->argsAsFloat[3] != 0.0 && aiclass->argsAsFloat[3] < (flex_d_t)instinct->param0 )
     {
         instinct->field_0 |= 1;
         return 0;
@@ -1590,7 +1590,7 @@ p1 - %chance of say (0 never, 1 always)
 */
 int sithAICmd_Talk(sithActor *actor, sithAIClassEntry *aiclass, sithActorInstinct *instinct, int flags, void *extra)
 {
-    double healthPercent; // st7
+    flex_d_t healthPercent; // st7
 
     instinct->nextUpdate = sithTime_curMs + aiclass->argsAsInt[0];
     if ( aiclass->argsAsFloat[1] <= _frand() )
@@ -1664,7 +1664,7 @@ int sithAICmd_LookForOpposingTarget(sithActor *pActor, sithAIClassEntry *pAiclas
             psVar3 = sithAI_FUN_00539a60(pActor);
         }
         pActor->pDistractor = psVar3;
-        if ((psVar3 != (sithThing *)0x0) && ((psVar3->thingflags & 0x202) == 0))
+        if ((psVar3 != (sithThing *)0x0) && ((psVar3->thingflags & (SITH_TF_DEAD|SITH_TF_WILLBEREMOVED)) == 0))
         {
             sithAI_sub_4EAD60(pActor);
             if (pActor->field_1F4 == 0) {

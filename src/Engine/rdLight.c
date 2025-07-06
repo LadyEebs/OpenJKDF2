@@ -55,9 +55,9 @@ void rdLight_FreeEntry(rdLight *light)
 }
 
 #ifdef JKM_LIGHTING
-void rdLight_SetAngles(rdLight *pLight, float angleX, float angleY)
+void rdLight_SetAngles(rdLight *pLight, flex_t angleX, flex_t angleY)
 {
-    float local_4;
+    flex_t local_4;
     
     local_4 = 0.0;
     pLight->angleX = angleX;
@@ -67,7 +67,7 @@ void rdLight_SetAngles(rdLight *pLight, float angleX, float angleY)
     stdMath_SinCos(angleY, &local_4, &pLight->cosAngleY);
 
     // Grim Fandango added: divide safety
-    double denom = (pLight->cosAngleX - pLight->cosAngleY);
+    flex_d_t denom = (pLight->cosAngleX - pLight->cosAngleY);
     if (denom != 0.0) {
         pLight->lux = 1.0 / denom;
     }
@@ -107,13 +107,13 @@ float rdLight_HalfLambert(float NdotL)
 }
 #endif
 
-double rdLight_CalcVertexIntensities(rdLight **meshLights, rdVector3 *localLightPoses, 
+flex_t rdLight_CalcVertexIntensities(rdLight **meshLights, rdVector3 *localLightPoses, 
 #ifdef JKM_LIGHTING
     rdVector3 *localLightDirs, 
 #endif
-    int numLights, rdVector3 *verticesEnd, rdVector3 *vertices, float *vertices_i_end, float *vertices_i,
+    int numLights, rdVector3 *verticesEnd, rdVector3 *vertices, flex_t *vertices_i_end, flex_t *vertices_i,
 #ifdef RGB_THING_LIGHTS
-	float* vertices_r, float* vertices_g, float* vertices_b,
+	flex_t* vertices_r, flex_t* vertices_g, flex_t* vertices_b,
 #endif
 #ifdef RGB_AMBIENT
 	rdAmbient* ambient,
@@ -122,7 +122,7 @@ double rdLight_CalcVertexIntensities(rdLight **meshLights, rdVector3 *localLight
 	rdVector3* localCamera,
 	int bApplySpecular,
  #endif
-	int numVertices, float scalar)
+	int numVertices, flex_t scalar)
 {
 #ifdef SPECULAR_LIGHTING
 	float c_d = 1.0f;
@@ -138,13 +138,13 @@ double rdLight_CalcVertexIntensities(rdLight **meshLights, rdVector3 *localLight
     int vertexLightsSize;
     rdVector3* vertexIter;
     rdLight **meshLightIter;
-    float len;
-    float lightMagnitude;
+    flex_t len;
+    flex_t lightMagnitude;
     rdLight *light;
     rdVector3 diff;
     rdVector3 *vertexNormals;
-    float *outLights;
-    float *idkIter;
+    flex_t *outLights;
+    flex_t *idkIter;
     int i, j;
 
     if (!numVertices)
@@ -189,18 +189,18 @@ double rdLight_CalcVertexIntensities(rdLight **meshLights, rdVector3 *localLight
         int vertexLightsSize;
         rdVector3* vertexIter;
         rdLight **meshLightIter;
-        float len;
-        float lightMagnitude;
+        flex_t len;
+        flex_t lightMagnitude;
         rdLight *light;
         rdVector3 diff;
         rdVector3 *vertexNormals;
-        float *outLights;
+        flex_t *outLights;
 #ifdef RGB_THING_LIGHTS
-		float* outLightsR;
-		float* outLightsG;
-		float* outLightsB;
+		flex_t* outLightsR;
+		flex_t* outLightsG;
+		flex_t* outLightsB;
 #endif
-        float *idkIter;
+        flex_t *idkIter;
         int i, j;
 
         if (!numVertices)
@@ -330,21 +330,22 @@ double rdLight_CalcVertexIntensities(rdLight **meshLights, rdVector3 *localLight
         return 0.0;
     }
 
-    float fVar1;
+    flex_t fVar1;
     rdLight *light;
-    float lightMagnitude;
+    flex_t lightMagnitude;
     rdVector3 *vertexNormals;
     rdVector3 *lightDirIter;
-    float fVar8;
+    flex_t fVar8;
     rdVector3 *vertexIter;
-    float local_28;
+    flex_t local_28;
     rdVector3 diff;
     rdLight** meshLightIter;
-    float* outLights;
+
+    flex_t* outLights;
 #ifdef RGB_THING_LIGHTS
-	float* outLightsR;
-	float* outLightsG;
-	float* outLightsB;
+	flex_t* outLightsR;
+	flex_t* outLightsG;
+	flex_t* outLightsB;
 #endif
     
     local_28 = 0.0;
@@ -520,21 +521,21 @@ double rdLight_CalcVertexIntensities(rdLight **meshLights, rdVector3 *localLight
 		if (vertices_b) ++outLightsB;
 #endif
     } 
-    return (double)(local_28 / (float)numVertices);
+    return (flex_t)(local_28 / (flex_t)numVertices);
 #endif
 }
 
-float rdLight_CalcFaceIntensity(rdLight **meshLights, rdVector3 *localLightPoses, int numLights, rdFace *face, rdVector3 *faceNormal, rdVector3 *vertices, float a7)
+flex_t rdLight_CalcFaceIntensity(rdLight **meshLights, rdVector3 *localLightPoses, int numLights, rdFace *face, rdVector3 *faceNormal, rdVector3 *vertices, flex_t a7)
 {
   rdVector3 *lightPosIter; // esi
   rdLight *meshLight; // ebx
   int *v9; // eax
-  float v10; // st7
-  float v11; // st7
-  float intensity; // [esp+10h] [ebp-14h]
+  flex_t v10; // st7
+  flex_t v11; // st7
+  flex_t intensity; // [esp+10h] [ebp-14h]
   int v15; // [esp+14h] [ebp-10h]
   rdVector3 diff; // [esp+18h] [ebp-Ch]
-  float meshLightsa; // [esp+28h] [ebp+4h]
+  flex_t meshLightsa; // [esp+28h] [ebp+4h]
   rdLight **meshLightIter; // [esp+2Ch] [ebp+8h]
 
   intensity = 0.0;

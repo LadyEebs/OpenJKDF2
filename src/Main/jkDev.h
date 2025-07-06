@@ -59,7 +59,7 @@ int jkDev_sub_41FC40(int a1, const char *a2);
 void jkDev_sub_41FC90(int a1);
 void jkDev_DrawEntries();
 
-int jkDev_RegisterCmd(void *pfCheatFunc, const char *pCryptCheatStr, const char *pCheatFlavortext, int extra);
+int jkDev_RegisterCmd(DebugConsoleCmd_t pfCheatFunc, const char *pCryptCheatStr, const char *pCheatFlavortext, int extra);
 int jkDev_TryCommand(const char *cmd);
 char* jkDev_Decrypt(char *cheatStr);
 int jkDev_CmdVersion(stdDebugConsoleCmd *pCmd, const char *pArgStr);
@@ -95,6 +95,8 @@ int jkDev_CmdNoclip(stdDebugConsoleCmd *pCmd, const char *pArgStr);
 int jkDev_CmdProfiler(stdDebugConsoleCmd* pCmd, const char* pArgStr);
 #endif
 
+#if defined(WIN32) && !defined(SDL2_RENDER)
 static int (*jkDev_DialogFunc)(HWND, UINT, WPARAM, LPARAM) = (void*)jkDev_DialogFunc_ADDR;
+#endif
 
 #endif // _JKDEV_H

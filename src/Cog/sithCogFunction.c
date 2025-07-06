@@ -65,7 +65,7 @@ void sithCogFunction_GetSourceType(sithCog *ctx)
 
 void sithCogFunction_Rand(sithCog *ctx)
 {
-    float val = _frand();
+    cog_flex_t val = _frand();
     sithCogExec_PushFlex(ctx, val);
 }
 
@@ -82,7 +82,7 @@ void sithCogFunction_RandVec(sithCog *ctx)
 void sithCogFunction_Sleep(sithCog *ctx)
 {
     sithCog *ctx_;
-    double fSecs;
+    flex_d_t fSecs;
 
     ctx_ = ctx;
     fSecs = sithCogExec_PopFlex(ctx);
@@ -181,7 +181,7 @@ void sithCogFunction_MaterialAnim(sithCog *ctx)
 {
     sithCog *ctx_; // esi
     int popInt; // edi
-    void *material; // ecx
+    rdMaterial *material; // ecx
     rdSurface *v4; // eax
     cog_flex_t popFlex; // [esp+Ch] [ebp+4h]
 
@@ -189,7 +189,7 @@ void sithCogFunction_MaterialAnim(sithCog *ctx)
     ctx_ = ctx;
     popInt = sithCogExec_PopInt(ctx);
     popFlex = sithCogExec_PopFlex(ctx);
-    material = sithCogExec_PopMaterial(ctx_); // TODO rdMaterial*
+    material = sithCogExec_PopMaterial(ctx_);
     if ( !material )
     {
         sithCogExec_PushInt(ctx_, -1);
@@ -551,7 +551,7 @@ void sithCogFunction_GetKeyLen(sithCog *ctx)
         return;
     }
 
-    sithCogExec_PushFlex(ctx, (double)keyframe->numFrames / keyframe->fps);
+    sithCogExec_PushFlex(ctx, (flex_d_t)keyframe->numFrames / keyframe->fps);
 }
 
 void sithCogFunction_GetSithMode(sithCog* ctx)
@@ -1072,11 +1072,11 @@ void sithCogFunction_NewColorEffect(sithCog *ctx)
     int idx; // edi
     signed int filterG; // [esp+10h] [ebp-1Ch]
     signed int filterR; // [esp+14h] [ebp-18h]
-    float tintB; // [esp+18h] [ebp-14h]
-    float tintG; // [esp+1Ch] [ebp-10h]
-    float tintR; // [esp+20h] [ebp-Ch]
+    cog_flex_t tintB; // [esp+18h] [ebp-14h]
+    cog_flex_t tintG; // [esp+1Ch] [ebp-10h]
+    cog_flex_t tintR; // [esp+20h] [ebp-Ch]
     signed int addR; // [esp+24h] [ebp-8h]
-    float fade; // [esp+28h] [ebp-4h]
+    cog_flex_t fade; // [esp+28h] [ebp-4h]
     int filterB; // [esp+30h] [ebp+4h]
 
     fade = sithCogExec_PopFlex(ctx);
@@ -1106,13 +1106,13 @@ void sithCogFunction_NewColorEffect(sithCog *ctx)
 
 void sithCogFunction_ModifyColorEffect(sithCog *ctx)
 {
-    float fade; // ST34_4
+    cog_flex_t fade; // ST34_4
     int addB; // edi
     int addG; // ebx
     int addR; // ebp
-    float tintB; // ST28_4
-    float tintG; // ST2C_4
-    float tintR; // ST30_4
+    cog_flex_t tintB; // ST28_4
+    cog_flex_t tintG; // ST2C_4
+    cog_flex_t tintR; // ST30_4
     signed int filterG; // ST20_4
     signed int filterR; // ST24_4
     int idx; // esi
@@ -1534,7 +1534,7 @@ void sithCogFunction_SetTeamScore(sithCog *ctx)
 
 void sithCogFunction_GetTimeLimit(sithCog *a1)
 {
-    cog_flex_t a2 = (double)(unsigned int)sithNet_multiplayer_timelimit * 0.000016666667;
+    cog_flex_t a2 = (flex_d_t)(unsigned int)sithNet_multiplayer_timelimit * 0.000016666667;
     sithCogExec_PushFlex(a1, a2);
 }
 
@@ -1616,8 +1616,8 @@ void sithCogFunction_Wakeup(sithCog *pCtx)
 // MOTS added
 void sithCogFunction_Sin(sithCog *ctx)
 {
-    float outSin;
-    float outCos;
+    flex_t outSin;
+    flex_t outCos;
     
     cog_flex_t angle = sithCogExec_PopFlex(ctx);
     stdMath_SinCos(angle,&outSin,&outCos);
@@ -1627,8 +1627,8 @@ void sithCogFunction_Sin(sithCog *ctx)
 // MOTS added
 void sithCogFunction_Cos(sithCog *ctx)
 {
-    float outSin;
-    float outCos;
+    flex_t outSin;
+    flex_t outCos;
     
     cog_flex_t angle = sithCogExec_PopFlex(ctx);
     stdMath_SinCos(angle,&outSin,&outCos);
@@ -1695,15 +1695,15 @@ void sithCogFunction_GetSysDate(sithCog *ctx)
     SYSTEMTIME local_10;
 
     GetLocalTime(&local_10);
-    local_1c.x = (float)(uint)local_10.wYear;
-    local_1c.y = (float)(uint)local_10.wMonth;
-    local_1c.z = (float)(local_10._6_4_ & 0xffff);
+    local_1c.x = (cog_flex_t)(uint)local_10.wYear;
+    local_1c.y = (cog_flex_t)(uint)local_10.wMonth;
+    local_1c.z = (cog_flex_t)(local_10._6_4_ & 0xffff);
     */
 
     if (tm) {
-        out.x = (float)(tm->tm_year + 1900); // year
-        out.y = (float)(tm->tm_mon + 1); // month
-        out.z = (float)(tm->tm_mday); // day
+        out.x = (cog_flex_t)(tm->tm_year + 1900); // year
+        out.y = (cog_flex_t)(tm->tm_mon + 1); // month
+        out.z = (cog_flex_t)(tm->tm_mday); // day
     }
     else {
         rdVector_Zero3(&out);
@@ -1724,15 +1724,15 @@ void sithCogFunction_GetSysTime(sithCog *ctx)
     /*
     _SYSTEMTIME local_10;
     GetLocalTime(&local_10);
-    out.x = (float)(uint)local_10.wHour;
-    out.y = (float)(uint)local_10.wMinute;
-    out.z = (float)(uint)local_10.wSecond;
+    out.x = (cog_flex_t)(uint)local_10.wHour;
+    out.y = (cog_flex_t)(uint)local_10.wMinute;
+    out.z = (cog_flex_t)(uint)local_10.wSecond;
     */
 
     if (tm) {
-        out.x = (float)(tm->tm_hour);
-        out.y = (float)(tm->tm_min);
-        out.z = (float)(tm->tm_sec);
+        out.x = (cog_flex_t)(tm->tm_hour);
+        out.y = (cog_flex_t)(tm->tm_min);
+        out.z = (cog_flex_t)(tm->tm_sec);
     }
     else {
         rdVector_Zero3(&out);
@@ -1745,9 +1745,9 @@ void sithCogFunction_GetSysTime(sithCog *ctx)
 // MOTS added
 void sithCogFunction_SendMessageExRadius(sithCog *ctx)
 {
-    float fVar1;
-    float fVar2;
-    float fVar3;
+    cog_flex_t fVar1;
+    cog_flex_t fVar2;
+    cog_flex_t fVar3;
     int message;
     uint32_t uVar4;
     int iVar5;
@@ -1774,7 +1774,7 @@ void sithCogFunction_SendMessageExRadius(sithCog *ctx)
         {
             sender = &sithWorld_pCurrentWorld->things[iVar5_idx];
             if (((((uVar4 & 1 << (sender->type & 0x1f)) != 0) 
-                && ((sender->thingflags & 0x80202) == 0)) 
+                && ((sender->thingflags & (SITH_TF_DISABLED|SITH_TF_DEAD|SITH_TF_WILLBEREMOVED)) == 0))
                 && ((sender->type != 10 || ((uVar4 & 0x400) != 0)))) 
                 && (fVar3 = (sender->position).x - local_1c.x, fVar1 = (sender->position).y - local_1c.y,
                     fVar2 = (sender->position).z - local_1c.z,
@@ -1791,7 +1791,7 @@ void sithCogFunction_SendMessageExRadius(sithCog *ctx)
 
 
 
-void sithCogFunction_Startup(void* ctx)
+void sithCogFunction_Startup(sithCogSymboltable* ctx)
 {
     sithCogScript_RegisterVerb(ctx, sithCogFunction_Sleep, "sleep");
     if (Main_bMotsCompat) {

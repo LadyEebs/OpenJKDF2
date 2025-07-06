@@ -19,26 +19,26 @@
 #define sithPhysics_ThingPhysAttached_ADDR (0x004F7430)
 
 void sithPhysics_FindFloor(sithThing *pThing, int a3);
-void sithPhysics_ThingTick(sithThing *pThing, float force);
+void sithPhysics_ThingTick(sithThing *pThing, flex_t force);
 void sithPhysics_ThingApplyForce(sithThing *pThing, rdVector3 *forceVec);
-void sithPhysics_ThingSetLook(sithThing *pThing, const rdVector3 *look, float a3);
-void sithPhysics_ApplyDrag(rdVector3 *vec, float drag, float mag, float dragCoef);
+void sithPhysics_ThingSetLook(sithThing *pThing, const rdVector3 *look, flex_t a3);
+void sithPhysics_ApplyDrag(rdVector3 *vec, flex_t drag, flex_t mag, flex_t dragCoef);
 int sithPhysics_LoadThingParams(stdConffileArg *arg, sithThing *pThing, int param);
 void sithPhysics_ThingStop(sithThing *pThing);
-float sithPhysics_ThingGetInsertOffsetZ(sithThing *pThing);
-void sithPhysics_ThingPhysGeneral(sithThing *pThing, float deltaSeconds);
-void sithPhysics_ThingPhysPlayer(sithThing *player, float deltaSeconds);
-void sithPhysics_ThingPhysUnderwater(sithThing *pThing, float deltaSeconds);
-void sithPhysics_ThingPhysAttached(sithThing *pThing, float deltaSeconds);
+flex_t sithPhysics_ThingGetInsertOffsetZ(sithThing *pThing);
+void sithPhysics_ThingPhysGeneral(sithThing *pThing, flex_t deltaSeconds);
+void sithPhysics_ThingPhysPlayer(sithThing *player, flex_t deltaSeconds);
+void sithPhysics_ThingPhysUnderwater(sithThing *pThing, flex_t deltaSeconds);
+void sithPhysics_ThingPhysAttached(sithThing *pThing, flex_t deltaSeconds);
 
 #ifdef PUPPET_PHYSICS
 void sithPhysics_ThingApplyRotForce(sithThing* pThing, const rdVector3* contactPoint, const rdVector3* impulse);
 void sithPhysics_ThingWake(sithThing* pThing);
 void sithPhysics_AnglesToAngularVelocity(rdVector3* result, const rdVector3* eulerPYR, const rdMatrix34* orientation);
 void sithPhysics_AngularVelocityToAngles(rdVector3* result, const rdVector3* angularVelocity, const rdMatrix34* orientation);
-float sithPhysics_BuoyancyFromRadius(float radius);
+flex_t sithPhysics_BuoyancyFromRadius(flex_t radius);
 #endif
 
-static void (*_sithPhysics_ThingPhysAttached)(sithThing *pThing, float deltaSeconds) = (void*)sithPhysics_ThingPhysAttached_ADDR;
+//static void (*_sithPhysics_ThingPhysAttached)(sithThing *pThing, flex_t deltaSeconds) = (void*)sithPhysics_ThingPhysAttached_ADDR;
 
 #endif // _ENGINE_SITHPHYSICS_H

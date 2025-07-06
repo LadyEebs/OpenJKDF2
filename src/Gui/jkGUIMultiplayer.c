@@ -136,10 +136,10 @@ static jkGuiElement jkGuiMultiplayer_aElements4[4] = {
     {ELEMENT_END,  0,  0,  0,  0, {0},  0,  0,  0,  0,  0,  0, {0},  0},
 };
 
-static jkGuiMenu jkGuiMultiplayer_menu = {jkGuiMultiplayer_aElements, 0xFFFFFFFF, 0xFFFF, 0xFFFF, 0xF, 0, 0, jkGui_stdBitmaps, jkGui_stdFonts, 0, 0, "thermloop01.wav", "thrmlpu2.wav", 0, 0, 0, 0, 0, 0};
+static jkGuiMenu jkGuiMultiplayer_menu = {jkGuiMultiplayer_aElements, -1, 0xFFFF, 0xFFFF, 0xF, 0, 0, jkGui_stdBitmaps, jkGui_stdFonts, 0, 0, "thermloop01.wav", "thrmlpu2.wav", 0, 0, 0, 0, 0, 0};
 static jkGuiMenu jkGuiMultiplayer_menu2 = {jkGuiMultiplayer_aElements2, 0, 0xFFFF, 0xFFFF, 0xF, 0, 0, jkGui_stdBitmaps, jkGui_stdFonts, 0, 0, "thermloop01.wav", "thrmlpu2.wav", 0, 0, 0, 0, 0, 0};
 static jkGuiMenu jkGuiMultiplayer_menu3 = {jkGuiMultiplayer_aElements3, 0, 0xFFFF, 0xFFFF, 0xF, 0, 0, jkGui_stdBitmaps, jkGui_stdFonts, 0, jkGuiMultiplayer_sub_4140B0, "thermloop01.wav", "thrmlpu2.wav", 0, 0, 0, 0, 0, 0};
-static jkGuiMenu jkGuiMultiplayer_menu4 = {jkGuiMultiplayer_aElements4, 0xFFFFFFFF, 0xFFFF, 0xFFFF, 0xF, 0, 0, jkGui_stdBitmaps, jkGui_stdFonts, 0, jkGuiMultiplayer_idk, "thermloop01.wav", "thrmlpu2.wav", 0, 0, 0, 0, 0, 0};
+static jkGuiMenu jkGuiMultiplayer_menu4 = {jkGuiMultiplayer_aElements4, -1, 0xFFFF, 0xFFFF, 0xF, 0, 0, jkGui_stdBitmaps, jkGui_stdFonts, 0, jkGuiMultiplayer_idk, "thermloop01.wav", "thrmlpu2.wav", 0, 0, 0, 0, 0, 0};
 
 wchar_t jkGuiMultiplayer_ipText[256];
 
@@ -306,7 +306,7 @@ LABEL_1:
                     if ( v3 > 0 )
                     {
                         // TODO if this is a ptr, fix it
-                        v4 = stdComm_OpenConnection((void*)jkGuiMultiplayer_aElements2[3].selectedTextEntry);
+                        v4 = stdComm_OpenConnection((void*)(intptr_t)jkGuiMultiplayer_aElements2[3].selectedTextEntry);
                         if ( v4 == 0x887700FA )
                         {
                             v24 = jkStrings_GetUniStringWithFallback("GUINET_NOTAVAIL");
@@ -392,7 +392,7 @@ LABEL_1:
                     if ( v16 > 0 )
                     {
                         // TODO if this is a ptr, fix it
-                        v17 = stdComm_OpenConnection((void*)jkGuiMultiplayer_aElements2[3].selectedTextEntry);
+                        v17 = stdComm_OpenConnection((void*)(intptr_t)jkGuiMultiplayer_aElements2[3].selectedTextEntry);
                         if ( v17 == 0x887700FA )
                         {
                             v28 = jkStrings_GetUniStringWithFallback("GUINET_NOTAVAIL");
@@ -580,7 +580,7 @@ LABEL_29:
             goto LABEL_28;
 #ifdef QOL_IMPROVEMENTS
         // HACK: Actually do passwords correctly
-        int check = __wcscmp(jkGuiMultiplayer_aEntries[jkGuiMultiplayer_aElements3[3].selectedTextEntry].wPassword, jkGuiMultiplayer_stru_556168.field_300);
+        int check = __wcscmp((const wchar_t*)jkGuiMultiplayer_aEntries[jkGuiMultiplayer_aElements3[3].selectedTextEntry].wPassword, (const wchar_t*)jkGuiMultiplayer_stru_556168.field_300);
         if (check) {
             v27 = jkStrings_GetUniStringWithFallback("GUINET_WRONGPASSWORD");
             v11 = jkStrings_GetUniStringWithFallback("GUINET_JOINERROR");

@@ -24,7 +24,7 @@ void sithPlayerActions_Activate(sithThing *thing)
     int v5; // eax
     sithCollisionSearchEntry *searchResult; // eax
     sithThing *v7; // edx
-    float a6; // [esp+0h] [ebp-58h]
+    flex_t a6; // [esp+0h] [ebp-58h]
     rdVector3 thingPos; // [esp+1Ch] [ebp-3Ch] BYREF
     rdMatrix34 out; // [esp+28h] [ebp-30h] BYREF
 
@@ -86,9 +86,9 @@ void sithPlayerActions_Activate(sithThing *thing)
 }
 
 // MoTS altered
-void sithPlayerActions_JumpWithVel(sithThing *thing, float vel)
+void sithPlayerActions_JumpWithVel(sithThing *thing, flex_t vel)
 {
-    double final_vel;
+    flex_d_t final_vel;
     int isAttachedAndIsSurface; // zf
     int v12; // eax
     int jumpSound; // edi
@@ -162,7 +162,7 @@ void sithPlayerActions_JumpWithVel(sithThing *thing, float vel)
 
 void sithPlayerActions_WarpToCheckpoint(sithThing *thing, int idx)
 {
-    if ( idx < (unsigned int)jkPlayer_maxPlayers )
+    if (idx < (unsigned int)jkPlayer_maxPlayers && idx >= 0) // Added: >=0 check
     {
         if ( (jkPlayer_playerInfos[idx].flags & SITH_PLAYER_PLACED) != 0 )
         {
@@ -187,7 +187,7 @@ sithThing* sithPlayerActions_SpawnThingAtLookAt(sithThing *pPlayerThing, sithThi
     int v5; // eax
     sithCollisionSearchEntry *searchResult; // eax
     sithThing *v7; // edx
-    float a6; // [esp+0h] [ebp-58h]
+    flex_t a6; // [esp+0h] [ebp-58h]
     rdVector3 thingPos; // [esp+1Ch] [ebp-3Ch] BYREF
     rdMatrix34 out; // [esp+28h] [ebp-30h] BYREF
 

@@ -1,6 +1,7 @@
 #include "stdColor.h"
 
 #include <float.h>
+#include "jk.h"
 
 int stdColor_Indexed8ToRGB16(uint8_t idx, rdColor24 *pal, rdTexformat *fmt)
 {
@@ -132,14 +133,14 @@ int stdColor_ColorConvertOneRow(uint8_t *outPixels, rdTexformat *formatTo, uint8
 int stdColor_FindClosest32(rdColor32* rgb, rdColor24* pal)
 {
 	uint8_t idx = 0;
-	float maxDist = FLT_MAX;
+	flex_t maxDist = FLT_MAX;
 	for (int k = 0; k < 256; ++k)
 	{
-		float dr = ((float)rgb->r - (float)pal[k].r) / 255.0f;
-		float dg = ((float)rgb->g - (float)pal[k].g) / 255.0f;
-		float db = ((float)rgb->b - (float)pal[k].b) / 255.0f;
+		flex_t dr = ((flex_t)rgb->r - (flex_t)pal[k].r) / 255.0f;
+		flex_t dg = ((flex_t)rgb->g - (flex_t)pal[k].g) / 255.0f;
+		flex_t db = ((flex_t)rgb->b - (flex_t)pal[k].b) / 255.0f;
 
-		float dist = (dr * dr + dg * dg + db * db);
+		flex_t dist = (dr * dr + dg * dg + db * db);
 		if (dist < maxDist)
 		{
 			idx = k;
@@ -147,4 +148,9 @@ int stdColor_FindClosest32(rdColor32* rgb, rdColor24* pal)
 		}
 	}
 	return idx;
+}
+
+int stdColor_GammaCorrect(uint8_t *a1, uint8_t *a2, int a3, flex_d_t a4) {
+    jk_printf("OpenJKDF2: Unimplemented function stdColor_GammaCorrect!!\n");
+    return 1;
 }

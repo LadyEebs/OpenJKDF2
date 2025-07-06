@@ -54,7 +54,7 @@ extern sithCog* sithCog_pCombatCog;
 void sithCogExec_Exec(sithCog *cog_ctx);
 void sithCogExec_ExecCog(sithCog *ctx, int trigIdx);
 int sithCogExec_PopValue(sithCog *ctx, sithCogStackvar *stackVar);
-float sithCogExec_PopFlex(sithCog *ctx);
+cog_flex_t sithCogExec_PopFlex(sithCog *ctx);
 int sithCogExec_PopInt(sithCog *ctx);
 int sithCogExec_PopSymbolIdx(sithCog *ctx);
 int sithCogExec_PopVector3(sithCog *ctx, rdVector3* out);
@@ -75,7 +75,7 @@ char* sithCogExec_PopString(sithCog *ctx);
 cogSymbolFunc_t sithCogExec_PopSymbolFunc(sithCog *cog_ctx);
 void sithCogExec_PushVar(sithCog *ctx, sithCogStackvar *val);
 void sithCogExec_PushInt(sithCog *ctx, int val);
-void sithCogExec_PushFlex(sithCog *ctx, float val);
+void sithCogExec_PushFlex(sithCog *ctx, cog_flex_t val);
 void sithCogExec_PushVector3(sithCog *ctx, const rdVector3* val);
 int sithCogExec_PopProgramVal(sithCog *ctx);
 void sithCogExec_ResetStack(sithCog *ctx);
@@ -95,7 +95,7 @@ sithCogStackvar* sithCogExec_AssignStackVar(sithCogStackvar *out, sithCog *ctx, 
 //static void (__cdecl *sithCogExec_MathOperation)(sithCog *cog, int op) = (void*)sithCogExec_MathOperation_ADDR;
 //static void (__cdecl *sithCogExec_BitOperation)(sithCog *cog, int op) = (void*)sithCogExec_BitOperation_ADDR;
 //static int (__cdecl *sithCogExec_PopValue)(sithCog *ctx, int *out) = (void*)sithCogExec_PopValue_ADDR;
-//static float (__cdecl *sithCogExec_PopFlex)(sithCog *ctx) = (void*)sithCogExec_PopFlex_ADDR;
+//static cog_flex_t (__cdecl *sithCogExec_PopFlex)(sithCog *ctx) = (void*)sithCogExec_PopFlex_ADDR;
 //static int (__cdecl *sithCogExec_PopInt)(sithCog *ctx) = (void*)sithCogExec_PopInt_ADDR;
 //static int (__cdecl *sithCogExec_PopVector3)(sithCog *ctx, rdVector3* out) = (void*)sithCogExec_PopVector3_ADDR;
 //static char* (__cdecl *sithCogExec_PopString)(sithCog *ctx) = (void*)sithCogExec_PopString_ADDR;
@@ -108,7 +108,7 @@ sithCogStackvar* sithCogExec_AssignStackVar(sithCogStackvar *out, sithCog *ctx, 
 
 //static void (__cdecl *sithCogExec_PushVar)(sithCog *ctx, sithCogStackvar *val) = (void*)sithCogExec_PushVar_ADDR;
 //static void (__cdecl *sithCogExec_PushInt)(sithCog *ctx, int val) = (void*)sithCogExec_PushInt_ADDR;
-//static void (__cdecl *sithCogExec_PushFlex)(sithCog *ctx, float val) = (void*)sithCogExec_PushFlex_ADDR;
+//static void (__cdecl *sithCogExec_PushFlex)(sithCog *ctx, cog_flex_t val) = (void*)sithCogExec_PushFlex_ADDR;
 //static void (__cdecl *sithCogExec_PushVector3)(sithCog *ctx, const rdVector3 *val) = (void*)sithCogExec_PushVector3_ADDR;
 
 

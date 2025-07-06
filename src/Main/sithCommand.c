@@ -67,7 +67,7 @@ void sithCommand_Startup()
 #ifndef _DEBUG//QOL_IMPROVEMENTS // always allow these commands
     if ( (g_debugmodeFlags & DEBUGFLAG_IN_EDITOR) != 0 )
 #endif
-    {
+   {
         sithConsole_RegisterDevCmd(sithConsole_PrintHelp, "help", 0);
         sithConsole_RegisterDevCmd(sithCommand_CheatSetDebugFlags, "disableai", 0);
         sithConsole_RegisterDevCmd(sithCommand_CheatSetDebugFlags, "notarget", 6);
@@ -567,6 +567,7 @@ int sithCommand_CmdWarp(stdDebugConsoleCmd *pCmd, const char *pArgStr)
     int v5; // eax
     sithSector *v6; // edi
     unsigned int i; // esi
+    flex32_t fx, fy, fz, f2x, f2y, f2z;
     rdVector3 a1; // [esp+10h] [ebp-48h] BYREF
     rdVector3 a3a; // [esp+1Ch] [ebp-3Ch] BYREF
     rdMatrix34 a; // [esp+28h] [ebp-30h] BYREF
@@ -581,9 +582,15 @@ int sithCommand_CmdWarp(stdDebugConsoleCmd *pCmd, const char *pArgStr)
         sithConsole_Print("Format: WARP x y z");
         return 0;
     }
-    v5 = _sscanf(pArgStr, "%f %f %f %f %f %f", &a1, &a1.y, &a1.z, &a3a, &a3a.y, &a3a.z);
+    v5 = _sscanf(pArgStr, "%f %f %f %f %f %f", &fx, &fy, &fz, &f2x, &f2y, &f2z);
     if ( v5 < 3 )
         return 0;
+    a1.x = fx; // FLEXTODO
+    a1.y = fy; // FLEXTODO
+    a1.z = fz; // FLEXTODO
+    a3a.x = f2x; // FLEXTODO
+    a3a.y = f2y; // FLEXTODO
+    a3a.z = f2z; // FLEXTODO
 
     if ( v5 == 6 )
         rdMatrix_BuildRotate34(&a, &a3a);
@@ -649,15 +656,16 @@ int sithCommand_CmdActivate(stdDebugConsoleCmd *pCmd, const char *pArgStr)
 
 int sithCommand_CmdJump(stdDebugConsoleCmd *pCmd, const char *pArgStr)
 {
-    int result; // eax
+    int result;
+    int idx;
 
     // MOTS Added: fixed a nullptr dereference
     if (!pArgStr) return 0;
 
-    result = _sscanf(pArgStr, "%d", &pArgStr);
+    result = _sscanf(pArgStr, "%d", &idx);
     if ( result )
     {
-        sithPlayerActions_WarpToCheckpoint(sithPlayer_pLocalPlayerThing, (int)(pArgStr - 1));
+        sithPlayerActions_WarpToCheckpoint(sithPlayer_pLocalPlayerThing, idx - 1);
         result = 1;
     }
     return result;
@@ -773,10 +781,14 @@ int sithCommand_CmdThingNpc(stdDebugConsoleCmd *pCmd, const char *pArgStr)
 {
     if (sithNet_isMulti) return 1;
 
-    char* pArgIter = _strtok(pArgStr, ", \t\n\r");
+    char* pArgStrMutable = (char*)malloc(strlen(pArgStr)+1);
+    strcpy(pArgStrMutable, pArgStr);
+
+    char* pArgIter = _strtok(pArgStrMutable, ", \t\n\r");
     if ( !pArgIter ){
         _sprintf(std_genBuffer, "Usage: %s [spawn]\n", pCmd->cmdStr);
         sithConsole_Print(std_genBuffer);
+        free((void*)pArgStrMutable);
         return 1;
     }
 
@@ -785,6 +797,7 @@ int sithCommand_CmdThingNpc(stdDebugConsoleCmd *pCmd, const char *pArgStr)
         if (!pArgIter) {
             _sprintf(std_genBuffer, "Usage: %s spawn <template>\n", pCmd->cmdStr);
             sithConsole_Print(std_genBuffer);
+            free((void*)pArgStrMutable);
             return 1;
         }
         
@@ -800,6 +813,7 @@ int sithCommand_CmdThingNpc(stdDebugConsoleCmd *pCmd, const char *pArgStr)
             sithConsole_Print("No world.");
         }
     }
+    free((void*)pArgStrMutable);
     return 1;
 }
 
@@ -809,10 +823,14 @@ int sithCommand_CmdBind(stdDebugConsoleCmd *pCmd, const char *pArgStr)
     char tmp[512];
     memset(tmp, 0, sizeof(tmp));
 
-    char* pArgIter = _strtok(pArgStr, ", \t\n\r");
+    char* pArgStrMutable = (char*)malloc(strlen(pArgStr)+1);
+    strcpy(pArgStrMutable, pArgStr);
+
+    char* pArgIter = _strtok(pArgStrMutable, ", \t\n\r");
     if ( !pArgIter || strlen(pArgIter) > 1) {
         _sprintf(std_genBuffer, "Usage: %s <key> <command...args>\n", pCmd->cmdStr);
         sithConsole_Print(std_genBuffer);
+        free((void*)pArgStrMutable);
         return 1;
     }
 
@@ -821,8 +839,8 @@ int sithCommand_CmdBind(stdDebugConsoleCmd *pCmd, const char *pArgStr)
     pArgIter = _strtok(NULL, ", \t\n\r");
     while (pArgIter)
     {
-        strncat(tmp, pArgIter, sizeof(tmp));
-        strncat(tmp, " ", sizeof(tmp));
+        strncat(tmp, pArgIter, sizeof(tmp)-1);
+        strncat(tmp, " ", sizeof(tmp)-1);
 
         pArgIter = _strtok(NULL, ", \t\n\r");
     }
@@ -834,8 +852,8 @@ int sithCommand_CmdBind(stdDebugConsoleCmd *pCmd, const char *pArgStr)
     else {
         _sprintf(std_genBuffer, "Usage: %s <key> <command...args>\n", pCmd->cmdStr);
         sithConsole_Print(std_genBuffer);
-        return 1;
     }
+    free((void*)pArgStrMutable);
     return 1;
 }
 
@@ -845,16 +863,21 @@ int sithCommand_CmdUnbind(stdDebugConsoleCmd *pCmd, const char *pArgStr)
     char tmp[512];
     memset(tmp, 0, sizeof(tmp));
 
-    char* pArgIter = _strtok(pArgStr, ", \t\n\r");
+    char* pArgStrMutable = (char*)malloc(strlen(pArgStr)+1);
+    strcpy(pArgStrMutable, pArgStr);
+
+    char* pArgIter = _strtok(pArgStrMutable, ", \t\n\r");
     if ( !pArgIter || strlen(pArgIter) > 1) {
         _sprintf(std_genBuffer, "Usage: %s <key>\n", pCmd->cmdStr);
         sithConsole_Print(std_genBuffer);
+        free((void*)pArgStrMutable);
         return 1;
     }
 
     uint16_t key = pArgIter[0];
 
     sithCommand_RemoveBind(key);
+    free((void*)pArgStrMutable);
     return 1;
 }
 
@@ -885,10 +908,10 @@ void sithCommand_ShutdownBinds()
     while (pBindIter)
     {
         if (pBindIter->key && pBindIter->pCmd) {
-            free(pBindIter->pCmd);
+            free((void*)pBindIter->pCmd);
         }
         sithCommandBind* pBindIterNext = pBindIter->pNext;
-        free(pBindIter);
+        free((void*)pBindIter);
         pBindIter = pBindIterNext;
     }
     sithCommand_pBinds = NULL;
@@ -945,10 +968,10 @@ void sithCommand_AddBind(uint16_t key, const char* pCmd)
         // Overwrite existing bind
         if (key == pBindIter->key) {
             if (pBindIter->pCmd) {
-                free(pBindIter->pCmd);
+                free((void*)pBindIter->pCmd);
             }
             pBindIter->pCmd = (char*)malloc(strlen(pCmd)+1);
-            strcpy(pBindIter->pCmd, pCmd);
+            strcpy((char*)pBindIter->pCmd, pCmd);
             break;
         }
 
@@ -959,7 +982,7 @@ void sithCommand_AddBind(uint16_t key, const char* pCmd)
 
             pNewBind->key = key;
             pNewBind->pCmd = (char*)malloc(strlen(pCmd)+1);
-            strcpy(pNewBind->pCmd, pCmd);
+            strcpy((char*)pNewBind->pCmd, pCmd);
             pNewBind->pNext = NULL;
             break;
         }
@@ -981,14 +1004,14 @@ void sithCommand_RemoveBind(uint16_t key)
         // Overwrite existing bind
         if (key == pBindIter->key) {
             if (pBindIter->pCmd) {
-                free(pBindIter->pCmd);
+                free((void*)pBindIter->pCmd);
             }
 
             sithCommandBind* pBindIterNext = pBindIter->pNext;
             if (pBindIterLast) {
                 pBindIterLast->pNext = pBindIterNext;
             }
-            free(pBindIter);
+            free((void*)pBindIter);
             pBindIter = pBindIterNext;
             continue;
         }

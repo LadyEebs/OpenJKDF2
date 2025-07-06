@@ -38,7 +38,7 @@ static jkGuiElement jkGuiMap_aElements[16] =
     {ELEMENT_END, 0, 0, NULL, 0, { 0, 0, 0, 0 }, 0, 0, NULL, NULL, NULL, NULL, {0}, 0},
 };
 
-static jkGuiMenu jkGuiMap_menu = { &jkGuiMap_aElements, 0, 0xFFFF, 0xFFFF, 15, NULL, NULL, jkGui_stdBitmaps, jkGui_stdFonts, 0, jkGuiMap_sub_415720, "thermloop01.wav", "thrmlpu2.wav", NULL, NULL, NULL, 0, NULL, NULL };
+static jkGuiMenu jkGuiMap_menu = { jkGuiMap_aElements, 0, 0xFFFF, 0xFFFF, 15, NULL, NULL, jkGui_stdBitmaps, jkGui_stdFonts, 0, jkGuiMap_sub_415720, "thermloop01.wav", "thrmlpu2.wav", NULL, NULL, NULL, 0, NULL, NULL };
 
 void jkGuiMap_Startup()
 {
@@ -97,7 +97,7 @@ void jkGuiMap_sub_415720(jkGuiMenu *menu)
     jkGuiElement *v2; // eax
     int v3; // eax
     int v4; // eax
-    double v5; // st7
+    flex_d_t v5; // st7
     sithThing *v6; // ecx
     rdVector3 a2; // [esp+8h] [ebp-18h] BYREF
     rdVector3 v8; // [esp+14h] [ebp-Ch] BYREF

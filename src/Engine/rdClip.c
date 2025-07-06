@@ -1,22 +1,23 @@
 #include "rdClip.h"
 
+#include "General/stdMath.h"
 #include "rdCanvas.h"
 #include "jk.h"
 
 #include <math.h>
 
 #ifdef JKM_LIGHTING
-float* pSourceRedIVert;
-float* pSourceGreenIVert;
-float* pSourceBlueIVert;
+flex_t* pSourceRedIVert;
+flex_t* pSourceGreenIVert;
+flex_t* pSourceBlueIVert;
 
-float* pDestRedIVert;
-float* pDestGreenIVert;
-float* pDestBlueIVert;
+flex_t* pDestRedIVert;
+flex_t* pDestGreenIVert;
+flex_t* pDestBlueIVert;
 
-float workRedIVerts[32];
-float workGreenIVerts[32];
-float workBlueIVerts[32];
+flex_t workRedIVerts[32];
+flex_t workGreenIVerts[32];
+flex_t workBlueIVerts[32];
 #endif
 
 int rdClip_Line2(rdCanvas *canvas, signed int *pX1, signed int *pY1, signed int *pX2, signed int *pY2)
@@ -25,20 +26,20 @@ int rdClip_Line2(rdCanvas *canvas, signed int *pX1, signed int *pY1, signed int 
     signed int clipOutcodeX2Y2;
     signed int fY1_same_fY2;
     unsigned int clipCode;
-    double x_clipped;
-    double y_clipped;
-    float fY1;
-    float fX2;
-    float fY2;
-    float fX1;
+    flex_d_t x_clipped;
+    flex_d_t y_clipped;
+    flex_t fY1;
+    flex_t fX2;
+    flex_t fY2;
+    flex_t fX1;
 
     clipOutcodeX1Y1 = rdClip_CalcOutcode2(canvas, *pX1, *pY1);
     clipOutcodeX2Y2 = rdClip_CalcOutcode2(canvas, *pX2, *pY2);
     
-    fX1 = (double)*pX1;
-    fX2 = (double)*pX2;
-    fY1 = (double)*pY1;
-    fY2 = (double)*pY2;
+    fX1 = (flex_d_t)*pX1;
+    fX2 = (flex_d_t)*pX2;
+    fY1 = (flex_d_t)*pY1;
+    fY2 = (flex_d_t)*pY2;
     
     if ( !(clipOutcodeX1Y1 | clipOutcodeX2Y2) )
         return 1;
@@ -60,43 +61,43 @@ int rdClip_Line2(rdCanvas *canvas, signed int *pX1, signed int *pY1, signed int 
 
         if (clipCode & CLIP_TOP)
         {
-            x_clipped = (fY2 == fY1) ? fX1 : (fX2 - fX1) / (fY2 - fY1) * ((double)canvas->yStart - fY1) + fX1;
-            y_clipped = (double)canvas->yStart;
+            x_clipped = (fY2 == fY1) ? fX1 : (fX2 - fX1) / (fY2 - fY1) * ((flex_d_t)canvas->yStart - fY1) + fX1;
+            y_clipped = (flex_d_t)canvas->yStart;
         }
         else if (clipCode & CLIP_BOTTOM)
         {
-            x_clipped = (fY2 == fY1) ? fX1 : (fX2 - fX1) / (fY2 - fY1) * ((double)canvas->heightMinusOne - fY1) + fX1;
-            y_clipped = (double)canvas->heightMinusOne;
+            x_clipped = (fY2 == fY1) ? fX1 : (fX2 - fX1) / (fY2 - fY1) * ((flex_d_t)canvas->heightMinusOne - fY1) + fX1;
+            y_clipped = (flex_d_t)canvas->heightMinusOne;
         }
         else if (clipCode & CLIP_RIGHT)
         {
-            x_clipped = (double)canvas->widthMinusOne;
-            y_clipped = (fX2 == fX1) ? fY1 : (fY2 - fY1) / (fX2 - fX1) * ((double)canvas->widthMinusOne - fX1) + fY1;
+            x_clipped = (flex_d_t)canvas->widthMinusOne;
+            y_clipped = (fX2 == fX1) ? fY1 : (fY2 - fY1) / (fX2 - fX1) * ((flex_d_t)canvas->widthMinusOne - fX1) + fY1;
         }
         else if (clipCode & CLIP_LEFT)
         {
-            x_clipped = (double)canvas->xStart;
-            y_clipped = (fX2 == fX1) ? fY1 : (float)((fY2 - fY1) / (fX2 - fX1) * ((double)canvas->xStart - fX1) + fY1);
+            x_clipped = (flex_d_t)canvas->xStart;
+            y_clipped = (fX2 == fX1) ? fY1 : (flex_t)((fY2 - fY1) / (fX2 - fX1) * ((flex_d_t)canvas->xStart - fX1) + fY1);
         }
 
         if (clipCode == clipOutcodeX1Y1)
         {
             fX1 = x_clipped;
             fY1 = y_clipped;
-            clipOutcodeX1Y1 = rdClip_CalcOutcode2(canvas, round(x_clipped), round(y_clipped));
+            clipOutcodeX1Y1 = rdClip_CalcOutcode2(canvas, (float)round((float)x_clipped), round((float)y_clipped));
         }
         else
         {
             fX2 = x_clipped;
             fY2 = y_clipped;
-            clipOutcodeX2Y2 = rdClip_CalcOutcode2(canvas, round(x_clipped), round(y_clipped));
+            clipOutcodeX2Y2 = rdClip_CalcOutcode2(canvas, (float)round((float)x_clipped), round((float)y_clipped));
         }
     }
     
-    *pX1 = round(fX1);
-    *pY1 = round(fY1);
-    *pX2 = round(fX2);
-    *pY2 = round(fY2);
+    *pX1 = (float)round((float)fX1);
+    *pY1 = (float)round((float)fY1);
+    *pX2 = (float)round((float)fX2);
+    *pY2 = (float)round((float)fY2);
     return 1;
 }
 
@@ -120,144 +121,144 @@ int rdClip_CalcOutcode2(rdCanvas *canvas, int x, int y)
 
 int rdClip_Point3(rdClipFrustum *clipFrustum, rdVector3 *point)
 {
-    if ( point->y < (double)clipFrustum->field_0.y )
+    if ( point->y < (flex_d_t)clipFrustum->field_0.y )
         return 0;
-    if (clipFrustum->field_0.x && point->y > (double)clipFrustum->field_0.z )
+    if (clipFrustum->field_0.x && point->y > (flex_d_t)clipFrustum->field_0.z )
         return 0;
 
-    float v4 = (rdCamera_pCurCamera->projectType == rdCameraProjectType_Perspective) ? (clipFrustum->farLeft * point->y) : (clipFrustum->orthoLeft);
+    flex_t v4 = (rdCamera_pCurCamera->projectType == rdCameraProjectType_Perspective) ? (clipFrustum->farLeft * point->y) : (clipFrustum->orthoLeft);
     if ( v4 > point->x )
         return 0;
 
-    float v5 = (rdCamera_pCurCamera->projectType == rdCameraProjectType_Perspective) ? (clipFrustum->right * point->y) : (clipFrustum->orthoRight);
+    flex_t v5 = (rdCamera_pCurCamera->projectType == rdCameraProjectType_Perspective) ? (clipFrustum->right * point->y) : (clipFrustum->orthoRight);
     if ( v5 < point->x )
         return 0;
 
-    float v6 = (rdCamera_pCurCamera->projectType == rdCameraProjectType_Perspective) ? (clipFrustum->farTop * point->y) : (clipFrustum->orthoTop);
+    flex_t v6 = (rdCamera_pCurCamera->projectType == rdCameraProjectType_Perspective) ? (clipFrustum->farTop * point->y) : (clipFrustum->orthoTop);
     if ( v6 < point->z )
         return 0;
 
-    float v7 = (rdCamera_pCurCamera->projectType == rdCameraProjectType_Perspective) ? (clipFrustum->bottom * point->y) : (clipFrustum->orthoBottom);
+    flex_t v7 = (rdCamera_pCurCamera->projectType == rdCameraProjectType_Perspective) ? (clipFrustum->bottom * point->y) : (clipFrustum->orthoBottom);
     return v7 <= point->z;
 }
 
 int rdClip_Line3Project(rdClipFrustum *clipFrustum, rdVector3 *point1, rdVector3 *point2, int *out1, int *out2)
 {
-    double v10; // st7
-    double v12; // st6
-    double v13; // st7
-    double v14; // st5
-    double v15; // st6
-    double v16; // st6
-    double v17; // st7
-    double v18; // st6
-    double v23; // st6
-    double v24; // st7
-    double v25; // st5
-    double v26; // st6
-    double v27; // st6
-    double v28; // st7
-    double v29; // st6
-    double v33; // st7
-    double v36; // st6
-    double v37; // st5
-    double v40; // st4
-    double v42; // st5
-    double v43; // st4
-    double v44; // st6
-    double v46; // st7
-    double v49; // st6
-    double v50; // st5
-    double v53; // st4
-    double v55; // st5
-    double v56; // st4
-    double v57; // st6
-    double v58; // rt1
-    double v63; // st7
-    double v66; // st6
-    double v67; // st5
-    double v70; // st4
-    double v72; // st5
-    double v73; // st4
-    double v74; // st6
-    double v76; // st7
-    double v79; // st6
-    double v80; // st5
-    double v83; // st4
-    double v85; // st5
-    double v86; // st4
-    double v87; // st6
-    double v88; // rt2
-    double v93; // st6
-    double v94; // st7
-    double v97; // st6
-    double v98; // st5
-    double v101; // st4
-    double v103; // st5
-    double v104; // st4
-    double v105; // st7
-    double v106; // rt0
-    double v108; // st6
-    double v109; // st7
-    double v112; // st6
-    double v113; // st5
-    double v116; // st4
-    double v118; // st5
-    double v119; // st4
-    double v120; // st7
-    double v121; // rt0
-    double v125; // st6
-    double v126; // st7
-    double v129; // st6
-    double v130; // st5
-    double v133; // st4
-    double v135; // st5
-    double v136; // st4
-    double v137; // st7
-    double v138; // rt1
-    double v140; // st6
-    double v141; // st7
-    double v144; // st6
-    double v145; // st5
-    double v148; // st4
-    double v150; // st5
-    double v151; // st4
-    double v152; // st7
-    double v153; // rt1
-    float frustuma; // [esp+10h] [ebp+4h]
-    float frustumb; // [esp+10h] [ebp+4h]
-    float frustumc; // [esp+10h] [ebp+4h]
-    float frustumd; // [esp+10h] [ebp+4h]
-    float frustume; // [esp+10h] [ebp+4h]
-    float frustumf; // [esp+10h] [ebp+4h]
-    float frustumg; // [esp+10h] [ebp+4h]
-    float frustumh; // [esp+10h] [ebp+4h]
-    float point1a; // [esp+14h] [ebp+8h]
-    float point1b; // [esp+14h] [ebp+8h]
-    float point1c; // [esp+14h] [ebp+8h]
-    float point1d; // [esp+14h] [ebp+8h]
-    float point1e; // [esp+14h] [ebp+8h]
-    float point1f; // [esp+14h] [ebp+8h]
-    float point1g; // [esp+14h] [ebp+8h]
-    float point1h; // [esp+14h] [ebp+8h]
-    float point1i; // [esp+14h] [ebp+8h]
-    float point1j; // [esp+14h] [ebp+8h]
-    float point1k; // [esp+14h] [ebp+8h]
-    float point1l; // [esp+14h] [ebp+8h]
-    float point2a; // [esp+18h] [ebp+Ch]
-    float point2b; // [esp+18h] [ebp+Ch]
-    float point2c; // [esp+18h] [ebp+Ch]
-    float point2d; // [esp+18h] [ebp+Ch]
-    float point2e; // [esp+18h] [ebp+Ch]
-    float point2f; // [esp+18h] [ebp+Ch]
-    float point2g; // [esp+18h] [ebp+Ch]
-    float point2h; // [esp+18h] [ebp+Ch]
+    flex_d_t v10; // st7
+    flex_d_t v12; // st6
+    flex_d_t v13; // st7
+    flex_d_t v14; // st5
+    flex_d_t v15; // st6
+    flex_d_t v16; // st6
+    flex_d_t v17; // st7
+    flex_d_t v18; // st6
+    flex_d_t v23; // st6
+    flex_d_t v24; // st7
+    flex_d_t v25; // st5
+    flex_d_t v26; // st6
+    flex_d_t v27; // st6
+    flex_d_t v28; // st7
+    flex_d_t v29; // st6
+    flex_d_t v33; // st7
+    flex_d_t v36; // st6
+    flex_d_t v37; // st5
+    flex_d_t v40; // st4
+    flex_d_t v42; // st5
+    flex_d_t v43; // st4
+    flex_d_t v44; // st6
+    flex_d_t v46; // st7
+    flex_d_t v49; // st6
+    flex_d_t v50; // st5
+    flex_d_t v53; // st4
+    flex_d_t v55; // st5
+    flex_d_t v56; // st4
+    flex_d_t v57; // st6
+    flex_d_t v58; // rt1
+    flex_d_t v63; // st7
+    flex_d_t v66; // st6
+    flex_d_t v67; // st5
+    flex_d_t v70; // st4
+    flex_d_t v72; // st5
+    flex_d_t v73; // st4
+    flex_d_t v74; // st6
+    flex_d_t v76; // st7
+    flex_d_t v79; // st6
+    flex_d_t v80; // st5
+    flex_d_t v83; // st4
+    flex_d_t v85; // st5
+    flex_d_t v86; // st4
+    flex_d_t v87; // st6
+    flex_d_t v88; // rt2
+    flex_d_t v93; // st6
+    flex_d_t v94; // st7
+    flex_d_t v97; // st6
+    flex_d_t v98; // st5
+    flex_d_t v101; // st4
+    flex_d_t v103; // st5
+    flex_d_t v104; // st4
+    flex_d_t v105; // st7
+    flex_d_t v106; // rt0
+    flex_d_t v108; // st6
+    flex_d_t v109; // st7
+    flex_d_t v112; // st6
+    flex_d_t v113; // st5
+    flex_d_t v116; // st4
+    flex_d_t v118; // st5
+    flex_d_t v119; // st4
+    flex_d_t v120; // st7
+    flex_d_t v121; // rt0
+    flex_d_t v125; // st6
+    flex_d_t v126; // st7
+    flex_d_t v129; // st6
+    flex_d_t v130; // st5
+    flex_d_t v133; // st4
+    flex_d_t v135; // st5
+    flex_d_t v136; // st4
+    flex_d_t v137; // st7
+    flex_d_t v138; // rt1
+    flex_d_t v140; // st6
+    flex_d_t v141; // st7
+    flex_d_t v144; // st6
+    flex_d_t v145; // st5
+    flex_d_t v148; // st4
+    flex_d_t v150; // st5
+    flex_d_t v151; // st4
+    flex_d_t v152; // st7
+    flex_d_t v153; // rt1
+    flex_t frustuma; // [esp+10h] [ebp+4h]
+    flex_t frustumb; // [esp+10h] [ebp+4h]
+    flex_t frustumc; // [esp+10h] [ebp+4h]
+    flex_t frustumd; // [esp+10h] [ebp+4h]
+    flex_t frustume; // [esp+10h] [ebp+4h]
+    flex_t frustumf; // [esp+10h] [ebp+4h]
+    flex_t frustumg; // [esp+10h] [ebp+4h]
+    flex_t frustumh; // [esp+10h] [ebp+4h]
+    flex_t point1a; // [esp+14h] [ebp+8h]
+    flex_t point1b; // [esp+14h] [ebp+8h]
+    flex_t point1c; // [esp+14h] [ebp+8h]
+    flex_t point1d; // [esp+14h] [ebp+8h]
+    flex_t point1e; // [esp+14h] [ebp+8h]
+    flex_t point1f; // [esp+14h] [ebp+8h]
+    flex_t point1g; // [esp+14h] [ebp+8h]
+    flex_t point1h; // [esp+14h] [ebp+8h]
+    flex_t point1i; // [esp+14h] [ebp+8h]
+    flex_t point1j; // [esp+14h] [ebp+8h]
+    flex_t point1k; // [esp+14h] [ebp+8h]
+    flex_t point1l; // [esp+14h] [ebp+8h]
+    flex_t point2a; // [esp+18h] [ebp+Ch]
+    flex_t point2b; // [esp+18h] [ebp+Ch]
+    flex_t point2c; // [esp+18h] [ebp+Ch]
+    flex_t point2d; // [esp+18h] [ebp+Ch]
+    flex_t point2e; // [esp+18h] [ebp+Ch]
+    flex_t point2f; // [esp+18h] [ebp+Ch]
+    flex_t point2g; // [esp+18h] [ebp+Ch]
+    flex_t point2h; // [esp+18h] [ebp+Ch]
 
-    if ( point1->y < (double)clipFrustum->field_0.y && point2->y < (double)clipFrustum->field_0.y )
+    if ( point1->y < (flex_d_t)clipFrustum->field_0.y && point2->y < (flex_d_t)clipFrustum->field_0.y )
         return 0;
 
     // TODO verify
-    if (point1->y < (double)clipFrustum->field_0.y)
+    if (point1->y < (flex_d_t)clipFrustum->field_0.y)
     {
         v12 = point2->z;
         v13 = (clipFrustum->field_0.y - point1->y) / (point2->y - point1->y);
@@ -283,13 +284,13 @@ int rdClip_Line3Project(rdClipFrustum *clipFrustum, rdVector3 *point1, rdVector3
 
     if (clipFrustum->field_0.x)
     {
-        if ( point1->y > (double)clipFrustum->field_0.z && point2->y > (double)clipFrustum->field_0.z )
+        if ( point1->y > (flex_d_t)clipFrustum->field_0.z && point2->y > (flex_d_t)clipFrustum->field_0.z )
             return 0;
 
         // TODO verify
-        if (point1->y <= (double)clipFrustum->field_0.z)
+        if (point1->y <= (flex_d_t)clipFrustum->field_0.z)
         {
-            if ( point2->y > (double)clipFrustum->field_0.z )
+            if ( point2->y > (flex_d_t)clipFrustum->field_0.z )
             {
                 v27 = point2->x;
                 v28 = (clipFrustum->field_0.z - point1->y) / (point2->y - point1->y);
@@ -380,11 +381,11 @@ int rdClip_Line3Project(rdClipFrustum *clipFrustum, rdVector3 *point1, rdVector3
             *out1 = 1;
     }
     point1d = clipFrustum->right * point2->y;
-    if (point1->x > clipFrustum->right * point1->y && point2->x > (double)point1d )
+    if (point1->x > clipFrustum->right * point1->y && point2->x > (flex_d_t)point1d )
         return 0;
     if (point1->x <= clipFrustum->right * point1->y)
     {
-        if ( point2->x > (double)point1d )
+        if ( point2->x > (flex_d_t)point1d )
         {
             point1f = point2->y - point1->y;
             frustumd = point2->x - point1->x;
@@ -445,11 +446,11 @@ int rdClip_Line3Project(rdClipFrustum *clipFrustum, rdVector3 *point1, rdVector3
             *out1 = 1;
     }
     point1g = clipFrustum->farTop * point2->y;
-    if (point1->z > clipFrustum->farTop * point1->y && point2->z > (double)point1g )
+    if (point1->z > clipFrustum->farTop * point1->y && point2->z > (flex_d_t)point1g )
         return 0;
     if (point1->z <= clipFrustum->farTop * point1->y)
     {
-        if ( point2->z > (double)point1g )
+        if ( point2->z > (flex_d_t)point1g )
         {
             point1i = point2->y - point1->y;
             frustumf = point2->z - point1->z;
@@ -514,11 +515,11 @@ int rdClip_Line3Project(rdClipFrustum *clipFrustum, rdVector3 *point1, rdVector3
             *out1 = 1;
     }
     point1j = clipFrustum->bottom * point2->y;
-    if (point1->z < clipFrustum->bottom * point1->y && point2->z < (double)point1j )
+    if (point1->z < clipFrustum->bottom * point1->y && point2->z < (flex_d_t)point1j )
         return 0;
     if (point1->z >= clipFrustum->bottom * point1->y )
     {
-        if ( point2->z < (double)point1j )
+        if ( point2->z < (flex_d_t)point1j )
         {
             point1l = point2->y - point1->y;
             frustumh = point2->z - point1->z;
@@ -589,58 +590,58 @@ int rdClip_Line3Project(rdClipFrustum *clipFrustum, rdVector3 *point1, rdVector3
 
 int rdClip_Line3Ortho(rdClipFrustum *clipFrustum, rdVector3 *point1, rdVector3 *point2, int *out1, int *out2)
 {
-    double v8; // st7
-    double v10; // st6
-    double v11; // st7
-    double v12; // st5
-    double v13; // st6
-    double v14; // st6
-    double v15; // st7
-    double v16; // st6
-    double v18; // st7
-    double v21; // st6
-    double v22; // st7
-    double v23; // st5
-    double v24; // st6
-    double v25; // st6
-    double v26; // st7
-    double v27; // st6
-    double v29; // st7
-    double v31; // st7
-    double v32; // st5
-    double v33; // st6
-    double v34; // st7
-    double v35; // st5
-    double v36; // st6
-    double v38; // st7
-    double v41; // st7
-    double v42; // st5
-    double v43; // st6
-    double v44; // st7
-    double v45; // st5
-    double v46; // st6
-    double v47; // st7
-    double v48; // st5
-    double v49; // st6
-    double v50; // st7
-    double v51; // st5
-    double v52; // st6
-    double v54; // st7
-    double v56; // st7
-    double v57; // st5
-    double v58; // st6
-    double v59; // st7
-    double v60; // st5
-    double v61; // st6
-    float point1a; // [esp+14h] [ebp+8h]
-    float point1b; // [esp+14h] [ebp+8h]
-    float point1c; // [esp+14h] [ebp+8h]
-    float point1d; // [esp+14h] [ebp+8h]
+    flex_d_t v8; // st7
+    flex_d_t v10; // st6
+    flex_d_t v11; // st7
+    flex_d_t v12; // st5
+    flex_d_t v13; // st6
+    flex_d_t v14; // st6
+    flex_d_t v15; // st7
+    flex_d_t v16; // st6
+    flex_d_t v18; // st7
+    flex_d_t v21; // st6
+    flex_d_t v22; // st7
+    flex_d_t v23; // st5
+    flex_d_t v24; // st6
+    flex_d_t v25; // st6
+    flex_d_t v26; // st7
+    flex_d_t v27; // st6
+    flex_d_t v29; // st7
+    flex_d_t v31; // st7
+    flex_d_t v32; // st5
+    flex_d_t v33; // st6
+    flex_d_t v34; // st7
+    flex_d_t v35; // st5
+    flex_d_t v36; // st6
+    flex_d_t v38; // st7
+    flex_d_t v41; // st7
+    flex_d_t v42; // st5
+    flex_d_t v43; // st6
+    flex_d_t v44; // st7
+    flex_d_t v45; // st5
+    flex_d_t v46; // st6
+    flex_d_t v47; // st7
+    flex_d_t v48; // st5
+    flex_d_t v49; // st6
+    flex_d_t v50; // st7
+    flex_d_t v51; // st5
+    flex_d_t v52; // st6
+    flex_d_t v54; // st7
+    flex_d_t v56; // st7
+    flex_d_t v57; // st5
+    flex_d_t v58; // st6
+    flex_d_t v59; // st7
+    flex_d_t v60; // st5
+    flex_d_t v61; // st6
+    flex_t point1a; // [esp+14h] [ebp+8h]
+    flex_t point1b; // [esp+14h] [ebp+8h]
+    flex_t point1c; // [esp+14h] [ebp+8h]
+    flex_t point1d; // [esp+14h] [ebp+8h]
 
-    if ( point1->y < (double)clipFrustum->field_0.y && point2->y < (double)clipFrustum->field_0.y )
+    if ( point1->y < (flex_d_t)clipFrustum->field_0.y && point2->y < (flex_d_t)clipFrustum->field_0.y )
         return 0;
     v8 = point2->y;
-    if (point1->y < (double)clipFrustum->field_0.y)
+    if (point1->y < (flex_d_t)clipFrustum->field_0.y)
     {
         v10 = point2->z;
         v11 = (clipFrustum->field_0.y - point1->y) / (v8 - point1->y);
@@ -665,10 +666,10 @@ int rdClip_Line3Ortho(rdClipFrustum *clipFrustum, rdVector3 *point1, rdVector3 *
     }
     if (clipFrustum->field_0.x)
     {
-        if ( point1->y > (double)clipFrustum->field_0.z && point2->y > (double)clipFrustum->field_0.z )
+        if ( point1->y > (flex_d_t)clipFrustum->field_0.z && point2->y > (flex_d_t)clipFrustum->field_0.z )
             return 0;
         v18 = point2->y;
-        if (point1->y <= (double)clipFrustum->field_0.z)
+        if (point1->y <= (flex_d_t)clipFrustum->field_0.z)
         {
             if ( v18 > clipFrustum->field_0.z )
             {
@@ -696,10 +697,10 @@ int rdClip_Line3Ortho(rdClipFrustum *clipFrustum, rdVector3 *point1, rdVector3 *
         }
     }
     point1a = clipFrustum->orthoLeft;
-    if ( point1->x < (double)point1a && point2->x < (double)point1a )
+    if ( point1->x < (flex_d_t)point1a && point2->x < (flex_d_t)point1a )
         return 0;
     v29 = point2->x;
-    if (point1->x < (double)point1a)
+    if (point1->x < (flex_d_t)point1a)
     {
         v31 = (point1a - point1->x) / (v29 - point1->x);
         v32 = (point2->y - point1->y) * v31 + point1->y;
@@ -722,10 +723,10 @@ int rdClip_Line3Ortho(rdClipFrustum *clipFrustum, rdVector3 *point1, rdVector3 *
             *out2 = 1;
     }
     point1b = clipFrustum->orthoRight;
-    if ( point1->x > (double)point1b && point2->x > (double)point1b )
+    if ( point1->x > (flex_d_t)point1b && point2->x > (flex_d_t)point1b )
         return 0;
     v38 = point2->x;
-    if (point1->x <= (double)point1b)
+    if (point1->x <= (flex_d_t)point1b)
     {
         if ( v38 > point1b )
         {
@@ -751,11 +752,11 @@ int rdClip_Line3Ortho(rdClipFrustum *clipFrustum, rdVector3 *point1, rdVector3 *
             *out1 = 1;
     }
     point1c = clipFrustum->orthoTop;
-    if ( point1->z > (double)point1c && point2->z > (double)point1c )
+    if ( point1->z > (flex_d_t)point1c && point2->z > (flex_d_t)point1c )
         return 0;
-    if ( point1->z <= (double)point1c )
+    if ( point1->z <= (flex_d_t)point1c )
     {
-        if ( point2->z > (double)point1c )
+        if ( point2->z > (flex_d_t)point1c )
         {
             v50 = (point1c - point2->z) / (point2->z - point1->z);
             v51 = (point2->x - point1->x) * v50 + point2->x;
@@ -779,10 +780,10 @@ int rdClip_Line3Ortho(rdClipFrustum *clipFrustum, rdVector3 *point1, rdVector3 *
             *out1 = 1;
     }
     point1d = clipFrustum->orthoBottom;
-    if ( point1->z < (double)point1d && point2->z < (double)point1d )
+    if ( point1->z < (flex_d_t)point1d && point2->z < (flex_d_t)point1d )
         return 0;
     v54 = point2->z;
-    if (point1->z >= (double)point1d)
+    if (point1->z >= (flex_d_t)point1d)
     {
         v56 = (point1d - point1->z) / (v54 - point1->z);
         v57 = (point2->x - point1->x) * v56 + point1->x;
@@ -843,37 +844,37 @@ int rdClip_Line3(rdClipFrustum *clipFrustum, rdVector3 *point1, rdVector3 *point
     return 1;
 }
 
-int rdClip_SphereInFrustrum(rdClipFrustum *frust, rdVector3 *pos, float rad)
+int rdClip_SphereInFrustrum(rdClipFrustum *frust, rdVector3 *pos, flex_t rad)
 {
     int v5; // edi
     int v9; // esi
-    double v10; // st7
-    double v11; // st7
-    double v12; // st7
-    double v13; // st7
-    float v14; // [esp+0h] [ebp-Ch]
-    float v15; // [esp+4h] [ebp-8h]
-    float v16; // [esp+8h] [ebp-4h]
-    float v17; // [esp+8h] [ebp-4h]
-    float frusta; // [esp+10h] [ebp+4h]
-    float posa; // [esp+14h] [ebp+8h]
-    float posb; // [esp+14h] [ebp+8h]
-    float posc; // [esp+14h] [ebp+8h]
-    float rada; // [esp+18h] [ebp+Ch]
-    float radb; // [esp+18h] [ebp+Ch]
+    flex_d_t v10; // st7
+    flex_d_t v11; // st7
+    flex_d_t v12; // st7
+    flex_d_t v13; // st7
+    flex_t v14; // [esp+0h] [ebp-Ch]
+    flex_t v15; // [esp+4h] [ebp-8h]
+    flex_t v16; // [esp+8h] [ebp-4h]
+    flex_t v17; // [esp+8h] [ebp-4h]
+    flex_t frusta; // [esp+10h] [ebp+4h]
+    flex_t posa; // [esp+14h] [ebp+8h]
+    flex_t posb; // [esp+14h] [ebp+8h]
+    flex_t posc; // [esp+14h] [ebp+8h]
+    flex_t rada; // [esp+18h] [ebp+Ch]
+    flex_t radb; // [esp+18h] [ebp+Ch]
 
     v14 = rad + pos->y;
     v5 = 1;
     frusta = pos->y - rad;
-    if (v14 < (double)frust->field_0.y)
+    if (v14 < (flex_d_t)frust->field_0.y)
         return 2;
-    if ( frusta < (double)frust->field_0.y )
+    if ( frusta < (flex_d_t)frust->field_0.y )
         v5 = 0;
     if (frust->field_0.x)
     {
-        if ( frusta > (double)frust->field_0.z )
+        if ( frusta > (flex_d_t)frust->field_0.z )
             return 2;
-        if ( v14 > (double)frust->field_0.z )
+        if ( v14 > (flex_d_t)frust->field_0.z )
             v5 = 0;
     }
 
@@ -889,9 +890,9 @@ int rdClip_SphereInFrustrum(rdClipFrustum *frust, rdVector3 *pos, float rad)
         v10 = frust->orthoTop;
         posa = frust->orthoTop;
     }
-    if ( v16 > v10 && v16 > (double)posa )
+    if ( v16 > v10 && v16 > (flex_d_t)posa )
         return 2;
-    if ( v15 > v10 || v15 > (double)posa )
+    if ( v15 > v10 || v15 > (flex_d_t)posa )
         v5 = 0;
     if ( rdCamera_pCurCamera->projectType == rdCameraProjectType_Perspective)
     {
@@ -903,9 +904,9 @@ int rdClip_SphereInFrustrum(rdClipFrustum *frust, rdVector3 *pos, float rad)
         v11 = frust->orthoBottom;
         posb = frust->orthoBottom;
     }
-    if ( v15 < v11 && v15 < (double)posb )
+    if ( v15 < v11 && v15 < (flex_d_t)posb )
         return 2;
-    if ( v16 < v11 || v16 < (double)posb )
+    if ( v16 < v11 || v16 < (flex_d_t)posb )
         v5 = 0;
     v17 = pos->x + rad;
     posc = pos->x - rad;
@@ -919,9 +920,9 @@ int rdClip_SphereInFrustrum(rdClipFrustum *frust, rdVector3 *pos, float rad)
         v12 = frust->orthoLeft;
         rada = frust->orthoLeft;
     }
-    if ( v17 < v12 && v17 < (double)rada )
+    if ( v17 < v12 && v17 < (flex_d_t)rada )
         return 2;
-    if ( posc < v12 || posc < (double)rada )
+    if ( posc < v12 || posc < (flex_d_t)rada )
         v5 = 0;
     if ( rdCamera_pCurCamera->projectType == rdCameraProjectType_Perspective)
     {
@@ -933,9 +934,9 @@ int rdClip_SphereInFrustrum(rdClipFrustum *frust, rdVector3 *pos, float rad)
         v13 = frust->orthoRight;
         radb = frust->orthoRight;
     }
-    if ( posc > v13 && posc > (double)radb )
+    if ( posc > v13 && posc > (flex_d_t)radb )
         return 2;
-    if ( v17 > v13 || v17 > (double)radb )
+    if ( v17 > v13 || v17 > (flex_d_t)radb )
         v5 = 0;
     return v5 == 0;
 }
@@ -947,77 +948,77 @@ int rdClip_Face3W(rdClipFrustum *frustum, rdVector3 *vertices, int numVertices)
     int v5; // ebp
     rdVector3 *v6; // esi
     rdVector3 *v7; // ecx
-    double v9; // st7
+    flex_d_t v9; // st7
     //char v10; // c0
-    double v12; // st6
+    flex_d_t v12; // st6
     //char v13; // c3
-    double v15; // st5
+    flex_d_t v15; // st5
     //char v16; // c0
-    double v18; // st4
+    flex_d_t v18; // st4
     //char v19; // c0
-    double v20; // st5
-    double v22; // st5
+    flex_d_t v20; // st5
+    flex_d_t v22; // st5
     rdVector3 *v23; // ecx
     int v24; // eax
     rdVector3 *v25; // esi
     rdVector3 *v26; // edi
     rdVector3 *v27; // ecx
     rdVector3 *v28; // edx
-    double v30; // st7
+    flex_d_t v30; // st7
     //unsigned __int8 v31; // c0
     //unsigned __int8 v32; // c3
-    double v34; // st6
+    flex_d_t v34; // st6
     //char v35; // c3
-    double v37; // st5
+    flex_d_t v37; // st5
     //char v38; // c0
-    double v40; // st4
+    flex_d_t v40; // st4
     //char v41; // c0
-    double v42; // st5
-    double v44; // st5
+    flex_d_t v42; // st5
+    flex_d_t v44; // st5
     rdVector3 *v45; // ecx
     int v46; // eax
     rdVector3 *v47; // esi
     rdVector3 *v48; // edi
     rdVector3 *v49; // ecx
     rdVector3 *v50; // edx
-    double v52; // st7
+    flex_d_t v52; // st7
     //unsigned __int8 v53; // c0
     //unsigned __int8 v54; // c3
-    double v56; // st5
-    double v57; // st6
+    flex_d_t v56; // st5
+    flex_d_t v57; // st6
     //char v58; // c3
-    double v60; // st5
-    double v61; // st4
+    flex_d_t v60; // st5
+    flex_d_t v61; // st4
     //char v62; // c0
-    double v64; // st3
+    flex_d_t v64; // st3
     //char v65; // c0
-    double v66; // st4
-    double v68; // st3
+    flex_d_t v66; // st4
+    flex_d_t v68; // st3
     rdVector3 *v69; // ecx
     int v70; // eax
     rdVector3 *v71; // esi
     rdVector3 *v72; // edi
     rdVector3 *v73; // ecx
     rdVector3 *v74; // edx
-    double v76; // st7
+    flex_d_t v76; // st7
     //char v77; // c0
-    double v79; // st5
-    double v80; // st6
+    flex_d_t v79; // st5
+    flex_d_t v80; // st6
     //char v81; // c3
-    double v83; // st5
-    double v84; // st4
+    flex_d_t v83; // st5
+    flex_d_t v84; // st4
     //char v85; // c0
-    double v87; // st3
+    flex_d_t v87; // st3
     //char v88; // c0
-    double v89; // st4
-    double v91; // st3
+    flex_d_t v89; // st4
+    flex_d_t v91; // st3
     rdVector3 *v92; // ecx
     int v93; // eax
     rdVector3 *v94; // esi
     rdVector3 *v95; // edi
     rdVector3 *v96; // ecx
     rdVector3 *v97; // edx
-    double v98; // st7
+    flex_d_t v98; // st7
     rdVector3 *v100; // eax
     rdVector3 *v101; // esi
     int v104; // eax
@@ -1025,30 +1026,30 @@ int rdClip_Face3W(rdClipFrustum *frustum, rdVector3 *vertices, int numVertices)
     rdVector3 *v106; // edi
     rdVector3 *v107; // ecx
     rdVector3 *v108; // edx
-    double v109; // st7
+    flex_d_t v109; // st7
     rdVector3 *v111; // eax
-    float v112; // [esp+10h] [ebp-8h]
-    float v113; // [esp+10h] [ebp-8h]
-    float v114; // [esp+10h] [ebp-8h]
-    float v115; // [esp+10h] [ebp-8h]
+    flex_t v112; // [esp+10h] [ebp-8h]
+    flex_t v113; // [esp+10h] [ebp-8h]
+    flex_t v114; // [esp+10h] [ebp-8h]
+    flex_t v115; // [esp+10h] [ebp-8h]
     int v116; // [esp+14h] [ebp-4h]
     int v117; // [esp+14h] [ebp-4h]
     int v118; // [esp+14h] [ebp-4h]
     int v119; // [esp+14h] [ebp-4h]
-    float frustuma; // [esp+1Ch] [ebp+4h]
-    float frustumb; // [esp+1Ch] [ebp+4h]
-    float frustumc; // [esp+1Ch] [ebp+4h]
-    float frustumd; // [esp+1Ch] [ebp+4h]
-    float numVerticesa; // [esp+24h] [ebp+Ch]
-    float numVerticesi; // [esp+24h] [ebp+Ch]
-    float numVerticesb; // [esp+24h] [ebp+Ch]
-    float numVerticesc; // [esp+24h] [ebp+Ch]
-    float numVerticesj; // [esp+24h] [ebp+Ch]
-    float numVerticesd; // [esp+24h] [ebp+Ch]
-    float numVerticese; // [esp+24h] [ebp+Ch]
-    float numVerticesk; // [esp+24h] [ebp+Ch]
-    float numVerticesf; // [esp+24h] [ebp+Ch]
-    float numVerticesl; // [esp+24h] [ebp+Ch]
+    flex_t frustuma; // [esp+1Ch] [ebp+4h]
+    flex_t frustumb; // [esp+1Ch] [ebp+4h]
+    flex_t frustumc; // [esp+1Ch] [ebp+4h]
+    flex_t frustumd; // [esp+1Ch] [ebp+4h]
+    flex_t numVerticesa; // [esp+24h] [ebp+Ch]
+    flex_t numVerticesi; // [esp+24h] [ebp+Ch]
+    flex_t numVerticesb; // [esp+24h] [ebp+Ch]
+    flex_t numVerticesc; // [esp+24h] [ebp+Ch]
+    flex_t numVerticesj; // [esp+24h] [ebp+Ch]
+    flex_t numVerticesd; // [esp+24h] [ebp+Ch]
+    flex_t numVerticese; // [esp+24h] [ebp+Ch]
+    flex_t numVerticesk; // [esp+24h] [ebp+Ch]
+    flex_t numVerticesf; // [esp+24h] [ebp+Ch]
+    flex_t numVerticesl; // [esp+24h] [ebp+Ch]
     int numVerticesg; // [esp+24h] [ebp+Ch]
     int numVerticesh; // [esp+24h] [ebp+Ch]
 
@@ -1065,7 +1066,7 @@ int rdClip_Face3W(rdClipFrustum *frustum, rdVector3 *vertices, int numVertices)
         v9 = frustum->farLeft * v3->y;
         if ( numVerticesa <= v7->x || v9 <= v3->x )
         {
-            if ( v7->x != numVerticesa && v9 != v3->x && (v7->x < (double)numVerticesa || v9 > v3->x) )
+            if ( v7->x != numVerticesa && v9 != v3->x && (v7->x < (flex_d_t)numVerticesa || v9 > v3->x) )
             {
                 frustuma = v3->y - v7->y;
                 v112 = v3->x - v7->x;
@@ -1121,7 +1122,7 @@ int rdClip_Face3W(rdClipFrustum *frustum, rdVector3 *vertices, int numVertices)
         v30 = frustum->right * v28->y;
         if ( numVerticesc >= v27->x || v30 >= v28->x )
         {
-            if ( v27->x != numVerticesc && v30 != v28->x && (v27->x > (double)numVerticesc || v30 < v28->x) )
+            if ( v27->x != numVerticesc && v30 != v28->x && (v27->x > (flex_d_t)numVerticesc || v30 < v28->x) )
             {
                 frustumb = v28->y - v27->y;
                 v113 = v28->x - v27->x;
@@ -1182,7 +1183,7 @@ int rdClip_Face3W(rdClipFrustum *frustum, rdVector3 *vertices, int numVertices)
         v52 = v50->y * frustum->farTop;
         if ( numVerticese >= v49->z || v52 >= v50->z )
         {
-            if ( v49->z != numVerticese && v52 != v50->z && (v49->z > (double)numVerticese || v52 < v50->z) )
+            if ( v49->z != numVerticese && v52 != v50->z && (v49->z > (flex_d_t)numVerticese || v52 < v50->z) )
             {
                 frustumc = v50->y - v49->y;
                 v114 = v50->z - v49->z;
@@ -1245,7 +1246,7 @@ int rdClip_Face3W(rdClipFrustum *frustum, rdVector3 *vertices, int numVertices)
         v76 = v74->y * frustum->bottom;
         if ( numVerticesf <= v73->z || v76 <= v74->z )
         {
-            if ( v73->z != numVerticesf && v76 != v74->z && (v73->z < (double)numVerticesf || v76 > v74->z) )
+            if ( v73->z != numVerticesf && v76 != v74->z && (v73->z < (flex_d_t)numVerticesf || v76 > v74->z) )
             {
                 frustumd = v74->y - v73->y;
                 v115 = v74->z - v73->z;
@@ -1303,9 +1304,9 @@ int rdClip_Face3W(rdClipFrustum *frustum, rdVector3 *vertices, int numVertices)
     numVerticesg = v93;
     do
     {
-        if ( v96->y >= (double)frustum->field_0.y || v97->y >= (double)frustum->field_0.y )
+        if ( v96->y >= (flex_d_t)frustum->field_0.y || v97->y >= (flex_d_t)frustum->field_0.y )
         {
-            if ( v96->y != frustum->field_0.y && v97->y != frustum->field_0.y && (v96->y < (double)frustum->field_0.y || v97->y < (double)frustum->field_0.y) )
+            if ( v96->y != frustum->field_0.y && v97->y != frustum->field_0.y && (v96->y < (flex_d_t)frustum->field_0.y || v97->y < (flex_d_t)frustum->field_0.y) )
             {
                 ++v5;
                 v98 = (frustum->field_0.y - v96->y) / (v97->y - v96->y);
@@ -1316,7 +1317,7 @@ int rdClip_Face3W(rdClipFrustum *frustum, rdVector3 *vertices, int numVertices)
                 
                 ++v94;
             }
-            if ( v97->y >= (double)frustum->field_0.y )
+            if ( v97->y >= (flex_d_t)frustum->field_0.y )
             {
                 v100 = v94;
                 ++v5;
@@ -1350,11 +1351,11 @@ int rdClip_Face3W(rdClipFrustum *frustum, rdVector3 *vertices, int numVertices)
         numVerticesh = v104;
         do
         {
-            if ( v107->y <= (double)frustum->field_0.z || v108->y <= (double)frustum->field_0.z )
+            if ( v107->y <= (flex_d_t)frustum->field_0.z || v108->y <= (flex_d_t)frustum->field_0.z )
             {
                 if ( v107->y != frustum->field_0.z
                   && v108->y != frustum->field_0.z
-                  && (v107->y > (double)frustum->field_0.z || v108->y > (double)frustum->field_0.z) )
+                  && (v107->y > (flex_d_t)frustum->field_0.z || v108->y > (flex_d_t)frustum->field_0.z) )
                 {
                     ++v5;
                     v109 = (frustum->field_0.z - v107->y) / (v108->y - v107->y);
@@ -1364,7 +1365,7 @@ int rdClip_Face3W(rdClipFrustum *frustum, rdVector3 *vertices, int numVertices)
                     v105[-1].z = (v108->z - v107->z) * v109 + v107->z;
                     v105[-1].x = (v108->x - v107->x) * v109 + v107->x;
                 }
-                if ( v108->y <= (double)frustum->field_0.z )
+                if ( v108->y <= (flex_d_t)frustum->field_0.z )
                 {
                     v111 = v105;
                     ++v5;
@@ -1385,36 +1386,36 @@ int rdClip_Face3W(rdClipFrustum *frustum, rdVector3 *vertices, int numVertices)
     return v5;
 }
 
-int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, float *a4, int numVertices)
+int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, flex_t *a4, int numVertices)
 {
     //return _rdClip_Face3GT(frustum, vertices, uvs, a4, numVertices);
-    float *v5; // ecx
+    flex_t *v5; // ecx
     rdVector2 *v6; // esi
     rdVector3 *v7; // edi
     rdVector3 *v8; // ebx
     rdVector2 *v9; // edx
     rdVector2 *v10; // ebp
     rdVector3 *v11; // ecx
-    double v13; // st7
+    flex_d_t v13; // st7
     //char v14; // c0
-    double v16; // st6
+    flex_d_t v16; // st6
     //char v17; // c3
-    double v19; // st5
-    double v20; // st4
+    flex_d_t v19; // st5
+    flex_d_t v20; // st4
     //char v21; // c0
-    double v23; // st3
+    flex_d_t v23; // st3
     //char v24; // c0
-    double v25; // st4
-    double v26; // st3
-    double v27; // st2
-    double v28; // st5
-    double v29; // rtt
-    double v30; // st3
-    double v31; // st5
-    double v32; // rt1
-    double v33; // st3
-    double v34; // st5
-    double v35; // rt2
+    flex_d_t v25; // st4
+    flex_d_t v26; // st3
+    flex_d_t v27; // st2
+    flex_d_t v28; // st5
+    flex_d_t v29; // rtt
+    flex_d_t v30; // st3
+    flex_d_t v31; // st5
+    flex_d_t v32; // rt1
+    flex_d_t v33; // st3
+    flex_d_t v34; // st5
+    flex_d_t v35; // rt2
     rdVector3 *v37; // eax
     signed int result; // eax
     rdVector2 *v39; // esi
@@ -1423,27 +1424,27 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
     rdVector3 *v42; // edi
     rdVector2 *v43; // ebx
     rdVector3 *v44; // ecx
-    double v46; // st7
+    flex_d_t v46; // st7
     //unsigned __int8 v47; // c0
     //unsigned __int8 v48; // c3
-    double v50; // st6
+    flex_d_t v50; // st6
     //char v51; // c3
-    double v53; // st5
-    double v54; // st4
+    flex_d_t v53; // st5
+    flex_d_t v54; // st4
     //char v55; // c0
-    double v57; // st3
+    flex_d_t v57; // st3
     //char v58; // c0
-    double v59; // st4
-    double v60; // st3
-    double v61; // st2
-    double v62; // st5
-    double v63; // rt0
-    double v64; // st3
-    double v65; // st5
-    double v66; // rt2
-    double v67; // st3
-    double v68; // st5
-    double v69; // rtt
+    flex_d_t v59; // st4
+    flex_d_t v60; // st3
+    flex_d_t v61; // st2
+    flex_d_t v62; // st5
+    flex_d_t v63; // rt0
+    flex_d_t v64; // st3
+    flex_d_t v65; // st5
+    flex_d_t v66; // rt2
+    flex_d_t v67; // st3
+    flex_d_t v68; // st5
+    flex_d_t v69; // rtt
     rdVector3 *v71; // eax
     int v72; // ebx
     intptr_t v73; // eax
@@ -1459,27 +1460,27 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
     rdVector3 *v83; // ecx
     //unsigned __int8 v85; // c0
     //unsigned __int8 v86; // c3
-    double v88; // st6
-    double v89; // st7
+    flex_d_t v88; // st6
+    flex_d_t v89; // st7
     //char v90; // c3
-    double v92; // st6
-    double v93; // st5
+    flex_d_t v92; // st6
+    flex_d_t v93; // st5
     //char v94; // c0
-    double v96; // st4
+    flex_d_t v96; // st4
     //char v97; // c0
-    double v98; // st5
-    double v99; // st4
-    double v100; // st3
-    double v101; // rt1
-    double v102; // st4
-    double v103; // rt2
+    flex_d_t v98; // st5
+    flex_d_t v99; // st4
+    flex_d_t v100; // st3
+    flex_d_t v101; // rt1
+    flex_d_t v102; // st4
+    flex_d_t v103; // rt2
     rdVector3 *v105; // edi
     intptr_t v106; // ebp
     rdVector2 *v107; // ebp
     rdVector3 *v108; // eax
     intptr_t v109; // edx
     rdVector3 *v110; // ecx
-    float *v111; // edx
+    flex_t *v111; // edx
     int v112; // edi
     rdVector3 *v113; // ebx
     rdVector2 *v114; // edi
@@ -1488,20 +1489,20 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
     rdVector3 *v117; // edx
     rdVector3 *v118; // ecx
     //char v120; // c0
-    double v122; // st6
-    double v123; // st7
+    flex_d_t v122; // st6
+    flex_d_t v123; // st7
     //char v124; // c3
-    double v126; // st6
-    double v127; // st5
+    flex_d_t v126; // st6
+    flex_d_t v127; // st5
     //char v128; // c0
-    double v130; // st4
+    flex_d_t v130; // st4
     //char v131; // c0
-    double v132; // st5
-    double v133; // st4
-    double v134; // st3
-    double v135; // rt2
-    double v136; // st4
-    double v137; // rtt
+    flex_d_t v132; // st5
+    flex_d_t v133; // st4
+    flex_d_t v134; // st3
+    flex_d_t v135; // rt2
+    flex_d_t v136; // st4
+    flex_d_t v137; // rtt
     rdVector3 *v139; // edi
     int v140; // esi
     intptr_t v141; // ebp
@@ -1513,16 +1514,16 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
     rdVector3 *v147; // ebx
     rdVector2 *v148; // edi
     rdVector3 *v149; // edx
-    double v150; // st7
-    double v151; // st5
-    double v152; // st6
-    double v153; // st4
-    double v154; // st5
-    double v155; // rt1
-    double v156; // st5
-    double v157; // st6
+    flex_d_t v150; // st7
+    flex_d_t v151; // st5
+    flex_d_t v152; // st6
+    flex_d_t v153; // st4
+    flex_d_t v154; // st5
+    flex_d_t v155; // rt1
+    flex_d_t v156; // st5
+    flex_d_t v157; // st6
     rdVector3 *v159; // ecx
-    float *v160; // edx
+    flex_t *v160; // edx
     rdVector2 *v161; // ebp
     rdVector3 *v162; // esi
     rdVector3 *v163; // ecx
@@ -1535,14 +1536,14 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
     rdVector3 *v171; // ebx
     rdVector2 *v172; // edi
     rdVector3 *v173; // edx
-    double v174; // st7
-    double v175; // st5
-    double v176; // st6
-    double v177; // st4
-    double v178; // st5
-    double v179; // st4
-    double v180; // st6
-    double v181; // rt2
+    flex_d_t v174; // st7
+    flex_d_t v175; // st5
+    flex_d_t v176; // st6
+    flex_d_t v177; // st4
+    flex_d_t v178; // st5
+    flex_d_t v179; // st4
+    flex_d_t v180; // st6
+    flex_d_t v181; // rt2
     rdVector3 *v183; // ecx
     int v184; // [esp+10h] [ebp-20h]
     int v185; // [esp+10h] [ebp-20h]
@@ -1550,51 +1551,51 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
     int v187; // [esp+10h] [ebp-20h]
     int v188; // [esp+10h] [ebp-20h]
     int v189; // [esp+10h] [ebp-20h]
-    float *v190; // [esp+14h] [ebp-1Ch]
-    float *v191; // [esp+14h] [ebp-1Ch]
-    float *v192; // [esp+14h] [ebp-1Ch]
-    float *v193; // [esp+14h] [ebp-1Ch]
-    float *v194; // [esp+14h] [ebp-1Ch]
-    float *v195; // [esp+14h] [ebp-1Ch]
-    float *v196; // [esp+18h] [ebp-18h]
-    float *v197; // [esp+18h] [ebp-18h]
-    float *v198; // [esp+18h] [ebp-18h]
-    float *v199; // [esp+18h] [ebp-18h]
-    float *v200; // [esp+18h] [ebp-18h]
-    float *v201; // [esp+18h] [ebp-18h]
-    float v202; // [esp+1Ch] [ebp-14h]
-    float v203; // [esp+1Ch] [ebp-14h]
-    float v204; // [esp+1Ch] [ebp-14h]
-    float v205; // [esp+1Ch] [ebp-14h]
-    float v206; // [esp+1Ch] [ebp-14h]
-    float v207; // [esp+1Ch] [ebp-14h]
-    float v208; // [esp+20h] [ebp-10h]
-    float v209; // [esp+20h] [ebp-10h]
-    float v210; // [esp+20h] [ebp-10h]
-    float v211; // [esp+20h] [ebp-10h]
-    float *v212; // [esp+24h] [ebp-Ch]
-    float *v213; // [esp+24h] [ebp-Ch]
-    float v214; // [esp+24h] [ebp-Ch]
-    float v215; // [esp+24h] [ebp-Ch]
+    flex_t *v190; // [esp+14h] [ebp-1Ch]
+    flex_t *v191; // [esp+14h] [ebp-1Ch]
+    flex_t *v192; // [esp+14h] [ebp-1Ch]
+    flex_t *v193; // [esp+14h] [ebp-1Ch]
+    flex_t *v194; // [esp+14h] [ebp-1Ch]
+    flex_t *v195; // [esp+14h] [ebp-1Ch]
+    flex_t *v196; // [esp+18h] [ebp-18h]
+    flex_t *v197; // [esp+18h] [ebp-18h]
+    flex_t *v198; // [esp+18h] [ebp-18h]
+    flex_t *v199; // [esp+18h] [ebp-18h]
+    flex_t *v200; // [esp+18h] [ebp-18h]
+    flex_t *v201; // [esp+18h] [ebp-18h]
+    flex_t v202; // [esp+1Ch] [ebp-14h]
+    flex_t v203; // [esp+1Ch] [ebp-14h]
+    flex_t v204; // [esp+1Ch] [ebp-14h]
+    flex_t v205; // [esp+1Ch] [ebp-14h]
+    flex_t v206; // [esp+1Ch] [ebp-14h]
+    flex_t v207; // [esp+1Ch] [ebp-14h]
+    flex_t v208; // [esp+20h] [ebp-10h]
+    flex_t v209; // [esp+20h] [ebp-10h]
+    flex_t v210; // [esp+20h] [ebp-10h]
+    flex_t v211; // [esp+20h] [ebp-10h]
+    flex_t *v212; // [esp+24h] [ebp-Ch]
+    flex_t *v213; // [esp+24h] [ebp-Ch]
+    flex_t v214; // [esp+24h] [ebp-Ch]
+    flex_t v215; // [esp+24h] [ebp-Ch]
     int v216; // [esp+28h] [ebp-8h]
     int v217; // [esp+28h] [ebp-8h]
-    float *v218; // [esp+28h] [ebp-8h]
-    float *v219; // [esp+28h] [ebp-8h]
+    flex_t *v218; // [esp+28h] [ebp-8h]
+    flex_t *v219; // [esp+28h] [ebp-8h]
     int v220; // [esp+2Ch] [ebp-4h]
     int v221; // [esp+2Ch] [ebp-4h]
     int v222; // [esp+2Ch] [ebp-4h]
     int v223; // [esp+2Ch] [ebp-4h]
-    float numVerticesa; // [esp+44h] [ebp+14h]
-    float numVerticesb; // [esp+44h] [ebp+14h]
+    flex_t numVerticesa; // [esp+44h] [ebp+14h]
+    flex_t numVerticesb; // [esp+44h] [ebp+14h]
     int numVerticesc; // [esp+44h] [ebp+14h]
-    float numVerticesd; // [esp+44h] [ebp+14h]
-    float numVerticese; // [esp+44h] [ebp+14h]
+    flex_t numVerticesd; // [esp+44h] [ebp+14h]
+    flex_t numVerticese; // [esp+44h] [ebp+14h]
     int numVerticesf; // [esp+44h] [ebp+14h]
-    float numVerticesg; // [esp+44h] [ebp+14h]
+    flex_t numVerticesg; // [esp+44h] [ebp+14h]
     int numVerticesh; // [esp+44h] [ebp+14h]
-    float numVerticesi; // [esp+44h] [ebp+14h]
-    float *numVerticesj; // [esp+44h] [ebp+14h]
-    float *numVerticesk; // [esp+44h] [ebp+14h]
+    flex_t numVerticesi; // [esp+44h] [ebp+14h]
+    flex_t *numVerticesj; // [esp+44h] [ebp+14h]
+    flex_t *numVerticesk; // [esp+44h] [ebp+14h]
 
     v5 = a4;
     rdClip_faceStatus = 0;
@@ -1623,7 +1624,7 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
             v13 = frustum->nearLeft * v7->y;
             if ( numVerticesa <= v8->x || v13 <= v7->x )
             {
-                if ( v8->x != numVerticesa && v13 != v7->x && (v8->x < (double)numVerticesa || v13 > v7->x) )
+                if ( v8->x != numVerticesa && v13 != v7->x && (v8->x < (flex_d_t)numVerticesa || v13 > v7->x) )
                 {
                     numVerticesb = v7->y - v8->y;
                     v208 = v7->x - v8->x;
@@ -1713,7 +1714,7 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
         v46 = frustum->right * v42->y;
         if ( numVerticesd >= v40->x || v46 >= v42->x )
         {
-            if ( v40->x != numVerticesd && v46 != v42->x && (v40->x > (double)numVerticesd || v46 < v42->x) )
+            if ( v40->x != numVerticesd && v46 != v42->x && (v40->x > (flex_d_t)numVerticesd || v46 < v42->x) )
             {
                 numVerticese = v42->y - v40->y;
                 v209 = v42->x - v40->x;
@@ -1791,12 +1792,12 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
     pSourceTVert = v76;
     v77 = (intptr_t)pDestIVert ^ (intptr_t)pSourceIVert;
     pDestIVert = pSourceIVert;
-    pSourceIVert = (float *)((intptr_t)pSourceIVert ^ v77);
+    pSourceIVert = (flex_t *)((intptr_t)pSourceIVert ^ v77);
     numVerticesf = v72;
-    v198 = (float *)(((intptr_t)pDestIVert ^ v77) + 4 * v72 - 4);
+    v198 = (flex_t *)(((intptr_t)pDestIVert ^ v77) + 4 * v72 - 4);
     v79 = &v74[v72 - 1];
     v80 = &v76[numVerticesf - 1];
-    v192 = (float *)((intptr_t)pDestIVert ^ v77);
+    v192 = (flex_t *)((intptr_t)pDestIVert ^ v77);
     if ( v72 > 0 )
     {
         v81 = pDestTVert;
@@ -1808,9 +1809,9 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
         {
             v204 = frustum->nearTop * v79->y;
             numVerticesg = v82->y * frustum->nearTop;
-            if ( v79->z <= v204 || v82->z <= (double)numVerticesg )
+            if ( v79->z <= v204 || v82->z <= (flex_d_t)numVerticesg )
             {
-                if ( v79->z != v204 && v82->z != numVerticesg && (v79->z > (double)v204 || v82->z > (double)numVerticesg) )
+                if ( v79->z != v204 && v82->z != numVerticesg && (v79->z > (flex_d_t)v204 || v82->z > (flex_d_t)numVerticesg) )
                 {
                     v210 = v82->y - v79->y;
                     v214 = v82->z - v79->z;
@@ -1848,7 +1849,7 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
                     *v218++ = v103;
                     rdClip_faceStatus |= 0x4;
                 }
-                if ( v82->z <= (double)numVerticesg )
+                if ( v82->z <= (flex_d_t)numVerticesg )
                 {
                     v105 = v83++;
                     ++v81;
@@ -1879,7 +1880,7 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
         v110 = pDestVert;
         pDestVert = pSourceVert;
         pDestIVert = pSourceIVert;
-        v111 = (float *)((intptr_t)pSourceIVert ^ v109);
+        v111 = (flex_t *)((intptr_t)pSourceIVert ^ v109);
         pSourceVert = v110;
         numVerticesh = v186;
         pSourceTVert = v107;
@@ -1902,9 +1903,9 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
             {
                 v206 = frustum->bottom * v113->y;
                 numVerticesi = v117->y * frustum->bottom;
-                if ( v113->z >= v206 || v117->z >= (double)numVerticesi )
+                if ( v113->z >= v206 || v117->z >= (flex_d_t)numVerticesi )
                 {
-                    if ( v113->z != v206 && v117->z != numVerticesi && (v113->z < (double)v206 || v117->z < (double)numVerticesi) )
+                    if ( v113->z != v206 && v117->z != numVerticesi && (v113->z < (flex_d_t)v206 || v117->z < (flex_d_t)numVerticesi) )
                     {
                         v215 = v117->y - v113->y;
                         v211 = v117->z - v113->z;
@@ -1942,7 +1943,7 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
                         *v219++ = v137;
                         rdClip_faceStatus |= 0x8;
                     }
-                    if ( v117->z >= (double)numVerticesi )
+                    if ( v117->z >= (flex_d_t)numVerticesi )
                     {
                         v139 = v118++;
                         ++v116;
@@ -1976,12 +1977,12 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
         v142 = (rdVector2 *)((intptr_t)pDestTVert ^ v141);
         pSourceTVert = v142;
         v143 = (intptr_t)pDestIVert ^ (intptr_t)v111;
-        pDestIVert = (float *)(v143 ^ (intptr_t)pDestIVert);
+        pDestIVert = (flex_t *)(v143 ^ (intptr_t)pDestIVert);
         v144 = v140;
-        pSourceIVert = (float *)((intptr_t)pDestIVert ^ v143);
+        pSourceIVert = (flex_t *)((intptr_t)pDestIVert ^ v143);
 
-        v200 = (float *)(((intptr_t)pDestIVert ^ v143) + 4 * v140 - 4);
-        v194 = (float *)((intptr_t)pDestIVert ^ v143);
+        v200 = (flex_t *)(((intptr_t)pDestIVert ^ v143) + 4 * v140 - 4);
+        v194 = (flex_t *)((intptr_t)pDestIVert ^ v143);
         v145 = &pSourceVert[v140 - 1];
         v146 = &v142[v140 - 1];
         if ( v140 <= 0 )
@@ -2000,11 +2001,11 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
             v222 = v144;
             do
             {
-                if ( v145->y >= (double)frustum->field_0.y || v149->y >= (double)frustum->field_0.y )
+                if ( v145->y >= (flex_d_t)frustum->field_0.y || v149->y >= (flex_d_t)frustum->field_0.y )
                 {
                     if ( v145->y != frustum->field_0.y
                       && v149->y != frustum->field_0.y
-                      && (v145->y < (double)frustum->field_0.y || v149->y < (double)frustum->field_0.y) )
+                      && (v145->y < (flex_d_t)frustum->field_0.y || v149->y < (flex_d_t)frustum->field_0.y) )
                     {
                         ++v147;
                         v150 = (frustum->field_0.y - v145->y) / (v149->y - v145->y);
@@ -2025,7 +2026,7 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
                         *numVerticesj++ = v157;
                         rdClip_faceStatus |= 1;
                     }
-                    if ( v149->y >= (double)frustum->field_0.y )
+                    if ( v149->y >= (flex_d_t)frustum->field_0.y )
                     {
                         v159 = v147++;
                         ++v148;
@@ -2062,14 +2063,14 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
             v167 = (intptr_t)pDestIVert ^ (intptr_t)v160;
             pSourceVert = v162;
             pSourceTVert = v166;
-            pDestIVert = (float *)(v167 ^ (intptr_t)pDestIVert);
+            pDestIVert = (flex_t *)(v167 ^ (intptr_t)pDestIVert);
             v168 = v72;
-            pSourceIVert = (float *)((intptr_t)pDestIVert ^ v167);
+            pSourceIVert = (flex_t *)((intptr_t)pDestIVert ^ v167);
             v189 = 0;
-            v201 = (float *)(((intptr_t)pDestIVert ^ v167) + 4 * v72 - 4);
+            v201 = (flex_t *)(((intptr_t)pDestIVert ^ v167) + 4 * v72 - 4);
             v169 = &v162[v72 - 1];
             v170 = &v166[v72 - 1];
-            v195 = (float *)((intptr_t)pDestIVert ^ v167);
+            v195 = (flex_t *)((intptr_t)pDestIVert ^ v167);
             v171 = pDestVert;
             numVerticesk = pDestIVert;
             v172 = pDestTVert;
@@ -2077,11 +2078,11 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
             v223 = v168;
             do
             {
-                if ( v169->y <= (double)frustum->field_0.z || v173->y <= (double)frustum->field_0.z )
+                if ( v169->y <= (flex_d_t)frustum->field_0.z || v173->y <= (flex_d_t)frustum->field_0.z )
                 {
                     if ( v169->y != frustum->field_0.z
                       && v173->y != frustum->field_0.z
-                      && (v169->y > (double)frustum->field_0.z || v173->y > (double)frustum->field_0.z) )
+                      && (v169->y > (flex_d_t)frustum->field_0.z || v173->y > (flex_d_t)frustum->field_0.z) )
                     {
                         ++v171;
                         v174 = (frustum->field_0.z - v169->y) / (v173->y - v169->y);
@@ -2102,7 +2103,7 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
                         *numVerticesk++ = v181;
                         rdClip_faceStatus |= 0x2;
                     }
-                    if ( v173->y <= (double)frustum->field_0.z )
+                    if ( v173->y <= (flex_d_t)frustum->field_0.z )
                     {
                         v183 = v171++;
                         ++v172;
@@ -2128,7 +2129,7 @@ int rdClip_Face3GT(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, 
         {
             _memcpy(vertices, v162, sizeof(rdVector3) * v72);
             _memcpy(uvs, pDestTVert, sizeof(rdVector2) * v72);
-            _memcpy(a4, pDestIVert, sizeof(float) * v72);
+            _memcpy(a4, pDestIVert, sizeof(flex_t) * v72);
         }
 LABEL_127:
         result = v72;
@@ -2143,58 +2144,58 @@ int rdClip_Face3S(rdClipFrustum *frustum, rdVector3 *vertices, int numVertices)
     int v5; // ebp
     rdVector3 *v6; // esi
     rdVector3 *v7; // ecx
-    double v9; // st7
-    double v12; // st6
-    double v20; // st5
-    double v22; // st5
+    flex_d_t v9; // st7
+    flex_d_t v12; // st6
+    flex_d_t v20; // st5
+    flex_d_t v22; // st5
     rdVector3 *v23; // ecx
     int v24; // eax
     rdVector3 *v25; // esi
     rdVector3 *v26; // edi
     rdVector3 *v27; // ecx
     rdVector3 *v28; // edx
-    double v30; // st7
-    double v34; // st6
-    double v37; // st5
-    double v40; // st4
-    double v42; // st5
+    flex_d_t v30; // st7
+    flex_d_t v34; // st6
+    flex_d_t v37; // st5
+    flex_d_t v40; // st4
+    flex_d_t v42; // st5
     int v43; // eax
-    double v44; // st5
+    flex_d_t v44; // st5
     rdVector3 *v45; // ecx
     int v46; // eax
     rdVector3 *v47; // esi
     rdVector3 *v48; // edi
     rdVector3 *v49; // ecx
     rdVector3 *v50; // edx
-    double v52; // st7
-    double v56; // st5
-    double v57; // st6
-    double v60; // st5
-    double v66; // st4
+    flex_d_t v52; // st7
+    flex_d_t v56; // st5
+    flex_d_t v57; // st6
+    flex_d_t v60; // st5
+    flex_d_t v66; // st4
     int v67; // eax
-    double v68; // st3
+    flex_d_t v68; // st3
     rdVector3 *v69; // ecx
     int v70; // eax
     rdVector3 *v71; // esi
     rdVector3 *v72; // edi
     rdVector3 *v73; // ecx
     rdVector3 *v74; // edx
-    double v76; // st7
-    double v79; // st5
-    double v80; // st6
-    double v83; // st5
-    double v84; // st4
-    double v87; // st3
-    double v89; // st4
+    flex_d_t v76; // st7
+    flex_d_t v79; // st5
+    flex_d_t v80; // st6
+    flex_d_t v83; // st5
+    flex_d_t v84; // st4
+    flex_d_t v87; // st3
+    flex_d_t v89; // st4
     int v90; // eax
-    double v91; // st3
+    flex_d_t v91; // st3
     rdVector3 *v92; // ecx
     int v93; // eax
     rdVector3 *v94; // esi
     rdVector3 *v95; // edi
     rdVector3 *v96; // ecx
     rdVector3 *v97; // edx
-    double v98; // st7
+    flex_d_t v98; // st7
     int v99; // eax
     rdVector3 *v100; // eax
     rdVector3 *v101; // esi
@@ -2204,31 +2205,31 @@ int rdClip_Face3S(rdClipFrustum *frustum, rdVector3 *vertices, int numVertices)
     rdVector3 *v106; // edi
     rdVector3 *v107; // ecx
     rdVector3 *v108; // edx
-    double v109; // st7
+    flex_d_t v109; // st7
     int v110; // eax
     rdVector3 *v111; // eax
-    double v112; // [esp+10h] [ebp-8h]
-    double v113; // [esp+10h] [ebp-8h]
-    double v114; // [esp+10h] [ebp-8h]
-    double v115; // [esp+10h] [ebp-8h]
+    flex_d_t v112; // [esp+10h] [ebp-8h]
+    flex_d_t v113; // [esp+10h] [ebp-8h]
+    flex_d_t v114; // [esp+10h] [ebp-8h]
+    flex_d_t v115; // [esp+10h] [ebp-8h]
     int v116; // [esp+14h] [ebp-4h]
     int v117; // [esp+14h] [ebp-4h]
     int v118; // [esp+14h] [ebp-4h]
     int v119; // [esp+14h] [ebp-4h]
-    double frustuma; // [esp+1Ch] [ebp+4h]
-    double frustumb; // [esp+1Ch] [ebp+4h]
-    double frustumc; // [esp+1Ch] [ebp+4h]
-    double frustumd; // [esp+1Ch] [ebp+4h]
-    double numVerticesa; // [esp+24h] [ebp+Ch]
-    double numVerticesi; // [esp+24h] [ebp+Ch]
-    double numVerticesb; // [esp+24h] [ebp+Ch]
-    double numVerticesc; // [esp+24h] [ebp+Ch]
-    double numVerticesj; // [esp+24h] [ebp+Ch]
-    double numVerticesd; // [esp+24h] [ebp+Ch]
-    double numVerticese; // [esp+24h] [ebp+Ch]
-    double numVerticesk; // [esp+24h] [ebp+Ch]
-    double numVerticesf; // [esp+24h] [ebp+Ch]
-    double numVerticesl; // [esp+24h] [ebp+Ch]
+    flex_d_t frustuma; // [esp+1Ch] [ebp+4h]
+    flex_d_t frustumb; // [esp+1Ch] [ebp+4h]
+    flex_d_t frustumc; // [esp+1Ch] [ebp+4h]
+    flex_d_t frustumd; // [esp+1Ch] [ebp+4h]
+    flex_d_t numVerticesa; // [esp+24h] [ebp+Ch]
+    flex_d_t numVerticesi; // [esp+24h] [ebp+Ch]
+    flex_d_t numVerticesb; // [esp+24h] [ebp+Ch]
+    flex_d_t numVerticesc; // [esp+24h] [ebp+Ch]
+    flex_d_t numVerticesj; // [esp+24h] [ebp+Ch]
+    flex_d_t numVerticesd; // [esp+24h] [ebp+Ch]
+    flex_d_t numVerticese; // [esp+24h] [ebp+Ch]
+    flex_d_t numVerticesk; // [esp+24h] [ebp+Ch]
+    flex_d_t numVerticesf; // [esp+24h] [ebp+Ch]
+    flex_d_t numVerticesl; // [esp+24h] [ebp+Ch]
     int numVerticesg; // [esp+24h] [ebp+Ch]
     int numVerticesh; // [esp+24h] [ebp+Ch]
 
@@ -2257,7 +2258,7 @@ int rdClip_Face3S(rdClipFrustum *frustum, rdVector3 *vertices, int numVertices)
                 }
                 numVerticesb = frustum->nearLeft * v12;
 
-                if ( fabs(frustuma) <= fabs(v112) )
+                if ( stdMath_Fabs(frustuma) <= stdMath_Fabs(v112) )
                     v20 = (numVerticesb - v7->x) / v112;
                 else
                     v20 = (v12 - v7->y) / frustuma;
@@ -2372,7 +2373,7 @@ int rdClip_Face3S(rdClipFrustum *frustum, rdVector3 *vertices, int numVertices)
                 }
                 v60 = frustum->nearTop * v57;
 
-                if ( fabs(frustumc) <= fabs(v114) )
+                if ( stdMath_Fabs(frustumc) <= stdMath_Fabs(v114) )
                     v66 = (v60 - v49->z) / v114;
                 else
                     v66 = (v57 - v49->y) / frustumc;
@@ -2552,143 +2553,143 @@ int rdClip_Face3S(rdClipFrustum *frustum, rdVector3 *vertices, int numVertices)
     return v5;
 }
 
-int rdClip_Face3GS(rdClipFrustum *frustum, rdVector3 *vertices, float *a3, int numVertices)
+int rdClip_Face3GS(rdClipFrustum *frustum, rdVector3 *vertices, flex_t *a3, int numVertices)
 {
     //return _rdClip_Face3GS(frustum, vertices, a3, numVertices);
     rdVector3 *v4; // edx
-    float *v5; // edi
-    float *v6; // ebx
+    flex_t *v5; // edi
+    flex_t *v6; // ebx
     rdVector3 *v7; // ecx
-    float *v8; // ebp
+    flex_t *v8; // ebp
     rdVector3 *v9; // esi
-    double v11; // st7
-    double v14; // st6
-    double v17; // st5
-    double v18; // st4
-    double v21; // st3
-    double v23; // st4
-    double v24; // st3
-    double v25; // st5
-    double v26; // rtt
-    double v27; // st4
-    double v28; // st5
+    flex_d_t v11; // st7
+    flex_d_t v14; // st6
+    flex_d_t v17; // st5
+    flex_d_t v18; // st4
+    flex_d_t v21; // st3
+    flex_d_t v23; // st4
+    flex_d_t v24; // st3
+    flex_d_t v25; // st5
+    flex_d_t v26; // rtt
+    flex_d_t v27; // st4
+    flex_d_t v28; // st5
     rdVector3 *v30; // eax
     signed int result; // eax
-    float *copy_pDestIVert; // eax
+    flex_t *copy_pDestIVert; // eax
     rdVector3 *copy_pDestVert; // ebx
-    float *copy_pSourceIVert; // esi
+    flex_t *copy_pSourceIVert; // esi
     rdVector3 *copy_pSourceVert; // edi
     int v37; // ecx
-    float *v38; // ebp
+    flex_t *v38; // ebp
     rdVector3 *v39; // ecx
     rdVector3 *v40; // edx
-    float *v41; // edi
-    double v43; // st7
-    double v47; // st6
-    double v50; // st5
-    double v51; // st4
-    double v54; // st3
-    double v56; // st4
-    double v57; // st3
-    double v58; // st5
-    double v59; // rt2
-    double v60; // st4
-    double v61; // st5
+    flex_t *v41; // edi
+    flex_d_t v43; // st7
+    flex_d_t v47; // st6
+    flex_d_t v50; // st5
+    flex_d_t v51; // st4
+    flex_d_t v54; // st3
+    flex_d_t v56; // st4
+    flex_d_t v57; // st3
+    flex_d_t v58; // st5
+    flex_d_t v59; // rt2
+    flex_d_t v60; // st4
+    flex_d_t v61; // st5
     rdVector3 *v63; // eax
     int v64; // ecx
     int v65; // edi
     int v66; // esi
     rdVector3 *v67; // ebx
-    float *v68; // eax
+    flex_t *v68; // eax
     rdVector3 *v69; // edi
-    float *v70; // esi
+    flex_t *v70; // esi
     rdVector3 *v71; // edx
-    float *v72; // ebp
-    float *v73; // ecx
-    float *v74; // edi
-    double v76; // st7
-    double v80; // st5
-    double v81; // st6
-    double v84; // st5
-    double v85; // st4
-    double v88; // st3
-    double v90; // st4
-    double v91; // st3
+    flex_t *v72; // ebp
+    flex_t *v73; // ecx
+    flex_t *v74; // edi
+    flex_d_t v76; // st7
+    flex_d_t v80; // st5
+    flex_d_t v81; // st6
+    flex_d_t v84; // st5
+    flex_d_t v85; // st4
+    flex_d_t v88; // st3
+    flex_d_t v90; // st4
+    flex_d_t v91; // st3
     rdVector3 *v93; // eax
     rdVector3 *v94; // ebx
-    float *v95; // esi
+    flex_t *v95; // esi
     rdVector3 *v96; // edx
-    float *v97; // edi
+    flex_t *v97; // edi
     rdVector3 *v98; // ecx
-    float *v99; // ebp
-    float *v100; // edx
-    double v102; // st7
-    double v105; // st5
-    double v106; // st6
-    double v109; // st5
-    double v110; // st4
-    double v113; // st3
-    double v115; // st4
-    double v116; // st3
+    flex_t *v99; // ebp
+    flex_t *v100; // edx
+    flex_d_t v102; // st7
+    flex_d_t v105; // st5
+    flex_d_t v106; // st6
+    flex_d_t v109; // st5
+    flex_d_t v110; // st4
+    flex_d_t v113; // st3
+    flex_d_t v115; // st4
+    flex_d_t v116; // st3
     rdVector3 *v118; // eax
-    float *v119; // esi
-    float *v120; // edi
+    flex_t *v119; // esi
+    flex_t *v120; // edi
     rdVector3 *v121; // ebx
     rdVector3 *v122; // edx
     int v123; // eax
     int v124; // ebp
     rdVector3 *v125; // ecx
-    float *v126; // edx
-    double v127; // st7
-    double v128; // st6
-    double v129; // st5
-    double v130; // st6
+    flex_t *v126; // edx
+    flex_d_t v127; // st7
+    flex_d_t v128; // st6
+    flex_d_t v129; // st5
+    flex_d_t v130; // st6
     rdVector3 *v132; // ecx
     int v135; // edi
-    float* v136; // esi
+    flex_t* v136; // esi
     int v137; // edx
-    float *v138; // edi
+    flex_t *v138; // edi
     int v139; // ecx
     rdVector3 *v140; // ebx
     rdVector3 *v141; // edx
     int v142; // eax
     rdVector3 *v143; // ecx
-    float *v144; // edx
-    double v145; // st7
-    double v146; // st6
-    double v147; // st5
-    double v148; // st6
+    flex_t *v144; // edx
+    flex_d_t v145; // st7
+    flex_d_t v146; // st6
+    flex_d_t v147; // st5
+    flex_d_t v148; // st6
     rdVector3 *v150; // eax
     int v151; // [esp+10h] [ebp-10h]
     int v152; // [esp+10h] [ebp-10h]
     int v153; // [esp+10h] [ebp-10h]
     int v154; // [esp+10h] [ebp-10h]
-    float *v155; // [esp+10h] [ebp-10h]
-    float *v156; // [esp+10h] [ebp-10h]
-    double v157; // [esp+14h] [ebp-Ch]
-    double v158; // [esp+14h] [ebp-Ch]
-    double v159; // [esp+14h] [ebp-Ch]
-    double v160; // [esp+14h] [ebp-Ch]
-    double v161; // [esp+18h] [ebp-8h]
-    double v162; // [esp+18h] [ebp-8h]
-    double v163; // [esp+18h] [ebp-8h]
-    double v164; // [esp+18h] [ebp-8h]
-    float *v165; // [esp+18h] [ebp-8h]
-    float *v166; // [esp+18h] [ebp-8h]
+    flex_t *v155; // [esp+10h] [ebp-10h]
+    flex_t *v156; // [esp+10h] [ebp-10h]
+    flex_d_t v157; // [esp+14h] [ebp-Ch]
+    flex_d_t v158; // [esp+14h] [ebp-Ch]
+    flex_d_t v159; // [esp+14h] [ebp-Ch]
+    flex_d_t v160; // [esp+14h] [ebp-Ch]
+    flex_d_t v161; // [esp+18h] [ebp-8h]
+    flex_d_t v162; // [esp+18h] [ebp-8h]
+    flex_d_t v163; // [esp+18h] [ebp-8h]
+    flex_d_t v164; // [esp+18h] [ebp-8h]
+    flex_t *v165; // [esp+18h] [ebp-8h]
+    flex_t *v166; // [esp+18h] [ebp-8h]
     int v167; // [esp+1Ch] [ebp-4h]
     int v168; // [esp+1Ch] [ebp-4h]
     int v169; // [esp+1Ch] [ebp-4h]
     signed int v170; // [esp+1Ch] [ebp-4h]
-    double numVerticesa; // [esp+30h] [ebp+10h]
-    double numVerticesi; // [esp+30h] [ebp+10h]
+    flex_d_t numVerticesa; // [esp+30h] [ebp+10h]
+    flex_d_t numVerticesi; // [esp+30h] [ebp+10h]
     int numVerticesb; // [esp+30h] [ebp+10h]
-    double numVerticesc; // [esp+30h] [ebp+10h]
-    double numVerticesj; // [esp+30h] [ebp+10h]
+    flex_d_t numVerticesc; // [esp+30h] [ebp+10h]
+    flex_d_t numVerticesj; // [esp+30h] [ebp+10h]
     int numVerticesd; // [esp+30h] [ebp+10h]
-    double numVerticese; // [esp+30h] [ebp+10h]
-    double numVerticesk; // [esp+30h] [ebp+10h]
-    double numVerticesf; // [esp+30h] [ebp+10h]
-    double numVerticesl; // [esp+30h] [ebp+10h]
+    flex_d_t numVerticese; // [esp+30h] [ebp+10h]
+    flex_d_t numVerticesk; // [esp+30h] [ebp+10h]
+    flex_d_t numVerticesf; // [esp+30h] [ebp+10h]
+    flex_d_t numVerticesl; // [esp+30h] [ebp+10h]
     int numVerticesg; // [esp+30h] [ebp+10h]
     int numVerticesh; // [esp+30h] [ebp+10h]
 
@@ -2713,7 +2714,7 @@ int rdClip_Face3GS(rdClipFrustum *frustum, rdVector3 *vertices, float *a3, int n
             v11 = frustum->nearLeft * v4->y;
             if ( numVerticesa <= v7->x || v11 <= v4->x )
             {
-                if ( v7->x != numVerticesa && v11 != v4->x && (v7->x < (double)numVerticesa || v11 > v4->x) )
+                if ( v7->x != numVerticesa && v11 != v4->x && (v7->x < (flex_d_t)numVerticesa || v11 > v4->x) )
                 {
                     v157 = v4->y - v7->y;
                     v161 = v4->x - v7->x;
@@ -2793,7 +2794,7 @@ int rdClip_Face3GS(rdClipFrustum *frustum, rdVector3 *vertices, float *a3, int n
                 v43 = frustum->right * v40->y;
                 if ( numVerticesc >= v39->x || v43 >= v40->x )
                 {
-                    if ( v39->x != numVerticesc && v43 != v40->x && (v39->x > (double)numVerticesc || v43 < v40->x) )
+                    if ( v39->x != numVerticesc && v43 != v40->x && (v39->x > (flex_d_t)numVerticesc || v43 < v40->x) )
                     {
                         v162 = v40->y - v39->y;
                         v158 = v40->x - v39->x;
@@ -2856,9 +2857,9 @@ int rdClip_Face3GS(rdClipFrustum *frustum, rdVector3 *vertices, float *a3, int n
         v65 = (intptr_t)copy_pDestVert ^ (intptr_t)copy_pSourceVert;
         v66 = (intptr_t)copy_pDestIVert ^ (intptr_t)copy_pSourceIVert;
         v67 = (rdVector3 *)(v65 ^ (intptr_t)copy_pDestVert);
-        v68 = (float *)(v66 ^ (intptr_t)copy_pDestIVert);
+        v68 = (flex_t *)(v66 ^ (intptr_t)copy_pDestIVert);
         v69 = (rdVector3 *)((intptr_t)v67 ^ v65);
-        v70 = (float *)((intptr_t)v68 ^ v66);
+        v70 = (flex_t *)((intptr_t)v68 ^ v66);
         pDestVert = v67;
         pSourceVert = v69;
         pDestIVert = v68;
@@ -2878,7 +2879,7 @@ int rdClip_Face3GS(rdClipFrustum *frustum, rdVector3 *vertices, float *a3, int n
                 v76 = *(v73 - 1) * frustum->nearTop;
                 if ( numVerticese >= v71->z || v76 >= *v73 )
                 {
-                    if ( v71->z != numVerticese && v76 != *v73 && (v71->z > (double)numVerticese || v76 < *v73) )
+                    if ( v71->z != numVerticese && v76 != *v73 && (v71->z > (flex_d_t)numVerticese || v76 < *v73) )
                     {
                         v163 = *(v73 - 1) - v71->y;
                         v159 = *v73 - v71->z;
@@ -2952,7 +2953,7 @@ int rdClip_Face3GS(rdClipFrustum *frustum, rdVector3 *vertices, float *a3, int n
                     v102 = *(v100 - 1) * frustum->bottom;
                     if ( numVerticesf <= v98->z || v102 <= *v100 )
                     {
-                        if ( v98->z != numVerticesf && v102 != *v100 && (v98->z < (double)numVerticesf || v102 > *v100) )
+                        if ( v98->z != numVerticesf && v102 != *v100 && (v98->z < (flex_d_t)numVerticesf || v102 > *v100) )
                         {
                             v164 = *(v100 - 1) - v98->y;
                             v160 = *v100 - v98->z;
@@ -3024,11 +3025,11 @@ int rdClip_Face3GS(rdClipFrustum *frustum, rdVector3 *vertices, float *a3, int n
                     numVerticesg = v123;
                     do
                     {
-                        if ( v125->y >= (double)frustum->field_0.y || *v126 >= (double)frustum->field_0.y )
+                        if ( v125->y >= (flex_d_t)frustum->field_0.y || *v126 >= (flex_d_t)frustum->field_0.y )
                         {
                             if ( v125->y != frustum->field_0.y
                               && *v126 != frustum->field_0.y
-                              && (v125->y < (double)frustum->field_0.y || *v126 < (double)frustum->field_0.y) )
+                              && (v125->y < (flex_d_t)frustum->field_0.y || *v126 < (flex_d_t)frustum->field_0.y) )
                             {
                                 ++v124;
                                 ++v119;
@@ -3043,7 +3044,7 @@ int rdClip_Face3GS(rdClipFrustum *frustum, rdVector3 *vertices, float *a3, int n
                                 v121[-1].x = v130;
                                 rdClip_faceStatus |= 1;
                             }
-                            if ( *v126 >= (double)frustum->field_0.y )
+                            if ( *v126 >= (flex_d_t)frustum->field_0.y )
                             {
                                 v132 = v121;
                                 ++v124;
@@ -3077,9 +3078,9 @@ int rdClip_Face3GS(rdClipFrustum *frustum, rdVector3 *vertices, float *a3, int n
                 if (frustum->field_0.x)
                 {
                     v135 = (intptr_t)v119 ^ (intptr_t)v120;
-                    v136 = (float*)(v135 ^ (intptr_t)v119);
+                    v136 = (flex_t*)(v135 ^ (intptr_t)v119);
                     v137 = (intptr_t)v121 ^ (intptr_t)v122;
-                    v138 = (float *)((intptr_t)v136 ^ v135);
+                    v138 = (flex_t *)((intptr_t)v136 ^ v135);
                     v139 = v124;
                     v140 = (rdVector3 *)(v137 ^ (intptr_t)v121);
                     v141 = (rdVector3 *)((intptr_t)v140 ^ v137);
@@ -3096,11 +3097,11 @@ int rdClip_Face3GS(rdClipFrustum *frustum, rdVector3 *vertices, float *a3, int n
                     numVerticesh = v142;
                     do
                     {
-                        if ( v143->y <= (double)frustum->field_0.z || *v144 <= (double)frustum->field_0.z )
+                        if ( v143->y <= (flex_d_t)frustum->field_0.z || *v144 <= (flex_d_t)frustum->field_0.z )
                         {
                             if ( v143->y != frustum->field_0.z
                               && *v144 != frustum->field_0.z
-                              && (v143->y > (double)frustum->field_0.z || *v144 > (double)frustum->field_0.z) )
+                              && (v143->y > (flex_d_t)frustum->field_0.z || *v144 > (flex_d_t)frustum->field_0.z) )
                             {
                                 ++v124;
                                 v145 = (frustum->field_0.z - v143->y) / (*v144 - v143->y);
@@ -3115,7 +3116,7 @@ int rdClip_Face3GS(rdClipFrustum *frustum, rdVector3 *vertices, float *a3, int n
                                 v140[-1].x = v148;
                                 rdClip_faceStatus |= 2;
                             }
-                            if ( *v144 <= (double)frustum->field_0.z )
+                            if ( *v144 <= (flex_d_t)frustum->field_0.z )
                             {
                                 v150 = v140;
                                 ++v124;
@@ -3140,7 +3141,7 @@ int rdClip_Face3GS(rdClipFrustum *frustum, rdVector3 *vertices, float *a3, int n
                 if ( v121 != vertices )
                 {
                     _memcpy(vertices, v121, v124 * sizeof(rdVector3));
-                    _memcpy(a3, pDestIVert, sizeof(float) * v124);
+                    _memcpy(a3, pDestIVert, sizeof(flex_t) * v124);
                 }
                 return v124;
             }
@@ -3160,23 +3161,23 @@ int rdClip_Face3T(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, i
     rdVector2 *v8; // ebp
     rdVector2 *v9; // ebx
     rdVector3 *v10; // esi
-    double v12; // st7
+    flex_d_t v12; // st7
 //    char missing_18; // c0
-    double v15; // st6
+    flex_d_t v15; // st6
 //    char missing_17; // c3
-    double v18; // st5
-    double v19; // st4
+    flex_d_t v18; // st5
+    flex_d_t v19; // st4
 //    char missing_16; // c0
-    double v22; // st3
+    flex_d_t v22; // st3
 //    char missing_15; // c0
-    double v24; // st4
-    double v25; // st3
-    double v26; // st5
-    double v27; // rtt
-    double v28; // st4
-    double v29; // st5
-    double v30; // st4
-    double v31; // st5
+    flex_d_t v24; // st4
+    flex_d_t v25; // st3
+    flex_d_t v26; // st5
+    flex_d_t v27; // rtt
+    flex_d_t v28; // st4
+    flex_d_t v29; // st5
+    flex_d_t v30; // st4
+    flex_d_t v31; // st5
     int v32; // eax
     rdVector3 *v33; // eax
     signed int result; // eax
@@ -3190,24 +3191,24 @@ int rdClip_Face3T(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, i
     rdVector2 *v43; // ebp
     rdVector2 *v44; // ebx
     rdVector3 *v45; // esi
-    double v47; // st7
+    flex_d_t v47; // st7
 //    unsigned __int8 missing_13; // c0
 //    unsigned __int8 missing_14; // c3
-    double v51; // st6
+    flex_d_t v51; // st6
 //    char missing_12; // c3
-    double v54; // st5
-    double v55; // st4
+    flex_d_t v54; // st5
+    flex_d_t v55; // st4
 //    char missing_11; // c0
-    double v58; // st3
+    flex_d_t v58; // st3
 //    char missing_10; // c0
-    double v60; // st4
-    double v61; // st3
-    double v62; // st5
-    double v63; // rt1
-    double v64; // st4
-    double v65; // st5
-    double v66; // st4
-    double v67; // st5
+    flex_d_t v60; // st4
+    flex_d_t v61; // st3
+    flex_d_t v62; // st5
+    flex_d_t v63; // rt1
+    flex_d_t v64; // st4
+    flex_d_t v65; // st5
+    flex_d_t v66; // st4
+    flex_d_t v67; // st5
     int v68; // eax
     rdVector3 *v69; // eax
     int v70; // edx
@@ -3220,24 +3221,24 @@ int rdClip_Face3T(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, i
     rdVector3 *v77; // ecx
     rdVector2 *v78; // edi
     rdVector2 *v79; // ebp
-    float *v80; // edx
+    flex_t *v80; // edx
     rdVector3 *v81; // esi
-    double v83; // st7
+    flex_d_t v83; // st7
 //    unsigned __int8 missing_8; // c0
 //    unsigned __int8 missing_9; // c3
-    double v87; // st5
-    double v88; // st6
+    flex_d_t v87; // st5
+    flex_d_t v88; // st6
 //    char missing_7; // c3
-    double v91; // st5
-    double v92; // st4
+    flex_d_t v91; // st5
+    flex_d_t v92; // st4
 //    char missing_6; // c0
-    double v95; // st3
+    flex_d_t v95; // st3
 //    char missing_5; // c0
-    double v97; // st4
-    double v98; // st3
+    flex_d_t v97; // st4
+    flex_d_t v98; // st3
     int v99; // eax
-    double v100; // st2
-    double v101; // st3
+    flex_d_t v100; // st2
+    flex_d_t v101; // st3
     rdVector3 *v102; // eax
     int v103; // esi
     intptr_t v104; // ebx
@@ -3248,23 +3249,23 @@ int rdClip_Face3T(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, i
     rdVector3 *v109; // edx
     rdVector2 *v110; // ebp
     rdVector2 *v111; // edi
-    float *v112; // ecx
+    flex_t *v112; // ecx
     rdVector3 *v113; // esi
-    double v115; // st7
+    flex_d_t v115; // st7
 //    char missing_4; // c0
-    double v118; // st5
-    double v119; // st6
+    flex_d_t v118; // st5
+    flex_d_t v119; // st6
 //    char missing_3; // c3
-    double v122; // st5
-    double v123; // st4
+    flex_d_t v122; // st5
+    flex_d_t v123; // st4
 //    char missing_2; // c0
-    double v126; // st3
+    flex_d_t v126; // st3
 //    char missing_1; // c0
-    double v128; // st4
-    double v129; // st3
+    flex_d_t v128; // st4
+    flex_d_t v129; // st3
     int v130; // eax
-    double v131; // st2
-    double v132; // st3
+    flex_d_t v131; // st2
+    flex_d_t v132; // st3
     rdVector3 *v133; // eax
     intptr_t v134; // ecx
     intptr_t v135; // ebp
@@ -3274,14 +3275,14 @@ int rdClip_Face3T(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, i
     rdVector2 *v139; // esi
     rdVector2 *v140; // edi
     rdVector3 *v141; // ebx
-    float *v142; // edx
-    double v143; // st7
+    flex_t *v142; // edx
+    flex_d_t v143; // st7
     int v144; // eax
-    double v145; // st6
-    double v146; // st5
-    double v147; // st6
-    double v148; // st5
-    double v149; // st6
+    flex_d_t v145; // st6
+    flex_d_t v146; // st5
+    flex_d_t v147; // st6
+    flex_d_t v148; // st5
+    flex_d_t v149; // st6
     rdVector3 *v150; // ecx
     rdVector3 *v151; // esi
     int v152; // eax
@@ -3292,14 +3293,14 @@ int rdClip_Face3T(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, i
     rdVector2 *v157; // esi
     rdVector2 *v158; // edi
     rdVector3 *v159; // ebx
-    float *v160; // edx
-    double v161; // st7
+    flex_t *v160; // edx
+    flex_d_t v161; // st7
     int v162; // eax
-    double v163; // st6
-    double v164; // st5
-    double v165; // st6
-    double v166; // st5
-    double v167; // st6
+    flex_d_t v163; // st6
+    flex_d_t v164; // st5
+    flex_d_t v165; // st6
+    flex_d_t v166; // st5
+    flex_d_t v167; // st6
     rdVector3 *v168; // ecx
     int v169; // [esp+10h] [ebp-10h]
     int v170; // [esp+10h] [ebp-10h]
@@ -3307,29 +3308,29 @@ int rdClip_Face3T(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, i
     int v172; // [esp+10h] [ebp-10h]
     int v173; // [esp+10h] [ebp-10h]
     int v174; // [esp+10h] [ebp-10h]
-    double v175; // [esp+14h] [ebp-Ch]
-    double v176; // [esp+14h] [ebp-Ch]
-    double v177; // [esp+14h] [ebp-Ch]
-    double v178; // [esp+14h] [ebp-Ch]
-    double v179; // [esp+18h] [ebp-8h]
-    double v180; // [esp+18h] [ebp-8h]
-    double v181; // [esp+18h] [ebp-8h]
-    double v182; // [esp+18h] [ebp-8h]
+    flex_d_t v175; // [esp+14h] [ebp-Ch]
+    flex_d_t v176; // [esp+14h] [ebp-Ch]
+    flex_d_t v177; // [esp+14h] [ebp-Ch]
+    flex_d_t v178; // [esp+14h] [ebp-Ch]
+    flex_d_t v179; // [esp+18h] [ebp-8h]
+    flex_d_t v180; // [esp+18h] [ebp-8h]
+    flex_d_t v181; // [esp+18h] [ebp-8h]
+    flex_d_t v182; // [esp+18h] [ebp-8h]
     int v183; // [esp+1Ch] [ebp-4h]
     int v184; // [esp+1Ch] [ebp-4h]
     int v185; // [esp+1Ch] [ebp-4h]
     int v186; // [esp+1Ch] [ebp-4h]
-    double numVerticesa; // [esp+30h] [ebp+10h]
-    double numVerticesj; // [esp+30h] [ebp+10h]
+    flex_d_t numVerticesa; // [esp+30h] [ebp+10h]
+    flex_d_t numVerticesj; // [esp+30h] [ebp+10h]
     int numVerticesb; // [esp+30h] [ebp+10h]
-    double numVerticesc; // [esp+30h] [ebp+10h]
-    double numVerticesk; // [esp+30h] [ebp+10h]
+    flex_d_t numVerticesc; // [esp+30h] [ebp+10h]
+    flex_d_t numVerticesk; // [esp+30h] [ebp+10h]
     int numVerticesd; // [esp+30h] [ebp+10h]
-    double numVerticese; // [esp+30h] [ebp+10h]
-    double numVerticesl; // [esp+30h] [ebp+10h]
+    flex_d_t numVerticese; // [esp+30h] [ebp+10h]
+    flex_d_t numVerticesl; // [esp+30h] [ebp+10h]
     int numVerticesf; // [esp+30h] [ebp+10h]
-    double numVerticesg; // [esp+30h] [ebp+10h]
-    double numVerticesm; // [esp+30h] [ebp+10h]
+    flex_d_t numVerticesg; // [esp+30h] [ebp+10h]
+    flex_d_t numVerticesm; // [esp+30h] [ebp+10h]
     int numVerticesh; // [esp+30h] [ebp+10h]
     int numVerticesi; // [esp+30h] [ebp+10h]
 
@@ -3355,7 +3356,7 @@ int rdClip_Face3T(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, i
             v12 = frustum->nearLeft * v4->y;
             if ( numVerticesa <= v6->x|| v12 <= v4->x )
             {
-                if ( v6->x != numVerticesa && v12 != v4->x && (v6->x < (double)numVerticesa || v12 > v4->x) )
+                if ( v6->x != numVerticesa && v12 != v4->x && (v6->x < (flex_d_t)numVerticesa || v12 > v4->x) )
                 {
                     v175 = v4->y - v6->y;
                     v179 = v4->x - v6->x;
@@ -3443,7 +3444,7 @@ int rdClip_Face3T(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, i
                 v47 = frustum->right * v42->y;
                 if ( numVerticesc >= v41->x|| v47 >= v42->x )
                 {
-                    if ( v41->x != numVerticesc && v47 != v42->x && (v41->x > (double)numVerticesc || v47 < v42->x) )
+                    if ( v41->x != numVerticesc && v47 != v42->x && (v41->x > (flex_d_t)numVerticesc || v47 < v42->x) )
                     {
                         v180 = v42->y - v41->y;
                         v176 = v42->x - v41->x;
@@ -3533,7 +3534,7 @@ int rdClip_Face3T(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, i
                 v83 = *(v80 - 1) * frustum->nearTop;
                 if ( numVerticese >= v77->z || v83 >= *v80 )
                 {
-                    if ( v77->z != numVerticese && v83 != *v80 && (v77->z > (double)numVerticese || v83 < *v80) )
+                    if ( v77->z != numVerticese && v83 != *v80 && (v77->z > (flex_d_t)numVerticese || v83 < *v80) )
                     {
                         v181 = *(v80 - 1) - v77->y;
                         v177 = *v80 - v77->z;
@@ -3620,7 +3621,7 @@ int rdClip_Face3T(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, i
                 v115 = *(v112 - 1) * frustum->bottom;
                 if ( numVerticesg <= v109->z || v115 <= *v112 )
                 {
-                    if ( v109->z != numVerticesg && v115 != *v112 && (v109->z < (double)numVerticesg || v115 > *v112) )
+                    if ( v109->z != numVerticesg && v115 != *v112 && (v109->z < (flex_d_t)numVerticesg || v115 > *v112) )
                     {
                         v182 = *(v112 - 1) - v109->y;
                         v178 = *v112 - v109->z;
@@ -3695,11 +3696,11 @@ int rdClip_Face3T(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, i
         numVerticesh = v137;
         do
         {
-            if ( v138->y >= (double)frustum->field_0.y || *v142 >= (double)frustum->field_0.y )
+            if ( v138->y >= (flex_d_t)frustum->field_0.y || *v142 >= (flex_d_t)frustum->field_0.y )
             {
                 if ( v138->y != frustum->field_0.y
                   && *v142 != frustum->field_0.y
-                  && (v138->y < (double)frustum->field_0.y || *v142 < (double)frustum->field_0.y) )
+                  && (v138->y < (flex_d_t)frustum->field_0.y || *v142 < (flex_d_t)frustum->field_0.y) )
                 {
                     v143 = (frustum->field_0.y - v138->y) / (*v142 - v138->y);
                     v141->y = frustum->field_0.y;
@@ -3717,7 +3718,7 @@ int rdClip_Face3T(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, i
                     ++v140;
                     ++v141;
                 }
-                if ( *v142 >= (double)frustum->field_0.y )
+                if ( *v142 >= (flex_d_t)frustum->field_0.y )
                 {
                     v150 = v141++;
                     v150->x = *(v142 - 1);
@@ -3761,11 +3762,11 @@ int rdClip_Face3T(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, i
             numVerticesi = v155;
             do
             {
-                if ( v156->y <= (double)frustum->field_0.z || *v160 <= (double)frustum->field_0.z )
+                if ( v156->y <= (flex_d_t)frustum->field_0.z || *v160 <= (flex_d_t)frustum->field_0.z )
                 {
                     if ( v156->y != frustum->field_0.z
                       && *v160 != frustum->field_0.z
-                      && (v156->y > (double)frustum->field_0.z || *v160 > (double)frustum->field_0.z) )
+                      && (v156->y > (flex_d_t)frustum->field_0.z || *v160 > (flex_d_t)frustum->field_0.z) )
                     {
                         ++v159;
                         ++v158;
@@ -3783,7 +3784,7 @@ int rdClip_Face3T(rdClipFrustum *frustum, rdVector3 *vertices, rdVector2 *uvs, i
                         v159[-1].x = v166;
                         v158[-1].y = v167;
                     }
-                    if ( *v160 <= (double)frustum->field_0.z )
+                    if ( *v160 <= (flex_d_t)frustum->field_0.z )
                     {
                         v168 = v159++;
                         v168->x = *(v160 - 1);
@@ -3820,19 +3821,19 @@ LABEL_124:
 
 // MOTS TODO
 
-int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float *pG,float *pB,int numVertices)
+int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,flex_t *pR,flex_t *pG,flex_t *pB,int numVertices)
 {
-    float fVar1;
-    float fVar2;
-    float fVar3;
-    float fVar4;
-    float fVar5;
-    float fVar6;
-    float fVar7;
-    float fVar8;
-    float fVar9;
-    float fVar10;
-    float fVar11;
+    flex_t fVar1;
+    flex_t fVar2;
+    flex_t fVar3;
+    flex_t fVar4;
+    flex_t fVar5;
+    flex_t fVar6;
+    flex_t fVar7;
+    flex_t fVar8;
+    flex_t fVar9;
+    flex_t fVar10;
+    flex_t fVar11;
     intptr_t iVar12;
     intptr_t iVar13;
     intptr_t iVar14;
@@ -3840,23 +3841,23 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
     rdVector3 *prVar16;
     rdVector3 *prVar17;
     rdVector3 *prVar18;
-    float *pfVar19;
+    flex_t *pfVar19;
     rdVector3 *prVar20;
-    float *pfVar21;
-    float *pfVar22;
-    float *pfVar23;
-    float *pfVar24;
-    float *pfVar25;
-    float *pfVar26;
-    float *pfVar27;
+    flex_t *pfVar21;
+    flex_t *pfVar22;
+    flex_t *pfVar23;
+    flex_t *pfVar24;
+    flex_t *pfVar25;
+    flex_t *pfVar26;
+    flex_t *pfVar27;
     uint32_t local_30;
-    float *local_2c;
-    float *local_28;
-    float *local_1c;
-    float *local_14;
-    float *local_10;
-    float *local_c;
-    float *local_8;
+    flex_t *local_2c;
+    flex_t *local_28;
+    flex_t *local_1c;
+    flex_t *local_14;
+    flex_t *local_10;
+    flex_t *local_c;
+    flex_t *local_8;
     uint32_t local_4;
     
     rdClip_faceStatus = 0;
@@ -3916,9 +3917,9 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
                         fVar11 = (fVar4 - prVar17->x) / fVar1;
                     }
                     prVar16 = prVar20 + 1;
-                    fVar1 = *(float *)(iVar12 + (intptr_t)pfVar25);
+                    fVar1 = *(flex_t *)(iVar12 + (intptr_t)pfVar25);
                     pfVar27 = pfVar26 + 1;
-                    fVar2 = *(float *)(iVar13 + (intptr_t)pfVar25);
+                    fVar2 = *(flex_t *)(iVar13 + (intptr_t)pfVar25);
                     fVar3 = *pfVar25;
                     prVar20->x = fVar4;
                     pfVar22 = pfVar24 + 1;
@@ -3948,16 +3949,16 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
                     pfVar22 = local_c + 1;
                     prVar16->z = prVar18->z;
                     fVar11 = *pfVar25;
-                    *pfVar27 = *(float *)(iVar12 + (intptr_t)pfVar25);
-                    *local_c = *(float *)(iVar13 + (intptr_t)pfVar25);
+                    *pfVar27 = *(flex_t *)(iVar12 + (intptr_t)pfVar25);
+                    *local_c = *(flex_t *)(iVar13 + (intptr_t)pfVar25);
                     *local_10 = fVar11;
                     local_30 = local_30 + 1;
                     local_10 = local_10 + 1;
                     local_c = pfVar22;
                 }
             }
-            local_2c = (float *)(iVar12 + (intptr_t)pfVar25);
-            local_28 = (float *)(iVar13 + (intptr_t)pfVar25);
+            local_2c = (flex_t *)(iVar12 + (intptr_t)pfVar25);
+            local_28 = (flex_t *)(iVar13 + (intptr_t)pfVar25);
             local_4 = local_4 + -1;
             pfVar27 = pfVar25 + 1;
             prVar17 = prVar18;
@@ -4026,9 +4027,9 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
                         fVar11 = (fVar4 - prVar17->x) / fVar1;
                     }
                     prVar16 = prVar20 + 1;
-                    fVar1 = *(float *)(iVar13 + (intptr_t)pfVar25);
+                    fVar1 = *(flex_t *)(iVar13 + (intptr_t)pfVar25);
                     pfVar22 = pfVar26 + 1;
-                    fVar2 = *(float *)(iVar14 + (intptr_t)pfVar25);
+                    fVar2 = *(flex_t *)(iVar14 + (intptr_t)pfVar25);
                     fVar3 = *pfVar25;
                     prVar20->x = fVar4;
                     prVar20->y = fVar5;
@@ -4055,8 +4056,8 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
                     prVar16->y = prVar18->y;
                     pfVar22 = local_10 + 1;
                     prVar16->z = prVar18->z;
-                    *local_10 = *(float *)(iVar13 + (intptr_t)pfVar25);
-                    *local_c = *(float *)(iVar14 + (intptr_t)pfVar25);
+                    *local_10 = *(flex_t *)(iVar13 + (intptr_t)pfVar25);
+                    *local_c = *(flex_t *)(iVar14 + (intptr_t)pfVar25);
                     *local_8 = *pfVar25;
                     local_30 = local_30 + 1;
                     local_c = local_c + 1;
@@ -4064,8 +4065,8 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
                     local_10 = pfVar22;
                 }
             }
-            local_2c = (float *)(iVar13 + (intptr_t)pfVar25);
-            local_28 = (float *)(iVar14 + (intptr_t)pfVar25);
+            local_2c = (flex_t *)(iVar13 + (intptr_t)pfVar25);
+            local_28 = (flex_t *)(iVar14 + (intptr_t)pfVar25);
             local_4 = local_4 - 1;
             pfVar24 = pfVar25 + 1;
             prVar17 = prVar18;
@@ -4141,9 +4142,9 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
                             fVar11 = (fVar4 - prVar20->z) / fVar1;
                         }
                         prVar17 = prVar16 + 1;
-                        fVar1 = *(float *)((intptr_t)pfVar21 + iVar12);
+                        fVar1 = *(flex_t *)((intptr_t)pfVar21 + iVar12);
                         pfVar27 = pfVar23 + 1;
-                        fVar2 = *(float *)((intptr_t)pfVar21 + iVar13);
+                        fVar2 = *(flex_t *)((intptr_t)pfVar21 + iVar13);
                         fVar3 = *pfVar21;
                         fVar6 = *local_2c;
                         fVar7 = *local_28;
@@ -4169,8 +4170,8 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
                         prVar17->y = pfVar25[-1];
                         pfVar27 = local_c + 1;
                         prVar17->z = *pfVar25;
-                        *local_c = *(float *)((intptr_t)pfVar21 + iVar12);
-                        *local_14 = *(float *)((intptr_t)pfVar21 + iVar13);
+                        *local_c = *(flex_t *)((intptr_t)pfVar21 + iVar12);
+                        *local_14 = *(flex_t *)((intptr_t)pfVar21 + iVar13);
                         *local_8 = *pfVar21;
                         local_30 = local_30 + 1;
                         local_14 = local_14 + 1;
@@ -4179,8 +4180,8 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
                     }
                 }
                 prVar20 = (rdVector3 *)(pfVar25 + -2);
-                local_2c = (float *)(iVar12 + (intptr_t)pfVar21);
-                local_28 = (float *)(iVar13 + (intptr_t)pfVar21);
+                local_2c = (flex_t *)(iVar12 + (intptr_t)pfVar21);
+                local_28 = (flex_t *)(iVar13 + (intptr_t)pfVar21);
                 pfVar25 = pfVar25 + 3;
                 uVar15 = local_4 - 1;
                 local_4 = local_30;
@@ -4259,9 +4260,9 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
                                 fVar11 = (fVar4 - prVar17->z) / fVar1;
                             }
                             prVar18 = prVar20 + 1;
-                            fVar1 = *(float *)((intptr_t)pfVar21 + iVar12);
+                            fVar1 = *(flex_t *)((intptr_t)pfVar21 + iVar12);
                             pfVar24 = pfVar23 + 1;
-                            fVar2 = *(float *)((intptr_t)pfVar21 + iVar13);
+                            fVar2 = *(flex_t *)((intptr_t)pfVar21 + iVar13);
                             fVar3 = *pfVar21;
                             fVar6 = *local_2c;
                             fVar7 = *local_28;
@@ -4287,8 +4288,8 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
                             prVar18->y = pfVar25[-1];
                             pfVar24 = local_c + 1;
                             prVar18->z = *pfVar25;
-                            *local_c = *(float *)((intptr_t)pfVar21 + iVar12);
-                            *local_14 = *(float *)((intptr_t)pfVar21 + iVar13);
+                            *local_c = *(flex_t *)((intptr_t)pfVar21 + iVar12);
+                            *local_14 = *(flex_t *)((intptr_t)pfVar21 + iVar13);
                             *local_8 = *pfVar21;
                             local_30 = local_30 + 1;
                             local_14 = local_14 + 1;
@@ -4297,8 +4298,8 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
                         }
                     }
                     prVar17 = (rdVector3 *)(pfVar25 + -2);
-                    local_2c = (float *)(iVar12 + (intptr_t)pfVar21);
-                    local_28 = (float *)(iVar13 + (intptr_t)pfVar21);
+                    local_2c = (flex_t *)(iVar12 + (intptr_t)pfVar21);
+                    local_28 = (flex_t *)(iVar13 + (intptr_t)pfVar21);
                     pfVar25 = pfVar25 + 3;
                     local_4 = local_4 - 1;
                     uVar15 = local_30;
@@ -4353,8 +4354,8 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
                                 fVar8 = ((frustum->field_0).y - prVar17->y) / (*pfVar19 - prVar17->y);
                                 prVar18->y = (frustum->field_0).y;
                                 local_30 = local_30 + 1;
-                                fVar11 = *(float *)((intptr_t)pfVar21 + iVar12);
-                                fVar10 = *(float *)((intptr_t)pfVar21 + iVar13);
+                                fVar11 = *(flex_t *)((intptr_t)pfVar21 + iVar12);
+                                fVar10 = *(flex_t *)((intptr_t)pfVar21 + iVar13);
                                 fVar1 = *pfVar21;
                                 fVar4 = *local_2c;
                                 fVar5 = *local_28;
@@ -4381,8 +4382,8 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
                                 prVar18->y = *pfVar19;
                                 pfVar26 = local_10 + 1;
                                 prVar18->z = pfVar19[1];
-                                *local_10 = *(float *)((intptr_t)pfVar21 + iVar12);
-                                *local_c = *(float *)((intptr_t)pfVar21 + iVar13);
+                                *local_10 = *(flex_t *)((intptr_t)pfVar21 + iVar12);
+                                *local_c = *(flex_t *)((intptr_t)pfVar21 + iVar13);
                                 *local_8 = *pfVar21;
                                 local_30 = local_30 + 1;
                                 local_c = local_c + 1;
@@ -4391,8 +4392,8 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
                             }
                         }
                         prVar17 = (rdVector3 *)(pfVar19 + -1);
-                        local_2c = (float *)(iVar12 + (intptr_t)pfVar21);
-                        local_28 = (float *)(iVar13 + (intptr_t)pfVar21);
+                        local_2c = (flex_t *)(iVar12 + (intptr_t)pfVar21);
+                        local_28 = (flex_t *)(iVar13 + (intptr_t)pfVar21);
                         pfVar19 = pfVar19 + 3;
                         local_4 = numVertices + -1;
                         pfVar23 = pfVar21 + 1;
@@ -4450,8 +4451,8 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
                                     fVar8 = ((frustum->field_0).z - prVar20->y) / (*pfVar19 - prVar20->y);
                                     prVar16->y = (frustum->field_0).z;
                                     local_30 = local_30 + 1;
-                                    fVar11 = *(float *)((intptr_t)pfVar23 + iVar12);
-                                    fVar10 = *(float *)((intptr_t)pfVar23 + iVar13);
+                                    fVar11 = *(flex_t *)((intptr_t)pfVar23 + iVar12);
+                                    fVar10 = *(flex_t *)((intptr_t)pfVar23 + iVar13);
                                     fVar1 = *pfVar23;
                                     fVar4 = *local_2c;
                                     fVar5 = *local_28;
@@ -4480,8 +4481,8 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
                                     prVar16->y = *pfVar19;
                                     fVar11 = *pfVar23;
                                     prVar16->z = pfVar19[1];
-                                    *pfVar25 = *(float *)((intptr_t)pfVar23 + iVar12);
-                                    *local_8 = *(float *)((intptr_t)pfVar23 + iVar13);
+                                    *pfVar25 = *(flex_t *)((intptr_t)pfVar23 + iVar12);
+                                    *local_8 = *(flex_t *)((intptr_t)pfVar23 + iVar13);
                                     local_8 = local_8 + 1;
                                     *local_c = fVar11;
                                     local_30 = local_30 + 1;
@@ -4489,8 +4490,8 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
                                 }
                             }
                             prVar20 = (rdVector3 *)(pfVar19 + -1);
-                            local_2c = (float *)(iVar12 + (intptr_t)pfVar23);
-                            local_28 = (float *)(iVar13 + (intptr_t)pfVar23);
+                            local_2c = (flex_t *)(iVar12 + (intptr_t)pfVar23);
+                            local_28 = (flex_t *)(iVar13 + (intptr_t)pfVar23);
                             pfVar19 = pfVar19 + 3;
                             numVertices = numVertices + -1;
                             pfVar22 = pfVar23 + 1;
@@ -4519,13 +4520,13 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
                     memcpy(vertices, prVar20, local_4 * sizeof(rdVector3));
                     
                     pfVar27 = pDestRedIVert;
-                    memcpy(pR, pfVar27, local_4 * sizeof(float));
+                    memcpy(pR, pfVar27, local_4 * sizeof(flex_t));
                     
                     pfVar27 = pDestGreenIVert;
-                    memcpy(pG, pfVar27, local_4 * sizeof(float));
+                    memcpy(pG, pfVar27, local_4 * sizeof(flex_t));
                     
                     pfVar27 = pDestBlueIVert;
-                    memcpy(pB, pfVar27, local_4 * sizeof(float));
+                    memcpy(pB, pfVar27, local_4 * sizeof(flex_t));
                 }
             }
         }
@@ -4534,55 +4535,55 @@ int rdClip_Face3GSRGB(rdClipFrustum *frustum,rdVector3 *vertices,float *pR,float
 }
 
 
-int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *paUvs,float *pR,float *pG,float *pB, int numVertices)
+int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *paUvs,flex_t *pR,flex_t *pG,flex_t *pB, int numVertices)
 {
-    float fVar1;
-    float fVar2;
-    float fVar3;
-    float fVar4;
-    float fVar5;
-    float fVar6;
-    float fVar7;
-    float fVar8;
-    float fVar9;
-    float fVar10;
-    float fVar11;
-    float fVar12;
-    float fVar13;
-    float fVar14;
-    float fVar15;
+    flex_t fVar1;
+    flex_t fVar2;
+    flex_t fVar3;
+    flex_t fVar4;
+    flex_t fVar5;
+    flex_t fVar6;
+    flex_t fVar7;
+    flex_t fVar8;
+    flex_t fVar9;
+    flex_t fVar10;
+    flex_t fVar11;
+    flex_t fVar12;
+    flex_t fVar13;
+    flex_t fVar14;
+    flex_t fVar15;
     intptr_t iVar16;
     intptr_t iVar17;
     rdVector3 *prVar18;
     rdVector3 *prVar19;
     rdVector3 *prVar20;
-    float *pfVar21;
-    float *pfVar23;
-    float *pfVar24;
+    flex_t *pfVar21;
+    flex_t *pfVar23;
+    flex_t *pfVar24;
     rdVector2 *prVar25;
     intptr_t iVar26;
     intptr_t iVar27;
     rdVector2 *prVar28;
-    float *pfVar29;
-    float *pfVar30;
+    flex_t *pfVar29;
+    flex_t *pfVar30;
     rdVector2 *prVar31;
     rdVector2 *prVar32;
     rdVector2 *prVar33;
-    float *pfVar34;
+    flex_t *pfVar34;
     intptr_t local_44;
     rdVector3 *local_40;
-    float *local_3c;
-    float *local_38;
-    float *local_34;
-    float *local_30;
-    float *local_2c;
+    flex_t *local_3c;
+    flex_t *local_38;
+    flex_t *local_34;
+    flex_t *local_30;
+    flex_t *local_2c;
     rdVector2 *local_28;
     rdVector3 *local_24;
-    float *local_1c;
+    flex_t *local_1c;
     intptr_t local_18;
-    float *local_14;
-    float *local_10;
-    float *local_c;
+    flex_t *local_14;
+    flex_t *local_10;
+    flex_t *local_c;
     uint32_t local_8;
     uint32_t local_4;
     
@@ -4646,8 +4647,8 @@ int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *p
                     }
                     fVar1 = prVar31->x;
                     fVar2 = prVar33->x;
-                    fVar3 = *(float *)(iVar26 + (intptr_t)pfVar30);
-                    fVar4 = *(float *)(iVar27 + (intptr_t)pfVar30);
+                    fVar3 = *(flex_t *)(iVar26 + (intptr_t)pfVar30);
+                    fVar4 = *(flex_t *)(iVar27 + (intptr_t)pfVar30);
                     fVar5 = prVar33->x;
                     fVar6 = *pfVar30;
                     prVar19->x = fVar7;
@@ -4686,17 +4687,17 @@ int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *p
                     prVar19->z = local_24->z;
                     prVar28->x = prVar31->x;
                     prVar28->y = prVar31->y;
-                    *local_10 = *(float *)(iVar26 + (intptr_t)pfVar30);
+                    *local_10 = *(flex_t *)(iVar26 + (intptr_t)pfVar30);
                     local_10 = local_10 + 1;
-                    *local_2c = *(float *)(iVar27 + (intptr_t)pfVar30);
+                    *local_2c = *(flex_t *)(iVar27 + (intptr_t)pfVar30);
                     *local_30 = *pfVar30;
                     local_44 = local_44 + 1;
                     local_2c = local_2c + 1;
                     local_30 = local_30 + 1;
                 }
             }
-            local_3c = (float *)(iVar26 + (intptr_t)pfVar30);
-            local_38 = (float *)(iVar27 + (intptr_t)pfVar30);
+            local_3c = (flex_t *)(iVar26 + (intptr_t)pfVar30);
+            local_38 = (flex_t *)(iVar27 + (intptr_t)pfVar30);
             local_18 = local_18 + -1;
             pfVar34 = pfVar30 + 1;
             prVar19 = prVar18;
@@ -4708,7 +4709,7 @@ int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *p
             local_24 = local_24 + 1;
         } while (local_18 != 0);
     }
-    local_c = (float *)local_44;
+    local_c = (flex_t *)local_44;
     if (2 < (intptr_t)local_44) {
         pDestVert = paVertices;
         pSourceVert = workVerts;
@@ -4768,8 +4769,8 @@ int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *p
                         }
                         fVar1 = prVar28->x;
                         fVar2 = prVar25->x;
-                        fVar3 = *(float *)(iVar27 + (intptr_t)pfVar30);
-                        fVar4 = *(float *)(iVar26 + (intptr_t)pfVar30);
+                        fVar3 = *(flex_t *)(iVar27 + (intptr_t)pfVar30);
+                        fVar4 = *(flex_t *)(iVar26 + (intptr_t)pfVar30);
                         fVar5 = prVar25->x;
                         fVar6 = *pfVar30;
                         prVar19->x = fVar7;
@@ -4808,18 +4809,18 @@ int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *p
                         prVar19->z = prVar20->z;
                         prVar33->x = prVar28->x;
                         prVar33->y = prVar28->y;
-                        *local_10 = *(float *)(iVar27 + (intptr_t)pfVar30);
+                        *local_10 = *(flex_t *)(iVar27 + (intptr_t)pfVar30);
                         local_10 = local_10 + 1;
-                        *local_1c = *(float *)(iVar26 + (intptr_t)pfVar30);
+                        *local_1c = *(flex_t *)(iVar26 + (intptr_t)pfVar30);
                         *local_14 = *pfVar30;
                         local_44 = local_44 + 1;
                         local_1c = local_1c + 1;
                         local_14 = local_14 + 1;
                     }
                 }
-                local_3c = (float *)(iVar27 + (intptr_t)pfVar30);
-                local_38 = (float *)(iVar26 + (intptr_t)pfVar30);
-                local_c = (float *)((intptr_t)local_c - 1);
+                local_3c = (flex_t *)(iVar27 + (intptr_t)pfVar30);
+                local_38 = (flex_t *)(iVar26 + (intptr_t)pfVar30);
+                local_c = (flex_t *)((intptr_t)local_c - 1);
                 prVar19 = prVar18;
                 pfVar34 = pfVar30 + 1;
                 prVar25 = prVar28;
@@ -4828,7 +4829,7 @@ int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *p
                 prVar28 = prVar28 + 1;
                 local_40 = prVar20;
                 local_34 = pfVar30;
-            } while (local_c != (float *)0x0);
+            } while (local_c != (flex_t *)0x0);
         }
         local_4 = local_44;
         local_10 = pSourceRedIVert;
@@ -4901,8 +4902,8 @@ int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *p
                         }
                         fVar1 = ((rdVector3 *)(pfVar30 + -2))->x;
                         fVar2 = local_40->x;
-                        fVar3 = *(float *)((intptr_t)pfVar23 + iVar27);
-                        fVar4 = *(float *)((intptr_t)pfVar23 + iVar26);
+                        fVar3 = *(flex_t *)((intptr_t)pfVar23 + iVar27);
+                        fVar4 = *(flex_t *)((intptr_t)pfVar23 + iVar26);
                         fVar5 = *pfVar23;
                         fVar6 = *local_3c;
                         fVar9 = *local_38;
@@ -4939,9 +4940,9 @@ int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *p
                         prVar18->z = *pfVar30;
                         prVar25->x = prVar31->x;
                         prVar25->y = prVar31->y;
-                        *local_10 = *(float *)((intptr_t)pfVar23 + iVar27);
+                        *local_10 = *(flex_t *)((intptr_t)pfVar23 + iVar27);
                         local_10 = local_10 + 1;
-                        *local_1c = *(float *)((intptr_t)pfVar23 + iVar26);
+                        *local_1c = *(flex_t *)((intptr_t)pfVar23 + iVar26);
                         *local_c = *pfVar23;
                         local_44 = local_44 + 1;
                         local_1c = local_1c + 1;
@@ -4949,8 +4950,8 @@ int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *p
                     }
                 }
                 local_40 = (rdVector3 *)(pfVar30 + -2);
-                local_3c = (float *)(iVar27 + (intptr_t)pfVar23);
-                local_38 = (float *)(iVar26 + (intptr_t)pfVar23);
+                local_3c = (flex_t *)(iVar27 + (intptr_t)pfVar23);
+                local_38 = (flex_t *)(iVar26 + (intptr_t)pfVar23);
                 pfVar30 = pfVar30 + 3;
                 local_4 = local_4 - 1;
                 prVar18 = prVar19;
@@ -5035,8 +5036,8 @@ int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *p
                         }
                         fVar1 = ((rdVector3 *)(pfVar21 + -2))->x;
                         fVar2 = local_40->x;
-                        fVar3 = *(float *)((intptr_t)pfVar24 + iVar26);
-                        fVar4 = *(float *)((intptr_t)pfVar24 + iVar27);
+                        fVar3 = *(flex_t *)((intptr_t)pfVar24 + iVar26);
+                        fVar4 = *(flex_t *)((intptr_t)pfVar24 + iVar27);
                         fVar5 = *pfVar24;
                         fVar6 = *local_3c;
                         fVar9 = *local_38;
@@ -5075,8 +5076,8 @@ int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *p
                         prVar19->z = *pfVar21;
                         prVar33->x = prVar31->x;
                         prVar33->y = prVar31->y;
-                        *local_c = *(float *)((intptr_t)pfVar24 + iVar26);
-                        *local_1c = *(float *)((intptr_t)pfVar24 + iVar27);
+                        *local_c = *(flex_t *)((intptr_t)pfVar24 + iVar26);
+                        *local_1c = *(flex_t *)((intptr_t)pfVar24 + iVar27);
                         *local_10 = *pfVar24;
                         local_44 = local_44 + 1;
                         local_1c = local_1c + 1;
@@ -5085,8 +5086,8 @@ int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *p
                     }
                 }
                 local_40 = (rdVector3 *)(pfVar21 + -2);
-                local_3c = (float *)(iVar26 + (intptr_t)pfVar24);
-                local_38 = (float *)(iVar27 + (intptr_t)pfVar24);
+                local_3c = (flex_t *)(iVar26 + (intptr_t)pfVar24);
+                local_38 = (flex_t *)(iVar27 + (intptr_t)pfVar24);
                 pfVar21 = pfVar21 + 3;
                 local_8 = local_8 - 1;
                 pfVar34 = pfVar24 + 1;
@@ -5151,8 +5152,8 @@ int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *p
                             fVar14 = prVar28->x;
                             fVar15 = local_28->x;
                             fVar1 = local_28->x;
-                            fVar7 = *(float *)((intptr_t)pfVar34 + iVar26);
-                            fVar8 = *(float *)((intptr_t)pfVar34 + iVar27);
+                            fVar7 = *(flex_t *)((intptr_t)pfVar34 + iVar26);
+                            fVar8 = *(flex_t *)((intptr_t)pfVar34 + iVar27);
                             fVar2 = *pfVar34;
                             prVar18->z = (pfVar21[1] - prVar20->z) * fVar13 + prVar20->z;
                             fVar3 = ((rdVector3 *)(pfVar21 + -1))->x;
@@ -5189,8 +5190,8 @@ int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *p
                             prVar19->z = pfVar21[1];
                             prVar33->x = prVar28->x;
                             prVar33->y = prVar28->y;
-                            *local_10 = *(float *)((intptr_t)pfVar34 + iVar26);
-                            *local_1c = *(float *)((intptr_t)pfVar34 + iVar27);
+                            *local_10 = *(flex_t *)((intptr_t)pfVar34 + iVar26);
+                            *local_1c = *(flex_t *)((intptr_t)pfVar34 + iVar27);
                             *local_c = *pfVar34;
                             local_44 = local_44 + 1;
                             local_10 = local_10 + 1;
@@ -5199,8 +5200,8 @@ int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *p
                         }
                     }
                     prVar20 = (rdVector3 *)(pfVar21 + -1);
-                    local_3c = (float *)(iVar26 + (intptr_t)pfVar34);
-                    local_38 = (float *)(iVar27 + (intptr_t)pfVar34);
+                    local_3c = (flex_t *)(iVar26 + (intptr_t)pfVar34);
+                    local_38 = (flex_t *)(iVar27 + (intptr_t)pfVar34);
                     pfVar21 = pfVar21 + 3;
                     numVertices = numVertices - 1;
                     pfVar30 = pfVar34 + 1;
@@ -5261,8 +5262,8 @@ int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *p
                                 fVar14 = prVar28->x;
                                 fVar15 = local_28->x;
                                 fVar1 = local_28->x;
-                                fVar7 = *(float *)((intptr_t)pfVar34 + iVar16);
-                                fVar8 = *(float *)((intptr_t)pfVar34 + iVar17);
+                                fVar7 = *(flex_t *)((intptr_t)pfVar34 + iVar16);
+                                fVar8 = *(flex_t *)((intptr_t)pfVar34 + iVar17);
                                 prVar18->z = (pfVar21[1] - prVar20->z) * fVar13 + prVar20->z;
                                 fVar2 = ((rdVector3 *)(pfVar21 + -1))->x;
                                 fVar3 = prVar20->x;
@@ -5300,8 +5301,8 @@ int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *p
                                 prVar19->z = pfVar21[1];
                                 prVar33->x = prVar28->x;
                                 prVar33->y = prVar28->y;
-                                *local_10 = *(float *)((intptr_t)pfVar34 + iVar16);
-                                *local_14 = *(float *)((intptr_t)pfVar34 + iVar17);
+                                *local_10 = *(flex_t *)((intptr_t)pfVar34 + iVar16);
+                                *local_14 = *(flex_t *)((intptr_t)pfVar34 + iVar17);
                                 *local_c = *pfVar34;
                                 local_44 = local_44 + 1;
                                 local_10 = local_10 + 1;
@@ -5310,8 +5311,8 @@ int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *p
                             }
                         }
                         prVar20 = (rdVector3 *)(pfVar21 + -1);
-                        local_3c = (float *)(iVar16 + (intptr_t)pfVar34);
-                        local_38 = (float *)(iVar17 + (intptr_t)pfVar34);
+                        local_3c = (flex_t *)(iVar16 + (intptr_t)pfVar34);
+                        local_38 = (flex_t *)(iVar17 + (intptr_t)pfVar34);
                         pfVar21 = pfVar21 + 3;
                         numVertices = numVertices - 1;
                         pfVar30 = pfVar34 + 1;
@@ -5327,9 +5328,9 @@ int rdClip_Face3GTRGB(rdClipFrustum *pFrustum,rdVector3 *paVertices,rdVector2 *p
             if (pDestVert != paVertices) {
                 memcpy(paVertices, pDestVert, local_44 * sizeof(rdVector3));
                 memcpy(paUvs, pDestTVert, local_44 * sizeof(rdVector2));
-                memcpy(pR, pDestRedIVert, local_44 * sizeof(float));
-                memcpy(pG, pDestGreenIVert, local_44 * sizeof(float));
-                memcpy(pB, pDestBlueIVert, local_44 * sizeof(float));
+                memcpy(pR, pDestRedIVert, local_44 * sizeof(flex_t));
+                memcpy(pG, pDestGreenIVert, local_44 * sizeof(flex_t));
+                memcpy(pB, pDestBlueIVert, local_44 * sizeof(flex_t));
                 
                 return local_44;
             }

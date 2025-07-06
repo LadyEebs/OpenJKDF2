@@ -12,7 +12,7 @@
 static rdVector3 rdSprite_inVerts[32];
 static rdVector3 rdSprite_tmpVerts[32];
 
-rdSprite* rdSprite_New(int type, char *fpath, char *materialFpath, float width, float height, int geometryMode, int lightMode, int textureMode, float extraLight, rdVector3 *offset)
+rdSprite* rdSprite_New(int type, char *fpath, char *materialFpath, flex_t width, flex_t height, int geometryMode, int lightMode, int textureMode, flex_t extraLight, rdVector3 *offset)
 {
     rdSprite *sprite;
 
@@ -25,7 +25,7 @@ rdSprite* rdSprite_New(int type, char *fpath, char *materialFpath, float width, 
     return sprite;
 }
 
-int rdSprite_NewEntry(rdSprite *sprite, char *spritepath, int type, char *material, float width, float height, rdGeoMode_t geometryMode, rdLightMode_t lightMode, rdTexMode_t textureMode, float extraLight, rdVector3 *offset)
+int rdSprite_NewEntry(rdSprite *sprite, char *spritepath, int type, char *material, flex_t width, flex_t height, rdGeoMode_t geometryMode, rdLightMode_t lightMode, rdTexMode_t textureMode, flex_t extraLight, rdVector3 *offset)
 {
     if (spritepath)
     {
@@ -77,10 +77,10 @@ int rdSprite_NewEntry(rdSprite *sprite, char *spritepath, int type, char *materi
                 uint32_t* v24 = (uint32_t*)sprite->face.material->texinfos[0]->texture_ptr->texture_struct[0];
 
                 sprite->vertexUVs[0].x = 0.5;
-                sprite->vertexUVs[0].y = (double)v24[4] - 0.5;
-                sprite->vertexUVs[1].x = (double)v24[3] - 0.5;
-                sprite->vertexUVs[1].y = (double)v24[4] - 0.5;
-                sprite->vertexUVs[2].x = (double)v24[3] - 0.5;
+                sprite->vertexUVs[0].y = (flex_d_t)v24[4] - 0.5;
+                sprite->vertexUVs[1].x = (flex_d_t)v24[3] - 0.5;
+                sprite->vertexUVs[1].y = (flex_d_t)v24[4] - 0.5;
+                sprite->vertexUVs[2].x = (flex_d_t)v24[3] - 0.5;
                 sprite->vertexUVs[2].y = 0.5;
                 sprite->vertexUVs[3].x = 0.5;
                 sprite->vertexUVs[3].y = 0.5;

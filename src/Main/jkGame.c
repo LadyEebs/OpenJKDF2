@@ -128,7 +128,7 @@ int jkGame_Update()
     int64_t v0; // rcx
     sithThing *v2; // esi
     int v3; // eax
-    double v4; // st7
+    flex_d_t v4; // st7
     int result; // eax
     int v6; // [esp+1Ch] [ebp-1Ch]
 
@@ -221,12 +221,12 @@ int jkGame_Update()
             if ( Main_bDispStats )
             {
                 v6 = v2->sector->id;
-                Video_flt_55289C = (double)(Video_dword_5528A0 - Video_dword_5528A4) * 1000.0 / (double)v0;
+                Video_flt_55289C = (flex_d_t)(Video_dword_5528A0 - Video_dword_5528A4) * 1000.0 / (flex_d_t)v0;
                 _sprintf(
                     std_genBuffer,
                     "%02.3f (%02d%%)f %3ds %3da %3dz %4dp %3d curSector %3d fo",
                     Video_flt_55289C,
-                    (unsigned int)(__int64)((double)(unsigned int)jkGame_updateMsecsTotal / (double)(int)v0 * 100.0),
+                    (unsigned int)(__int64)((flex_d_t)(unsigned int)jkGame_updateMsecsTotal / (flex_d_t)(int)v0 * 100.0),
                     sithRender_sectorsDrawn,
                     sithRender_geoThingsDrawn,
                     sithRender_nongeoThingsDrawn,
@@ -259,7 +259,7 @@ int jkGame_Update()
         Video_dword_5528A8 = stdPlatform_GetTimeMsec();
         if ( (unsigned int)(Video_dword_5528A8 - Video_lastTimeMsec) > 1000 )
         {
-            v4 = (double)(Video_dword_5528A0 - Video_dword_5528A4) * 1000.0 / (double)(unsigned int)(Video_dword_5528A8 - Video_lastTimeMsec);
+            v4 = (flex_d_t)(Video_dword_5528A0 - Video_dword_5528A4) * 1000.0 / (flex_d_t)(unsigned int)(Video_dword_5528A8 - Video_lastTimeMsec);
             Video_flt_55289C = v4;
             _sprintf(std_genBuffer, "%02.3f", v4);
             jkDev_sub_41FC40(100, std_genBuffer);
@@ -389,17 +389,17 @@ void jkGame_Gamma()
 
 void jkGame_PrecalcViewSizes(int width, int height, jkViewSize *aOut)
 {
-    double v5; // st7
-    double v6; // st6
-    float v7; // [esp+4h] [ebp-Ch]
-    float v8;
-    float widtha; // [esp+14h] [ebp+4h]
-    float widthb; // [esp+14h] [ebp+4h]
-    float heighta; // [esp+18h] [ebp+8h]
+    flex_d_t v5; // st7
+    flex_d_t v6; // st6
+    flex_t v7; // [esp+4h] [ebp-Ch]
+    flex_t v8;
+    flex_t widtha; // [esp+14h] [ebp+4h]
+    flex_t widthb; // [esp+14h] [ebp+4h]
+    flex_t heighta; // [esp+18h] [ebp+8h]
 
-    v5 = (double)width;
+    v5 = (flex_d_t)width;
 
-    widtha = (float)height;
+    widtha = (flex_t)height;
     heighta = widtha;
     v6 = widtha * 0.5;
     widthb = v5 * 0.5;
@@ -453,16 +453,13 @@ void jkGame_PrecalcViewSizes(int width, int height, jkViewSize *aOut)
 
 void jkGame_ddraw_idk_palettes()
 {
-    char *v0; // eax
-
     if ( Video_bOpened )
     {
         stdDisplay_VBufferFill(Video_pMenuBuffer, Video_fillColor, 0);
         stdDisplay_DDrawGdiSurfaceFlip();
         stdDisplay_ddraw_surface_flip2();
         stdDisplay_VBufferFill(Video_pMenuBuffer, Video_fillColor, 0);
-        v0 = stdDisplay_GetPalette();
-        sithRender_SetPalette(v0);
+        sithRender_SetPalette(stdDisplay_GetPalette());
     }
 }
 

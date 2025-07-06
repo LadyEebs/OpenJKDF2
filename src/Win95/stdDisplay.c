@@ -10,7 +10,7 @@
 #include "Modules/std/stdJob.h"
 #include "Modules/std/stdProfiler.h"
 
-void stdDisplay_SetGammaTable(int len, double *table)
+void stdDisplay_SetGammaTable(int len, flex_d_t *table)
 {
     stdDisplay_gammaTableLen = len;
     stdDisplay_paGammaTable = table;
@@ -71,7 +71,7 @@ int stdDisplay_SetMode(unsigned int modeIdx, const void *palette, int paged)
 
     //if (jkGame_isDDraw)
     {
-        newW = (uint32_t)((float)Window_xSize * ((480.0*2.0)/Window_ySize));
+        newW = (uint32_t)((flex_t)Window_xSize * ((480.0*2.0)/Window_ySize));
         newH = 480*2;
     }
 
@@ -142,8 +142,8 @@ int stdDisplay_SetMode(unsigned int modeIdx, const void *palette, int paged)
     if (palette)
     {
         memcpy(stdDisplay_gammaPalette, palette, 0x300);
-        const rdColor24* pal24 = palette;
-        SDL_Color* tmp = malloc(sizeof(SDL_Color) * 256);
+        const rdColor24* pal24 = (const rdColor24*)palette;
+        SDL_Color* tmp = (SDL_Color*)malloc(sizeof(SDL_Color) * 256);
         for (int i = 0; i < 256; i++)
         {
             tmp[i].r = pal24[i].r;
@@ -233,7 +233,7 @@ int stdDisplay_SetMasterPalette(uint8_t* pal)
 
 stdVBuffer* stdDisplay_VBufferNew(stdVBufferTexFmt *fmt, int create_ddraw_surface, int gpu_mem, const void* palette)
 {
-    stdVBuffer* out = std_pHS->alloc(sizeof(stdVBuffer));
+    stdVBuffer* out = (stdVBuffer*)std_pHS->alloc(sizeof(stdVBuffer));
     
     _memset(out, 0, sizeof(*out));
     
@@ -300,7 +300,7 @@ int stdDisplay_VBufferLock(stdVBuffer *buf)
     if (!buf) return 0;
 
     SDL_LockSurface(buf->sdlSurface);
-    buf->surface_lock_alloc = buf->sdlSurface->pixels;
+    buf->surface_lock_alloc = (char*)buf->sdlSurface->pixels;
     return 1;
 }
 
@@ -334,8 +334,8 @@ int stdDisplay_VBufferCopy(stdVBuffer *vbuf, stdVBuffer *vbuf2, unsigned int bli
     
     if (vbuf->palette)
     {
-        rdColor24* pal24 = vbuf->palette;
-        SDL_Color* tmp = malloc(sizeof(SDL_Color) * 256);
+        rdColor24* pal24 = (rdColor24*)vbuf->palette;
+        SDL_Color* tmp = (SDL_Color*)malloc(sizeof(SDL_Color) * 256);
         for (int i = 0; i < 256; i++)
         {
             tmp[i].r = pal24[i].r;
@@ -350,8 +350,8 @@ int stdDisplay_VBufferCopy(stdVBuffer *vbuf, stdVBuffer *vbuf2, unsigned int bli
     
     if (vbuf2->palette)
     {
-        rdColor24* pal24 = vbuf2->palette;
-        SDL_Color* tmp = malloc(sizeof(SDL_Color) * 256);
+        rdColor24* pal24 = (rdColor24*)vbuf2->palette;
+        SDL_Color* tmp = (SDL_Color*)malloc(sizeof(SDL_Color) * 256);
         for (int i = 0; i < 256; i++)
         {
             tmp[i].r = pal24[i].r;
@@ -364,11 +364,11 @@ int stdDisplay_VBufferCopy(stdVBuffer *vbuf, stdVBuffer *vbuf2, unsigned int bli
         free(tmp);
     }
 
-    SDL_Rect dstRect = {blit_x, blit_y, rect->width, rect->height};
-    SDL_Rect srcRect = {rect->x, rect->y, rect->width, rect->height};
+    SDL_Rect dstRect = {(int)blit_x, (int)blit_y, (int)rect->width, (int)rect->height};
+    SDL_Rect srcRect = {(int)rect->x, (int)rect->y, (int)rect->width, (int)rect->height};
     
-    uint8_t* srcPixels = vbuf2->sdlSurface->pixels;
-    uint8_t* dstPixels = vbuf->sdlSurface->pixels;
+    uint8_t* srcPixels = (uint8_t*)vbuf2->sdlSurface->pixels;
+    uint8_t* dstPixels = (uint8_t*)vbuf->sdlSurface->pixels;
     uint32_t srcStride = vbuf2->format.width_in_bytes;
     uint32_t dstStride = vbuf->format.width_in_bytes;
 
@@ -377,7 +377,7 @@ int stdDisplay_VBufferCopy(stdVBuffer *vbuf, stdVBuffer *vbuf2, unsigned int bli
     if (dstPixels == srcPixels)
     {
         size_t buf_len = srcStride * dstRect.w * dstRect.h;
-        uint8_t* dstPixels = malloc(buf_len);
+        uint8_t* dstPixels = (uint8_t*)malloc(buf_len);
         int has_alpha = 0;//!(rect->width == 640);
 
         SDL_Rect dstRect_inter = {0, 0, rect->width, rect->height};
@@ -467,20 +467,20 @@ int stdDisplay_VBufferFill(stdVBuffer *vbuf, int fillColor, rdRect *rect)
     //printf("%x; %u %u %u %u\n", fillColor, rect->x, rect->y, rect->width, rect->height);
 
 	// eebs: this is stupid slow
-   //uint8_t* dstPixels = vbuf->sdlSurface->pixels;
-   //uint32_t dstStride = vbuf->format.width_in_bytes;
-   //uint32_t max_idx = dstStride * vbuf->format.height;
-	//for (int j = 0; j < rect->height; j++)
-   //{
-	//	for (int i = 0; i < rect->width; i++)
-	//	{
-   //        uint32_t idx = (i + dstRect.x) + ((j + dstRect.y)*dstStride);
-   //        if (idx > max_idx)
-   //            continue;
-   //        
-   //        dstPixels[idx] = fillColor;
-   //    }
-   //}
+	//uint8_t* dstPixels = (uint8_t*)vbuf->sdlSurface->pixels;
+    //uint32_t dstStride = vbuf->format.width_in_bytes;
+    //uint32_t max_idx = dstStride * vbuf->format.height;
+    //for (int i = 0; i < rect->width; i++)
+    //{
+    //    for (int j = 0; j < rect->height; j++)
+    //    {
+    //        uint32_t idx = (i + dstRect.x) + ((j + dstRect.y)*dstStride);
+    //        if (idx > max_idx)
+    //            continue;
+    //        
+    //        dstPixels[idx] = fillColor;
+    //    }
+    //}
     
 	// eebs: about 1ms faster than above but still pretty shit, can maybe fix with the hw version
     SDL_FillRect(vbuf->sdlSurface, &dstRect, fillColor); //TODO error check

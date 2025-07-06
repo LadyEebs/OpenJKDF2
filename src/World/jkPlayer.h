@@ -58,7 +58,7 @@
 extern jkPlayerInfo jkPlayer_aMotsInfos[64];
 extern jkBubbleInfo jkPlayer_aBubbleInfo[64];
 extern int jkPlayer_personality;
-extern float jkPlayer_aMultiParams[0x100];
+extern flex_t jkPlayer_aMultiParams[0x100];
 #endif
 
 typedef struct sithSurface sithSurface;
@@ -101,15 +101,15 @@ void jkPlayer_renderSaberWeaponMesh(sithThing* a1);
 #endif
 void jkPlayer_renderSaberTwinkle(sithThing *player);
 #ifdef DYNAMIC_POV
-void jkPlayer_SetWaggle(sithThing* player, rdVector3* waggleVec, float waggleMag, float velScale);
+void jkPlayer_SetWaggle(sithThing* player, rdVector3* waggleVec, flex_t waggleMag, flex_t velScale);
 void jkPlayer_PovModelCallback(sithThing* thing, int track, uint32_t a3);
-void jkPlayer_SetIdleWaggle(sithThing* player, rdVector3 *waggleVec, float waggleSpeed, float waggleSmooth);
+void jkPlayer_SetIdleWaggle(sithThing* player, rdVector3 *waggleVec, flex_t waggleSpeed, flex_t waggleSmooth);
 void jkPlayer_GetMuzzleOffset(sithThing* player, rdVector3* muzzleOffset);
-void jkPlayer_SetPovAutoAim(sithThing* player, float fov, float dist);
+void jkPlayer_SetPovAutoAim(sithThing* player, flex_t fov, flex_t dist);
 void jkPlayer_SetPovSprite(jkPlayerInfo* info, rdSprite* sprite);
-void jkPlayer_SetPovSpriteScale(jkPlayerInfo* info, float scale);
+void jkPlayer_SetPovSpriteScale(jkPlayerInfo* info, flex_t scale);
 #else
-void jkPlayer_SetWaggle(sithThing* player, rdVector3* waggleVec, float waggleMag);
+void jkPlayer_SetWaggle(sithThing* player, rdVector3* waggleVec, flex_t waggleMag);
 #endif
 int jkPlayer_VerifyWcharName(wchar_t *name);
 int jkPlayer_VerifyCharName(char *name);
@@ -118,7 +118,7 @@ void jkPlayer_SetPlayerName(wchar_t *name);
 int jkPlayer_GetMpcInfo(wchar_t *name, char *model, char *soundclass, char *sidemat, char *tipmat);
 void jkPlayer_SetChoice(int amt);
 int jkPlayer_GetChoice();
-float jkPlayer_CalcAlignment(int isMp);
+flex_t jkPlayer_CalcAlignment(int isMp);
 void jkPlayer_MpcInitBins(sithPlayerInfo* unk);
 int jkPlayer_MPCParse(jkPlayerMpcInfo *info, sithPlayerInfo* unk, wchar_t *fname, wchar_t *name, int hasBins);
 int jkPlayer_MPCWrite(sithPlayerInfo* unk, wchar_t *mpcName, wchar_t *playerName);
@@ -132,7 +132,7 @@ int jkPlayer_WriteConfSwap(jkPlayerInfo* unk, int a2, char *a3);
 int jkPlayer_WriteCutsceneConf();
 int jkPlayer_ReadCutsceneConf();
 void jkPlayer_FixStars();
-float jkPlayer_CalcStarsAlign();
+flex_t jkPlayer_CalcStarsAlign();
 int jkPlayer_SetProtectionDeadlysight();
 void jkPlayer_DisallowOtherSide(int rank);
 int jkPlayer_WriteOptionsConf();
@@ -172,15 +172,15 @@ extern int jkPlayer_fpslimit;
 extern int jkPlayer_enableVsync;
 extern int jkPlayer_enable32Bit;
 extern int jkPlayer_multiSample;
-extern float jkPlayer_ssaaMultiple;
+extern flex_t jkPlayer_ssaaMultiple;
 extern int jkPlayer_enableSSAO;
 extern int jkPlayer_enableShadows;
-extern float jkPlayer_gamma;
-extern float jkPlayer_hudScale;
-extern float jkPlayer_crosshairLineWidth;
-extern float jkPlayer_crosshairScale;
-extern float jkPlayer_canonicalCogTickrate;
-extern float jkPlayer_canonicalPhysTickrate;
+extern flex_t jkPlayer_gamma;
+extern flex_t jkPlayer_hudScale;
+extern flex_t jkPlayer_crosshairLineWidth;
+extern flex_t jkPlayer_crosshairScale;
+extern flex_t jkPlayer_canonicalCogTickrate;
+extern flex_t jkPlayer_canonicalPhysTickrate;
 extern int jkPlayer_lodBias;
 extern int jkPlayer_mipBias;
 extern int jkPlayer_showThingInfo;
@@ -194,6 +194,7 @@ extern int jkPlayer_bUseOldPlayerPhysics;
 
 extern int jkPlayer_setCrosshairOnLightsaber;
 extern int jkPlayer_setCrosshairOnFist;
+extern int jkPlayer_bDisableWeaponWaggle;
 
 extern int jkPlayer_bHasLoadedSettingsOnce;
 
@@ -212,9 +213,9 @@ extern int jkPlayer_puppetShowBodies;
 extern int jkPlayer_puppetShowJoints;
 extern int jkPlayer_puppetShowJointNames;
 extern int jkPlayer_puppetShowConstraints;
-extern float jkPlayer_puppetAngBias;
-extern float jkPlayer_puppetPosBias;
-extern float jkPlayer_puppetFriction;
+extern flex_t jkPlayer_puppetAngBias;
+extern flex_t jkPlayer_puppetPosBias;
+extern flex_t jkPlayer_puppetFriction;
 #endif
 
 #define FOV_MIN (40)
@@ -229,7 +230,7 @@ extern int jkPlayer_bJankyPhysics;
 #endif
 
 
-#define HUD_SCALED(x) ((int)((float)(x) * jkPlayer_hudScale))
+#define HUD_SCALED(x) ((int)((flex_t)(x) * jkPlayer_hudScale)) // FLEXTODO
 
 //static void (*jkPlayer_InitThings)() = (void*)jkPlayer_InitThings_ADDR;
 //static int (*jkPlayer_ReadConf)(wchar_t *a1) = (void*)jkPlayer_ReadConf_ADDR;
@@ -240,7 +241,7 @@ extern int jkPlayer_bJankyPhysics;
 //static int (*jkPlayer_GetJediRank)() = (void*)jkPlayer_GetJediRank_ADDR;
 //static int (*jkPlayer_DisallowOtherSide)() = (void*)jkPlayer_DisallowOtherSide_ADDR;
 //static void (*jkPlayer_SetChoice)(signed int a1) = (void*)jkPlayer_SetChoice_ADDR;
-//static double (*jkPlayer_CalcAlignment)(float a1) = (void*)jkPlayer_CalcAlignment_ADDR;
+//static double (*jkPlayer_CalcAlignment)(flex_t a1) = (void*)jkPlayer_CalcAlignment_ADDR;
 //static void (__cdecl *jkPlayer_renderSaberTwinkle)(sithThing *a1) = (void*)jkPlayer_renderSaberTwinkle_ADDR;
 
 #endif // _JK_PLAYER_H

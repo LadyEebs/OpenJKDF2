@@ -13,7 +13,7 @@
 static rdVector3 polylineVerts[32]; // idk the size on this
 static rdVector3 rdPolyLine_FaceVerts[32];
 
-rdPolyLine* rdPolyLine_New(char *polyline_fname, char *material_fname, char *material_fname2, float length, float base_rad, float tip_rad, int lightmode, int texmode, int sortingmethod, float extraLight)
+rdPolyLine* rdPolyLine_New(char *polyline_fname, char *material_fname, char *material_fname2, flex_t length, flex_t base_rad, flex_t tip_rad, int lightmode, int texmode, int sortingmethod, flex_t extraLight)
 {
     rdPolyLine* polyline;
 
@@ -26,7 +26,7 @@ rdPolyLine* rdPolyLine_New(char *polyline_fname, char *material_fname, char *mat
     return polyline;
 }
 
-int rdPolyLine_NewEntry(rdPolyLine *polyline, char *polyline_fname, char *material_side_fname, char *material_tip_fname, float length, float base_rad, float tip_rad, rdGeoMode_t edgeGeometryMode, rdLightMode_t edgeLightingMode, rdTexMode_t edgeTextureMode, float extraLight)
+int rdPolyLine_NewEntry(rdPolyLine *polyline, char *polyline_fname, char *material_side_fname, char *material_tip_fname, flex_t length, flex_t base_rad, flex_t tip_rad, rdGeoMode_t edgeGeometryMode, rdLightMode_t edgeLightingMode, rdTexMode_t edgeTextureMode, flex_t extraLight)
 {
 
     rdMaterial *mat;
@@ -81,14 +81,14 @@ int rdPolyLine_NewEntry(rdPolyLine *polyline, char *polyline_fname, char *materi
         if ( !extraUVTipMaybe )
             return 0;
         v22 = polyline->edgeFace.material->texinfos[0]->texture_ptr->texture_struct[0];
-        extraUVTipMaybe[0].x = (double)((unsigned int)v22->format.width) - 0.01;
+        extraUVTipMaybe[0].x = (flex_d_t)((unsigned int)v22->format.width) - 0.01;
         extraUVTipMaybe[0].y = 0.0;
         extraUVTipMaybe[1].x = 0.0;
         extraUVTipMaybe[1].y = 0.0;
         extraUVTipMaybe[2].x = 0.0;
-        extraUVTipMaybe[2].y = (double)((unsigned int)v22->format.height) - 0.01;
-        extraUVTipMaybe[3].x = (double)((unsigned int)v22->format.width) - 0.01;
-        extraUVTipMaybe[3].y = (double)((unsigned int)v22->format.height) - 0.01;
+        extraUVTipMaybe[2].y = (flex_d_t)((unsigned int)v22->format.height) - 0.01;
+        extraUVTipMaybe[3].x = (flex_d_t)((unsigned int)v22->format.width) - 0.01;
+        extraUVTipMaybe[3].y = (flex_d_t)((unsigned int)v22->format.height) - 0.01;
     }
     polyline->tipFace.textureMode = edgeTextureMode;
     polyline->textureMode = edgeTextureMode;
@@ -121,14 +121,14 @@ int rdPolyLine_NewEntry(rdPolyLine *polyline, char *polyline_fname, char *materi
         if ( !extraUVFaceMaybe )
             return 0;
         v22 = polyline->tipFace.material->texinfos[0]->texture_ptr->texture_struct[0];
-        extraUVFaceMaybe[0].x = (double)((unsigned int)v22->format.width) - 0.01;
+        extraUVFaceMaybe[0].x = (flex_d_t)((unsigned int)v22->format.width) - 0.01;
         extraUVFaceMaybe[0].y = 0.0;
         extraUVFaceMaybe[1].x = 0.0;
         extraUVFaceMaybe[1].y = 0.0;
         extraUVFaceMaybe[2].x = 0.0;
-        extraUVFaceMaybe[2].y = (double)((unsigned int)v22->format.height) - 0.01;
-        extraUVFaceMaybe[3].x = (double)((unsigned int)v22->format.width) - 0.01;
-        extraUVFaceMaybe[3].y = (double)((unsigned int)v22->format.height) - 0.01;
+        extraUVFaceMaybe[2].y = (flex_d_t)((unsigned int)v22->format.height) - 0.01;
+        extraUVFaceMaybe[3].x = (flex_d_t)((unsigned int)v22->format.width) - 0.01;
+        extraUVFaceMaybe[3].y = (flex_d_t)((unsigned int)v22->format.height) - 0.01;
     }
     return 1;
 }
@@ -179,14 +179,14 @@ void rdPolyLine_FreeEntry(rdPolyLine *polyline)
 int rdPolyLine_Draw(rdThing *thing, rdMatrix34 *matrix)
 {
     rdPolyLine *polyline;
-    float length;
-    double tip_left;
-    double tip_bottom;
-    double tip_right;
-    double tip_top;
-    float ang;
-    float angSin;
-    float angCos;
+    flex_t length;
+    flex_d_t tip_left;
+    flex_d_t tip_bottom;
+    flex_d_t tip_right;
+    flex_d_t tip_top;
+    flex_t ang;
+    flex_t angSin;
+    flex_t angCos;
     rdVector3 vertex_out;
     rdMatrix34 out;
     rdVector3 vertex;
@@ -281,9 +281,9 @@ int rdPolyLine_Draw(rdThing *thing, rdMatrix34 *matrix)
 		polylineVerts[3].y = out.scale.y + right.y * polyline->baseRadius;
 		polylineVerts[3].z = out.scale.z + right.z * polyline->baseRadius;
 #else	
-        float zdist = vertex_out.z - out.scale.z;
-        float xdist = vertex_out.x - out.scale.x;
-        float mag = stdMath_Sqrt(xdist * xdist + zdist * zdist);
+        flex_t zdist = vertex_out.z - out.scale.z;
+        flex_t xdist = vertex_out.x - out.scale.x;
+        flex_t mag = stdMath_Sqrt(xdist * xdist + zdist * zdist);
 
         // Added: prevent div 0
         if (mag == 0)
@@ -308,15 +308,17 @@ int rdPolyLine_Draw(rdThing *thing, rdMatrix34 *matrix)
         polylineVerts[1].y = vertex_out.y;
         polylineVerts[1].z = (-polyline->tipRadius * angSin) + (mag * angCos) + out.scale.z;
         
-        polylineVerts[2].x = (-polyline->baseRadius * angCos) - (float)0.0 + out.scale.x;
+        polylineVerts[2].x = (-polyline->baseRadius * angCos) - (flex_t)0.0 + out.scale.x;
         polylineVerts[2].y = out.scale.y;
-        polylineVerts[2].z = (-polyline->baseRadius * angSin) + (float)0.0 + out.scale.z;
+        polylineVerts[2].z = (-polyline->baseRadius * angSin) + (flex_t)0.0 + out.scale.z;
         
-        polylineVerts[3].x = (polyline->baseRadius * angCos) - (float)0.0 + out.scale.x;
+        polylineVerts[3].x = (polyline->baseRadius * angCos) - (flex_t)0.0 + out.scale.x;
         polylineVerts[3].y = out.scale.y;
-        polylineVerts[3].z = (polyline->baseRadius * angSin) + (float)0.0 + out.scale.z;
+
+        polylineVerts[3].z = (polyline->baseRadius * angSin) + (flex_t)0.0 + out.scale.z;
 #endif
 		polyline->edgeFace.sortId = 2;
+
         idxInfo.vertexUVs = polyline->extraUVTipMaybe;
         rdPolyLine_DrawFace(thing, &polyline->edgeFace, polylineVerts, &idxInfo);
     }
@@ -409,7 +411,7 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 
 	rdBindMaterial(face->material, thing->wallCel);
 
-	float alpha = 1.0f;
+	flex_t alpha = 1.0f;
 	if ((face->type & RD_FF_TEX_TRANSLUCENT) != 0)
 	{
 		alpha = 90.0f / 255.0f;
@@ -450,10 +452,10 @@ void rdPolyLine_DrawFace(rdThing* thing, rdFace* face, rdVector3* unused, rdVert
 		rdMath_IntersectLineSegments(&idxInfo->vertices[2], &idxInfo->vertices[0], &idxInfo->vertices[3], &idxInfo->vertices[1], &quadCenter);
 
 		// compute and apply scale adjustments
-		float dUR = rdVector_Dist3(&idxInfo->vertices[0], &quadCenter);
-		float dUL = rdVector_Dist3(&idxInfo->vertices[1], &quadCenter);
-		float dLL = rdVector_Dist3(&idxInfo->vertices[2], &quadCenter);
-		float dLR = rdVector_Dist3(&idxInfo->vertices[3], &quadCenter);
+		flex_t dUR = rdVector_Dist3(&idxInfo->vertices[0], &quadCenter);
+		flex_t dUL = rdVector_Dist3(&idxInfo->vertices[1], &quadCenter);
+		flex_t dLL = rdVector_Dist3(&idxInfo->vertices[2], &quadCenter);
+		flex_t dLR = rdVector_Dist3(&idxInfo->vertices[3], &quadCenter);
 
 		rdVector_Scale3Acc(&uvs[0], (dUR + dLL) / dLL);
 		rdVector_Scale3Acc(&uvs[1], (dUL + dLR) / dLR);
@@ -522,7 +524,7 @@ void rdPolyLine_DrawFace(rdThing *thing, rdFace *face, rdVector3 *unused, rdVert
 {
     rdProcEntry *procEntry;
     rdMeshinfo mesh_out;
-    float staticLight;
+    flex_t staticLight;
 
     procEntry = rdCache_GetProcEntry();
     if (!procEntry)

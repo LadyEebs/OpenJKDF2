@@ -200,7 +200,7 @@ int sithThing_Startup()
             v2 = (const char **)sithThing_aParams;
             while ( 1 )
             {
-                stdHashTable_SetKeyVal(sithThing_paramKeyToParamValMap, *v2++, (void *)v1++);
+                stdHashTable_SetKeyVal(sithThing_paramKeyToParamValMap, *v2++, (void *)(intptr_t)v1++);
                 if ( (intptr_t)v2 >= (intptr_t)&sithThing_aParams[NUM_THING_PARAMS] )
                     break;
             }
@@ -243,7 +243,7 @@ void sithThing_FreeConstraints(sithThing* thing)
 #endif
 
 // MOTS altered?
-void sithThing_TickAll(float deltaSeconds, int deltaMs)
+void sithThing_TickAll(flex_t deltaSeconds, int deltaMs)
 {
     sithThing* pThingIter; // esi
     sithWorld *v6; // edi
@@ -395,13 +395,13 @@ void sithThing_TickAll(float deltaSeconds, int deltaMs)
 	STD_END_PROFILER_LABEL();
 }
 
-void sithThing_TickPhysics(sithThing *pThing, float deltaSecs)
+void sithThing_TickPhysics(sithThing *pThing, flex_t deltaSecs)
 {
     int v2; // ebp
     sithSurface *v5; // eax
     rdVector3 v8; // [esp+Ch] [ebp-18h] BYREF
     rdVector3 v1; // [esp+18h] [ebp-Ch] BYREF
-    float arg4a; // [esp+2Ch] [ebp+8h]
+    flex_t arg4a; // [esp+2Ch] [ebp+8h]
 
     v2 = 0;
     if ((pThing->attach_flags & SITH_ATTACH_NO_MOVE))
@@ -518,11 +518,12 @@ sithThing* sithThing_GetById(int thing_id)
     if ( sithWorld_pCurrentWorld->numThings < 0 )
         return 0;
     
-    for (int i = 0; i < sithWorld_pCurrentWorld->numThings; i++)
+    for (int i = 0; i <= sithWorld_pCurrentWorld->numThings; i++)
     {
         sithThing* iter = &sithWorld_pCurrentWorld->things[i];
-        if (iter->thing_id == thing_id && iter->type != SITH_THING_FREE)
+        if (iter->thing_id == thing_id && iter->type != SITH_THING_FREE) {
             return iter;
+        }
     }
 
     return NULL;
@@ -535,9 +536,10 @@ void sithThing_Destroy(sithThing* pThing)
         sithCog_SendMessageFromThing(pThing, 0, SITH_MESSAGE_REMOVED);
 }
 
-float sithThing_Damage(sithThing *sender, sithThing *reciever, float amount, int damageClass, int hitJoint)
+// Added: joint
+flex_t sithThing_Damage(sithThing *sender, sithThing *reciever, flex_t amount, int damageClass, int hitJoint)
 {
-    float param1; // [esp+0h] [ebp-20h]
+    flex_t param1; // [esp+0h] [ebp-20h]
 
     // Added: noclip
     if (sender == sithPlayer_pLocalPlayerThing && (g_debugmodeFlags & DEBUGFLAG_NOCLIP)) {
@@ -550,8 +552,8 @@ float sithThing_Damage(sithThing *sender, sithThing *reciever, float amount, int
         return 0.0;
     if ( (sender->thingflags & SITH_TF_CAPTURED) != 0 && (sender->thingflags & SITH_TF_INVULN) == 0 )
     {
-        param1 = (float)(unsigned int)damageClass;
-        amount = sithCog_SendMessageFromThingEx(sender, reciever, SITH_MESSAGE_DAMAGED, amount, param1, (float)hitJoint, 0.0);
+        param1 = (flex_t)(unsigned int)damageClass;
+        amount = sithCog_SendMessageFromThingEx(sender, reciever, SITH_MESSAGE_DAMAGED, amount, param1, (flex_t)hitJoint, 0.0);
     }
     if ( amount > 0.0 )
     {
@@ -614,7 +616,7 @@ void sithThing_freestuff(sithWorld *pWorld)
             sithThing_LeaveSector(pThingIter);
         if ( pThingIter->moveType == SITH_MT_PATH && pThingIter->trackParams.aFrames )
             pSithHS->free(pThingIter->trackParams.aFrames);
-		if (pThingIter->controlType == SITH_CT_AI /*|| pThingIter->controlType == SITH_CT_10*/) // Added: SITH_THING_PLAYER
+		if ( pThingIter->controlType == SITH_CT_AI /*|| pThingIter->controlType == SITH_CT_10*/) // Added: SITH_THING_PLAYER
             sithAI_FreeEntry(pThingIter);
         if ( pThingIter->type == SITH_THING_PARTICLE )
             sithParticle_FreeEntry(pThingIter);
@@ -659,6 +661,7 @@ void sithThing_idkjkl(void)
 	{
 		sithThing* pThing = &sithWorld_pCurrentWorld->things[idx];
 		sithThing_DoesRdThingInit(pThing);
+		
 		pThing->thingIdx = idx;
 		pThing->thing_id = -1;
 		sithThing_netidk2(idx);
@@ -918,7 +921,7 @@ void sithThing_EnterSector(sithThing* pThing, sithSector *sector, int a3, int a4
     {
         if (i == pThing) {
             pThing->sector = sector; // just in case?
-            jk_printf("OpenJKDF2: Tried to double enter sector??\n");
+            jk_printf("OpenJKDF2: Tried to flex_d_t enter sector??\n");
             return;
         }
     }
@@ -970,7 +973,7 @@ void sithThing_EnterWater(sithThing* pThing, int a2)
     {
 #ifdef QOL_IMPROVEMENTS
         // Prevent splash sound spam if they're not actually making significant movement
-        if ( pThing->soundclass && fabs(pThing->physicsParams.vel.z) > 0.02 )  
+        if ( pThing->soundclass && stdMath_Fabs(pThing->physicsParams.vel.z) > 0.02 )  
 #else
         if ( pThing->soundclass )
 #endif
@@ -1138,11 +1141,11 @@ sithThing* sithThing_CreateThingOfType(uint32_t thingType)
 	return pThingRet;
 }
 
-void sithThing_SetPosAndRot(sithThing *this, rdVector3 *pos, rdMatrix34 *rot)
+void sithThing_SetPosAndRot(sithThing *pThing, rdVector3 *pos, rdMatrix34 *rot)
 {
-    rdVector_Copy3(&this->position, pos);
-    rdMatrix_Copy34(&this->lookOrientation, rot);
-    rdVector_Zero3(&this->lookOrientation.scale);
+    rdVector_Copy3(&pThing->position, pos);
+    rdMatrix_Copy34(&pThing->lookOrientation, rot);
+    rdVector_Zero3(&pThing->lookOrientation.scale);
 }
 
 // MOTS altered
@@ -1152,7 +1155,7 @@ int sithThing_SetNewModel(sithThing* pThing, rdModel3* pModel)
     rdPuppet *v4; // ebx
 
     v2 = &pThing->rdthing;
-    if ( pThing->rdthing.type == RD_THINGTYPE_MODEL && pThing->rdthing.model3 == pModel)
+    if ( pThing->rdthing.type == RD_THINGTYPE_MODEL && pThing->rdthing.model3 == pModel )
         return 0;
     v4 = pThing->rdthing.puppet;
     pThing->rdthing.puppet = 0;
@@ -1168,7 +1171,7 @@ int sithThing_SetNewModel(sithThing* pThing, rdModel3* pModel)
     return 1;
 }
 
-sithThing* sithThing_InstantiateFromTemplate(sithThing *pThing, sithThing * pTemplateThing)
+sithThing* sithThing_InstantiateFromTemplate(sithThing *pThing, sithThing *pTemplateThing)
 {
     sithThing *result; // eax
     int v10; // [esp+10h] [ebp-Ch]
@@ -1180,7 +1183,7 @@ sithThing* sithThing_InstantiateFromTemplate(sithThing *pThing, sithThing * pTem
     v11 = pThing->thing_id;
     v10 = pThing->signature;
     v12 = pThing->rdthing.parentSithThing;
-    if (pTemplateThing)
+    if ( pTemplateThing )
     {
         _memcpy(pThing, pTemplateThing, sizeof(sithThing));
         if ( pThing->rdthing.type == RD_THINGTYPE_MODEL )
@@ -1258,7 +1261,7 @@ sithThing* sithThing_Create(sithThing *pTemplateThing, const rdVector3 *position
 	return pThingRet;
 }
 
-sithThing* sithThing_SpawnTemplate(sithThing * pTemplateThing, sithThing *spawnThing)
+sithThing* sithThing_SpawnTemplate(sithThing *pTemplateThing, sithThing *spawnThing)
 {
     sithSector *v2; // eax
     sithThing *result; // eax
@@ -1318,7 +1321,7 @@ void sithThing_AttachToSurface(sithThing* pThing, sithSurface *surface, int a3)
     int *v6; // eax
     sithWorld *v7; // edx
     rdVector3 *v8; // ecx
-    double v14; // st7
+    flex_d_t v14; // st7
     int v15; // edi
     rdVector3 a2a; // [esp+Ch] [ebp-Ch] BYREF
 
@@ -1399,12 +1402,12 @@ void sithThing_LandThing(sithThing *a1, sithThing *a2, rdFace *a3, rdVector3 *a4
     int *v7; // eax
     int v8; // eax
     sithThing *v9; // eax
-    double v14; // st6
-    double downward_velocity; // st7
+    flex_d_t v14; // st6
+    flex_d_t downward_velocity; // st7
     int v18; // [esp+10h] [ebp-1Ch]
     rdVector3 a2a; // [esp+14h] [ebp-18h] BYREF
     rdVector3 out; // [esp+20h] [ebp-Ch] BYREF
-    float a1a; // [esp+30h] [ebp+4h]
+    flex_t a1a; // [esp+30h] [ebp+4h]
 
     v18 = 1;
     if ( a1->attach_flags )
@@ -1499,7 +1502,7 @@ int sithThing_DetachThing(sithThing* pThing)
 {
     uint32_t *v2; // edi
     sithThing *v3; // ebx
-    double v12; // rt2
+    flex_d_t v12; // rt2
     sithThing *v13; // ecx
     sithThing *v14; // eax
     int result; // eax
@@ -1522,7 +1525,7 @@ int sithThing_DetachThing(sithThing* pThing)
         }
         result = 0;
 
-        _memset(v2, 0, sizeof(uint32_t) + sizeof(rdVector3) + sizeof(sithSurfaceInfo*) + sizeof(float) + sizeof(rdVector3) + sizeof(void*)); // TODO
+        _memset(v2, 0, sizeof(uint32_t) + sizeof(rdVector3) + sizeof(sithSurfaceInfo*) + sizeof(flex_t) + sizeof(rdVector3) + sizeof(void*)); // TODO
         return result;
     }
     v3 = pThing->attachedThing;
@@ -1555,7 +1558,7 @@ LABEL_8:
             result = 0;
             pThing->parentThing = 0;
             pThing->childThing = 0;
-            _memset(v2, 0, sizeof(uint32_t) + sizeof(rdVector3) + sizeof(sithSurfaceInfo*) + sizeof(float) + sizeof(rdVector3) + sizeof(void*));// TODO
+            _memset(v2, 0, sizeof(uint32_t) + sizeof(rdVector3) + sizeof(sithSurfaceInfo*) + sizeof(flex_t) + sizeof(rdVector3) + sizeof(void*));// TODO
             return result;
         }
     }
@@ -1568,7 +1571,7 @@ LABEL_8:
     result = 0;
     pThing->parentThing = 0;
     pThing->childThing = 0;
-    _memset(v2, 0, sizeof(uint32_t) + sizeof(rdVector3) + sizeof(sithSurfaceInfo*) + sizeof(float) + sizeof(rdVector3) + sizeof(void*));// TODO
+    _memset(v2, 0, sizeof(uint32_t) + sizeof(rdVector3) + sizeof(sithSurfaceInfo*) + sizeof(flex_t) + sizeof(rdVector3) + sizeof(void*));// TODO
     return result;
 }
 
@@ -1606,7 +1609,6 @@ int sithThing_Load(sithWorld *pWorld, int a2)
     sithThing *v22; // ebx
     int v23; // eax
     sithSector *v24; // edi
-    int v26; // ecx
     int v27; // edi
     stdConffileArg *v28; // ebx
     rdVector3 a3; // [esp+14h] [ebp-48h] BYREF
@@ -1662,7 +1664,6 @@ int sithThing_Load(sithWorld *pWorld, int a2)
     sithWorld_pCurrentWorld->numThingsLoaded = v10;
 	sithThing_idkjkl(); 
 	sithNet_thingsIdx = 0;
-   
     v20 = 0x1000 << jkPlayer_setDiff;
     if ( (g_submodeFlags & SITH_SUBMODE_MULTI) != 0 )
         v20 |= 0x8000u;
@@ -1695,13 +1696,12 @@ int sithThing_Load(sithWorld *pWorld, int a2)
                     v21->archlightIdx = v23;
                     //printf("%p %p %x\n", , v21->archlightIdx);
                 }
-				sithThing_InstantiateFromTemplate(v21, v22);
+                sithThing_InstantiateFromTemplate(v21, v22);
                 sithThing_SetPosAndRot(v21, &pos, &a);
                 sithThing_EnterSector(v21, v24, 1, 1);
                 sithThing_sub_4CD100(v21);
-                v26 = v21->thingIdx;
                 v21->signature = sithThing_bInitted2++;
-                v21->thing_id = v26;
+                v21->thing_id = v21->thingIdx;
                 v27 = 10;
                 if ( stdConffile_entry.numArgs > 10 )
                 {
@@ -1738,7 +1738,7 @@ int sithThing_ParseArgs(stdConffileArg *arg, sithThing* pThing)
 	int v8; // eax
 
     v2 = 0;
-    param = (int)stdHashTable_GetKeyVal(sithThing_paramKeyToParamValMap, arg->key);
+    param = (int)(intptr_t)stdHashTable_GetKeyVal(sithThing_paramKeyToParamValMap, arg->key);
     paramIdx = param;
     if ( !param )
         return 0;
@@ -1795,31 +1795,35 @@ int sithThing_LoadThingParam(stdConffileArg *arg, sithThing* pThing, int param)
     int v3; // ebp
     const char **v4; // edi
     int v5; // eax
-    int32_t v6; // eax
-    int32_t v7; // eax
     int result; // eax
     sithAIClass *pAIClass; // eax
     sithActor *pActor; // esi
     int collide; // eax
-    double size; // st7
+    flex_d_t size; // st7
     uint32_t thingType; // eax
-    double moveSize; // st7
-    double light; // st7
+    flex_d_t moveSize; // st7
+    flex_d_t light; // st7
 #ifdef RGB_THING_LIGHTS
 	rdVector3 lightColor;
 #endif
 #if defined(DECAL_RENDERING) || defined(RENDER_DROID2)
 	rdDecal* pDecal;
 #endif
-    double lifeLeftSec; // st7
+    flex_d_t lifeLeftSec; // st7
+
+    flex_d_t moveSize; // st7
+    flex_d_t light; // st7
+    flex_d_t lifeLeftSec; // st7
+
     rdModel3 *pModel; // eax
     rdParticle *pParticle; // edi
     rdSprite *pSprite; // eax
     sithAnimclass *pAnimClass; // eax
     sithCog *pCog; // eax
     rdVector3 orientation; // [esp+10h] [ebp-Ch] BYREF
+    flex32_t orientationx, orientationy, orientationz;
     uint32_t thingFlags;
-    float tmpF;
+    flex32_t tmpF;
 #ifdef POLYLINE_EXT
 	rdPolyLine* polyline;
 #endif
@@ -2093,8 +2097,11 @@ LABEL_56:
 			break;
 	#endif
         case THINGPARAM_ORIENT:
-            if ( _sscanf(arg->value, "(%f/%f/%f)", &orientation, &orientation.y, &orientation.z) == 3 )
+            if ( _sscanf(arg->value, "(%f/%f/%f)", &orientationx, &orientationy, &orientationz) == 3 )
             {
+                orientation.x = orientationx; // FLEXTODO
+                orientation.y = orientationy; // FLEXTODO
+                orientation.z = orientationz; // FLEXTODO
                 rdMatrix_BuildRotate34(&pThing->lookOrientation, &orientation);
 LABEL_58:
                 result = 1;
@@ -2141,28 +2148,28 @@ uint32_t sithThing_Checksum(sithThing* pThing, unsigned int last_hash)
     if ( pThing->moveType == SITH_MT_PHYSICS )
     {
         hash = util_Weirdchecksum((uint8_t *)&pThing->physicsParams.physflags, sizeof(uint32_t), hash);
-        hash = util_Weirdchecksum((uint8_t *)&pThing->physicsParams.airDrag, sizeof(float), hash);
-        hash = util_Weirdchecksum((uint8_t *)&pThing->physicsParams.surfaceDrag, sizeof(float), hash);
-        hash = util_Weirdchecksum((uint8_t *)&pThing->physicsParams.staticDrag, sizeof(float), hash);
-        hash = util_Weirdchecksum((uint8_t *)&pThing->physicsParams.mass, sizeof(float), hash);
-        hash = util_Weirdchecksum((uint8_t *)&pThing->physicsParams.height, sizeof(float), hash);
+        hash = util_Weirdchecksum((uint8_t *)&pThing->physicsParams.airDrag, sizeof(flex_t), hash);
+        hash = util_Weirdchecksum((uint8_t *)&pThing->physicsParams.surfaceDrag, sizeof(flex_t), hash);
+        hash = util_Weirdchecksum((uint8_t *)&pThing->physicsParams.staticDrag, sizeof(flex_t), hash);
+        hash = util_Weirdchecksum((uint8_t *)&pThing->physicsParams.mass, sizeof(flex_t), hash);
+        hash = util_Weirdchecksum((uint8_t *)&pThing->physicsParams.height, sizeof(flex_t), hash);
     }
     if ( pThing->type == SITH_THING_ACTOR )
     {
         hash = util_Weirdchecksum((uint8_t *)&pThing->actorParams.typeflags, sizeof(uint32_t), hash);
-        hash = util_Weirdchecksum((uint8_t *)&pThing->actorParams.health, sizeof(float), hash);
-        hash = util_Weirdchecksum((uint8_t *)&pThing->actorParams.maxHealth, sizeof(float), hash);
-        hash = util_Weirdchecksum((uint8_t *)&pThing->actorParams.jumpSpeed, sizeof(float), hash);
-        hash = util_Weirdchecksum((uint8_t *)&pThing->actorParams.maxThrust, sizeof(float), hash);
-        hash = util_Weirdchecksum((uint8_t *)&pThing->actorParams.maxRotThrust, sizeof(float), hash);
+        hash = util_Weirdchecksum((uint8_t *)&pThing->actorParams.health, sizeof(flex_t), hash);
+        hash = util_Weirdchecksum((uint8_t *)&pThing->actorParams.maxHealth, sizeof(flex_t), hash);
+        hash = util_Weirdchecksum((uint8_t *)&pThing->actorParams.jumpSpeed, sizeof(flex_t), hash);
+        hash = util_Weirdchecksum((uint8_t *)&pThing->actorParams.maxThrust, sizeof(flex_t), hash);
+        hash = util_Weirdchecksum((uint8_t *)&pThing->actorParams.maxRotThrust, sizeof(flex_t), hash);
     }
     else if ( pThing->type == SITH_THING_WEAPON )
     {
         hash = util_Weirdchecksum((uint8_t *)&pThing->weaponParams.typeflags, sizeof(uint32_t), hash);
-        hash = util_Weirdchecksum((uint8_t *)&pThing->weaponParams.damage, sizeof(float), hash);
+        hash = util_Weirdchecksum((uint8_t *)&pThing->weaponParams.damage, sizeof(flex_t), hash);
         hash = util_Weirdchecksum((uint8_t *)&pThing->weaponParams.unk8, sizeof(uint32_t), hash); // ???
-        hash = util_Weirdchecksum((uint8_t *)&pThing->weaponParams.mindDamage, sizeof(float), hash);
-        hash = util_Weirdchecksum((uint8_t *)&pThing->weaponParams.range, sizeof(float), hash);
+        hash = util_Weirdchecksum((uint8_t *)&pThing->weaponParams.mindDamage, sizeof(flex_t), hash);
+        hash = util_Weirdchecksum((uint8_t *)&pThing->weaponParams.range, sizeof(flex_t), hash);
     }
     return hash;
 }
@@ -2278,13 +2285,13 @@ int sithThing_Release(sithThing *pThing)
 }
 
 // MOTS added
-int sithThing_MotsTick(int param_1,int param_2,float param_3)
+int sithThing_MotsTick(int param_1,int param_2,flex_t param_3)
 {
     if (!Main_bMotsCompat) return 1;
 
     if (sithCog_pActionCog && (sithCog_actionCogIdk & (1 << (param_1 & 0x1f)))) 
     {
-        float fVar1 = sithCog_SendMessageEx(sithCog_pActionCog,SITH_MESSAGE_PLAYERACTION,0,0,0,0,0,(float)param_1,(float)param_2,param_3,0.0);
+        flex_t fVar1 = sithCog_SendMessageEx(sithCog_pActionCog,SITH_MESSAGE_PLAYERACTION,0,0,0,0,0,(flex_t)param_1,(flex_t)param_2,param_3,0.0); // FLEXTODO
         if (fVar1 == 0.0) {
             return 0;
         }

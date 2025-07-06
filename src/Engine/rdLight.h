@@ -6,6 +6,10 @@
 #include "Primitives/rdVector.h"
 #include "Primitives/rdModel3.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define rdLight_New_ADDR (0x0044B650)
 #define rdLight_NewEntry_ADDR (0x0044B6A0)
 #define rdLight_Free_ADDR (0x0044B6E0)
@@ -20,16 +24,16 @@ int rdLight_NewEntry(rdLight *light);
 void rdLight_Free(rdLight *light);
 void rdLight_FreeEntry(rdLight *light);
 #ifdef JKM_LIGHTING
-void rdLight_SetAngles(rdLight *pLight, float angleX, float angleY);
+void rdLight_SetAngles(rdLight *pLight, flex_t angleX, flex_t angleY);
 #endif
 
-double rdLight_CalcVertexIntensities(rdLight **meshLights, rdVector3 *localLightPoses, 
+flex_t rdLight_CalcVertexIntensities(rdLight **meshLights, rdVector3 *localLightPoses, 
 #ifdef JKM_LIGHTING
     rdVector3 *localLightDirs, 
 #endif
-    int numLights, rdVector3 *verticesEnd, rdVector3 *vertices, float *vertices_i_end, float *vertices_i,
+    int numLights, rdVector3 *verticesEnd, rdVector3 *vertices, flex_t *vertices_i_end, flex_t *vertices_i,
 #ifdef RGB_THING_LIGHTS
-	float* vertices_r, float* vertices_g, float* vertices_b,
+	flex_t* vertices_r, flex_t* vertices_g, flex_t* vertices_b,
 #endif
 #ifdef RGB_AMBIENT
 	rdAmbient* ambient,
@@ -38,8 +42,8 @@ double rdLight_CalcVertexIntensities(rdLight **meshLights, rdVector3 *localLight
 	rdVector3* localCamera,
 	int bApplySpecular,
 #endif
-	int numVertices, float scalar);
-float rdLight_CalcFaceIntensity(rdLight **meshLights, rdVector3 *localLightPoses, int numLights, rdFace *face, rdVector3 *faceNormal, rdVector3 *vertices, float a7);
+	int numVertices, flex_t scalar);
+flex_t rdLight_CalcFaceIntensity(rdLight **meshLights, rdVector3 *localLightPoses, int numLights, rdFace *face, rdVector3 *faceNormal, rdVector3 *vertices, flex_t a7);
 
 void rdLight_CalcDistVertexIntensities();
 void rdLight_CalcDistFaceIntensity();
@@ -57,6 +61,8 @@ void rdAmbient_CalculateVertexColor(rdAmbient* ambient, rdVector3* normal, rdVec
 #ifndef RENDER_DROID2
 void rdAmbient_UpdateDominantDirection(rdAmbient* ambient);
 #endif
+#ifdef __cplusplus
+}
 #endif
 
 #endif // _RDLIGHT_H

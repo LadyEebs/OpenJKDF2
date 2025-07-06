@@ -115,7 +115,7 @@ void stdPalEffects_UpdatePalette(const void *palette)
     int32_t v11; // ecx
     int32_t v12; // ecx
     int32_t v13; // ecx
-    double v14; // st7
+    flex_d_t v14; // st7
     int j; // esi
     uint8_t *v16; // edi
     __int64 v17; // rax
@@ -266,10 +266,10 @@ LABEL_23:
             v14 = stdPalEffects_state.effect.fade;
             for ( j = 0; j < 256; ++j )
             {
-                stdPalEffects_palette[j].r = (__int64)((double)(uint8_t)stdPalEffects_palette[j].r * v14 - -0.5);
+                stdPalEffects_palette[j].r = (__int64)((flex_d_t)(uint8_t)stdPalEffects_palette[j].r * v14 - -0.5);
                 v16 = &stdPalEffects_palette[j].b;
-                stdPalEffects_palette[j].g = (__int64)((double)(uint8_t)stdPalEffects_palette[j].g * v14 - -0.5);
-                v17 = (__int64)((double)(uint8_t)stdPalEffects_palette[j].b * v14 - -0.5);
+                stdPalEffects_palette[j].g = (__int64)((flex_d_t)(uint8_t)stdPalEffects_palette[j].g * v14 - -0.5);
+                v17 = (__int64)((flex_d_t)(uint8_t)stdPalEffects_palette[j].b * v14 - -0.5);
                 *v16 = v17;
             }
             v8 = stdPalEffects_state.effect.add.x;
@@ -311,13 +311,13 @@ LABEL_72:
 void stdPalEffects_GatherEffects()
 {
     uint32_t effectRequestCounter; // ebx
-    double tintB; // st7
-    double tintG; // st6
+    flex_d_t tintB; // st7
+    flex_d_t tintG; // st6
     int addB; // edi
     int addG; // esi
     int addR; // edx
     stdPalEffectRequest* pEffectReq; // ecx
-    double tintR; // st5
+    flex_d_t tintR; // st5
     stdPalEffect palEffect; // [esp+10h] [ebp-28h] BYREF
 
     effectRequestCounter = 0;
@@ -403,7 +403,7 @@ void stdPalEffects_SetFilter(int idx, int r, int g, int b)
     stdPalEffects_aEffects[idx].effect.filter.z = b;
 }
 
-void stdPalEffects_SetTint(int idx, float r, float g, float b)
+void stdPalEffects_SetTint(int idx, flex_t r, flex_t g, flex_t b)
 {
     stdPalEffects_aEffects[idx].effect.tint.x = r;
     stdPalEffects_aEffects[idx].effect.tint.y = g;
@@ -417,31 +417,31 @@ void stdPalEffects_SetAdd(int idx, int r, int g, int b)
     stdPalEffects_aEffects[idx].effect.add.z = b;
 }
 
-void stdPalEffects_SetFade(int idx, float fade)
+void stdPalEffects_SetFade(int idx, flex_t fade)
 {
     stdPalEffects_aEffects[idx].effect.fade = fade;
 }
 
 // ApplyFilter
 
-void stdPalEffects_ApplyTint(rdColor24 *aPalette, float tintR, float tintG, float tintB)
+void stdPalEffects_ApplyTint(rdColor24 *aPalette, flex_t tintR, flex_t tintG, flex_t tintB)
 {
-    double v4; // st7
-    double v5; // st5
-    double v7; // rt0
-    double v8; // st5
-    double v9; // rt2
-    double v10; // st5
-    double v11; // st7
+    flex_d_t v4; // st7
+    flex_d_t v5; // st5
+    flex_d_t v7; // rt0
+    flex_d_t v8; // st5
+    flex_d_t v9; // rt2
+    flex_d_t v10; // st5
+    flex_d_t v11; // st7
     char *v12; // esi
     int v13; // ebx
-    double v14; // st5
-    double v15; // st6
+    flex_d_t v14; // st5
+    flex_d_t v15; // st6
     int v16; // eax
     signed int v17; // eax
     signed int v18; // eax
-    float aPalettea; // [esp+4h] [ebp+4h]
-    float aPaletteb; // [esp+4h] [ebp+4h]
+    flex_t aPalettea; // [esp+4h] [ebp+4h]
+    flex_t aPaletteb; // [esp+4h] [ebp+4h]
 
     v4 = tintR * 0.5;
     v5 = tintB * 0.5;
@@ -458,7 +458,7 @@ void stdPalEffects_ApplyTint(rdColor24 *aPalette, float tintR, float tintG, floa
     v15 = tintG - v9;
     do
     {
-        v16 = (uint8_t)*(v12 - 2) + (unsigned int)(__int64)((double)(uint8_t)*(v12 - 2) * v11 - -0.5);
+        v16 = (uint8_t)*(v12 - 2) + (unsigned int)(__int64)((flex_d_t)(uint8_t)*(v12 - 2) * v11 - -0.5); // FLEXTODO
         if ( v16 < 0 )
         {
             v16 = 0;
@@ -468,7 +468,7 @@ void stdPalEffects_ApplyTint(rdColor24 *aPalette, float tintR, float tintG, floa
             v16 = 0xFF;
         }
         *(v12 - 2) = v16;
-        v17 = (uint8_t)*(v12 - 1) + (unsigned int)(__int64)((double)(uint8_t)*(v12 - 1) * v15 - -0.5);
+        v17 = (uint8_t)*(v12 - 1) + (unsigned int)(__int64)((flex_d_t)(uint8_t)*(v12 - 1) * v15 - -0.5); // FLEXTODO
         if ( v17 < 0 )
         {
             v17 = 0;
@@ -478,7 +478,7 @@ void stdPalEffects_ApplyTint(rdColor24 *aPalette, float tintR, float tintG, floa
             v17 = 0xFF;
         }
         *(v12 - 1) = v17;
-        v18 = (uint8_t)*v12 + (unsigned int)(__int64)((double)(uint8_t)*v12 * v14 - -0.5);
+        v18 = (uint8_t)*v12 + (unsigned int)(__int64)((flex_d_t)(uint8_t)*v12 * v14 - -0.5);
         if ( v18 < 0 )
         {
             v18 = 0;

@@ -1,12 +1,12 @@
 #ifndef _SITHMULTI_H
 #define _SITHMULTI_H
 
+#include "types.h"
+#include "globals.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "types.h"
-#include "globals.h"
 
 #define sithMulti_Startup_ADDR (0x004C9AE0)
 #define sithMulti_Shutdown_ADDR (0x004C9CB0)
@@ -52,7 +52,7 @@ extern "C" {
 #define NETMSG_PUSHU32(x) {*(uint32_t*)craftingPacket = (uint32_t)(x); craftingPacket += sizeof(uint32_t);};
 #define NETMSG_PUSHS32(x) {*(int32_t*)craftingPacket = (int32_t)(x); craftingPacket += sizeof(int32_t);};
 #define NETMSG_PUSHU64(x) {*(uint64_t*)craftingPacket = (uint64_t)(x); craftingPacket += sizeof(uint64_t);};
-#define NETMSG_PUSHF32(x) {*(float*)craftingPacket = (float)(x); craftingPacket += sizeof(float);};
+#define NETMSG_PUSHF32(x) {*(flex32_t*)craftingPacket = (flex32_t)(x); craftingPacket += sizeof(flex32_t);};
 #define NETMSG_PUSHVEC2(x) {*(rdVector2*)craftingPacket = (x); craftingPacket += sizeof(rdVector2);};
 #define NETMSG_PUSHVEC3(x) {*(rdVector3*)craftingPacket = (x); craftingPacket += sizeof(rdVector3);};
 #define NETMSG_PUSHVEC3I(x) {*(rdVector3i*)craftingPacket = (x); craftingPacket += sizeof(rdVector3i);};
@@ -75,7 +75,7 @@ extern "C" {
 
 #define NETMSG_IN_START(x) intptr_t _readingPacket = (intptr_t)&x->pktData[0]; uint8_t _readingOutU8; \
 uint16_t _readingOutU16; int16_t _readingOutS16; uint32_t _readingOutU32; \
-int32_t _readingOutS32; uint64_t _readingOutU64; float _readingOutFloat; rdVector2 _readingOutV2; \
+int32_t _readingOutS32; uint64_t _readingOutU64; flex32_t _readingOutFloat; rdVector2 _readingOutV2; \
 rdVector3 _readingOutV3; rdVector3i _readingOutV3i; rdMatrix34 _readingOutM34;
 
 #define NETMSG_POPU8() (_readingOutU8 = *(uint8_t*)_readingPacket, _readingPacket += sizeof(uint8_t), _readingOutU8)
@@ -84,7 +84,7 @@ rdVector3 _readingOutV3; rdVector3i _readingOutV3i; rdMatrix34 _readingOutM34;
 #define NETMSG_POPU32() (_readingOutU32 = *(uint32_t*)_readingPacket, _readingPacket += sizeof(uint32_t), _readingOutU32)
 #define NETMSG_POPS32() (_readingOutS32 = *(int32_t*)_readingPacket, _readingPacket += sizeof(int32_t), _readingOutS32)
 #define NETMSG_POPU64() (_readingOutU64 = *(uint64_t*)_readingPacket, _readingPacket += sizeof(uint64_t), _readingOutU64)
-#define NETMSG_POPF32() (_readingOutFloat = *(float*)_readingPacket, _readingPacket += sizeof(float), _readingOutFloat)
+#define NETMSG_POPF32() (_readingOutFloat = *(flex32_t*)_readingPacket, _readingPacket += sizeof(flex32_t), _readingOutFloat)
 #define NETMSG_POPVEC2() (_readingOutV2 = *(rdVector2*)_readingPacket, _readingPacket += sizeof(rdVector2), _readingOutV2)
 #define NETMSG_POPVEC3() (_readingOutV3 = *(rdVector3*)_readingPacket, _readingPacket += sizeof(rdVector3), _readingOutV3)
 #define NETMSG_POPVEC3I() (_readingOutV3i = *(rdVector3i*)_readingPacket, _readingPacket += sizeof(rdVector3i), _readingOutV3i)
@@ -99,7 +99,7 @@ extern int jkGuiNetHost_bIsDedicated;
 extern int sithMulti_lastCheckpoint;
 
 void sithMulti_SetHandleridk(sithMultiHandler_t a1);
-void sithMulti_SendChat(char *pStr, int arg0, int arg1);
+void sithMulti_SendChat(const char *pStr, int arg0, int arg1);
 void sithMulti_ProcessScore();
 int sithMulti_ProcessChat(sithCogMsg *msg);
 

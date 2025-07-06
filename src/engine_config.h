@@ -1,6 +1,9 @@
 #ifndef _OPENJKDF2_ENGINE_CONFIG_H
 #define _OPENJKDF2_ENGINE_CONFIG_H
 
+#include <float.h>
+#include "types_enums.h"
+
 // Experimental features
 #ifdef QOL_IMPROVEMENTS
 
@@ -451,8 +454,14 @@ extern int Window_isHiDpi;
 #define WINDOW_DEFAULT_HEIGHT_4K WINDOW_DEFAULT_HEIGHT
 #endif // WIN64_STANDALONE
 
-// TODO: fixed point support?
-typedef float flex_t;
+// The type to use for flex_t:
+// - float for original game behavior
+// - double to verify flex_t vs flex32_t vs cog_flex_t is working
+// - TODO: fixed point support?
+typedef float flex_t_type; // _Float16
+typedef double flex_d_t_type;
+
+#define FLEX(n) ((flex_t)n)
 
 // Disable warnings for Vegetable Studio
 #if 1 && defined _MSC_VER

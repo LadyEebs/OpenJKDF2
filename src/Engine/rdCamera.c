@@ -10,9 +10,9 @@
 #include "World/jkPlayer.h"
 
 static rdVector3 rdCamera_camRotation;
-static float rdCamera_mipmapScalar = 1.0; // MOTS added
+static flex_t rdCamera_mipmapScalar = 1.0; // MOTS added
 
-rdCamera* rdCamera_New(float fov, float x, float y, float z, float aspectRatio)
+rdCamera* rdCamera_New(flex_t fov, flex_t x, flex_t y, flex_t z, flex_t aspectRatio)
 {
     rdCamera* out = (rdCamera *)rdroid_pHS->alloc(sizeof(rdCamera));
     if ( !out ) {
@@ -27,7 +27,7 @@ rdCamera* rdCamera_New(float fov, float x, float y, float z, float aspectRatio)
     return out;
 }
 
-int rdCamera_NewEntry(rdCamera *camera, float fov, float a3, float zNear, float zFar, float aspectRatio)
+int rdCamera_NewEntry(rdCamera *camera, flex_t fov, flex_t a3, flex_t zNear, flex_t zFar, flex_t aspectRatio)
 {
     if (!camera)
         return 0;
@@ -97,7 +97,7 @@ int rdCamera_SetCurrent(rdCamera *camera)
 }
 
 extern int jkGuiBuildMulti_bRendering;
-int rdCamera_SetFOV(rdCamera *camera, float fovVal)
+int rdCamera_SetFOV(rdCamera *camera, flex_t fovVal)
 {
     if ( fovVal < 5.0 )
     {
@@ -174,14 +174,14 @@ int rdCamera_SetProjectType(rdCamera *camera, int type)
     return 1;
 }
 
-int rdCamera_SetOrthoScale(rdCamera *camera, float scale)
+int rdCamera_SetOrthoScale(rdCamera *camera, flex_t scale)
 {
     camera->orthoScale = scale;
     rdCamera_BuildFOV(camera);
     return 1;
 }
 
-int rdCamera_SetAspectRatio(rdCamera *camera, float ratio)
+int rdCamera_SetAspectRatio(rdCamera *camera, flex_t ratio)
 {
 #ifdef QOL_IMPROVEMENTS
     if (jkPlayer_enableOrigAspect) ratio = 1.0;
@@ -193,9 +193,9 @@ int rdCamera_SetAspectRatio(rdCamera *camera, float ratio)
 
 int rdCamera_BuildFOV(rdCamera *camera)
 {
-    double v10; // st3
-    double v15; // st4
-    float camerac; // [esp+1Ch] [ebp+4h]
+    flex_d_t v10; // st3
+    flex_d_t v15; // st4
+    flex_t camerac; // [esp+1Ch] [ebp+4h]
 
     rdClipFrustum* clipFrustum = camera->pClipFrustum;
     rdCanvas* canvas = camera->canvas;
@@ -214,8 +214,8 @@ int rdCamera_BuildFOV(rdCamera *camera)
         case rdCameraProjectType_Ortho:
         {
             camera->fov_y = 0.0;
-            camerac = ((double)(canvas->heightMinusOne - canvas->yStart) * 0.5) / camera->orthoScale;
-            v15 = ((double)(canvas->widthMinusOne - canvas->xStart) * 0.5) / camera->orthoScale;
+            camerac = ((flex_d_t)(canvas->heightMinusOne - canvas->yStart) * 0.5) / camera->orthoScale;
+            v15 = ((flex_d_t)(canvas->widthMinusOne - canvas->xStart) * 0.5) / camera->orthoScale;
             clipFrustum->orthoLeft = -v15;
             clipFrustum->orthoTop = camerac / camera->screenAspectRatio;
             clipFrustum->orthoRight = v15;
@@ -230,22 +230,22 @@ int rdCamera_BuildFOV(rdCamera *camera)
         case rdCameraProjectType_Perspective:
         {
 #ifdef QOL_IMPROVEMENTS
-            float overdraw = 1.0; // Added: HACK for 1px off on the bottom of the screen
+            flex_t overdraw = 1.0; // Added: HACK for 1px off on the bottom of the screen
 #else
-            float overdraw = 0.0;
+            flex_t overdraw = 0.0;
 #endif
-            float width = canvas->xStart;
-            float height = canvas->yStart;
-            float project_width_half = overdraw + (canvas->widthMinusOne - (double)width) * 0.5;
-            float project_height_half = overdraw + (canvas->heightMinusOne - (double)height) * 0.5;
+            flex_t width = canvas->xStart;
+            flex_t height = canvas->yStart;
+            flex_t project_width_half = overdraw + (canvas->widthMinusOne - (flex_d_t)width) * 0.5;
+            flex_t project_height_half = overdraw + (canvas->heightMinusOne - (flex_d_t)height) * 0.5;
             
-            float project_width_half_2 = project_width_half;
-            float project_height_half_2 = project_height_half;
+            flex_t project_width_half_2 = project_width_half;
+            flex_t project_height_half_2 = project_height_half;
             
             camera->fov_y = project_width_half / stdMath_Tan(camera->fov * 0.5);
 
-            float fov_calc = camera->fov_y;
-            float fov_calc_height = camera->fov_y;
+            flex_t fov_calc = camera->fov_y;
+            flex_t fov_calc_height = camera->fov_y;
 
 #ifdef QOL_IMPROVEMENTS
             if (jkPlayer_enableOrigAspect)
@@ -291,20 +291,20 @@ int rdCamera_BuildClipFrustum(rdCamera *camera, rdClipFrustum *outClip, signed i
 #endif
 
 #ifdef QOL_IMPROVEMENTS
-    float overdraw = 1.0; // Added: HACK for 1px off on the bottom of the screen
+    flex_t overdraw = 1.0; // Added: HACK for 1px off on the bottom of the screen
 #else
-    float overdraw = 0.0;
+    flex_t overdraw = 0.0;
 #endif
-    float project_width_half = overdraw + canvas->screen_width_half - ((double)width - 0.5);
-    float project_height_half = overdraw + canvas->screen_height_half - ((double)height - 0.5);
+    flex_t project_width_half = overdraw + canvas->screen_width_half - ((flex_d_t)width - 0.5);
+    flex_t project_height_half = overdraw + canvas->screen_height_half - ((flex_d_t)height - 0.5);
     
-    float project_width_half_2 = -canvas->screen_width_half + ((double)width2 - 0.5);
-    float project_height_half_2 = -canvas->screen_height_half + ((double)height2 - 0.5);
+    flex_t project_width_half_2 = -canvas->screen_width_half + ((flex_d_t)width2 - 0.5);
+    flex_t project_height_half_2 = -canvas->screen_height_half + ((flex_d_t)height2 - 0.5);
 
     rdVector_Copy3(&outClip->field_0, &cameraClip->field_0);
     
-    float fov_calc = camera->fov_y;
-    float fov_calc_height = camera->fov_y;
+    flex_t fov_calc = camera->fov_y;
+    flex_t fov_calc_height = camera->fov_y;
 
 #ifdef QOL_IMPROVEMENTS
     if (jkPlayer_enableOrigAspect)
@@ -394,7 +394,7 @@ void rdCamera_OrthoProjectSquareLst(rdVector3 *vertices_out, rdVector3 *vertices
 void rdCamera_PerspProject(rdVector3 *out, rdVector3 *v)
 {
     out->x = (rdCamera_pCurCamera->fov_y / v->y) * v->x + rdCamera_pCurCamera->canvas->screen_height_half;
-    out->y = rdCamera_pCurCamera->canvas->screen_width_half - (jkPlayer_enableOrigAspect ? rdCamera_pCurCamera->screenAspectRatio : 1.0) * (rdCamera_pCurCamera->fov_y / v->y) * v->z;
+    out->y = rdCamera_pCurCamera->canvas->screen_width_half - (jkPlayer_enableOrigAspect ? rdCamera_pCurCamera->screenAspectRatio : (flex_t)1.0) * (rdCamera_pCurCamera->fov_y / v->y) * v->z;
     out->z = v->y;
 
     //printf("%f %f %f -> %f %f %f\n", v->x, v->y, v->z, out->x, out->y, out->z);
@@ -437,13 +437,13 @@ void rdCamera_SetDirectionalAmbientLight(rdCamera* camera, rdAmbient* ambientCub
 	rdAmbient_Copy(&camera->ambientSH, ambientCube);
 }
 #else
-void rdCamera_SetAmbientLight(rdCamera *camera, float amt)
+void rdCamera_SetAmbientLight(rdCamera *camera, flex_t amt)
 {
     camera->ambientLight = amt;
 }
 #endif
 
-void rdCamera_SetAttenuation(rdCamera *camera, float minVal, float maxVal)
+void rdCamera_SetAttenuation(rdCamera *camera, flex_t minVal, flex_t maxVal)
 {
     int numLights; // edx
     rdLight **v4; // ecx
@@ -546,13 +546,13 @@ void rdCamera_AdvanceFrame()
 }
 
 // MOTS added
-float rdCamera_GetMipmapScalar()
+flex_t rdCamera_GetMipmapScalar()
 {
     return rdCamera_mipmapScalar;
 }
 
 // MOTS added
-void rdCamera_SetMipmapScalar(float val)
+void rdCamera_SetMipmapScalar(flex_t val)
 {
     rdCamera_mipmapScalar = val;
 }

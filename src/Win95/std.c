@@ -119,7 +119,7 @@ int stdAssert(const char *pMsg, const char *pFileName, int lineNo)
 
 void* stdDebugMalloc(unsigned int amt)
 {
-    int* ret = malloc(amt + 4);
+    int* ret = (int*)malloc(amt + 4);
     *ret = amt;
     memset(ret + 1, 0xDDu, amt);
     return ret + 1;
@@ -133,14 +133,14 @@ void stdDebugFree(void *p)
 
 void* stdDebugRealloc(void *p, unsigned int amt)
 {
-    int* ret = realloc((char *)p - 4, amt + 4);
+    int* ret = (int*)realloc((char *)p - 4, amt + 4);
     *ret = amt;
     memset(ret + 1, 0xDDu, amt);
     return ret + 1;
 }
 
 
-void stdDelay(int unk, float dur)
+void stdDelay(int unk, flex_t dur)
 {
     int ts = (__int64)(dur * std_pHS->some_float - -0.5) + std_pHS->getTimerTick();
     while ( std_pHS->getTimerTick() < ts ) {

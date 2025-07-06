@@ -8,7 +8,7 @@
 #include "Cog/sithCog.h"
 #include "jk.h"
 
-void sithTrackThing_MoveToFrame(sithThing *thing, int goalFrame, float a3)
+void sithTrackThing_MoveToFrame(sithThing *thing, int goalFrame, flex_t a3)
 {
     if ( goalFrame < thing->trackParams.loadedFrames )
     {
@@ -24,12 +24,12 @@ void sithTrackThing_MoveToFrame(sithThing *thing, int goalFrame, float a3)
 void sithTrackThing_Arrivedidk(sithThing *thing)
 {
     sithThingFrame *v4; // edx
-    long double v8; // st7
-    long double v9; // st6
+    flex_d_t v8; // st7
+    flex_d_t v9; // st6
     sithThingFrame *v12; // eax
-    long double v15; // st7
-    long double v16; // st6
-    float thinga; // [esp+10h] [ebp+4h]
+    flex_d_t v15; // st7
+    flex_d_t v16; // st6
+    flex_t thinga; // [esp+10h] [ebp+4h]
 
     int goalFrame = thing->goalframe;
     if ( thing->curframe == goalFrame )
@@ -89,24 +89,24 @@ void sithTrackThing_Arrivedidk(sithThing *thing)
     sithTrackThing_PrepareForOrient(thing, &thing->trackParams.aFrames[goalFrame].rot, thinga);
 }
 
-void sithTrackThing_Tick(sithThing *thing, float deltaSeconds)
+void sithTrackThing_Tick(sithThing *thing, flex_t deltaSeconds)
 {
-    double v4; // st7
-    double v5; // st7
-    double v18; // st7
-    double v22; // st7
-    double v26; // st7
-    double v30; // st7
-    double v31; // st7
-    float a6; // [esp+0h] [ebp-50h]
-    float v41; // [esp+4h] [ebp-4Ch]
-    float v42; // [esp+4h] [ebp-4Ch]
+    flex_d_t v4; // st7
+    flex_d_t v5; // st7
+    flex_d_t v18; // st7
+    flex_d_t v22; // st7
+    flex_d_t v26; // st7
+    flex_d_t v30; // st7
+    flex_d_t v31; // st7
+    flex_t a6; // [esp+0h] [ebp-50h]
+    flex_t v41; // [esp+4h] [ebp-4Ch]
+    flex_t v42; // [esp+4h] [ebp-4Ch]
     rdVector3 rotVec; // [esp+8h] [ebp-48h] BYREF
     rdVector3 a1a; // [esp+14h] [ebp-3Ch] BYREF
     rdMatrix34 rotMat; // [esp+20h] [ebp-30h] BYREF
-    float a3; // [esp+54h] [ebp+4h]
-    float a3a; // [esp+54h] [ebp+4h]
-    float deltaSecondsa; // [esp+58h] [ebp+8h]
+    flex_t a3; // [esp+54h] [ebp+4h]
+    flex_t a3a; // [esp+54h] [ebp+4h]
+    flex_t deltaSecondsa; // [esp+58h] [ebp+8h]
 
     if ( deltaSeconds != 0.0 )
     {
@@ -180,7 +180,7 @@ void sithTrackThing_Tick(sithThing *thing, float deltaSeconds)
                 }
                 if ( (thing->trackParams.flags & 1) != 0 )
                 {
-                    if ( thing->trackParams.field_1C <= (double)deltaSeconds )
+                    if ( thing->trackParams.field_1C <= (flex_d_t)deltaSeconds )
                         v22 = thing->trackParams.field_1C;
                     else
                         v22 = deltaSeconds;
@@ -260,7 +260,7 @@ void sithTrackThing_StoppedMoving(sithThing* pThing)
     sithTrackThing_Stop(pThing);
 }
 
-void sithTrackThing_PrepareForOrient(sithThing *thing, rdVector3 *pGoalFrameRot, float a3)
+void sithTrackThing_PrepareForOrient(sithThing *thing, rdVector3 *pGoalFrameRot, flex_t a3)
 {
     rdVector3 out;
     rdVector3 angles;
@@ -271,11 +271,11 @@ void sithTrackThing_PrepareForOrient(sithThing *thing, rdVector3 *pGoalFrameRot,
     angles.y = stdMath_NormalizeAngleAcute(angles.y);
     angles.z = stdMath_NormalizeAngleAcute(angles.z);
 
-    if (fabs(angles.x) < 2.5)
+    if (stdMath_Fabs(angles.x) < 2.5)
         angles.x = 0.0;
-    if (fabs(angles.y) < 2.5)
+    if (stdMath_Fabs(angles.y) < 2.5)
         angles.y = 0.0;
-    if (fabs(angles.z) < 2.5)
+    if (stdMath_Fabs(angles.z) < 2.5)
         angles.z = 0.0;
 
     if ( !rdVector_IsZero3(&angles) )
@@ -297,16 +297,22 @@ int sithTrackThing_LoadPathParams(stdConffileArg *arg, sithThing *thing, int par
     {
         case THINGPARAM_FRAME:
         {
-            rdVector3 tmpPos;
-            rdVector3 tmpRot;
+            flex32_t tmpPosx, tmpPosy, tmpPosz;
+            flex32_t tmpRotx, tmpRoty, tmpRotz;
 
             if ( thing->trackParams.loadedFrames < thing->trackParams.sizeFrames )
             {
-                if ( _sscanf(arg->value, "(%f/%f/%f:%f/%f/%f)", &tmpPos.x, &tmpPos.y, &tmpPos.z, &tmpRot.x, &tmpRot.y, &tmpRot.z) != 6 )
+                if ( _sscanf(arg->value, "(%f/%f/%f:%f/%f/%f)", &tmpPosx, &tmpPosy, &tmpPosz, &tmpRotx, &tmpRoty, &tmpRotz) != 6 )
                     return 0;
                 sithThingFrame* pFrame = &thing->trackParams.aFrames[thing->trackParams.loadedFrames++];
-                rdVector_Copy3(&pFrame->pos, &tmpPos);
-                rdVector_Copy3(&pFrame->rot, &tmpRot);
+                pFrame->pos.x = tmpPosx; // FLEXTODO
+                pFrame->pos.y = tmpPosy; // FLEXTODO
+                pFrame->pos.z = tmpPosz; // FLEXTODO
+                pFrame->rot.x = tmpRotx; // FLEXTODO
+                pFrame->rot.y = tmpRoty; // FLEXTODO
+                pFrame->rot.z = tmpRotz; // FLEXTODO
+                //rdVector_Copy3(&pFrame->pos, &tmpPos);
+                //rdVector_Copy3(&pFrame->rot, &tmpRot);
             }
             return 1;
         }
@@ -321,7 +327,7 @@ int sithTrackThing_LoadPathParams(stdConffileArg *arg, sithThing *thing, int par
                 return 0;
 
             size_t alloc_sz = sizeof(sithThingFrame) * numFrames;
-            thing->trackParams.aFrames = pSithHS->alloc(alloc_sz);
+            thing->trackParams.aFrames = (sithThingFrame*)pSithHS->alloc(alloc_sz);
             if ( thing->trackParams.aFrames )
             {
                 _memset(thing->trackParams.aFrames, 0, alloc_sz);
@@ -385,7 +391,7 @@ void sithTrackThing_idkpathmove(sithThing *thing, sithThing *thing2, rdVector3 *
     }
 }
 
-void sithTrackThing_RotatePivot(sithThing *thing, rdVector3 *a2, rdVector3 *a3, float a4)
+void sithTrackThing_RotatePivot(sithThing *thing, rdVector3 *a2, rdVector3 *a3, flex_t a4)
 {
     thing->trackParams.flags |= 0x12u;
     sithSoundClass_ThingPlaySoundclass4(thing, 3u);
@@ -402,13 +408,13 @@ void sithTrackThing_RotatePivot(sithThing *thing, rdVector3 *a2, rdVector3 *a3, 
 
 void sithTrackThing_Rotate(sithThing *trackThing, rdVector3 *rot)
 {
-    double v2; // st7
-    double v4; // st6
-    double v5; // st6
-    double v6; // st6
-    float v9; // [esp+14h] [ebp+4h]
-    float v10; // [esp+14h] [ebp+4h]
-    float v11; // [esp+14h] [ebp+4h]
+    flex_d_t v2; // st7
+    flex_d_t v4; // st6
+    flex_d_t v5; // st6
+    flex_d_t v6; // st6
+    flex_t v9; // [esp+14h] [ebp+4h]
+    flex_t v10; // [esp+14h] [ebp+4h]
+    flex_t v11; // [esp+14h] [ebp+4h]
 
     v2 = 0.0;
     if ( rot->x != 0.0 )
@@ -451,10 +457,10 @@ void sithTrackThing_Rotate(sithThing *trackThing, rdVector3 *rot)
     }
 }
 
-void sithTrackThing_SkipToFrame(sithThing *trackThing, uint32_t goalframeNum, float a3)
+void sithTrackThing_SkipToFrame(sithThing *trackThing, uint32_t goalframeNum, flex_t a3)
 {
     sithThingFrame *goalFrame; // eax
-    float v5; // st7
+    flex_t v5; // st7
 
     if ( goalframeNum < trackThing->trackParams.loadedFrames )
     {

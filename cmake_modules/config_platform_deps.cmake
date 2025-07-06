@@ -44,6 +44,11 @@ if(DEBUG_QOL_CHEATS)
     add_definitions(-DDEBUG_QOL_CHEATS)
 endif()
 
+# Enables Cxx compiling for fixed point templates
+if(EXPERIMENTAL_FIXED_POINT)
+    add_definitions(-DEXPERIMENTAL_FIXED_POINT)
+endif()
+
 find_package(GLUT)
 if(NOT FreeGLUT_FOUND OR CMAKE_CROSSCOMPILING)
     message(STATUS "Going to build “FreeGLUT 3.4.0” from Git module")
@@ -51,7 +56,9 @@ if(NOT FreeGLUT_FOUND OR CMAKE_CROSSCOMPILING)
 endif()
 
 set(GLEW_USE_STATIC_LIBS TRUE)
-find_package(GLEW 2.2.0)
+if(NOT CMAKE_CROSSCOMPILING)
+    find_package(GLEW 2.2.0)
+endif()
 if((NOT GLEW_FOUND OR CMAKE_CROSSCOMPILING) AND NOT PLAT_WASM)
     message(STATUS "Going to build “GLEW 2.2.0” from Git module")
     include(build_glew)
@@ -276,6 +283,12 @@ if(TARGET_USE_GAMENETWORKINGSOCKETS)
 
     set(GNS_PROTOC_HACK_ZLIB ${GameNetworkingSockets_ROOT}/src/.copied_hack)
     set(GNS_PROTOC_HACK_ZLIB_DIR ${GameNetworkingSockets_ROOT}/src)
+    set(GNS_PROTOC_HACK_ZLIB_DIR_2 ${Protobuf_ROOT}/lib)
+    if(NOT CMAKE_CROSSCOMPILING OR NOT Protoc_ROOT)
+        set(GNS_PROTOC_HACK_ZLIB_DIR_3 ${Protobuf_ROOT}/lib) # HACK
+    else()
+        set(GNS_PROTOC_HACK_ZLIB_DIR_3 ${Protoc_ROOT}/lib)
+    endif()
     set(GNS_PROTOC_HACK_ZLIB_WILDCARD ${GameNetworkingSockets_ROOT}/src/${CMAKE_SHARED_LIBRARY_PREFIX}${ZLIB_HOST_LIBRARIES}${CMAKE_SHARED_LIBRARY_SUFFIX})
 
     if(PLAT_MSVC)
@@ -295,6 +308,12 @@ if(TARGET_USE_GAMENETWORKINGSOCKETS)
                            COMMAND ${CMAKE_COMMAND} -E copy "${HACK_ZLIB_SRC_DIR}/*.dylib" "${GNS_PROTOC_HACK_ZLIB_DIR}"
                            COMMAND ${CMAKE_COMMAND} -E copy "${HACK_ZLIB_SRC_DIR}/*.dll" "${GNS_PROTOC_HACK_ZLIB_DIR}"
                            COMMAND ${CMAKE_COMMAND} -E copy "${HACK_ZLIB_SRC_DIR}/*.so" "${GNS_PROTOC_HACK_ZLIB_DIR}"
+                           COMMAND ${CMAKE_COMMAND} -E copy "${HACK_ZLIB_SRC_DIR}/*.dylib" "${GNS_PROTOC_HACK_ZLIB_DIR_2}"
+                           COMMAND ${CMAKE_COMMAND} -E copy "${HACK_ZLIB_SRC_DIR}/*.dll" "${GNS_PROTOC_HACK_ZLIB_DIR_2}"
+                           COMMAND ${CMAKE_COMMAND} -E copy "${HACK_ZLIB_SRC_DIR}/*.so" "${GNS_PROTOC_HACK_ZLIB_DIR_2}"
+                           COMMAND ${CMAKE_COMMAND} -E copy "${HACK_ZLIB_SRC_DIR}/*.dylib" "${GNS_PROTOC_HACK_ZLIB_DIR_3}"
+                           COMMAND ${CMAKE_COMMAND} -E copy "${HACK_ZLIB_SRC_DIR}/*.dll" "${GNS_PROTOC_HACK_ZLIB_DIR_3}"
+                           COMMAND ${CMAKE_COMMAND} -E copy "${HACK_ZLIB_SRC_DIR}/*.so" "${GNS_PROTOC_HACK_ZLIB_DIR_3}"
                            COMMAND ${CMAKE_COMMAND} -E touch "${GNS_PROTOC_HACK_ZLIB}"
                            )
     endif()

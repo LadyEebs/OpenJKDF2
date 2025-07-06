@@ -1,6 +1,7 @@
 #include "sithWorld.h"
 
 #include "General/stdConffile.h"
+#include "General/stdString.h"
 #include "World/sithModel.h"
 #include "World/sithSprite.h"
 #include "World/sithTemplate.h"
@@ -160,7 +161,7 @@ void sithWorld_SetLoadPercentCallback(sithWorldProgressCallback_t func)
     sithWorld_LoadPercentCallback = func;
 }
 
-void sithWorld_UpdateLoadPercent(float percent)
+void sithWorld_UpdateLoadPercent(flex_t percent)
 {
     if ( sithWorld_LoadPercentCallback )
         sithWorld_LoadPercentCallback(percent);
@@ -226,12 +227,12 @@ LABEL_11:
                     startMsecs = stdPlatform_GetTimeMsec();
                     if ( !sithWorld_aSectionParsers[v3].funcptr(pWorld, 0) ) {
                         // Added
-                        _sprintf(tmp, "%f seconds to parse section %s -- FAILED!\n", (double)v6 * 0.001, section);
+                        _sprintf(tmp, "%f seconds to parse section %s -- FAILED!\n", (flex_d_t)v6 * 0.001, section);
                         sithConsole_Print(tmp);
                         goto LABEL_19;
                     }
                     v6 = (unsigned int)(stdPlatform_GetTimeMsec() - startMsecs);
-                    _sprintf(tmp, "%f seconds to parse section %s.\n", (double)v6 * 0.001, section);
+                    _sprintf(tmp, "%f seconds to parse section %s.\n", (flex_d_t)v6 * 0.001, section);
                     sithConsole_Print(tmp);
                 }
             }
@@ -334,7 +335,7 @@ int sithWorld_NewEntry(sithWorld *pWorld)
     sithSector *v2; // ebx
     int v3; // eax
     rdVector3 *v4; // eax
-    float *v5; // edi
+    flex_t *v5; // edi
     int *v6; // edi
     int *v7; // edi
     sithSector **v8; // edx
@@ -357,11 +358,11 @@ int sithWorld_NewEntry(sithWorld *pWorld)
             if ( !v4 )
                 return 0;
 
-            v5 = (float *)pSithHS->alloc(sizeof(float) * pWorld->numVertices);
+            v5 = (flex_t *)pSithHS->alloc(sizeof(flex_t) * pWorld->numVertices);
             pWorld->verticesDynamicLight = v5;
             if ( !v5 )
                 return 0;
-            _memset(v5, 0, sizeof(float) * pWorld->numVertices);
+            _memset(v5, 0, sizeof(flex_t) * pWorld->numVertices);
 
 		#ifdef RGB_THING_LIGHTS
 			pWorld->verticesDynamicLightR = (float*)pSithHS->alloc(sizeof(float) * pWorld->numVertices);
@@ -627,6 +628,11 @@ void sithWorld_FreeEntry(sithWorld *pWorld)
 
 int sithHeader_Load(sithWorld *pWorld, int junk)
 {
+    flex32_t tmp;
+    flex32_t tmp2;
+    flex32_t tmp3;
+    flex32_t tmp4;
+
     if ( junk )
         return 0;
     if ( !stdConffile_ReadLine() )
@@ -639,40 +645,58 @@ int sithHeader_Load(sithWorld *pWorld, int junk)
     }
     if ( !stdConffile_ReadLine() )
         return 0;
-    _sscanf(stdConffile_aLine, "world gravity %f", &pWorld->worldGravity);
+    _sscanf(stdConffile_aLine, "world gravity %f", &tmp);
+    pWorld->worldGravity = tmp; // FLEXTODO
     if ( !stdConffile_ReadLine() )
         return 0;
-    _sscanf(stdConffile_aLine, "ceiling sky z %f", &pWorld->ceilingSky);
+    _sscanf(stdConffile_aLine, "ceiling sky z %f", &tmp);
+    pWorld->ceilingSky = tmp; // FLEXTODO
     if ( !stdConffile_ReadLine() )
         return 0;
-    _sscanf(stdConffile_aLine, "horizon distance %f", &pWorld->horizontalDistance);
+    _sscanf(stdConffile_aLine, "horizon distance %f", &tmp);
+    pWorld->horizontalDistance = tmp; // FLEXTODO
     if ( !stdConffile_ReadLine() )
         return 0;
-    _sscanf(stdConffile_aLine, "horizon pixels per rev %f", &pWorld->horizontalPixelsPerRev);
+    _sscanf(stdConffile_aLine, "horizon pixels per rev %f", &tmp);
+    pWorld->horizontalPixelsPerRev = tmp; // FLEXTODO
     if ( !stdConffile_ReadLine() )
         return 0;
-    _sscanf(stdConffile_aLine, "horizon sky offset %f %f", &pWorld->horizontalSkyOffs, &pWorld->horizontalSkyOffs.y);
+    _sscanf(stdConffile_aLine, "horizon sky offset %f %f", &tmp, &tmp2);
+    pWorld->horizontalSkyOffs.x = tmp; // FLEXTODO
+    pWorld->horizontalSkyOffs.y = tmp2; // FLEXTODO
     if ( !stdConffile_ReadLine() )
         return 0;
-    _sscanf(stdConffile_aLine, "ceiling sky offset %f %f", &pWorld->ceilingSkyOffs, &pWorld->ceilingSkyOffs.y);
+    _sscanf(stdConffile_aLine, "ceiling sky offset %f %f", &tmp, &tmp2);
+    pWorld->ceilingSkyOffs.x = tmp; // FLEXTODO
+    pWorld->ceilingSkyOffs.y = tmp2; // FLEXTODO
     if ( !stdConffile_ReadLine() )
         return 0;
     _sscanf(
         stdConffile_aLine,
         "mipmap distances %f %f %f %f",
-        &pWorld->mipmapDistance.x,
-        &pWorld->mipmapDistance.y,
-        &pWorld->mipmapDistance.z,
-        &pWorld->mipmapDistance.w);
+        &tmp,
+        &tmp2,
+        &tmp3,
+        &tmp4);
+    pWorld->mipmapDistance.x = tmp; // FLEXTODO
+    pWorld->mipmapDistance.y = tmp2; // FLEXTODO
+    pWorld->mipmapDistance.z = tmp3; // FLEXTODO
+    pWorld->mipmapDistance.w = tmp4; // FLEXTODO
     if ( !stdConffile_ReadLine() )
         return 0;
-    _sscanf(stdConffile_aLine, "lod distances %f %f %f %f", &pWorld->lodDistance.x, &pWorld->lodDistance.y, &pWorld->lodDistance.z, &pWorld->lodDistance.w);
+    _sscanf(stdConffile_aLine, "lod distances %f %f %f %f", &tmp, &tmp2, &tmp3, &tmp4);
+    pWorld->lodDistance.x = tmp; // FLEXTODO
+    pWorld->lodDistance.y = tmp2; // FLEXTODO
+    pWorld->lodDistance.z = tmp3; // FLEXTODO
+    pWorld->lodDistance.w = tmp4; // FLEXTODO
     if ( !stdConffile_ReadLine() )
         return 0;
-    _sscanf(stdConffile_aLine, "perspective distance %f", &pWorld->perspectiveDistance);
+    _sscanf(stdConffile_aLine, "perspective distance %f", &tmp);
+    pWorld->perspectiveDistance = tmp; // FLEXTODO
     if ( !stdConffile_ReadLine() )
         return 0;
-    _sscanf(stdConffile_aLine, "gouraud distance %f", &pWorld->gouradDistance);
+    _sscanf(stdConffile_aLine, "gouraud distance %f", &tmp);
+    pWorld->gouradDistance = tmp; // FLEXTODO
 
 #ifdef FOG
 	if (junk > 1)
@@ -865,11 +889,11 @@ int sithWorld_LoadGeoresource(sithWorld *pWorld, int a2)
     unsigned int num_vertices_uvs; // [esp+10h] [ebp-A0h] BYREF
     unsigned int numColormaps; // [esp+14h] [ebp-9Ch] BYREF
     int v_idx; // [esp+18h] [ebp-98h] BYREF
-    float v_x; // [esp+1Ch] [ebp-94h] BYREF
-    float v21; // [esp+20h] [ebp-90h] BYREF
-    float v_y; // [esp+24h] [ebp-8Ch] BYREF
-    float v23; // [esp+28h] [ebp-88h] BYREF
-    float v_z; // [esp+2Ch] [ebp-84h] BYREF
+    flex32_t v_x; // [esp+1Ch] [ebp-94h] BYREF
+    flex32_t v21; // [esp+20h] [ebp-90h] BYREF
+    flex32_t v_y; // [esp+24h] [ebp-8Ch] BYREF
+    flex32_t v23; // [esp+28h] [ebp-88h] BYREF
+    flex32_t v_z; // [esp+2Ch] [ebp-84h] BYREF
     char colormap_fname[128]; // [esp+30h] [ebp-80h] BYREF
 
     if ( a2 )
@@ -890,6 +914,8 @@ int sithWorld_LoadGeoresource(sithWorld *pWorld, int a2)
 
     pWorld->numColormaps = numColormaps;
     pWorld->colormaps = (rdColormap *)pSithHS->alloc(sizeof(rdColormap) * numColormaps);
+    memset(pWorld->colormaps, 0, sizeof(rdColormap) * numColormaps); // Added: prevent freeing issues on load failures
+    
     if (!pWorld->colormaps)
     {
         return 0;
@@ -906,7 +932,8 @@ int sithWorld_LoadGeoresource(sithWorld *pWorld, int a2)
         {
             return 0;
         }
-        _sprintf(colormap_fname, "%s%c%s", "misc\\cmp", '\\', std_genBuffer);
+        
+        stdString_snprintf(colormap_fname, sizeof(colormap_fname), "%s%c%s", "misc\\cmp", '\\', std_genBuffer); // Added: sprintf -> snprintf
         if ( !rdColormap_LoadEntry(colormap_fname, &pWorld->colormaps[i]) )
         {
             return 0;
@@ -990,8 +1017,8 @@ LABEL_28:
 
 void sithWorld_sub_4D0A20(sithWorld *pWorld)
 {
-    _memset(pWorld->alloc_unk98, 0, 4 * pWorld->numVertices);
-    _memset(pWorld->alloc_unk9c, 0, 4 * pWorld->numVertices);
+    _memset(pWorld->alloc_unk98, 0, sizeof(int) * pWorld->numVertices);
+    _memset(pWorld->alloc_unk9c, 0, sizeof(int) * pWorld->numVertices);
 
     for (int i = 0; i < pWorld->numSectors; i++)
     {
@@ -1059,7 +1086,7 @@ void sithWorld_GetMemorySize(sithWorld *pWorld, sithWorld_MemoryCounters* outAll
     outQuantity->sectors = pWorld->numSectors;
     for (int i = 0; i < pWorld->numSectors; i++)
     {
-        outAllocated->sectors += 4 * pWorld->sectors[i].numVertices + sizeof(sithSector); // TODO bug?
+        outAllocated->sectors += sizeof(flex_t) * pWorld->sectors[i].numVertices + sizeof(sithSector); // TODO bug?
     }
     outQuantity->sounds = pWorld->numSoundsLoaded;
     for (int i = 0; i < pWorld->numSoundsLoaded; i++)

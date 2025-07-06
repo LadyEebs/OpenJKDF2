@@ -42,6 +42,7 @@
   <screenshots>
     <screenshot type="default">
       <image>https://github.com/shinyquagsire23/OpenJKDF2/raw/master/docs/images/screenshot.png</image>
+      <caption>A screenshot of the game running in OpenJKDF2</caption>
     </screenshot>
   </screenshots>
   <developer_name>Max Thomas</developer_name>
@@ -54,8 +55,6 @@
     <binary>openjkdf2</binary>
   </provides>
   <supports>
-    <control>pointing</control>
-    <control>keyboard</control>
     <control>gamepad</control>
   </supports>
   <recommends>

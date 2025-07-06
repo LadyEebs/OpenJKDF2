@@ -27,8 +27,8 @@ void sithModel_Shutdown()
 int sithModel_Load(sithWorld *world, int a2)
 {
     int numModels;
-    float loadStep;
-    float loadProgress;
+    flex_t loadStep;
+    flex_t loadProgress;
 
     if ( a2 )
         return 0;
@@ -49,7 +49,7 @@ int sithModel_Load(sithWorld *world, int a2)
     _memset(world->models, 0, sizeof(rdModel3) * world->numModels);
 
     sithWorld_UpdateLoadPercent(60.0);
-    loadStep = 10.0 / (double)world->numModels;
+    loadStep = 10.0 / (flex_d_t)world->numModels;
     loadProgress = 60.0;
     while ( stdConffile_ReadArgs() )
     {

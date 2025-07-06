@@ -26,6 +26,8 @@
 #include "Main/jkEpisode.h"
 #include "Platform/std3D.h"
 #include "Win95/Window.h"
+#include "Engine/rdKeyframe.h"
+#include "General/stdConffile.h"
 
 #include "Modules/rdroid/Engine/rdCluster.h"
 
@@ -713,12 +715,12 @@ int jkGuiBuildMulti_DisplayModel()
 void jkGuiBuildMulti_ModelDrawer(jkGuiElement *pElement, jkGuiMenu *pMenu, stdVBuffer *pVbuf, int redraw)
 {
     uint32_t v5; // st7
-    double v6; // st7
+    flex_d_t v6; // st7
     rdPuppet *v7; // [esp-8h] [ebp-24h]
     int64_t v8; // [esp+8h] [ebp-14h]
-    float v9; // [esp+8h] [ebp-14h]
+    flex_t v9; // [esp+8h] [ebp-14h]
     rdVector3 rot; // [esp+10h] [ebp-Ch] BYREF
-    float a2a; // [esp+24h] [ebp+8h]
+    flex_t a2a; // [esp+24h] [ebp+8h]
 
     jkGuiBuildMulti_bRendering = 1;
 
@@ -1361,7 +1363,7 @@ LABEL_16:
         }
     }
     while ( v7 );
-    sithPlayer_SetBinAmt(SITHBIN_SPEND_STARS, (double)jkPlayer_GetJediRank() * 3.0);
+    sithPlayer_SetBinAmt(SITHBIN_SPEND_STARS, (flex_d_t)jkPlayer_GetJediRank() * 3.0);
     sithPlayer_SetBinAmt(SITHBIN_NEW_STARS, 0.0);
     if (Main_bMotsCompat) {
         if (jkGuiBuildMulti_pNewCharacterElements[5].selectedTextEntry == 0) {

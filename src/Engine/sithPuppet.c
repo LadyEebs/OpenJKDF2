@@ -1,5 +1,6 @@
 #include "sithPuppet.h"
 
+#include "General/stdMath.h"
 #include "General/stdHashTable.h"
 #include "Engine/sithAnimClass.h"
 #include "Gameplay/sithTime.h"
@@ -398,16 +399,16 @@ void sithPuppet_ResetTrack(sithThing *puppet)
 }
 
 // MOTS altered?
-void sithPuppet_Tick(sithThing *thing, float deltaSeconds)
+void sithPuppet_Tick(sithThing *thing, flex_t deltaSeconds)
 {
-    double v3; // st7
+    flex_d_t v3; // st7
     sithPuppet *v4; // eax
     sithAnimclassEntry *v5; // ecx
     int v6; // ecx
-    double v8; // st7
+    flex_d_t v8; // st7
     char v9; // c0
     sithPuppet *v10; // eax
-    double v11; // st7
+    flex_d_t v11; // st7
     sithAnimclass *v12; // edx
     sithAnimclassEntry *v13; // eax
     int v14; // eax
@@ -416,12 +417,12 @@ void sithPuppet_Tick(sithThing *thing, float deltaSeconds)
     int v19; // eax
     rdMatrix34 *v20; // eax
     rdMatrix34 *v23; // ecx
-    float *v27; // eax
+    flex_t *v27; // eax
     int i; // edx
-    float v31; // [esp+0h] [ebp-18h]
+    flex_t v31; // [esp+0h] [ebp-18h]
     rdVector3 a1a; // [esp+Ch] [ebp-Ch] BYREF
-    float thinga; // [esp+1Ch] [ebp+4h]
-    float a2a; // [esp+20h] [ebp+8h]
+    flex_t thinga; // [esp+1Ch] [ebp+4h]
+    flex_t a2a; // [esp+20h] [ebp+8h]
 
     if ( thing->animclass && thing->puppet && thing->rdthing.puppet && (g_debugmodeFlags & DEBUGFLAG_NO_PUPPETS) == 0 )
     {
@@ -476,26 +477,26 @@ void sithPuppet_Tick(sithThing *thing, float deltaSeconds)
     }
 }
 
-float sithPuppet_sub_4E4380(sithThing *thing)
+flex_t sithPuppet_sub_4E4380(sithThing *thing)
 {
-    double v2; // st7
+    flex_d_t v2; // st7
     int v3; // ecx
-    double v5; // st6
+    flex_d_t v5; // st6
     char missing_1; // c0
-    double v8; // st5
+    flex_d_t v8; // st5
     char missing_2; // c0
     sithSector *v10 = NULL; // eax
     sithAnimclass *v11 = NULL; // ebp
     sithPuppet *v12 = NULL; // eax
-    double v14; // st6
+    flex_d_t v14; // st6
     char missing_3; // c0
     int anim; // ecx
     sithPuppet *v18 = NULL; // edx
     sithAnimclassEntry *v19 = NULL; // edi
     int v20; // eax
-    float v23; // [esp+10h] [ebp-10h]
+    flex_t v23; // [esp+10h] [ebp-10h]
     rdVector3 a1a; // [esp+14h] [ebp-Ch] BYREF
-    float thinga; // [esp+24h] [ebp+4h]
+    flex_t thinga; // [esp+24h] [ebp+4h]
 
     v23 = 0.5;
     if ( !thing->sector
@@ -511,8 +512,8 @@ float sithPuppet_sub_4E4380(sithThing *thing)
         if ( thing->attach_flags || (thing->physicsParams.physflags & SITH_PF_FLY) != 0 || (thing->sector->flags & SITH_ANIM_WALK) != 0 )
         {
             v2 = a1a.y;
-            v5 = fabs(a1a.y);
-            v8 = fabs(a1a.x);
+            v5 = stdMath_Fabs(a1a.y);
+            v8 = stdMath_Fabs(a1a.x);
 
             if ( v5 <= v8 )
             {
@@ -607,7 +608,7 @@ float sithPuppet_sub_4E4380(sithThing *thing)
         {
             if ( thinga >= 0.0 )
             {
-                if ( thinga < (double)v23 )
+                if ( thinga < (flex_d_t)v23 )
                     anim = SITH_ANIM_WALK;
                 else
                     anim = SITH_ANIM_RUN;
@@ -722,7 +723,7 @@ void sithPuppet_sub_4E4A20(sithThing *thing, sithAnimclassEntry *animClass)
 }
 
 // MOTS altered
-void sithPuppet_DefaultCallback(sithThing *thing, int track, uint32_t markerID)
+void sithPuppet_DefaultCallback(sithThing *thing, int32_t track, uint32_t markerID)
 {
     uint32_t soundToPlay_base; // edi
     int v10; // eax
@@ -882,7 +883,7 @@ void sithPuppet_DefaultCallback(sithThing *thing, int track, uint32_t markerID)
     }
 }
 
-int sithPuppet_StopKey(rdPuppet *pupper, int track, float a3)
+int sithPuppet_StopKey(rdPuppet *pupper, int track, flex_t a3)
 {
     if ( !pupper->tracks[track].keyframe )
         return 0;
@@ -908,7 +909,7 @@ void sithPuppet_SetArmedMode(sithThing *thing, int mode)
 void sithPuppet_FidgetAnim(sithThing *pThing)
 {
     sithPuppet *puppet; // eax
-    double v2; // st7
+    flex_d_t v2; // st7
     sithAnimclass *v3; // edx
     sithAnimclassEntry *v4; // eax
     int v5; // eax
@@ -919,7 +920,7 @@ void sithPuppet_FidgetAnim(sithThing *pThing)
     int v10; // eax
 
     puppet = pThing->puppet;
-    if ( puppet->currentTrack < 0 && puppet->currentAnimation == 1 && (double)(unsigned int)puppet->animStartedMs - -30000.0 < (double)sithTime_curMs )
+    if ( puppet->currentTrack < 0 && puppet->currentAnimation == 1 && (flex_d_t)(unsigned int)puppet->animStartedMs - -30000.0 < (flex_d_t)sithTime_curMs )
     {
         v2 = _frand();
         if ( v2 >= 0.3 )
@@ -985,15 +986,15 @@ void sithPuppet_resetidk(sithThing *pThing)
     }
 }
 
-void sithPuppet_advanceidk(sithThing *pThing, float a2)
+void sithPuppet_advanceidk(sithThing *pThing, flex_t a2)
 {
-    double v3; // st7
+    flex_d_t v3; // st7
     sithPuppet *puppet; // eax
     sithAnimclassEntry *v5; // ecx
     int v6; // ecx
-    double v8; // st7
-    float a3; // [esp+0h] [ebp-8h]
-    float thinga; // [esp+Ch] [ebp+4h]
+    flex_d_t v8; // st7
+    flex_t a3; // [esp+0h] [ebp-8h]
+    flex_t thinga; // [esp+Ch] [ebp+4h]
 
     v3 = sithPuppet_sub_4E4380(pThing);
     puppet = pThing->puppet;
@@ -1027,7 +1028,7 @@ int sithPuppet_FindHitLoc(sithThing* pReceiverThing, rdVector3* pPos)
 		// find the closest joint to this position
 		//rdHierarchyNode* pFoundNode = NULL;
 		int foundJoint = -1;
-		float dist = 10000.0f;
+		flex_t dist = 10000.0f;
 
 		uint64_t jointBits = pReceiverThing->animclass->jointBits;
 		while (jointBits != 0)
@@ -1055,8 +1056,8 @@ int sithPuppet_FindHitLoc(sithThing* pReceiverThing, rdVector3* pPos)
 		
 			rdMatrix34* meshMatrix = &pReceiverThing->rdthing.hierarchyNodeMatrices[pNode->idx];
 		
-			//float radius = pModel->geosets[geoset].meshes[pNode->meshIdx].radius;
-			float distToCenter = rdVector_Dist3(pPos, &meshMatrix->scale);
+			//flex_t radius = pModel->geosets[geoset].meshes[pNode->meshIdx].radius;
+			flex_t distToCenter = rdVector_Dist3(pPos, &meshMatrix->scale);
 			if (distToCenter < dist)
 			{
 				dist = distToCenter;
@@ -1121,8 +1122,8 @@ void sithPuppet_AddBallSocketConstraint(sithThing* pThing, int joint, int target
 	rdVector_Scale3(&contactPointB, &direction, -jointThing->moveSize);
 	rdVector_Add3Acc(&contactPointB, &jointThing->position);
 
-	float d = rdVector_Dist3(&targetThing->position, &jointThing->position);
-	float penetrationDepth = jointThing->moveSize + targetThing->moveSize - d;
+	flex_t d = rdVector_Dist3(&targetThing->position, &jointThing->position);
+	flex_t penetrationDepth = jointThing->moveSize + targetThing->moveSize - d;
 	//if (penetrationDepth > 0.0f)
 	//{
 	//	contactPointA.x -= direction.x * (penetrationDepth / 2.0f);
@@ -1161,7 +1162,7 @@ void sithPuppet_AddBallSocketConstraint(sithThing* pThing, int joint, int target
 	sithConstraint_AddDistanceConstraint(pThing, jointThing, targetThing, &anchor, &rdroid_zeroVector3, 0.0f);*/
 }
 
-void sithPuppet_AddConeConstraint(sithThing* pThing, int joint, int target, const rdVector3* axis, const rdVector3* targetAxis, float angle, float twistAngle)
+void sithPuppet_AddConeConstraint(sithThing* pThing, int joint, int target, const rdVector3* axis, const rdVector3* targetAxis, flex_t angle, flex_t twistAngle)
 {
 	uint64_t hasJoint = pThing->animclass->jointBits & (1ull << joint);
 	uint64_t hasTarget = pThing->animclass->jointBits & (1ull << target);
@@ -1175,7 +1176,7 @@ void sithPuppet_AddConeConstraint(sithThing* pThing, int joint, int target, cons
 	sithConstraint_AddConeConstraint(pThing, jointThing, targetThing, targetAxis, angle, axis, twistAngle);
 }
 
-void sithPuppet_AddHingeConstraint(sithThing* pThing, int joint, int target, const rdVector3* axis, const rdVector3* targetAxis, float minAngle, float maxAngle)
+void sithPuppet_AddHingeConstraint(sithThing* pThing, int joint, int target, const rdVector3* axis, const rdVector3* targetAxis, flex_t minAngle, flex_t maxAngle)
 {
 	uint64_t hasJoint = pThing->animclass->jointBits & (1ull << joint);
 	uint64_t hasTarget = pThing->animclass->jointBits & (1ull << target);
@@ -1221,7 +1222,7 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 	if(pNode->meshIdx >= 0)
 	{
 		pMesh = &pThing->rdthing.model3->geosets[0].meshes[pNode->meshIdx];
-		float avgDist = (pMesh->minRadius + pMesh->maxRadius) * 0.5f;
+		flex_t avgDist = (pMesh->minRadius + pMesh->maxRadius) * 0.5f;
 		pJointThing->moveSize = avgDist;
 		pJointThing->collideSize = avgDist;
 	}
@@ -1284,7 +1285,7 @@ void sithPuppet_SetupJointThing(sithThing* pThing, sithThing* pJointThing, sithB
 	sithThing_EnterSector(pJointThing, pJointSector, 1, 0);
 }
 
-void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float deltaSeconds)
+void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, flex_t deltaSeconds)
 {
 	if (!pThing->animclass || pThing->rdthing.type != RD_THINGTYPE_MODEL || !pThing->rdthing.model3 || !pThing->puppet || !pThing->rdthing.puppet || (g_debugmodeFlags & DEBUGFLAG_NO_PUPPETS))
 		return;
@@ -1401,7 +1402,7 @@ static void sithPuppet_UpdateJointMatrices(sithThing* thing)
 		rdHierarchyNode* pNode = &thing->rdthing.model3->hierarchyNodes[pBodyPart->nodeIdx];
 
 		// smoothly interpolate the matrix changes as the physics system can be a little jittery
-		const float interpolation = 0.3f; // should maybe be a cvar
+		const flex_t interpolation = 0.3f; // should maybe be a cvar
 
 		rdVector3 oldPos = pJoint->localMat.scale; // keep this around so we don't lose it
 
@@ -1422,7 +1423,7 @@ static void sithPuppet_UpdateJointMatrices(sithThing* thing)
 	}
 }
 
-static inline void sithPuppet_UpdateJointThing(sithThing* pThing, sithThing* pJointThing, sithBodyPart* pBodyPart, float deltaSeconds)
+static inline void sithPuppet_UpdateJointThing(sithThing* pThing, sithThing* pJointThing, sithBodyPart* pBodyPart, flex_t deltaSeconds)
 {
 	// don't collide if the node is amputated or lower than the root joint
 	// (but update the position for sector traversal)
@@ -1446,7 +1447,7 @@ static inline void sithPuppet_UpdateJointThing(sithThing* pThing, sithThing* pJo
 	pJointThing->collide = collide;
 }
 
-static void sithPuppet_UpdateJoints(sithThing* pThing, float deltaSeconds)
+static void sithPuppet_UpdateJoints(sithThing* pThing, flex_t deltaSeconds)
 {
 	uint64_t jointBits = pThing->animclass->physicsJointBits;
 	while (jointBits != 0)
@@ -1475,7 +1476,7 @@ static void sithPuppet_StopAll(sithThing* pThing)
 	}
 }
 
-static void sithPuppet_UpdateRestingData(sithThing* thing, float deltaSeconds)
+static void sithPuppet_UpdateRestingData(sithThing* thing, flex_t deltaSeconds)
 {
 	// already resting
 	if (thing->physicsParams.physflags & SITH_PF_RESTING)
@@ -1501,7 +1502,7 @@ static void sithPuppet_UpdateRestingData(sithThing* thing, float deltaSeconds)
 	}
 }
 
-static int sithPuppet_CheckForStillBodies(sithThing* thing, float deltaSeconds)
+static int sithPuppet_CheckForStillBodies(sithThing* thing, flex_t deltaSeconds)
 {
 	// only test every so often so that we capture changes across a larger time step
 	if (thing->physicsParams.restTimer <= 1.0)
@@ -1515,8 +1516,8 @@ static int sithPuppet_CheckForStillBodies(sithThing* thing, float deltaSeconds)
 	thing->physicsParams.restTimer = 0.0f;
 
 	// check for the largest motion of all joints
-	float maxDistSq = 0.0f;
-	float maxAngle = 0.0f;
+	flex_t maxDistSq = 0.0f;
+	flex_t maxAngle = 0.0f;
 
 	uint64_t jointBits = thing->animclass->physicsJointBits;
 	while (jointBits != 0)
@@ -1527,7 +1528,7 @@ static int sithPuppet_CheckForStillBodies(sithThing* thing, float deltaSeconds)
 		sithPuppetJoint* pJoint = &thing->puppet->physics->joints[jointIdx];
 
 		// position difference
-		float distSq = rdVector_DistSquared3(&pJoint->thing.physicsParams.lastPos, &pJoint->thing.position);
+		flex_t distSq = rdVector_DistSquared3(&pJoint->thing.physicsParams.lastPos, &pJoint->thing.position);
 		if (maxDistSq < distSq)
 			maxDistSq = distSq;
 
@@ -1540,7 +1541,7 @@ static int sithPuppet_CheckForStillBodies(sithThing* thing, float deltaSeconds)
 
 		// todo: this seems jank, maybe test PYR?
 		rdVector3 axis;
-		float angle;
+		flex_t angle;
 		rdMatrix_ExtractAxisAngle34(&localMat, &axis, &angle);
 		if (maxAngle < angle)
 			maxAngle = angle;
@@ -1550,7 +1551,7 @@ static int sithPuppet_CheckForStillBodies(sithThing* thing, float deltaSeconds)
 	return (maxDistSq < 0.015f && maxAngle < 15.0f);
 }
 
-static int sithPuppet_CheckVelocities(sithThing* thing, float deltaSeconds)
+static int sithPuppet_CheckVelocities(sithThing* thing, flex_t deltaSeconds)
 {
 	// must not rest if any of the bodies have significant enough velocity
 	uint64_t jointBits = thing->animclass->physicsJointBits;
@@ -1561,18 +1562,18 @@ static int sithPuppet_CheckVelocities(sithThing* thing, float deltaSeconds)
 
 		sithPuppetJoint* pJoint = &thing->puppet->physics->joints[jointIdx];
 
-		float velLenSq = rdVector_Dot3(&pJoint->thing.physicsParams.vel, &pJoint->thing.physicsParams.vel);
+		flex_t velLenSq = rdVector_Dot3(&pJoint->thing.physicsParams.vel, &pJoint->thing.physicsParams.vel);
 		if (velLenSq > 0.005f)
 			return 0;
 
-		float rotVelLenSq = rdVector_Dot3(&pJoint->thing.physicsParams.rotVel, &pJoint->thing.physicsParams.rotVel);
+		flex_t rotVelLenSq = rdVector_Dot3(&pJoint->thing.physicsParams.rotVel, &pJoint->thing.physicsParams.rotVel);
 		if (rotVelLenSq > 0.01f)
 			return 0;
 	}
 	return 1;
 }
 
-static int sithPuppet_IsAtRest(sithThing* thing, float deltaSeconds)
+static int sithPuppet_IsAtRest(sithThing* thing, flex_t deltaSeconds)
 {
 	if (thing->physicsParams.physflags & SITH_PF_RESTING)
 		return 1;
@@ -1628,7 +1629,7 @@ static void sithPuppet_ValidateConstraints(sithThing* thing)
 	}
 }
 
-void sithPuppet_TickPhysics(sithThing* thing, float deltaSeconds)
+void sithPuppet_TickPhysics(sithThing* thing, flex_t deltaSeconds)
 {
 	if (thing->physicsParams.physflags & SITH_PF_RESTING)
 	{

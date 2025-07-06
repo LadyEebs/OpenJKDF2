@@ -12,7 +12,6 @@
 int sithConsole_Startup(int maxCmds)
 {
     stdHashTable *v1; // eax
-    stdSound_buffer_t *v2; // eax
     signed int result; // eax
 
     sithConsole_aCmds = (stdDebugConsoleCmd *)pSithHS->alloc(sizeof(stdDebugConsoleCmd) * maxCmds);
@@ -27,10 +26,9 @@ int sithConsole_Startup(int maxCmds)
             DebugGui_fnPrint = 0;
             DebugGui_fnPrintUniStr = 0;
             sithCommand_Startup();
-            v2 = sithSound_InitFromPath("set_vlo2.wav");
-            sithConsole_alertSound = v2;
-            if ( v2 )
-                stdSound_BufferSetVolume(v2, 0.8);
+            sithConsole_alertSound = sithSound_InitFromPath("set_vlo2.wav");
+            if ( sithConsole_alertSound )
+                stdSound_BufferSetVolume(sithConsole_alertSound, 0.8);
             result = 1;
             sithConsole_bInitted = 1;
             return result;
@@ -123,15 +121,19 @@ void sithConsole_PrintUniStr(const wchar_t *a1)
         DebugGui_fnPrintUniStr(a1);
 }
 
-int sithConsole_TryCommand(char *cmd)
+int sithConsole_TryCommand(const char *cmd)
 {
     char *v1; // esi
     stdDebugConsoleCmd *v2; // edi
     char *v3; // eax
     char tmp_cvar[SITHCVAR_MAX_STRLEN];
 
-    _strtolower(cmd);
-    v1 = _strtok(cmd, ", \t\n\r");
+    // Added: mutable copy of cmd
+    char* pCmdMutable = (char*)malloc(strlen(cmd)+1);
+    strcpy(pCmdMutable, cmd);
+
+    _strtolower(pCmdMutable); // Added: mutable copy of cmd
+    v1 = _strtok(pCmdMutable, ", \t\n\r"); // Added: mutable copy of cmd
     if ( v1 )
     {
         // Added: cvars
@@ -147,6 +149,7 @@ int sithConsole_TryCommand(char *cmd)
                     {
                         DebugGui_fnPrint(std_genBuffer);
                     }
+                    free((void*)pCmdMutable); // Added: mutable copy of cmd
                     return 0;
                 }
 
@@ -155,6 +158,7 @@ int sithConsole_TryCommand(char *cmd)
                 {
                     DebugGui_fnPrint(std_genBuffer);
                 }
+                free((void*)pCmdMutable); // Added: mutable copy of cmd
                 return 0;
             }
 
@@ -167,8 +171,10 @@ int sithConsole_TryCommand(char *cmd)
                 {
                     DebugGui_fnPrint(std_genBuffer);
                 }
+                free((void*)pCmdMutable); // Added: mutable copy of cmd
                 return 0;
             }
+            free((void*)pCmdMutable); // Added: mutable copy of cmd
             return 1;
         }
 
@@ -177,12 +183,14 @@ int sithConsole_TryCommand(char *cmd)
         {
             v3 = _strtok(0, "\n\r");
             v2->cmdFunc(v2, (const char*)v3);
+            free((void*)pCmdMutable);
             return 1;
         }
         _sprintf(std_genBuffer, "Console command %s not recognized.", v1);
         if ( DebugGui_fnPrint )
         {
             DebugGui_fnPrint(std_genBuffer);
+            free((void*)pCmdMutable); // Added: mutable copy of cmd
             return 0;
         }
         DebugGui_some_num_lines = (DebugGui_some_num_lines + 1) % DebugGui_maxLines;
@@ -192,6 +200,7 @@ int sithConsole_TryCommand(char *cmd)
         stdString_SafeStrCopy(&DebugLog_buffer[128 * DebugGui_some_num_lines], std_genBuffer, 0x80);
         DebugGui_aIdk[DebugGui_some_num_lines] = stdPlatform_GetTimeMsec();
     }
+    free((void*)pCmdMutable); // Added: mutable copy of cmd
     return 0;
 }
 
@@ -214,7 +223,7 @@ void sithConsole_AdvanceLogBuf()
     }
 }
 
-int sithConsole_RegisterDevCmd(DebugConsoleCmd_t fn, char *cmd, int extra)
+int sithConsole_RegisterDevCmd(DebugConsoleCmd_t fn, const char *cmd, int extra)
 {
     stdDebugConsoleCmd *v4; // [esp-4h] [ebp-4h]
 
@@ -229,14 +238,14 @@ int sithConsole_RegisterDevCmd(DebugConsoleCmd_t fn, char *cmd, int extra)
     return 1;
 }
 
-int sithConsole_SetPrintFuncs(void *a1, void *a2)
+int sithConsole_SetPrintFuncs(DebugConsolePrintFunc_t a1, DebugConsolePrintUniStrFunc_t a2)
 {
     DebugGui_fnPrint = a1;
     DebugGui_fnPrintUniStr = a2;
     return 1;
 }
 
-int sithConsole_PrintHelp()
+int sithConsole_PrintHelp(stdDebugConsoleCmd* a, const char* b)
 {
     uint32_t v0; // esi
     unsigned int v1; // ebp
@@ -305,6 +314,10 @@ void sithConsole_AlertSound()
 {
     if ( sithConsole_alertSound )
     {
+#ifdef QOL_IMPROVEMENTS
+        // Original game did not respect SFX volume for this
+        stdSound_BufferSetVolume(sithConsole_alertSound, jkGuiSound_sfxVolume);
+#endif
         stdSound_BufferReset(sithConsole_alertSound);
         stdSound_BufferPlay(sithConsole_alertSound, 0);
     }
