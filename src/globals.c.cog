@@ -173,6 +173,7 @@ void OpenJKDF2_Globals_Reset()
             cog.out("0x%x," % byte)
         cog.outl("};")
 
+    embed_files += glob.glob(str(Path(project_root) / "resource" / "shader" / "*.asm"))
     embed_files += glob.glob(str(Path(project_root) / "resource" / "shaders" / "*.glsl"))
     embed_files += glob.glob(str(Path(project_root) / "resource" / "shaders" / "world" / "*.glsl"))
     embed_files += glob.glob(str(Path(project_root) / "resource" / "shaders" / "deferred" / "*.glsl"))
