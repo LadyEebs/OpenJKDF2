@@ -1856,16 +1856,25 @@ int jkHud_chat2()
 }
 
 #ifdef QOL_IMPROVEMENTS
-BOOL jkHud_shouldCrosshairBeShownForWeapon(sithThing *player) {
-  int currentWeapon = sithInventory_GetCurWeapon(player);
-  if(currentWeapon == SITHBIN_FISTS || MOTS_ONLY_COND(currentWeapon == SITHBIN_MOTS_FISTS)) {
-    return jkPlayer_setCrosshairOnFist;
-  }
+BOOL jkHud_shouldCrosshairBeShownForWeapon(sithThing *player)
+{
+	int currentWeapon = sithInventory_GetCurWeapon(player);
+	
+	if(currentWeapon == SITHBIN_FISTS)
+		return jkPlayer_setCrosshairOnFist;
 
-  if(currentWeapon == SITHBIN_LIGHTSABER || MOTS_ONLY_COND(currentWeapon == SITHBIN_MOTS_LIGHTSABER)){
-    return jkPlayer_setCrosshairOnLightsaber;
-  }
+	if(currentWeapon == SITHBIN_LIGHTSABER)
+		return jkPlayer_setCrosshairOnLightsaber;
 
-  return 1;
+	if (Main_bMotsCompat)
+	{
+		if (currentWeapon == SITHBIN_MOTS_FISTS)
+			return jkPlayer_setCrosshairOnFist;
+
+		if (currentWeapon == SITHBIN_LIGHTSABER)
+			return jkPlayer_setCrosshairOnLightsaber;
+	}
+
+	return 1;
 }
 #endif /* ifdef QOL_IMPROVEMENTS */
