@@ -375,7 +375,7 @@ int jkDev_DebugLog(const char *lParam)
     if ( jkDev_hDlg )
     {
         v1 = GetDlgItem(jkDev_hDlg, 1037);
-        WinIdk_PrintConsole(v1, (LPARAM)lParam, 50);
+        //WinIdk_PrintConsole(v1, (LPARAM)lParam, 50);
     }
 #else
     //printf("%s", lParam);

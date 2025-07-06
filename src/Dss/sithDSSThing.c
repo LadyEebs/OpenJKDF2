@@ -1452,7 +1452,7 @@ void sithDSSThing_SendTakeItem(sithThing *pItemThing, sithThing *pActor, int mpF
         if ( pItemThing2->type == SITH_THING_ITEM && (pItemThing2->thingflags & (SITH_TF_DISABLED|SITH_TF_WILLBEREMOVED)) == 0 )
         {
             sithComm_netMsgTmp.netMsg.cogMsgId = DSS_TAKEITEM2;
-            ssithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 1, 1);
+            sithComm_SendMsgToPlayer(&sithComm_netMsgTmp, INVALID_DPID, 1, 1);
             sithItem_Take(pItemThing2, pActor2, 1);
             return;
         }

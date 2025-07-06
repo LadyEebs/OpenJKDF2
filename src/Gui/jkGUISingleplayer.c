@@ -362,9 +362,11 @@ void jkGuiSingleplayer_sub_41AA30(Darray *array, jkGuiElement *element, int a3, 
     stdFileSearch *search; // eax
     stdFileSearch *v13; // esi
     char *v14; // edx
+	char* v15;
     wchar_t *v16; // eax
     jkEpisodeEntry *v17; // esi
     char *v18; // edx
+	char* v19;
     wchar_t *v20; // eax
     int v22; // [esp+10h] [ebp-1A4h]
     int v23; // [esp+10h] [ebp-1A4h]

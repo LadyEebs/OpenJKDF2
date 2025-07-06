@@ -1,7 +1,5 @@
 #pragma once
 
-#ifdef RENDER_DROID2
-
 #define RD_TRUE  1
 #define RD_FALSE 0
 
@@ -23,6 +21,8 @@
 #define RD_TEXCOORD3 3
 
 #define RD_NUM_TEXCOORDS 4
+
+//#ifdef RENDER_DROID2
 
 // render state
 
@@ -146,4 +146,4 @@ enum RD_FOG_MODE
 
 typedef uint8_t rdDecalMode_t;
 
-#endif
+//#endif

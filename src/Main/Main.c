@@ -706,9 +706,9 @@ void Main_ParseCmdLine(char *cmdline)
 	#ifdef PLATFORM_STEAM
 		else if (!__strcmpi(pArgTok, "+connect_lobby"))
 		{
-			v4 = _strtok(0, " \t");
-			stdPlatform_Printf("Invited to lobby %s\n", v4);
-			stdString_CharToWchar(stdComm_waIdk, v4, 32);
+			pArgTok = _strtok(0, " \t");
+			stdPlatform_Printf("Invited to lobby %s\n", pArgTok);
+			stdString_CharToWchar(stdComm_waIdk, pArgTok, 32);
 		}
 	#else // disable dedicated server for now since the new steam stuff works via SteamIDs, need to consider how to rectify this feature
         else if (!__strcmpi(pArgTok, "-dedicatedServer") || !__strcmpi(pArgTok, "/dedicatedServer") )

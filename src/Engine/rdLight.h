@@ -61,6 +61,7 @@ void rdAmbient_CalculateVertexColor(rdAmbient* ambient, rdVector3* normal, rdVec
 #ifndef RENDER_DROID2
 void rdAmbient_UpdateDominantDirection(rdAmbient* ambient);
 #endif
+#endif
 #ifdef __cplusplus
 }
 #endif

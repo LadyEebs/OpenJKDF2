@@ -1,12 +1,12 @@
 #include "stdComm_Steam.h"
 
+extern "C"{
 #include "Win95/stdComm.h"
 #include "Dss/sithMulti.h"
 #include "General/stdString.h"
 #include "stdPlatform.h"
 #include "jk.h"
-
-extern "C"{
+#include "globals.h"
 #include "Win95/stdDisplay.h"
 #include "General/stdBitmap.h"
 #include "General/stdColor.h"

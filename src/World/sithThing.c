@@ -1811,10 +1811,6 @@ int sithThing_LoadThingParam(stdConffileArg *arg, sithThing* pThing, int param)
 #endif
     flex_d_t lifeLeftSec; // st7
 
-    flex_d_t moveSize; // st7
-    flex_d_t light; // st7
-    flex_d_t lifeLeftSec; // st7
-
     rdModel3 *pModel; // eax
     rdParticle *pParticle; // edi
     rdSprite *pSprite; // eax
