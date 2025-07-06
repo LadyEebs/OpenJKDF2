@@ -79,7 +79,7 @@ static jkGuiElement jkGuiGameplay_buttons[] = {
     {ELEMENT_TEXT,         0,            0, "GUIEXT_CROSSHAIR_SCALE",                 3, {30, 345-25, 235, 20}, 1,  0, 0, 0, 0, 0, {0}, 0},
     {ELEMENT_TEXT,         0,            0, slider_val_text,        3, {30, 345+30, 235, 20}, 1,  0, 0, 0, 0, 0, {0}, 0},
 #ifdef DYNAMIC_POV
-	{ELEMENT_CHECKBOX, 0, 0, "GUIEXT_AIMLOCK", 0, {30, 230, 270, 20}, 1, 0, "GUIEXT_AIMLOCK_HINT", 0, 0, 0, {0}, 0},
+	{ELEMENT_CHECKBOX, 0, 0, "GUIEXT_AIMLOCK", 0, {30, 290, 270, 20}, 1, 0, "GUIEXT_AIMLOCK_HINT", 0, 0, 0, {0}, 0},
 #endif
 #endif /* QOL_IMPROVEMENTS */
  
