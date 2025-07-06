@@ -33,7 +33,7 @@ Render Droid 2:
 - Completely new render pipeline that moves transform and lighting to the GPU
 - Clustered forward rendering, with per pixel lighting, decals and AO/shadow support (just like the old deferred path, but works on transparencies and will work with MSAA once implemented).
 - Quadrilinear texturing for polylines
-- Custom UV behavior, currently only ceiling and horizon sky, but for future spheremaps and others
+- Pixel shader VM for custom vfx (akin to Xbox asm shaders)
 - Emissive surface flag, generates a point light at the surface for dynamic lighting (ex. breakable neon signs)
 - Backdrop sector for skyboxes
 - Still works under GL 3.3
