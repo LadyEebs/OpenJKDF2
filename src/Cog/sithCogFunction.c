@@ -19,6 +19,7 @@
 #include "World/sithModel.h"
 #include "Engine/sithRender.h"
 #include "Engine/sithCamera.h"
+#include "Engine/sithPuppet.h"
 #include "Devices/sithSound.h"
 #include "Dss/sithGamesave.h"
 #include "Gameplay/sithEvent.h"
@@ -212,6 +213,14 @@ void sithCogFunction_StopThing(sithCog *ctx) // unused
     v1 = sithCogExec_PopThing(ctx);
     if ( v1 )
     {
+#ifdef PUPPET_PHYSICS
+		// if this thing was previously using puppet physics make sure we clean up
+		if ( v1->moveType != SITH_MT_PUPPET && v1->puppet && v1->puppet->physics)
+		{
+			sithPuppet_StopPhysics(v1);
+		}
+		else
+#endif
         if ( v1->moveType == SITH_MT_PHYSICS )
         {
             sithPhysics_ThingStop(v1);

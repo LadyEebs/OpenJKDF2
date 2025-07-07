@@ -17,6 +17,7 @@
 #include "Dss/sithGamesave.h"
 #include "Gameplay/sithOverlayMap.h"
 #include "Engine/sithPhysics.h"
+#include "Engine/sithPuppet.h"
 #include "Main/jkGame.h"
 #include "Main/jkMain.h"
 #include "Dss/sithMulti.h"
@@ -894,7 +895,11 @@ int sithControl_HandlePlayer(sithThing *player, flex_t deltaSecs)
     //g_debugmodeFlags &= ~0x100;
 #endif
 
-    if ( player->moveType != SITH_MT_PHYSICS )
+    if ( player->moveType != SITH_MT_PHYSICS
+#ifdef PUPPET_PHYSICS
+		&& player->moveType != SITH_MT_PUPPET
+#endif
+	)
         return 0;
 
     // Added: dedicated
@@ -985,6 +990,10 @@ LABEL_39:
 debug_controls:
     if ( player->moveType == SITH_MT_PHYSICS )
         sithPhysics_ThingStop(player);
+#ifdef PUPPET_PHYSICS
+	else if (player->moveType == SITH_MT_PUPPET && player->puppet && player->puppet->physics)
+		sithPuppet_StopPhysics(player);
+#endif
 
     // Added
     if (sithControl_followingPlayer > 0) {

@@ -277,6 +277,9 @@ void sithPlayer_debug_RespawnInPlace(sithThing* player)
 		player->thingflags &= ~(SITH_TF_DEAD | SITH_TF_WILLBEREMOVED);
 		player->actorParams.typeflags &= ~SITH_AF_FALLING_TO_DEATH;
 		player->lifeLeftMs = 0;
+#ifdef PUPPET_PHYSICS
+		player->moveType = SITH_MT_PHYSICS;
+#endif
 		if (!sithNet_isMulti || player == sithPlayer_pLocalPlayerThing)
 		{
 			sithCamera_FollowFocus(sithCamera_currentCamera);
@@ -413,8 +416,8 @@ void sithPlayer_sub_4C9150(sithThing *player, sithThing *killedBy)
     player->actorParams.typeflags &= ~SITH_AF_BLEEDS;
 #ifdef PUPPET_PHYSICS
 	//player->collide = SITH_COLLIDE_NONE;
-	//if (player->animclass && player->animclass->flags & JOINTFLAGS_PHYSICS)
-	//	player->moveType = SITH_MT_PUPPET;
+	if (player->animclass && player->animclass->flags & JOINTFLAGS_PHYSICS)
+		player->moveType = SITH_MT_PUPPET;
 #endif
     sithPhysics_ThingStop(player);
     sithWeapon_SyncPuppet(player);
@@ -539,6 +542,9 @@ void sithPlayer_debug_ToNextCheckpoint(sithThing *player)
         player->thingflags &= ~(SITH_TF_DEAD|SITH_TF_WILLBEREMOVED);
         player->actorParams.typeflags &= ~SITH_AF_FALLING_TO_DEATH;
         player->lifeLeftMs = 0;
+#ifdef PUPPET_PHYSICS
+		player->moveType = SITH_MT_PHYSICS;
+#endif
         if ( !sithNet_isMulti || player == sithPlayer_pLocalPlayerThing )
         {
             v9 = sithMulti_GetSpawnIdx(player);
