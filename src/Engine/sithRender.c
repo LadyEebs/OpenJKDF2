@@ -1042,8 +1042,19 @@ void sithRender_Draw()
     sithRender_geoThingsDrawn = 0;
 	sithRender_numSkyPortals = 0;
     rdCamera_ClearLights(rdCamera_pCurCamera);
+	
+	// todo: get this out of here
+	extern int Window_xSize;
+	extern int Window_ySize;
+
+	int32_t tex_w = (int32_t)((flex_d_t)Window_xSize * jkPlayer_ssaaMultiple);
+	int32_t tex_h = (int32_t)((flex_d_t)Window_ySize * jkPlayer_ssaaMultiple);
+	tex_w = (tex_w < 320 ? 320 : tex_w);
+	tex_h = tex_w * (flex_t)Window_ySize / Window_xSize;
 
 #ifdef RENDER_DROID2
+	rdViewport(0, 0, tex_w, tex_h);
+
 	sithRender_numStaticLights = 0;
 
 	rdDepthRange(0.05f, 1.0f);
@@ -1059,16 +1070,6 @@ void sithRender_Draw()
 	rdDitherMode(jkPlayer_enableDithering ? RD_DITHER_4x4 : RD_DITHER_NONE);
 	rdAmbientFlags(sithRender_aoFlags);
 	rdCluster_Clear();
-
-	// todo: get this out of here
-	extern int Window_xSize;
-	extern int Window_ySize;
-
-	int32_t tex_w = (int32_t)((flex_d_t)Window_xSize * jkPlayer_ssaaMultiple);
-	int32_t tex_h = (int32_t)((flex_d_t)Window_ySize * jkPlayer_ssaaMultiple);
-	tex_w = (tex_w < 320 ? 320 : tex_w);
-	tex_h = tex_w * (flex_t)Window_ySize / Window_xSize;
-	rdViewport(0, 0, tex_w, tex_h);
 
 	sithRender_ResetState();
 #endif
@@ -1097,6 +1098,7 @@ void sithRender_Draw()
     if ( (sithRender_flag & 2) != 0 )
         sithRender_RenderDynamicLights();
 
+#ifdef RENDER_DROID2
 	sithRender_RenderOccludersAndDecals();
 
 	sithRender_ResetState();
@@ -1105,6 +1107,7 @@ void sithRender_Draw()
 	rdMatrix44 proj;
 	rdGetMatrix(&proj, RD_MATRIX_PROJECTION);
 	rdCluster_Build(&proj, tex_w, tex_h);
+#endif
 
 #ifdef JKM_LIGHTING
     // MOTS added
@@ -1160,11 +1163,13 @@ void sithRender_Draw()
     if ( sithRender_numSectors2 )
         sithRender_RenderThings();
 
+#ifdef RENDER_DROID2
 	if (sithWorld_pCurrentWorld->backdropSector && sithRender_numSkyPortals > 0)
 	{
 		void sithRender_DrawStencils();
 		sithRender_DrawStencils();
 	}
+#endif
 
 #ifdef DECAL_RENDERING
 	rdCache_FlushDecals();
@@ -1174,11 +1179,13 @@ void sithRender_Draw()
 	rdCache_FlushOccluders();
 #endif
 
+#ifdef RENDER_DROID2
 	if (sithWorld_pCurrentWorld->backdropSector && sithRender_numSkyPortals > 0)
 	{
 		sithRender_DrawBackdrop();
 		sithRender_ResetState();
 	}
+#endif
 
     if ( sithRender_numSurfaces )
         sithRender_RenderAlphaSurfaces();
@@ -1193,9 +1200,10 @@ void sithRender_Draw()
 	{
 		rdSetZBufferMethod(RD_ZBUFFER_READ_NOWRITE);
 		rdSetSortingMethod(2);
+	#ifdef RENDER_DROID2
 		rdSetBlendEnabled(RD_TRUE);
 		rdSetBlendMode(RD_BLEND_SRCALPHA, RD_BLEND_INVSRCALPHA);
-
+	#endif
 		for (sithThing* iter = sithRender_alphaDrawThing; iter; )
 		{
 			// call the alpha callback for renderweapon
@@ -1330,14 +1338,17 @@ void sithRender_Clip(sithSector *sector, rdClipFrustum *frustumArg, flex_t a3)
 				#ifdef RGB_THING_LIGHTS
 					sithRender_aLights[lightIdx].color = thing->lightColor;
 				#endif
+#ifdef RENDER_DROID2
 					if (thing->lightRadius > 0.0)
 					{
 						rdCamera_AddLightExplicitRadius(rdCamera_pCurCamera, &sithRender_aLights[lightIdx], thing->lightRadius, &thing->position);
 					}
 					else
+#endif
 					{
 						rdCamera_AddLight(rdCamera_pCurCamera, &sithRender_aLights[lightIdx], &thing->position);
 					}
+#ifdef RENDER_DROID2
 					if (thing->lightAngle > 0.0)
 					{
 						sithRender_aLights[lightIdx].type = RD_LIGHT_SPOTLIGHT;
@@ -1345,6 +1356,7 @@ void sithRender_Clip(sithSector *sector, rdClipFrustum *frustumArg, flex_t a3)
 						rdLight_SetAngles(&sithRender_aLights[lightIdx], thing->lightAngle * 0.1, thing->lightAngle);
 						sithRender_aLights[lightIdx].width = thing->lightSize;
 					}
+#endif
                     lightIdx = ++sithRender_numLights;
                 }
 
@@ -2384,7 +2396,9 @@ void sithRender_RenderLevelGeometry()
                     continue;
                 if ( (v65->surfaceFlags & (SITH_SURFACE_HORIZON_SKY|SITH_SURFACE_CEILING_SKY)) != 0 )
                 {
+#ifdef RENDER_DROID2
 					++sithRender_numSkySurfacesDrawn;
+#endif
 
                     geoMode = sithRender_geoMode;
                     if ( sithRender_geoMode > RD_GEOMODE_SOLIDCOLOR)
@@ -3002,14 +3016,17 @@ void sithRender_UpdateLights(sithSector *sector, flex_t prev, flex_t dist, int d
 #ifdef RGB_THING_LIGHTS
 					sithRender_aLights[sithRender_numLights].color = i->lightColor;
 #endif
+#ifdef RENDER_DROID2
 					if (i->lightRadius > 0.0)
 					{
 						rdCamera_AddLightExplicitRadius(rdCamera_pCurCamera, &sithRender_aLights[sithRender_numLights], i->lightRadius, &i->position);
 					}
 					else
+#endif
 					{
 						rdCamera_AddLight(rdCamera_pCurCamera, &sithRender_aLights[sithRender_numLights], &i->position);
 					}
+#ifdef RENDER_DROID2
 					if (i->lightAngle > 0.0)
 					{
 						sithRender_aLights[sithRender_numLights].type = RD_LIGHT_SPOTLIGHT;
@@ -3017,6 +3034,7 @@ void sithRender_UpdateLights(sithSector *sector, flex_t prev, flex_t dist, int d
 						sithRender_aLights[sithRender_numLights].width = i->lightSize;
 						rdLight_SetAngles(&sithRender_aLights[sithRender_numLights], i->lightAngle * 0.1, i->lightAngle);
 					}
+#endif
 					++sithRender_numLights;
                 }
 
@@ -3108,9 +3126,6 @@ void sithRender_RenderDynamicLights()
 		rdAddLight(rdCamera_pCurCamera->lights[i], &rdCamera_pCurCamera->lightPositions[i]);
 
 #else
-    sithSector *sectorIter;
-    rdLight **curCamera_lights;
-    unsigned int numSectorLights;
     rdLight *tmpLights[RDCAMERA_MAX_LIGHTS];
 
     if (!sithRender_numSectors)
@@ -3118,13 +3133,13 @@ void sithRender_RenderDynamicLights()
 
     for (int k = 0; k < sithRender_numSectors; k++)
     {
-        sectorIter = sithRender_aSectors[k];
+		sithSector* sectorIter = sithRender_aSectors[k];
         
-        curCamera_lights = rdCamera_pCurCamera->lights;
+		rdLight** curCamera_lights = rdCamera_pCurCamera->lights;
         
         //sithRender_RenderDebugLight(10.0, &sectorIter->center);
         
-        numSectorLights = 0;
+		unsigned int numSectorLights = 0;
         for (int i = 0; i < rdCamera_pCurCamera->numLights; i++)
         {
             //sithRender_RenderDebugLight(10.0, &rdCamera_pCurCamera->lightPositions[i]);
@@ -3515,9 +3530,8 @@ void sithRender_RenderThings()
     }
     rdCache_Flush("sithRender_RenderThings");
 
-	rdScissorMode(RD_SCISSOR_DISABLED);
-
 #ifdef RENDER_DROID2
+	rdScissorMode(RD_SCISSOR_DISABLED);
 	rdSetDecalMode(jkPlayer_enableDecals ? RD_DECALS_ENABLED : RD_DECALS_DISABLED);
 	rdSortOrder(0);
 #endif

@@ -1953,6 +1953,7 @@ int sithThing_LoadThingParam(stdConffileArg *arg, sithThing* pThing, int param)
 				result = 0;
 			}
 			break;
+#ifdef RENDER_DROID2
 		case THINGPARAM_LIGHTRADIUS:
 			pThing->lightRadius = _atof(arg->value);
 			result = 1;
@@ -1965,6 +1966,7 @@ int sithThing_LoadThingParam(stdConffileArg *arg, sithThing* pThing, int param)
 			pThing->lightSize = _atof(arg->value);
 			result = 1;
 			break;
+#endif
 #endif
         case THINGPARAM_SOUNDCLASS:
             pThing->soundclass = sithSoundClass_LoadFile(arg->value);

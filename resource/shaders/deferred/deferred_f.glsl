@@ -1,11 +1,11 @@
 // this pass helps offset vgpr pressure from the main pass
 // but the bandwidth overhead tends to make this slower overall
+#if 0
 
 import "defines.gli"
 import "math.gli"
 import "uniforms.gli"
 
-#if 0
 import "clustering.gli"
 import "lighting.gli"
 import "decals.gli"

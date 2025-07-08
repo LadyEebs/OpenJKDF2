@@ -1143,6 +1143,7 @@ void sithSurface_ProjectPointOntoPlane(rdVector3* result, rdVector3* point, rdVe
 	rdVector_Sub3(result, point, result); // result = P - (P . N) * N
 }
 
+#ifdef RENDER_DROID2
 void sithSurface_BuildTangentFrame(sithSurface* surface)
 {
 	//if (!surface->surfaceInfo.face.vertexUVIdx)
@@ -1235,6 +1236,7 @@ void sithSurface_CalcLocalSize(sithSurface* surface)
 
 	rdVector_Sub2(&surface->localSize, &max, &min);
 }
+#endif
 
 float sithSurface_TriangleArea(rdVector3* a, rdVector3* b, rdVector3* c)
 {
@@ -1252,11 +1254,13 @@ int sithSurface_GetCenter(sithSurface *surface, rdVector3 *out)
     rdVector3 a1a; // [esp+14h] [ebp-18h] BYREF
     rdVector3 a2a; // [esp+20h] [ebp-Ch] BYREF
 
-    //rdVector_Zero3(&a1a);
-    //for (uint32_t i = 0; i < surface->surfaceInfo.face.numVertices; ++i )
-    //    rdVector_Add3Acc(&a1a, &sithWorld_pCurrentWorld->vertices[surface->surfaceInfo.face.vertexPosIdx[i]]);
-	//
-    //rdVector_InvScale3(out, &a1a, (flex_t)(unsigned int)surface->surfaceInfo.face.numVertices);
+#ifndef RENDER_DROID2
+    rdVector_Zero3(&a1a);
+    for (uint32_t i = 0; i < surface->surfaceInfo.face.numVertices; ++i )
+        rdVector_Add3Acc(&a1a, &sithWorld_pCurrentWorld->vertices[surface->surfaceInfo.face.vertexPosIdx[i]]);
+	
+    rdVector_InvScale3(out, &a1a, (flex_t)(unsigned int)surface->surfaceInfo.face.numVertices);
+#else
 
 	// more accurate centroid
 	flex_t totalArea = 0.0f;
@@ -1294,6 +1298,8 @@ int sithSurface_GetCenter(sithSurface *surface, rdVector3 *out)
 	centroid.z /= totalArea;
 
 	surface->center = centroid;
+	*out = centroid;
+#endif
 
     if ( !sithIntersect_IsSphereInSector(out, 0.0, surface->parent_sector) )
     {

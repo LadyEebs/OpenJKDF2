@@ -1332,9 +1332,9 @@ int init_resources()
     if (!std3D_loadSimpleTexProgram("shaders/blur", &std3D_blurStage)) return false;
     if (!std3D_loadSimpleTexProgram("shaders/ssao", &std3D_ssaoStage)) return false;
     if (!std3D_loadSimpleTexProgram("shaders/ssao_mix", &std3D_ssaoMixStage)) return false;
-	if (!std3D_loadSimpleTexProgram("shaders/postfx", &std3D_postfxStage)) return false;
+	if (!std3D_loadSimpleTexProgram("shaders/postfx/postfx", &std3D_postfxStage)) return false;
 #ifdef NEW_BLOOM
-	if (!std3D_loadSimpleTexProgram("shaders/bloom", &std3D_bloomStage)) return false;
+	if (!std3D_loadSimpleTexProgram("shaders/postfx/bloom", &std3D_bloomStage)) return false;
 #endif
 
 #ifdef DEFERRED_FRAMEWORK
@@ -2388,145 +2388,165 @@ void std3D_DrawMapOverlay()
 	glBindVertexArray(vao);
 }
 
-void std3D_DrawUIBitmapRGBA(stdBitmap* pBmp, int mipIdx, flex_t dstX, flex_t dstY, rdRect* srcRect, flex_t scaleX, flex_t scaleY, int bAlphaOverwrite, uint8_t color_r, uint8_t color_g, uint8_t color_b, uint8_t color_a)
+
+void std3D_DrawUIBitmapRGBAZ(stdBitmap* pBmp, int mipIdx, float dstX, float dstY, rdRect* srcRect, float scaleX, float scaleY, int bAlphaOverwrite, uint8_t color_r, uint8_t color_g, uint8_t color_b, uint8_t color_a, float depth)
 {
-    float internalWidth = Video_menuBuffer.format.width;
-    float internalHeight = Video_menuBuffer.format.height;
+	float internalWidth = Video_menuBuffer.format.width;
+	float internalHeight = Video_menuBuffer.format.height;
 
-    if (!pBmp) return;
-    if (!pBmp->abLoadedToGPU[mipIdx]) {
-        std3D_AddBitmapToTextureCache(pBmp, mipIdx, !(pBmp->palFmt & 1), 0);
-    }
+	if (!pBmp) return;
+	if (!pBmp->abLoadedToGPU[mipIdx])
+	{
+		std3D_AddBitmapToTextureCache(pBmp, mipIdx, !(pBmp->palFmt & 1), 0);
+	}
 
-    if (jkGuiBuildMulti_bRendering) {
-        internalWidth = 640.0;
-        internalHeight = 480.0;
-    }
+	if (jkGuiBuildMulti_bRendering)
+	{
+		internalWidth = 640.0;
+		internalHeight = 480.0;
+	}
 
-    double scaleX_ = (double)Window_xSize/(double)internalWidth;
-    double scaleY_ = (double)Window_ySize/(double)internalHeight;
+	double scaleX_ = (double)Window_xSize / (double)internalWidth;
+	double scaleY_ = (double)Window_ySize / (double)internalHeight;
 
-    dstX *= scaleX_;
-    dstY *= scaleY_;
+	dstX *= scaleX_;
+	dstY *= scaleY_;
 
-    //double tex_w = (double)Window_xSize;
-    //double tex_h = (double)Window_ySize;
-    double tex_w = pBmp->mipSurfaces[0]->format.width;
-    double tex_h = pBmp->mipSurfaces[0]->format.height;
+	//double tex_w = (double)Window_xSize;
+	//double tex_h = (double)Window_ySize;
+	double tex_w = pBmp->mipSurfaces[0]->format.width;
+	double tex_h = pBmp->mipSurfaces[0]->format.height;
 
-    double w = tex_w;
-    double h = tex_h;
-    double x = 0;
-    double y = 0;
+	double w = tex_w;
+	double h = tex_h;
+	double x = 0;
+	double y = 0;
 
-    if (srcRect) {
-        x = srcRect->x;
-        y = srcRect->y;
-        w = srcRect->width;
-        h = srcRect->height;
-    }
+	if (srcRect)
+	{
+		x = srcRect->x;
+		y = srcRect->y;
+		w = srcRect->width;
+		h = srcRect->height;
+	}
 
-    float w_dst = w;
-    float h_dst = h;
+	float w_dst = w;
+	float h_dst = h;
 
-    if (scaleX == 0.0 && scaleY == 0.0)
-    {
-        w_dst = (w / tex_w) * (double)Window_xSize;
-        h_dst = (h / tex_h) * (double)Window_ySize;
+	if (scaleX == 0.0 && scaleY == 0.0)
+	{
+		w_dst = (w / tex_w) * (double)Window_xSize;
+		h_dst = (h / tex_h) * (double)Window_ySize;
 
-        dstX = (dstX / tex_w) * (double)Window_xSize;
-        dstY = (dstY / tex_h) * (double)Window_ySize;
+		dstX = (dstX / tex_w) * (double)Window_xSize;
+		dstY = (dstY / tex_h) * (double)Window_ySize;
 
-        scaleX = 1.0;
-        scaleY = 1.0;
-    }
+		scaleX = 1.0;
+		scaleY = 1.0;
+	}
 
-    double dstScaleX = scaleX;
-    double dstScaleY = scaleY;
-    dstScaleX *= scaleX_;
-    dstScaleY *= scaleY_;
+	double dstScaleX = scaleX;
+	double dstScaleY = scaleY;
+	dstScaleX *= scaleX_;
+	dstScaleY *= scaleY_;
 
-    double u1 = (x / tex_w);
-    double u2 = ((x+w) / tex_w);
-    double v1 = (y / tex_h);
-    double v2 = ((y+h) / tex_h);
+	double u1 = (x / tex_w);
+	double u2 = ((x + w) / tex_w);
+	double v1 = (y / tex_h);
+	double v2 = ((y + h) / tex_h);
 
-    uint32_t color = 0;
+	uint32_t color = 0;
 
-    color |= (color_r << 0);
-    color |= (color_g << 8);
-    color |= (color_b << 16);
-    color |= (color_a << 24);
+	color |= (color_r << 0);
+	color |= (color_g << 8);
+	color |= (color_b << 16);
+	color |= (color_a << 24);
 
-    if (GL_tmpUIVerticesAmt + 4 > STD3D_MAX_UI_VERTICES) {
-        return;
-    }
-    if (GL_tmpUITrisAmt + 2 > STD3D_MAX_UI_TRIS) {
-        return;
-    }
+	if (GL_tmpUIVerticesAmt + 4 > STD3D_MAX_UI_VERTICES)
+	{
+		return;
+	}
+	if (GL_tmpUITrisAmt + 2 > STD3D_MAX_UI_TRIS)
+	{
+		return;
+	}
 
-    if (dstY + (dstScaleY * h_dst) < 0.0 || dstX + (dstScaleX * w_dst) < 0.0) {
-        return;
-    }
-    if (dstY > Window_ySize || dstX > Window_xSize) {
-        return;
-    }
+	if (dstY + (dstScaleY * h_dst) < 0.0 || dstX + (dstScaleX * w_dst) < 0.0)
+	{
+		return;
+	}
+	if (dstY > Window_ySize || dstX > Window_xSize)
+	{
+		return;
+	}
 
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+0].x = dstX;
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+0].y = dstY;
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+0].z = 0.0;
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+0].tu = u1;
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+0].tv = v1;
-    *(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt+0].nx = 0;
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+0].color = color;
-    *(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt+0].nz = 0;
-    
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+1].x = dstX;
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+1].y = dstY + (dstScaleY * h_dst);
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+1].z = 0.0;
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+1].tu = u1;
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+1].tv = v2;
-    *(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt+1].nx = 0;
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+1].color = color;
-    *(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt+1].nz = 0;
-    
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+2].x = dstX + (dstScaleX * w_dst);
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+2].y = dstY + (dstScaleY * h_dst);
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+2].z = 0.0;
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+2].tu = u2;
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+2].tv = v2;
-    *(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt+2].nx = 0;
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+2].color = color;
-    *(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt+2].nz = 0;
-    
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+3].x = dstX + (dstScaleX * w_dst);
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+3].y = dstY;
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+3].z = 0.0;
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+3].tu = u2;
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+3].tv = v1;
-    *(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt+3].nx = 0;
-    GL_tmpUIVertices[GL_tmpUIVerticesAmt+3].color = color;
-    *(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt+3].nz = 0;
-    
-    GL_tmpUITris[GL_tmpUITrisAmt+0].v1 = GL_tmpUIVerticesAmt+1;
-    GL_tmpUITris[GL_tmpUITrisAmt+0].v2 = GL_tmpUIVerticesAmt+0;
-    GL_tmpUITris[GL_tmpUITrisAmt+0].v3 = GL_tmpUIVerticesAmt+2;
-    GL_tmpUITris[GL_tmpUITrisAmt+0].flags = bAlphaOverwrite;
-    GL_tmpUITris[GL_tmpUITrisAmt+0].texture = pBmp->aTextureIds[mipIdx];
-    
-    GL_tmpUITris[GL_tmpUITrisAmt+1].v1 = GL_tmpUIVerticesAmt+0;
-    GL_tmpUITris[GL_tmpUITrisAmt+1].v2 = GL_tmpUIVerticesAmt+3;
-    GL_tmpUITris[GL_tmpUITrisAmt+1].v3 = GL_tmpUIVerticesAmt+2;
-    GL_tmpUITris[GL_tmpUITrisAmt+1].flags = bAlphaOverwrite;
-    GL_tmpUITris[GL_tmpUITrisAmt+1].texture = pBmp->aTextureIds[mipIdx];
-    
-    GL_tmpUIVerticesAmt += 4;
-    GL_tmpUITrisAmt += 2;
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 0].x = dstX;
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 0].y = dstY;
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 0].z = depth;
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 0].tu = u1;
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 0].tv = v1;
+	*(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt + 0].nx = 0;
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 0].color = color;
+	*(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt + 0].nz = 0;
+
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 1].x = dstX;
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 1].y = dstY + (dstScaleY * h_dst);
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 1].z = depth;
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 1].tu = u1;
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 1].tv = v2;
+	*(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt + 1].nx = 0;
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 1].color = color;
+	*(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt + 1].nz = 0;
+
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 2].x = dstX + (dstScaleX * w_dst);
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 2].y = dstY + (dstScaleY * h_dst);
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 2].z = depth;
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 2].tu = u2;
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 2].tv = v2;
+	*(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt + 2].nx = 0;
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 2].color = color;
+	*(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt + 2].nz = 0;
+
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 3].x = dstX + (dstScaleX * w_dst);
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 3].y = dstY;
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 3].z = depth;
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 3].tu = u2;
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 3].tv = v1;
+	*(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt + 3].nx = 0;
+	GL_tmpUIVertices[GL_tmpUIVerticesAmt + 3].color = color;
+	*(uint32_t*)&GL_tmpUIVertices[GL_tmpUIVerticesAmt + 3].nz = 0;
+
+	GL_tmpUITris[GL_tmpUITrisAmt + 0].v1 = GL_tmpUIVerticesAmt + 1;
+	GL_tmpUITris[GL_tmpUITrisAmt + 0].v2 = GL_tmpUIVerticesAmt + 0;
+	GL_tmpUITris[GL_tmpUITrisAmt + 0].v3 = GL_tmpUIVerticesAmt + 2;
+	GL_tmpUITris[GL_tmpUITrisAmt + 0].flags = bAlphaOverwrite;
+	GL_tmpUITris[GL_tmpUITrisAmt + 0].texture = pBmp->aTextureIds[mipIdx];
+	GL_tmpUITris[GL_tmpUITrisAmt + 0].bm = pBmp;
+
+	GL_tmpUITris[GL_tmpUITrisAmt + 1].v1 = GL_tmpUIVerticesAmt + 0;
+	GL_tmpUITris[GL_tmpUITrisAmt + 1].v2 = GL_tmpUIVerticesAmt + 3;
+	GL_tmpUITris[GL_tmpUITrisAmt + 1].v3 = GL_tmpUIVerticesAmt + 2;
+	GL_tmpUITris[GL_tmpUITrisAmt + 1].flags = bAlphaOverwrite;
+	GL_tmpUITris[GL_tmpUITrisAmt + 1].texture = pBmp->aTextureIds[mipIdx];
+	GL_tmpUITris[GL_tmpUITrisAmt + 1].bm = pBmp;
+
+	GL_tmpUIVerticesAmt += 4;
+	GL_tmpUITrisAmt += 2;
 }
 
-void std3D_DrawUIBitmap(stdBitmap* pBmp, int mipIdx, flex_t dstX, flex_t dstY, rdRect* srcRect, flex_t scale, int bAlphaOverwrite)
+void std3D_DrawUIBitmapRGBA(stdBitmap* pBmp, int mipIdx, float dstX, float dstY, rdRect* srcRect, float scaleX, float scaleY, int bAlphaOverwrite, uint8_t color_r, uint8_t color_g, uint8_t color_b, uint8_t color_a)
 {
-    std3D_DrawUIBitmapRGBA(pBmp, mipIdx, dstX, dstY, srcRect, scale, scale, bAlphaOverwrite, 0xFF, 0xFF, 0xFF, 0xFF);
+	std3D_DrawUIBitmapRGBAZ(pBmp, mipIdx, dstX, dstY, srcRect, scaleX, scaleY, bAlphaOverwrite, color_r, color_g, color_b, color_a, 0.5f);
+}
+
+void std3D_DrawUIBitmap(stdBitmap* pBmp, int mipIdx, float dstX, float dstY, rdRect* srcRect, float scale, int bAlphaOverwrite)
+{
+	std3D_DrawUIBitmapRGBA(pBmp, mipIdx, dstX, dstY, srcRect, scale, scale, bAlphaOverwrite, 0xFF, 0xFF, 0xFF, 0xFF);
+}
+
+void std3D_DrawUIBitmapZ(stdBitmap* pBmp, int mipIdx, float dstX, float dstY, rdRect* srcRect, float scaleX, float scaleY, int bAlphaOverwrite, float depth)
+{
+	std3D_DrawUIBitmapRGBAZ(pBmp, mipIdx, dstX, dstY, srcRect, scaleX, scaleY, bAlphaOverwrite, 0xFF, 0xFF, 0xFF, 0xFF, depth);
 }
 
 void std3D_DrawUIClearedRect(uint8_t palIdx, rdRect* dstRect)
@@ -3862,9 +3882,9 @@ int std3D_AddToTextureCache(stdVBuffer** vbuf, int numMips, rdDDrawSurface *text
     GLuint image_texture;
     glGenTextures(1, &image_texture);
 
-    uint8_t* image_8bpp = (uint8_t*)vbuf->sdlSurface->pixels;
-    uint16_t* image_16bpp = (uint16_t*)vbuf->sdlSurface->pixels;
-    uint8_t* pal = (uint8_t*)vbuf->palette;
+    uint8_t* image_8bpp = (uint8_t*)(*vbuf)->sdlSurface->pixels;
+    uint16_t* image_16bpp = (uint16_t*)(*vbuf)->sdlSurface->pixels;
+    uint8_t* pal = (uint8_t*)(*vbuf)->palette;
     
     uint32_t width, height;
     width = (*vbuf)->format.width;

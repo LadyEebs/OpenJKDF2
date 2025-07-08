@@ -1,4 +1,6 @@
+#ifdef RENDER_DROID2
 import "uniforms.gli"
+#endif
 
 layout(binding = 0) uniform sampler2D tex;
 uniform flexSampler2D tex2;

@@ -1566,9 +1566,8 @@ void rdModel3_DrawMesh(rdMesh *meshIn, rdMatrix34 *mat)
 	rdLoadMatrix34(&pCurThing->paPrevMatrices[meshIn->mesh_num]);
 #endif
 	rdSortDistance(vertex_out.y);
-#endif
-
 	rdSortOrder(0);
+#endif
 
     rdMatrix_TransformPoint34(&localCamera, &rdCamera_camMatrix.scale, &matInv);
     rdFace* face = &meshIn->faces[0];

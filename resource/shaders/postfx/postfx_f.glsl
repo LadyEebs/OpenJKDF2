@@ -38,9 +38,119 @@ void main()
 	fragGlow  = texelFetch(tex2MS, ltc, sampleIdx);
 }
 
-#endif
+#elif defined(MOTION_BLUR_PASS)
 
-#ifdef COMPOSITE
+layout(location = 1) uniform float param1;
+layout(location = 2) uniform float param2;
+layout(location = 3) uniform float param3;
+
+void main(void)
+{
+	// center color
+	flex4 color = textureLod(tex, f_uv.xy, 0);
+	fragColor = color;
+
+	// fetch the velocity and depth
+	flex3 vel = textureLod(tex2, f_uv.xy, 0).xyz;
+	flex depth = vel.z;
+
+	// todo: pre-dilate with seperable filters
+	{
+		vec2 poisson[7] = {  
+			vec2( 0.527837,-0.085868),
+			vec2(-0.040088, 0.536087),
+			vec2(-0.670445,-0.179949),
+			vec2(-0.419418,-0.616039),
+			vec2( 0.440453,-0.639399),
+			vec2(-0.757088, 0.349334),
+			vec2( 0.574619, 0.685879)
+		};
+
+		for (int n = 0; n < 7; n++)
+		{
+			flex3 ivel = textureLod(tex2, poisson[n] * 0.0333 + f_uv.xy, 0).xyz;
+			flex dv  = dot( vel.xy,  vel.xy);
+			flex dv2 = dot(ivel.xy, ivel.xy);
+			if (dv < dv2 && vel.z > ivel.z)
+			{
+				vel = ivel;
+			}
+		}
+	}
+    
+	// early out for low velocity
+	flex sqLen = dot(vel.xy, vel.xy);
+#ifdef GL_KHR_shader_subgroup_vote
+	#ifdef GL_KHR_shader_subgroup_arithmetic
+		bool earlyOut = subgroupAll(sqLen <= flex(1e-4)); // can directly use flex
+	#else
+		bool earlyOut = subgroupAll(float(sqLen) <= 1e-4); // must convert to float
+	#endif
+#else
+    bool earlyOut = sqLen <= flex(1e-4); // per pixel branch fallback
+#endif
+	if (earlyOut)
+		return;
+
+	// normalize the velocity
+	sqLen       = max(sqLen, flex(1e-5)); // prevent 0 case
+	flex rcpLen = inversesqrt(sqLen);
+	flex len    = rcpLen * sqLen;
+	vel.xy      = vel.xy * rcpLen;
+
+	// limit the max range
+	const flex2 maxRange = flex2(48.0 / iResolution.xy);
+	vel.xy *= min(flex2(len), maxRange) * flex(param1);
+
+	// sample configuration
+	const uint  numSamples = 8;
+	const float stepSize   = 1.0 / float(numSamples - 1);
+
+	flex4 acc = flex4(0.0);
+	for (uint i = 0; i < numSamples; ++i)
+	{
+		vec2 uv = vec2(vel.xy) * vec2(float(i) * stepSize - 0.5) + f_uv.xy;
+		flex4 icolor = textureLod(tex, uv.xy, 0);
+		acc.rgb += icolor.rgb;
+
+		// accumulate an alpha value for blending
+		if(param2 > 0.0) // already got an alpha mask
+		{
+			acc.a += icolor.a;
+		}
+		else
+		{
+			flex2 ivel = textureLod(tex2, uv, 0).xy;
+			acc.a += saturate(flex(100000.0) * dot(ivel.xy, ivel.xy));
+		}
+	}
+
+	const flex invSamples = flex(1.0) / flex(numSamples);
+	acc.rgb *= invSamples;
+	acc.a = saturate(acc.a * invSamples);
+
+	// don't bother compositing if there are no samples
+#ifdef GL_KHR_shader_subgroup_vote
+	#ifdef GL_KHR_shader_subgroup_arithmetic
+		bool hasSamples = subgroupAny(acc.a > flex(0.0)); // can directly use flex
+	#else
+		bool hasSamples = subgroupAny(float(acc.a) > 0.0); // must convert to float
+	#endif
+#else
+    bool hasSamples = acc.a > flex(0.0); // per pixel branch fallback
+#endif
+	if (hasSamples)
+	{
+		if(param2 > 0.0) // include previous alpha
+			fragColor.rgb = mix( color.rgb, acc.rgb, saturate(acc.a * flex(2.0) + color.a) );
+		else
+			fragColor.rgb = mix( color.rgb, acc.rgb, acc.w );
+	}
+
+	fragColor.w = acc.w;
+}
+
+#else
 
 layout(location = 1) uniform float param1;
 layout(location = 2) uniform float param2;
@@ -197,134 +307,18 @@ void main(void)
 	sampled_color.rgb = bloom.rgb + sampled_color.rgb * (flex3(1.0) - bloom.rgb);
 
 //#ifdef RENDER_DROID2
-	sampled_color.rgb += flex3(colorEffects_add.rgb);
-
-	vec3 half_tint = colorEffects_tint * 0.5;
-	flex3 tint_delta = flex3( colorEffects_tint - (half_tint.brr + half_tint.ggb) );
-	sampled_color.rgb = clamp(tint_delta.rgb * sampled_color.rgb + sampled_color.rgb, flex3(0.0), flex3(1.0));
-
-	sampled_color.rgb *= flex(colorEffects_fade);
-	sampled_color.rgb *= flex3(colorEffects_filter.rgb);
+//	sampled_color.rgb += flex3(colorEffects_add.rgb);
+//
+//	vec3 half_tint = colorEffects_tint * 0.5;
+//	flex3 tint_delta = flex3( colorEffects_tint - (half_tint.brr + half_tint.ggb) );
+//	sampled_color.rgb = clamp(tint_delta.rgb * sampled_color.rgb + sampled_color.rgb, flex3(0.0), flex3(1.0));
+//
+//	sampled_color.rgb *= flex(colorEffects_fade);
+//	sampled_color.rgb *= flex3(colorEffects_filter.rgb);
 //#endif
 
     fragColor.rgb = (pow(sampled_color.rgb, flex3(1.0/param3)));
 	fragColor.w = flex(1.0);
-}
-
-#endif
-
-
-
-#ifdef MOTION_BLUR_PASS
-
-layout(location = 1) uniform float param1;
-layout(location = 2) uniform float param2;
-layout(location = 3) uniform float param3;
-
-void main(void)
-{
-	// center color
-	flex4 color = textureLod(tex, f_uv.xy, 0);
-	fragColor = color;
-
-	// fetch the velocity and depth
-	flex3 vel = textureLod(tex2, f_uv.xy, 0).xyz;
-	flex depth = vel.z;
-
-	// todo: pre-dilate with seperable filters
-	{
-		vec2 poisson[7] = {  
-			vec2( 0.527837,-0.085868),
-			vec2(-0.040088, 0.536087),
-			vec2(-0.670445,-0.179949),
-			vec2(-0.419418,-0.616039),
-			vec2( 0.440453,-0.639399),
-			vec2(-0.757088, 0.349334),
-			vec2( 0.574619, 0.685879)
-		};
-
-		for (int n = 0; n < 7; n++)
-		{
-			flex3 ivel = textureLod(tex2, poisson[n] * 0.0333 + f_uv.xy, 0).xyz;
-			flex dv  = dot( vel.xy,  vel.xy);
-			flex dv2 = dot(ivel.xy, ivel.xy);
-			if (dv < dv2 && vel.z > ivel.z)
-			{
-				vel = ivel;
-			}
-		}
-	}
-    
-	// early out for low velocity
-	flex sqLen = dot(vel.xy, vel.xy);
-#ifdef GL_KHR_shader_subgroup_vote
-	#ifdef GL_KHR_shader_subgroup_arithmetic
-		bool earlyOut = subgroupAll(sqLen <= flex(1e-4)); // can directly use flex
-	#else
-		bool earlyOut = subgroupAll(float(sqLen) <= 1e-4); // must convert to float
-	#endif
-#else
-    bool earlyOut = sqLen <= flex(1e-4); // per pixel branch fallback
-#endif
-	if (earlyOut)
-		return;
-
-	// normalize the velocity
-	sqLen       = max(sqLen, flex(1e-5)); // prevent 0 case
-	flex rcpLen = inversesqrt(sqLen);
-	flex len    = rcpLen * sqLen;
-	vel.xy      = vel.xy * rcpLen;
-
-	// limit the max range
-	const flex2 maxRange = flex2(48.0 / iResolution.xy);
-	vel.xy *= min(flex2(len), maxRange) * flex(param1);
-
-	// sample configuration
-	const uint  numSamples = 8;
-	const float stepSize   = 1.0 / float(numSamples - 1);
-
-	flex4 acc = flex4(0.0);
-	for (uint i = 0; i < numSamples; ++i)
-	{
-		vec2 uv = vec2(vel.xy) * vec2(float(i) * stepSize - 0.5) + f_uv.xy;
-		flex4 icolor = textureLod(tex, uv.xy, 0);
-		acc.rgb += icolor.rgb;
-
-		// accumulate an alpha value for blending
-		if(param2 > 0.0) // already got an alpha mask
-		{
-			acc.a += icolor.a;
-		}
-		else
-		{
-			flex2 ivel = textureLod(tex2, uv, 0).xy;
-			acc.a += saturate(flex(100000.0) * dot(ivel.xy, ivel.xy));
-		}
-	}
-
-	const flex invSamples = flex(1.0) / flex(numSamples);
-	acc.rgb *= invSamples;
-	acc.a = saturate(acc.a * invSamples);
-
-	// don't bother compositing if there are no samples
-#ifdef GL_KHR_shader_subgroup_vote
-	#ifdef GL_KHR_shader_subgroup_arithmetic
-		bool hasSamples = subgroupAny(acc.a > flex(0.0)); // can directly use flex
-	#else
-		bool hasSamples = subgroupAny(float(acc.a) > 0.0); // must convert to float
-	#endif
-#else
-    bool hasSamples = acc.a > flex(0.0); // per pixel branch fallback
-#endif
-	if (hasSamples)
-	{
-		if(param2 > 0.0) // include previous alpha
-			fragColor.rgb = mix( color.rgb, acc.rgb, saturate(acc.a * flex(2.0) + color.a) );
-		else
-			fragColor.rgb = mix( color.rgb, acc.rgb, acc.w );
-	}
-
-	fragColor.w = acc.w;
 }
 
 #endif

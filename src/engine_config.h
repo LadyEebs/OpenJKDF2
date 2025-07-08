@@ -7,7 +7,7 @@
 // Experimental features
 #ifdef QOL_IMPROVEMENTS
 
-#define RENDER_DROID2        // new gpu path, skips rdCache and uses a fixed-function like API to pass information to the GPU for HW transform, clipping and lighting
+//#define RENDER_DROID2        // new gpu path, skips rdCache and uses a fixed-function like API to pass information to the GPU for HW transform, clipping and lighting
 
 //#define HW_VBUFFER // temp stuff, trying to move vbuffer to GPU and use fbos in there so we can render to them
 
@@ -40,6 +40,8 @@
 #define STATIC_JKL_EXT       // load extra .jkl files from resources on startup along side static.jkl
 #define VERTEX_COLORS        // add vertex color face flag to indicate using the rdProcEntry's color field as the vertex color
 #define FOG                  // infernal machine style fog rendering
+
+#define RD_AMBIENT_LOBES 8
 
 #ifdef RENDER_DROID2
 
@@ -87,11 +89,11 @@
 
 //#define MOTION_BLUR
 
-#define RD_AMBIENT_LOBES 8
-
 #define RD_CACHE_MAX_DRAW_CALLS				16384
 #define RD_CACHE_MAX_DRAW_CALL_VERTS		(RD_CACHE_MAX_DRAW_CALLS * 24)
 #define RD_CACHE_MAX_DRAW_CALL_INDICES		(RD_CACHE_MAX_DRAW_CALLS * 66)
+
+#endif
 
 #define STD3D_CLUSTER_MAX_LIGHTS          256 // match RDCAMERA_MAX_LIGHTS/SITHREND_NUM_LIGHTS
 #define STD3D_CLUSTER_MAX_OCCLUDERS       128
@@ -110,8 +112,6 @@
 #define USES_VERTEX_LIGHTING(LIGHT_MODE) (((LIGHT_MODE) == 3) || ((LIGHT_MODE) == 4)|| ((LIGHT_MODE) == 5))
 #else
 #define USES_VERTEX_LIGHTING(LIGHT_MODE) ((LIGHT_MODE) == 3)
-#endif
-
 #endif
 
 #if defined(DECAL_RENDERING) || defined(PARTICLE_LIGHTS) || defined(SPHERE_AO)
