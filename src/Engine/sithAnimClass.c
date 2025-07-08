@@ -4,28 +4,11 @@
 #include "World/sithWorld.h"
 #include "General/stdString.h"
 #include "General/stdHashTable.h"
+#include "General/stdFnames.h"
 #include "jk.h"
-#ifdef ANIMCLASS_NAMES
-#include "World/sithModel.h"
-#endif
 
 #ifdef PUPPET_PHYSICS
-int sithAnimClass_ConstraintTypeFromName(const char* name)
-{
-	static const char* sithAnimClass_constraintNames[SITH_CONSTRAINT_COUNT] =
-	{
-		"ballsocket",
-		"cone",
-		"hinge"
-	};
-
-	for (int i = 0; i < SITH_CONSTRAINT_COUNT; ++i)
-	{
-		if(stricmp(sithAnimClass_constraintNames[i], name) == 0)
-			return i;
-	}
-	return -1;
-}
+#include "Modules/sith/Engine/sithRagdoll.h"
 #endif
 
 int sithAnimClass_Load(sithWorld *world, int a2)
@@ -126,25 +109,12 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 #ifdef ANIMCLASS_NAMES
 	rdModel3* model = NULL;
 	int namedBodypart = 0;
-#ifdef PUPPET_PHYSICS
-	float mass = 1.0f / JOINTTYPE_NUM_JOINTS;
-	float buoyancy = 1.0f;
-	float health = 1000.0f;
-	float damage = 1.0f;
-	animclass->root = -1;
 #endif
-#endif
-
     mode = 0;
     if (!stdConffile_OpenRead(fpath))
         return 0;
 
-#ifdef ANIMCLASS_NAMES
-	_memset(animclass->bodypart, 0xFFu, sizeof(animclass->bodypart));
-	animclass->jointToBodypart = NULL;
-#else
 	_memset(animclass->bodypart_to_joint, 0xFFu, sizeof(animclass->bodypart_to_joint));
-#endif
 	while ( stdConffile_ReadArgs() )
     {
         if ( !stdConffile_entry.numArgs )
@@ -153,16 +123,6 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 		if (!_strcmp(stdConffile_entry.args[0].key, "model"))
 		{
 			model = sithModel_LoadEntry(stdConffile_entry.args[0].value, 0);
-			animclass->jointToBodypart = (int*)rdroid_pHS->alloc(sizeof(int) * model->numHierarchyNodes);
-			if(animclass->jointToBodypart)
-				_memset(animclass->jointToBodypart, -1, sizeof(int) * model->numHierarchyNodes);
-		}
-		else
-#endif
-#ifdef PUPPET_PHYSICS
-		if (!_strcmp(stdConffile_entry.args[0].key, "flags"))
-		{
-			_sscanf(stdConffile_entry.args[0].value, "%x", &animclass->flags);
 		}
 		else
 #endif
@@ -192,137 +152,20 @@ int sithAnimClass_LoadPupEntry(sithAnimclass *animclass, char *fpath)
 						if (!stricmp(model->hierarchyNodes[node].name, stdConffile_entry.args[1].key))
 						{
 							joint_idx = node;
-							if(animclass->jointToBodypart)
-								animclass->jointToBodypart[node] = bodypart_idx;
 							break;
 						}
 					}
-#ifdef PUPPET_PHYSICS
-					if (stdConffile_entry.numArgs <= 2)
-						flags = 0;
-					else
-						_sscanf(stdConffile_entry.args[2].key, "%x", &flags);
-
-					if (stdConffile_entry.numArgs <= 3)
-						mass = 1.0;
-					else
-						mass = _atof(stdConffile_entry.args[3].key);
-
-					if (stdConffile_entry.numArgs <= 4)
-						buoyancy = 1.0;
-					else
-						buoyancy = _atof(stdConffile_entry.args[4].key);
-
-					if (stdConffile_entry.numArgs <= 5)
-						health = 1000.0f;
-					else
-						health = _atof(stdConffile_entry.args[5].key);
-					
-					if (stdConffile_entry.numArgs <= 6)
-						damage = 1.0;
-					else
-						damage = _atof(stdConffile_entry.args[6].key);
-#endif
 				}
 				else // old syntax
+#endif
 				{
 					bodypart_idx = _atoi(stdConffile_entry.args[0].key);
 					joint_idx = _atoi(stdConffile_entry.args[0].value);
-					flags = 0;
-					mass = 1.0f;
-					buoyancy = 1.0f;
-					health = 1000.0f;
-					damage = 1.0f;
 				}
-				if (bodypart_idx < JOINTTYPE_NUM_JOINTS && bodypart_idx >= 0) // Added: check for negative
-				{
-					animclass->bodypart[bodypart_idx].nodeIdx = joint_idx;
-#ifdef PUPPET_PHYSICS
-					if(joint_idx >= 0)
-					{
-						animclass->jointBits |= (1ull << bodypart_idx);
-						if (flags & JOINTFLAGS_PHYSICS)
-							animclass->physicsJointBits |= (1ull << bodypart_idx);
-						animclass->bodypart[bodypart_idx].flags = flags;
-						animclass->bodypart[bodypart_idx].mass = mass;
-						animclass->bodypart[bodypart_idx].buoyancy = buoyancy;
-						animclass->bodypart[bodypart_idx].health = health;
-						animclass->bodypart[bodypart_idx].damage = damage;
-						if (flags & JOINTFLAGS_ROOT)
-							animclass->root = bodypart_idx;
-					}
-#endif
-				}
-#else
-                bodypart_idx = _atoi(stdConffile_entry.args[0].key);
-				joint_idx = _atoi(stdConffile_entry.args[0].value);
                 if ( bodypart_idx < JOINTTYPE_NUM_JOINTS && bodypart_idx >= 0) // Added: check for negative
                     animclass->bodypart_to_joint[bodypart_idx] = joint_idx;
-#endif
 			}
         }
-#ifdef PUPPET_PHYSICS
-		else if (!_strcmp(stdConffile_entry.args[0].value, "constraints"))
-		{
-			while (stdConffile_ReadArgs())
-			{
-				if (!stdConffile_entry.numArgs || !_strcmp(stdConffile_entry.args[0].key, "end"))
-					break;
-
-				int type, targetJoint, constrainedJoint;
-				if (model && stdConffile_entry.numArgs > 2)
-				{
-					type = sithAnimClass_ConstraintTypeFromName(stdConffile_entry.args[0].key);
-					if(type != -1)
-					{
-						constrainedJoint = (intptr_t)stdHashTable_GetKeyVal(sithPuppet_jointNamesToIdxHashtable, stdConffile_entry.args[1].key) - 1;
-						targetJoint = (intptr_t)stdHashTable_GetKeyVal(sithPuppet_jointNamesToIdxHashtable, stdConffile_entry.args[2].key) - 1;
-				
-						if (targetJoint != -1 && constrainedJoint != -1)
-						{
-							sithAnimclassConstraint* constraint = (sithAnimclassConstraint*)rdroid_pHS->alloc(sizeof(sithAnimclassConstraint));
-							memset(constraint, 0, sizeof(sithAnimclassConstraint));
-							constraint->type = type;
-							constraint->jointB = constrainedJoint;
-							constraint->jointA = targetJoint;
-							constraint->next = animclass->constraints;
-							animclass->constraints = constraint;
-					
-							if (stdConffile_entry.numArgs > 3)
-							{
-								if (_sscanf(stdConffile_entry.args[3].key,
-											"(%f/%f/%f)",
-											&constraint->axisB.x,
-											&constraint->axisB.y,
-											&constraint->axisB.z) != 3
-									)
-								{
-									continue;
-								}
-							}
-							if (stdConffile_entry.numArgs > 4)
-							{
-								if (_sscanf(stdConffile_entry.args[4].key,
-											"(%f/%f/%f)",
-											&constraint->axisA.x,
-											&constraint->axisA.y,
-											&constraint->axisA.z) != 3
-									)
-								{
-									continue;
-								}
-							}
-							if (stdConffile_entry.numArgs > 5)
-								constraint->angle0 = atof(stdConffile_entry.args[5].key);
-
-							if (stdConffile_entry.numArgs > 6)
-								constraint->angle1 = atof(stdConffile_entry.args[6].key);
-						}
-					}
-				}
-			}
-		}
-#endif
         else if ( stdConffile_entry.numArgs > 1u )
         {
             animNameIdx = (intptr_t)stdHashTable_GetKeyVal(sithPuppet_animNamesToIdxHashtable, stdConffile_entry.args[0].value);
@@ -387,6 +230,14 @@ LABEL_39:
         }
     }
     stdConffile_Close();
+
+#ifdef PUPPET_PHYSICS
+	char rag_path[32];
+	_strncpy(rag_path, animclass->name, 32);
+	stdFnames_ChangeExt(rag_path, "rag");
+	animclass->ragdoll = sithRagdoll_LoadEntry(rag_path);
+#endif
+
     return 1;
 }
 
@@ -403,20 +254,6 @@ void sithAnimClass_Free(sithWorld *world)
             v2 = 0;
             do
             {
-#ifdef ANIMCLASS_NAMES
-				if(world->animclasses[v2].jointToBodypart)
-					rdroid_pHS->free(world->animclasses[v2].jointToBodypart);
-#endif
-#ifdef PUPPET_PHYSICS
-				sithAnimclassConstraint* constraint = world->animclasses[v2].constraints;
-				while (constraint)
-				{
-					sithAnimclassConstraint* next = constraint->next;
-					if(constraint)
-						rdroid_pHS->free(constraint);
-					constraint = next;
-				}
-#endif
                 stdHashTable_FreeKey(sithPuppet_hashtable, world->animclasses[v2].name);
                 ++v1;
                 ++v2;

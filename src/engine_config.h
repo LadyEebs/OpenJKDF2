@@ -21,7 +21,6 @@
 //#define LIGHTSABER_GLOW    // visual enhancement for lightsabers, draws a sprite-based glow similar to Jedi Outcast/Academy
 #define REGIONAL_DAMAGE      // dismemberment enhancements and regional damage support
 #define GAMEPLAY_COGS        // adds some gameplay system cogs (like MasterCog and ActionCog) that can be used for specific shared game logic
-#define ANIMCLASS_NAMES      // adds name support to puppet file joint section
 #define PUPPET_PHYSICS       // physics-based animations (ex. ragdolls) using puppet joints
 
 // Old render pipeline features

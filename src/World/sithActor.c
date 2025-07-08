@@ -410,17 +410,10 @@ void sithActor_MoveJointsForEyePYR(sithThing *actor, const rdVector3 *eyePYR)
     if (v4)
     {
 		v7 = actor->rdthing.model3->numHierarchyNodes;
-#ifdef ANIMCLASS_NAMES
-		torsoIdx = pAnimClass->bodypart[JOINTTYPE_TORSO].nodeIdx;
-		primaryWeapJointIdx = pAnimClass->bodypart[JOINTTYPE_PRIMARYWEAPJOINT].nodeIdx;
-		neckIdx = pAnimClass->bodypart[JOINTTYPE_NECK].nodeIdx;
-		v9 = pAnimClass->bodypart[JOINTTYPE_SECONDARYWEAPJOINT].nodeIdx;
-#else
         torsoIdx = pAnimClass->bodypart_to_joint[JOINTTYPE_TORSO];
         primaryWeapJointIdx = pAnimClass->bodypart_to_joint[JOINTTYPE_PRIMARYWEAPJOINT];
         neckIdx = pAnimClass->bodypart_to_joint[JOINTTYPE_NECK];
         v9 = pAnimClass->bodypart_to_joint[JOINTTYPE_SECONDARYWEAPJOINT];
-#endif
         v10 = v7 - 1;
         if ( neckIdx < 0 )
         {
@@ -485,13 +478,8 @@ void sithActor_RotateTurretToEyePYR(sithThing* pThing)
     sithAnimclass* pAnimClass = pThing->animclass;
     if (pAnimClass)
     {
-	#ifdef ANIMCLASS_NAMES
-		int pitch_idx = pAnimClass->bodypart[JOINTTYPE_TURRETPITCH].nodeIdx;
-		int yaw_idx = pAnimClass->bodypart[JOINTTYPE_TURRETYAW].nodeIdx;
-	#else
         int pitch_idx = pAnimClass->bodypart_to_joint[JOINTTYPE_TURRETPITCH];
         int yaw_idx = pAnimClass->bodypart_to_joint[JOINTTYPE_TURRETYAW];
-	#endif
         if (pitch_idx >= 0)
             pThing->rdthing.hierarchyNodes2[pitch_idx].x = pThing->actorParams.eyePYR.x;
         if (yaw_idx >= 0)
@@ -511,7 +499,7 @@ void sithActor_RotateHeadForEyePYR(sithThing* actor, const rdVector3* eyePYR)
 
 	if (actor->rdthing.hierarchyNodes2)
 	{
-		int headIdx = pAnimClass->bodypart[JOINTTYPE_HEAD].nodeIdx;
+		int headIdx = pAnimClass->bodypart_to_joint[JOINTTYPE_HEAD];
 		if (headIdx >= 0 && headIdx < actor->rdthing.model3->numHierarchyNodes)
 		{
 			actor->rdthing.hierarchyNodes2[headIdx].x = eyePYR->x;
@@ -595,8 +583,8 @@ void sithActor_Remove(sithThing *thing)
 #endif
 #ifdef PUPPET_PHYSICS
 	thing->collide = SITH_COLLIDE_NONE;
-	if (thing->animclass && thing->animclass->flags & JOINTFLAGS_PHYSICS)
-		thing->moveType = SITH_MT_PUPPET;
+	if (thing->animclass && thing->animclass->ragdoll)
+		thing->moveType = SITH_MT_RAGDOLL;
 #endif
 }
 

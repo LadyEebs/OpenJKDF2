@@ -46,6 +46,7 @@
 #endif
 
 #ifdef PUPPET_PHYSICS
+#include "Modules/sith/Engine/sithRagdoll.h"
 #include "Modules/sith/Engine/sithConstraint.h"
 #endif
 #include "Modules/std/stdProfiler.h"
@@ -257,8 +258,8 @@ void sithThing_TickAll(flex_t deltaSeconds, int deltaMs)
 	STD_BEGIN_PROFILER_LABEL();
 
 	#ifdef PUPPET_PHYSICS
-	sithPuppet_activePuppets = 0;
-	sithPuppet_restingPuppets = 0;
+	sithRagdoll_activeRagdolls = 0;
+	sithRagdoll_restingRagdolls = 0;
 	#endif
 
     for (int i = 0; i < sithWorld_pCurrentWorld->numThings+1; i++)
@@ -271,8 +272,8 @@ void sithThing_TickAll(flex_t deltaSeconds, int deltaMs)
         {
 #ifdef PUPPET_PHYSICS
 			// if this thing was previously using puppet physics make sure we clean up
-			if (pThingIter->moveType != SITH_MT_PUPPET && pThingIter->puppet && pThingIter->puppet->physics)
-				sithPuppet_StopPhysics(pThingIter);
+			if (pThingIter->moveType != SITH_MT_RAGDOLL && pThingIter->animclass && pThingIter->ragdoll)
+				sithRagdoll_StopPhysics(pThingIter);
 #endif
 
             if ( pThingIter->lifeLeftMs )
@@ -321,10 +322,10 @@ void sithThing_TickAll(flex_t deltaSeconds, int deltaMs)
                 sithThing_handler(pThingIter);
 
 #ifdef PUPPET_PHYSICS
-			if (pThingIter->moveType == SITH_MT_PUPPET)
+			if (pThingIter->moveType == SITH_MT_RAGDOLL)
 			{
 				if (jkPlayer_ragdolls || pThingIter->type != SITH_THING_CORPSE)
-					sithPuppet_TickPhysics(pThingIter, deltaSeconds);
+					sithRagdoll_ThingTick(pThingIter, deltaSeconds);
 				else
 					sithPhysics_ThingTick(pThingIter, deltaSeconds);
 			}
@@ -369,6 +370,8 @@ void sithThing_TickAll(flex_t deltaSeconds, int deltaMs)
         if ( pThingIter->animclass )
             sithPuppet_FreeEntry(pThingIter);
 #ifdef PUPPET_PHYSICS
+		if (pThingIter->ragdoll)
+			sithRagdoll_FreeInstance(pThingIter);
 		if (pThingIter->constraints)
 			sithThing_FreeConstraints(pThingIter);
 #endif
@@ -623,6 +626,8 @@ void sithThing_freestuff(sithWorld *pWorld)
         if ( pThingIter->animclass )
             sithPuppet_FreeEntry(pThingIter);
 		#ifdef PUPPET_PHYSICS
+		if (pThingIter->ragdoll)
+			sithRagdoll_FreeInstance(pThingIter);
 		if ( pThingIter->constraints)
 			sithThing_FreeConstraints(pThingIter);
 		#endif
@@ -724,6 +729,8 @@ void sithThing_FreeEverythingNet(sithThing* pThing)
     if ( pThing->animclass )
         sithPuppet_FreeEntry(pThing);
 #ifdef PUPPET_PHYSICS
+	if (pThing->ragdoll)
+		sithRagdoll_FreeInstance(pThing);
 	if (pThing->constraints)
 		sithThing_FreeConstraints(pThing);
 #endif
@@ -768,6 +775,8 @@ void sithThing_FreeEverything(sithThing* pThing)
     if ( pThing->animclass )
         sithPuppet_FreeEntry(pThing);
 #ifdef PUPPET_PHYSICS
+	if (pThing->ragdoll)
+		sithRagdoll_FreeInstance(pThing);
 	if (pThing->constraints)
 		sithThing_FreeConstraints(pThing);
 #endif
@@ -1770,7 +1779,7 @@ int sithThing_ParseArgs(stdConffileArg *arg, sithThing* pThing)
         return 1;
 	if (pThing->moveType == SITH_MT_PHYSICS
 #ifdef PUPPET_PHYSICS
-		|| pThing->moveType == SITH_MT_PUPPET
+		|| pThing->moveType == SITH_MT_RAGDOLL
 #endif
 	)
 	{
@@ -1874,9 +1883,9 @@ int sithThing_LoadThingParam(stdConffileArg *arg, sithThing* pThing, int param)
 #endif
         case THINGPARAM_MOVE:
 #ifdef PUPPET_PHYSICS
-			if (!_strcmp(arg->value, "puppet"))
+			if (!_strcmp(arg->value, "ragdoll"))
 			{
-				pThing->moveType = SITH_MT_PUPPET;
+				pThing->moveType = SITH_MT_RAGDOLL;
 				result = 1;
 			}
 			else

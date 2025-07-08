@@ -34,6 +34,9 @@
 #include "Dss/sithDSS.h"
 #include "Dss/sithDSSCog.h"
 #include "Engine/sithRender.h"
+#ifdef PUPPET_PHYSICS
+#include "Modules/sith/Engine/sithRagdoll.h"
+#endif
 
 #include <time.h>
 
@@ -215,9 +218,9 @@ void sithCogFunction_StopThing(sithCog *ctx) // unused
     {
 #ifdef PUPPET_PHYSICS
 		// if this thing was previously using puppet physics make sure we clean up
-		if ( v1->moveType != SITH_MT_PUPPET && v1->puppet && v1->puppet->physics)
+		if ( v1->moveType != SITH_MT_RAGDOLL && v1->ragdoll)
 		{
-			sithPuppet_StopPhysics(v1);
+			sithRagdoll_StopPhysics(v1);
 		}
 		else
 #endif

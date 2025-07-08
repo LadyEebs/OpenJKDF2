@@ -46,6 +46,9 @@
 #include "Modules/sith/World/sithShader.h"
 #include "Modules/sith/World/sithLight.h"
 #endif
+#ifdef PUPPET_PHYSICS
+#include "Modules/sith/Engine/sithRagdoll.h"
+#endif
 
 // MOTS added
 static sithWorld_ChecksumHandler_t sithWorld_checksumExtraFunc;
@@ -125,6 +128,9 @@ int sithWorld_Startup()
 #endif
 #ifdef RENDER_DROID2
 	sithWorld_SetSectionParser("lights", sithLight_Load);
+#endif
+#ifdef PUPPET_PHYSICS
+	sithWorld_SetSectionParser("ragdolls", sithRagdoll_Load);
 #endif
 #ifdef STATIC_JKL_EXT
 	for(int i = 0; i < ARRAY_SIZE(sithWorld_pStaticWorlds); ++i)

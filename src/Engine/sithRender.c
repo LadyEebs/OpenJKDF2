@@ -31,6 +31,7 @@
 #include "stdPlatform.h"
 #include "Modules/std/stdProfiler.h"
 #ifdef PUPPET_PHYSICS
+#include "Modules/sith/Engine/sithRagdoll.h"
 #include "Modules/sith/Engine/sithConstraint.h"
 #include "Engine/sithPuppet.h"
 #include "World/sithSoundClass.h"
@@ -282,14 +283,14 @@ void sithRender_DebugDrawThingName(sithThing* pThing)
 				}
 #ifdef PUPPET_PHYSICS
 				// draw joint things as well
-				if (pThing->moveType == SITH_MT_PUPPET && pThing->animclass && pThing->animclass->flags & SITH_PUPPET_PHYSICS && pThing->puppet->physics)
+				if (pThing->moveType == SITH_MT_RAGDOLL && pThing->animclass && pThing->animclass->ragdoll && pThing->ragdoll)
 				{
-					uint64_t jointBits = pThing->animclass->physicsJointBits;
+					uint64_t jointBits = pThing->animclass->ragdoll->physicsJointBits;
 					while (jointBits != 0)
 					{
 						int jointIdx = stdMath_FindLSB64(jointBits);
 						jointBits ^= 1ull << jointIdx;
-						sithPuppetJoint* pJoint = &pThing->puppet->physics->joints[jointIdx];
+						sithRagdollJoint* pJoint = &pThing->ragdoll->joints[jointIdx];
 						sithRender_DebugDrawThingName(&pJoint->thing);
 					}
 				}
@@ -374,11 +375,7 @@ int sithRender_ShouldRenderCameraThing(sithThing* thing)
 			sithAnimclass* animclass = thing->animclass;
 			if (animclass)
 			{
-#ifdef ANIMCLASS_NAMES
-				int jointIdx = animclass->bodypart[JOINTTYPE_TORSO].nodeIdx; // torso
-#else
 				int jointIdx = animclass->bodypart_to_joint[JOINTTYPE_TORSO]; // torso
-#endif
 				if (jointIdx >= 0)
 				{
 					if (thing->rdthing.model3 && jointIdx < thing->rdthing.model3->numHierarchyNodes)
@@ -3625,10 +3622,10 @@ int sithRender_RenderThing(sithThing *pThing)
 		sithConstraint_DebugDrawConstraints(pThing);
 
 	if (jkPlayer_puppetShowJoints)
-		sithPuppet_DebugDrawPhysicsJoints(pThing);
+		sithRagdoll_DebugDrawPhysicsJoints(pThing);
 
 	if (jkPlayer_puppetShowBodies)
-		sithPuppet_DebugDrawPhysicsBodies(pThing);
+		sithRagdoll_DebugDrawPhysicsBodies(pThing);
 
 	if (jkPlayer_puppetShowJointNames)
 		sithPuppet_DebugDrawJointNames(pThing);

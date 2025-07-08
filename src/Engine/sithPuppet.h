@@ -47,15 +47,7 @@ void sithPuppet_advanceidk(sithThing *pThing, flex_t a2);
 // Added
 int sithPuppet_FindHitLoc(sithThing* pReceiverThing, rdVector3* pPos);
 
-#ifdef PUPPET_PHYSICS
-extern int sithPuppet_activePuppets;
-extern int sithPuppet_restingPuppets;
-
-void sithPuppet_StartPhysics(sithThing* pThing, rdVector3* pInitialVel, float deltaSeconds);
-void sithPuppet_StopPhysics(sithThing* pThing);
-void sithPuppet_TickPhysics(sithThing* pThing, float deltaSeconds);
-void sithPuppet_DebugDrawPhysicsBodies(sithThing* pThing);
-void sithPuppet_DebugDrawPhysicsJoints(sithThing* pThing);
+#ifdef ANIMCLASS_NAMES
 void sithPuppet_DebugDrawJointNames(sithThing* pThing);
 #endif
 

@@ -23,6 +23,9 @@
 #include "Dss/sithMulti.h"
 #include "General/stdMath.h"
 #include "jk.h"
+#ifdef PUPPET_PHYSICS
+#include "Modules/sith/Engine/sithRagdoll.h"
+#endif
 
 // Added
 static int sithControl_followingPlayer = 0;
@@ -897,7 +900,7 @@ int sithControl_HandlePlayer(sithThing *player, flex_t deltaSecs)
 
     if ( player->moveType != SITH_MT_PHYSICS
 #ifdef PUPPET_PHYSICS
-		&& player->moveType != SITH_MT_PUPPET
+		&& player->moveType != SITH_MT_RAGDOLL
 #endif
 	)
         return 0;
@@ -991,8 +994,8 @@ debug_controls:
     if ( player->moveType == SITH_MT_PHYSICS )
         sithPhysics_ThingStop(player);
 #ifdef PUPPET_PHYSICS
-	else if (player->moveType == SITH_MT_PUPPET && player->puppet && player->puppet->physics)
-		sithPuppet_StopPhysics(player);
+	else if (player->moveType == SITH_MT_RAGDOLL && player->ragdoll)
+		sithRagdoll_StopPhysics(player);
 #endif
 
     // Added

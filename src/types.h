@@ -325,6 +325,9 @@ typedef struct sithSurface sithSurface;
 typedef struct sithThing sithThing;
 typedef struct sithWorld sithWorld;
 typedef struct sithAnimclass sithAnimclass;
+#ifdef PUPPET_PHYSICS
+typedef struct sithRagdollInstance sithRagdollInstance;
+#endif
 
 typedef struct stdBitmap stdBitmap;
 typedef struct stdStrTable stdStrTable;
@@ -1571,8 +1574,6 @@ typedef struct sithLight
 	rdVector3 pos;
 } sithLight;
 
-#ifndef PUPPET_PHYSICS
-
 struct sithPuppet
 {
     int field_0;
@@ -1585,8 +1586,6 @@ struct sithPuppet
     int currentTrack;
     int animStartedMs;
 };
-
-#endif
 
 typedef struct sithAnimclassEntry
 {
@@ -1608,22 +1607,19 @@ typedef struct sithAnimclassMode
 #endif
 } sithAnimclassMode;
 
-#ifdef ANIMCLASS_NAMES
-typedef struct sithBodyPart
-{
-	int      nodeIdx;
 #ifdef PUPPET_PHYSICS
+typedef struct sithRagdollPart
+{
+	char     name[32];
+	int      nodeIdx;
 	uint32_t flags;
 	float    mass;
 	float    buoyancy;
 	float    health;
 	float    damage;
-#endif
-} sithBodyPart;
-#endif
+} sithRagdollPart;
 
-#ifdef PUPPET_PHYSICS
-typedef struct sithAnimclassConstraint
+typedef struct sithRagdollConstraint
 {
 	int type;			// SITH_CONSTRAINT_TYPE
 	int jointA;			// JOINTTYPE
@@ -1632,27 +1628,30 @@ typedef struct sithAnimclassConstraint
 	rdVector3 axisB;	// optional axis
 	float angle0;		// optional angle
 	float angle1;		// optional angle
-	struct sithAnimclassConstraint* next;
-} sithAnimclassConstraint;
+	struct sithRagdollConstraint* next;
+} sithRagdollConstraint;
+
+typedef struct sithRagdoll
+{
+	char name[32];
+	uint32_t flags; // SITH_PUPPET_FLAGS
+	uint64_t jointBits; // bitmask for configured joints
+	uint64_t physicsJointBits; // bitmask for physicalized joints
+	uint64_t hingeJointBits; // bitmask for hinge joints
+	sithRagdollPart bodypart[64];
+	int* jointToBodypart;
+	int root;
+	sithRagdollConstraint* constraints;
+} sithRagdoll;
 #endif
 
 typedef struct sithAnimclass
 {
     char name[32];
     sithAnimclassMode modes[6];
-#ifdef ANIMCLASS_NAMES
-	uint32_t flags; // SITH_PUPPET_FLAGS
-	uint64_t jointBits; // bitmask for configured joints
-	uint64_t physicsJointBits; // bitmask for physicalized joints
-	uint64_t hingeJointBits; // bitmask for hinge joints
-	sithBodyPart bodypart[JOINTTYPE_NUM_JOINTS];
-	int* jointToBodypart;
-	int root;
-#ifdef PUPPET_PHYSICS
-	sithAnimclassConstraint* constraints;
-#endif
-#else
 	int bodypart_to_joint[JOINTTYPE_NUM_JOINTS];
+#ifdef PUPPET_PHYSICS
+	sithRagdoll* ragdoll; // todo: should this be referenced by the model instead?
 #endif
 } sithAnimclass;
 
@@ -2648,6 +2647,11 @@ typedef struct sithWorld
     int numAnimClassesLoaded;
     int numAnimClasses;
     sithAnimclass* animclasses;
+#ifdef PUPPET_PHYSICS
+	int numRagdollsLoaded;
+	int numRagdolls;
+	sithRagdoll* ragdolls;
+#endif
 #ifdef JKM_LIGHTING
     int numArchLights;
     //int sizeArchLights;
@@ -3590,6 +3594,9 @@ typedef struct sithThing
     rdVector3 field_268;
     sithAIClass* pAIClass;
     sithActor* actor;
+#ifdef PUPPET_PHYSICS
+	sithRagdollInstance* ragdoll;
+#endif
     char template_name[32];
     sithCog* class_cog;
     sithCog* capture_cog;
@@ -3613,30 +3620,16 @@ typedef struct sithThing
 
 #ifdef PUPPET_PHYSICS
 
-typedef struct sithPuppetJoint
+typedef struct sithRagdollJoint
 {
 	sithThing  thing;    // thing representing the joint
 	rdMatrix34 localMat; // local matrix for the joint
-} sithPuppetJoint;
+} sithRagdollJoint;
 
-typedef struct sithPuppetPhysics
+typedef struct sithRagdollInstance
 {
-	sithPuppetJoint joints[JOINTTYPE_NUM_JOINTS];
-} sithPuppetPhysics;
-
-struct sithPuppet
-{
-	int field_0;
-	int field_4;
-	int majorMode;
-	int currentAnimation;
-	sithAnimclassEntry* playingAnim;
-	int otherTrack;
-	int field_18;
-	int currentTrack;
-	int animStartedMs;
-	sithPuppetPhysics* physics;
-};
+	sithRagdollJoint joints[64];
+} sithRagdollInstance;
 
 #endif
 

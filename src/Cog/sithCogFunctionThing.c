@@ -1693,11 +1693,7 @@ void sithCogFunctionThing_AmputateJoint(sithCog *ctx)
             sithAnimclass* animclass = pThing->animclass;
             if (animclass && idx < JOINTTYPE_NUM_JOINTS && idx >= 0)
             {
-#ifdef ANIMCLASS_NAMES
-				int jointIdx = animclass->bodypart[idx].nodeIdx;
-#else
 				int jointIdx = animclass->bodypart_to_joint[idx];
-#endif
                 if ( jointIdx >= 0 ) {
                     // Added: prevent oob
                     if (rdthing->model3 && jointIdx < rdthing->model3->numHierarchyNodes)
@@ -1722,11 +1718,7 @@ void sithCogFunctionThing_IsJointAmputated(sithCog* ctx)
 		sithAnimclass* animclass = pThing->animclass;
 		if (animclass && idx < JOINTTYPE_NUM_JOINTS && idx >= 0)
 		{
-#ifdef ANIMCLASS_NAMES
-			int jointIdx = animclass->bodypart[idx].nodeIdx;
-#else
 			int jointIdx = animclass->bodypart_to_joint[idx];
-#endif
 			if (jointIdx >= 0)
 			{
 				if (rdthing->model3 && jointIdx < rdthing->model3->numHierarchyNodes)
@@ -1747,11 +1739,7 @@ void sithCogFunctionThing_SetRootJoint(sithCog* ctx)
 		sithAnimclass* animclass = pThing->animclass;
 		if (animclass && idx < JOINTTYPE_NUM_JOINTS && idx >= 0)
 		{
-#ifdef ANIMCLASS_NAMES
-			int jointIdx = animclass->bodypart[idx].nodeIdx;
-#else
 			int jointIdx = animclass->bodypart_to_joint[idx];
-#endif
 			if (jointIdx >= 0)
 			{
 				if (rdthing->model3 && jointIdx < rdthing->model3->numHierarchyNodes)
@@ -1795,7 +1783,8 @@ void sithCogFunctionThing_GetJointHealth(sithCog* ctx)
 		return;
 	}
 
-	float jointHealth = pThing->actorParams.maxHealth * pThing->animclass->bodypart[idx].health;
+	// todo: fixme
+	float jointHealth = pThing->actorParams.maxHealth;// * pThing->animclass->bodypart[idx].health;
 	sithCogExec_PushFlex(ctx, jointHealth);
 }
 
@@ -1830,7 +1819,9 @@ void sithCogFunctionThing_GetJointDamageModifier(sithCog* ctx)
 		sithCogExec_PushFlex(ctx, 1.0f);
 		return;
 	}
-	sithCogExec_PushFlex(ctx, pThing->animclass->bodypart[idx].damage);
+	// todo: fix me
+	sithCogExec_PushFlex(ctx, 1.0f);
+	//sithCogExec_PushFlex(ctx, pThing->animclass->bodypart[idx].damage);
 }
 
 void sithCogFunctionThing_DismemberJoint(sithCog* ctx)
@@ -1847,11 +1838,7 @@ void sithCogFunctionThing_DismemberJoint(sithCog* ctx)
 	
 	rdThing* rdthing = &pThing->rdthing;
 	sithAnimclass* animclass = pThing->animclass;
-#ifdef ANIMCLASS_NAMES
-	int jointIdx = animclass->bodypart[idx].nodeIdx;
-#else
 	int jointIdx = animclass->bodypart_to_joint[idx];
-#endif
 	if (jointIdx >= 0)
 	{
 		if (rdthing->model3 && jointIdx < rdthing->model3->numHierarchyNodes)
@@ -2802,11 +2789,7 @@ void sithCogFunctionThing_SetThingJointAngle(sithCog *ctx)
     if (((pThing && pThing->animclass) 
       && (pThing->rdthing.type == RD_THINGTYPE_MODEL)) 
       && ((prVar1 = pThing->rdthing.hierarchyNodes2, prVar1 != NULL &&
-	#ifdef ANIMCLASS_NAMES
-	  (arg1 = pThing->animclass->bodypart[arg1].nodeIdx,
-	#else
       (arg1 = pThing->animclass->bodypart_to_joint[arg1],
-	#endif
       arg1 > -1 && arg1 <= (int)(pThing->rdthing.model3->numHierarchyNodes - 1))))) 
     {
         prVar1[arg1].x = fVar2;
@@ -2825,11 +2808,7 @@ void sithCogFunctionThing_GetThingJointAngle(sithCog *ctx)
     {
         if (((pThing->animclass && pThing->rdthing.type == RD_THINGTYPE_MODEL) &&
             (prVar1 = (pThing->rdthing).hierarchyNodes2, prVar1 != NULL)) &&
-#ifdef ANIMCLASS_NAMES
-			(arg1 = pThing->animclass->bodypart[arg1].nodeIdx,
-#else
            (arg1 = pThing->animclass->bodypart_to_joint[arg1],
-#endif
            arg1 > -1 && arg1 <= (int)(pThing->rdthing.model3->numHierarchyNodes - 1))) 
         {
           local_4 = prVar1[arg1].x;

@@ -22,7 +22,7 @@
 #include "Engine/sithCamera.h"
 #include "General/stdString.h"
 #ifdef PUPPET_PHYSICS
-#include "Engine/sithPuppet.h"
+#include "Modules/sith/Engine/sithRagdoll.h"
 #endif
 #include "Modules/std/stdProfiler.h"
 
@@ -236,7 +236,7 @@ int jkGame_Update()
                 if ( sithNet_isMulti )
                     _sprintf(&std_genBuffer[_strlen(std_genBuffer)], " %d m %d b", stdComm_dword_8321F4, stdComm_dword_8321F0);
 #ifdef PUPPET_PHYSICS
-				_sprintf(&std_genBuffer[_strlen(std_genBuffer)], " %da %dr", sithPuppet_activePuppets, sithPuppet_restingPuppets);
+				_sprintf(&std_genBuffer[_strlen(std_genBuffer)], " %da %dr", sithRagdoll_activeRagdolls, sithRagdoll_restingRagdolls);
 #endif
 #ifdef RENDER_DROID2
 				extern uint32_t sithRender_numStaticLights;
