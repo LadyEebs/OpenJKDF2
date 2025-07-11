@@ -391,6 +391,7 @@ int jkGuiDisplay_ColorDepthArrowButtonClickHandler(jkGuiElement* pElement, jkGui
 	return 0;
 }
 
+#ifdef SDL2_RENDER
 #include "SDL2_helper.h"
 
 int jkGuiDisplay_SamplesArrowButtonClickHandler(jkGuiElement* pElement, jkGuiMenu* pMenu, int mouseX, int mouseY, BOOL a5)
@@ -405,3 +406,4 @@ int jkGuiDisplay_SamplesArrowButtonClickHandler(jkGuiElement* pElement, jkGuiMen
 
 	return 0;
 }
+#endif

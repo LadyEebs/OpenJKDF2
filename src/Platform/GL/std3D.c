@@ -1,6 +1,6 @@
 ﻿#include "Platform/std3D.h"
 
-#ifndef RENDER_DROID2
+#if !defined(RENDER_DROID2) && defined(SDL2_RENDER)
 
 #include "Raster/rdCache.h"
 #include "Win95/stdDisplay.h"
@@ -683,7 +683,7 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 		std3D_generateIntermediateFbo(pFb->ssaoBlur1.w, pFb->ssaoBlur1.h, &pFb->ssaoBlur2, GL_R8, 0, 0);
 		std3D_generateIntermediateFbo(pFb->ssaoBlur2.w, pFb->ssaoBlur2.h, &pFb->halfDepth, GL_R16F, 0, 0);
 #else
-        std3D_generateIntermediateFbo(width, height, &pFb->ssaoBlur1, 0, 0);
+        std3D_generateIntermediateFbo(width, height, &pFb->ssaoBlur1, GL_R8, 0, 0);
         std3D_generateIntermediateFbo(pFb->ssaoBlur1.w/2, pFb->ssaoBlur1.h/2, &pFb->ssaoBlur2, GL_R8, 0, 0);
 #endif
 		//std3D_generateIntermediateFbo(pFb->ssaoBlur2.w/2, pFb->ssaoBlur2.h/2, &pFb->ssaoBlur3, GL_R8, 0, 0);
@@ -1243,7 +1243,6 @@ void std3D_setupWorldVAO()
 	glEnableVertexAttribArray(attribute_v_color);
 	glEnableVertexAttribArray(attribute_v_light);
 	glEnableVertexAttribArray(attribute_v_uv);
-	glEnableVertexAttribArray(attribute_coordVS);
 
 #ifdef VIEW_SPACE_GBUFFER
 	glEnableVertexAttribArray(attribute_coordVS);
@@ -3078,13 +3077,13 @@ void std3D_DrawSceneFbo()
     {
 		std3D_PushDebugGroup("SSAO");
 
-		glActiveTexture(GL_TEXTURE0 + 3);
-		glBindTexture(GL_TEXTURE_2D, std3D_pFb->tex4);
-
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 		GLuint depthOrPosTex = std3D_pFb->tex2;
 	#ifdef VIEW_SPACE_GBUFFER
+		glActiveTexture(GL_TEXTURE0 + 3);
+		glBindTexture(GL_TEXTURE_2D, std3D_pFb->tex4);
+
 		// downscale the depth buffer - note: this is a naive point downsample, could do better
 		std3D_DrawSimpleTex(&std3D_texFboStage, &std3D_pFb->halfDepth, std3D_pFb->tex2, 0, 0, 1.0, 1.0, 1.0, 0);
 		depthOrPosTex = std3D_pFb->halfDepth.tex;

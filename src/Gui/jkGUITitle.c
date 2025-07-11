@@ -279,9 +279,9 @@ void jkGuiTitle_WorldLoadCallback(flex_t percentage)
 			lastRefresh = Linux_TimeUs();
 		#endif
 			stdDisplay_DDrawGdiSurfaceFlip();
-		#endif
 		}
-    }
+#endif
+	}
 
 #ifdef MENU_16BIT
 	// need to paint every frame for 16bit bm

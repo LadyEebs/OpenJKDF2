@@ -480,6 +480,7 @@ void jkSaber_UpdateLength(sithThing *thing)
 
 #ifdef LIGHTSABER_MARKS
 // Added: passive (non-damaging) collision effects
+#ifdef DECAL_RENDERING
 void jkSaber_SpawnBurn(jkPlayerInfo* pPlayerInfo, rdVector3* pPos, rdVector3* pHitNormal, sithSector* pSector, int sparkType)
 {
 	if (sithTime_curMs < pPlayerInfo->lastMarkSpawnMs + 20)
@@ -578,6 +579,7 @@ void jkSaber_SpawnBurn(jkPlayerInfo* pPlayerInfo, rdVector3* pPos, rdVector3* pH
 		}
 	}
 }
+#endif
 #endif
 
 // MOTS added: split into its own func
@@ -730,12 +732,12 @@ void  jkSaber_UpdateCollision2(sithThing *pPlayerThing,rdVector3 *pSaberPos,rdVe
             rdVector_Copy3(&local_54, pSaberPos);
             rdVector_MultAcc3(&local_54, pSaberDir, searchResult->distance - 0.001);
             
-#ifdef LIGHTSABER_MARKS
+#if defined(LIGHTSABER_MARKS) && defined(DECAL_RENDERING)
 			jkSaber_SpawnBurn(playerInfo, &local_54, &searchResult->hitNorm, pSectorIter, SPARKTYPE_WALL);
-			++collisions;
 #else
 			jkSaber_SpawnSparks(playerInfo, &local_54, pSectorIter, SPARKTYPE_WALL);
 #endif
+			++collisions;
 
             if ( pCollideInfo->numDamagedSurfaces < 6 )
             {
@@ -897,7 +899,9 @@ void jkSaber_UpdateEffectCollision(sithThing* pPlayerThing, rdVector3* pSaberPos
 			rdVector_Copy3(&local_54, pSaberPos);
 			rdVector_MultAcc3(&local_54, pSaberDir, searchResult->distance - 0.001);
 
+#if defined(LIGHTSABER_MARKS) && defined(DECAL_RENDERING)
 			jkSaber_SpawnBurn(playerInfo, &local_54, &searchResult->hitNorm, pSectorIter, SPARKTYPE_WALL);
+#endif
 			++collisions;
 
 			if (pCollideInfo->numDamagedSurfaces < 6)
