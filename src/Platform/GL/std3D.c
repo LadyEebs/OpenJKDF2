@@ -1323,7 +1323,7 @@ int init_resources()
     std3D_activeFb = 1;
     std3D_pFb = &std3D_framebuffers[0];
     
-    if ((programDefault = std3D_loadProgram("shaders/default", "")) == 0) return false;
+    if ((programDefault = std3D_loadProgram(/*"shaders/default"*/"shaders/software", "")) == 0) return false;
     if ((programMenu = std3D_loadProgram("shaders/menu", "")) == 0) return false;
 
     if (!std3D_loadSimpleTexProgram("shaders/ui", &std3D_uiProgram)) return false;
