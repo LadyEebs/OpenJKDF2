@@ -10,6 +10,7 @@ in vec2 f_uv;
 in vec3 f_coord;
 out vec4 fragColor;
 
+#ifdef RENDER_DROID2
 float hash11(float p)
 {
     p = fract(p * .1031);
@@ -59,6 +60,8 @@ vec3 ACES_Inv(vec3 x)
 	return (x / lum) * l;
 }
 
+#endif
+
 void main(void)
 {
     vec4 sampled_color = textureLod(tex, f_uv, 0);
@@ -71,6 +74,7 @@ void main(void)
             sampled_color = vec4(sampled_color.r, sampled_color.g, sampled_color.b, 1.0);
     }
 
+#ifdef RENDER_DROID2
 	// light effect
 	// perhaps it would be better to drive this from the gui code
 	// and use a generic light system for the UI
@@ -135,6 +139,7 @@ void main(void)
 		sampled_color.rgb = sampled_color.rgb * light;
 		sampled_color.rgb = ACES(sampled_color.rgb);
 	}
+#endif
 
     fragColor     = sampled_color * vertex_color;
     fragColor.rgb = pow(fragColor.rgb, vec3(1.0/param3));
