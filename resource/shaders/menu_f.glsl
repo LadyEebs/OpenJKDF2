@@ -23,7 +23,7 @@ void main(void)
    
     if (sampled_color.a < flex(0.5))
         discard;
-
+#ifdef RENDER_DROID2
 	// fake untonemap to give it some brightness
 	flex k = flex(10.0);
 	//sampled_color.rgb = k * sampled_color.rgb / (k - sampled_color.rgb);
@@ -38,6 +38,6 @@ void main(void)
 //	float edge = menuUV.x * oneOverUV.x;// menuUV.x * menuUV.y * oneOverUV.x * oneOverUV.y;
 //	edge = clamp(vignetteStrength * edge, 0.0, 1.0);
 //	sampled_color *= pow(edge, vignettePower);
- 
+ #endif
     fragColor = sampled_color * vertex_color;
 }
