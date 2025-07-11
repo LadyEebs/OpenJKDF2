@@ -22,24 +22,24 @@
 #define REGIONAL_DAMAGE      // dismemberment enhancements and regional damage support
 #define GAMEPLAY_COGS        // adds some gameplay system cogs (like MasterCog and ActionCog) that can be used for specific shared game logic
 #define PUPPET_PHYSICS       // physics-based animations (ex. ragdolls) using puppet joints
+#define STATIC_JKL_EXT       // load extra .jkl files from resources on startup along side static.jkl
 
 // Old render pipeline features
-#define STENCIL_BUFFER       // mark the stencil buffer with dynamic/transparent stuff, so we can effectively cull things like decals
-#define CLASSIC_EMISSIVE     // compute emissives using the same approach as stock JK with max(color, emissive), rather than adding it on top as bloom
-#define NEW_SSAO             // disk-to-disk based SSAO with performance improvements
-#define NEW_BLOOM            // optimized downsample based bloom with better performance
-#define RGB_THING_LIGHTS     // RGB thing lighting with lightcolor template param
-#define RGB_AMBIENT          // RGB sector ambient with spherical harmonics for gouraud models
-#define PARTICLE_LIGHTS      // very simple lights for particle elements
-#define HALF_LAMBERT         // use half lambert gouraud for dynamic lights
-#define SPECULAR_LIGHTING    // RD_LIGHTMODE_SPECULAR
-#define DECAL_RENDERING      // .dcal support and decal rendering path (for blast marks etc)
-#define SPHERE_AO            // deferred ambient occlusion via sphere volumes
-#define ADDITIVE_BLEND       // additive/screen blending support with a new face flags
-#define POLYLINE_EXT         // .pln support and polyline template param, allows using polylines as rendering primitives for things (ex. blaster bolts)
-#define STATIC_JKL_EXT       // load extra .jkl files from resources on startup along side static.jkl
-#define VERTEX_COLORS        // add vertex color face flag to indicate using the rdProcEntry's color field as the vertex color
-#define FOG                  // infernal machine style fog rendering
+//#define STENCIL_BUFFER       // mark the stencil buffer with dynamic/transparent stuff, so we can effectively cull things like decals
+//#define CLASSIC_EMISSIVE     // compute emissives using the same approach as stock JK with max(color, emissive), rather than adding it on top as bloom
+//#define NEW_SSAO             // disk-to-disk based SSAO with performance improvements
+//#define NEW_BLOOM            // optimized downsample based bloom with better performance
+//#define RGB_THING_LIGHTS     // RGB thing lighting with lightcolor template param
+//#define RGB_AMBIENT          // RGB sector ambient with spherical harmonics for gouraud models
+//#define PARTICLE_LIGHTS      // very simple lights for particle elements
+//#define HALF_LAMBERT         // use half lambert gouraud for dynamic lights
+//#define SPECULAR_LIGHTING    // RD_LIGHTMODE_SPECULAR
+//#define DECAL_RENDERING      // .dcal support and decal rendering path (for blast marks etc)
+//#define SPHERE_AO            // deferred ambient occlusion via sphere volumes
+//#define ADDITIVE_BLEND       // additive/screen blending support with a new face flags
+//#define POLYLINE_EXT         // .pln support and polyline template param, allows using polylines as rendering primitives for things (ex. blaster bolts)
+//#define VERTEX_COLORS        // add vertex color face flag to indicate using the rdProcEntry's color field as the vertex color
+//#define FOG                  // infernal machine style fog rendering
 
 #define RD_AMBIENT_LOBES 8
 
