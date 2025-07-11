@@ -439,9 +439,13 @@ int jkCutscene_sub_421310(char* fpath)
 
 	stdDisplay_VBufferFill(Video_pMenuBuffer, 0, NULL);
 	
+#ifdef HW_VBUFFER
+	stdDisplay_VBufferCopy(Video_pMenuBuffer, jkCutscene_frameBuf, 0, 0, NULL, 0);
+#else
 	stdDisplay_VBufferLock(Video_pMenuBuffer);
 	stdDisplay_VBufferCopy(Video_pMenuBuffer, jkCutscene_frameBuf, 0, 0, NULL, 0);
 	stdDisplay_VBufferUnlock(Video_pMenuBuffer);
+#endif
 	
 	Window_AddMsgHandler(jkCutscene_Handler);
 	jkCutscene_isRendering = 1;

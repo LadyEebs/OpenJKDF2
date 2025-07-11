@@ -10,10 +10,14 @@ out flex4 fragColor;
 flex4 sampleTex(flexSampler2D s, vec2 uv)
 {
     flex4 sampled = textureLod(s, uv, 0);
+#ifdef HW_VBUFFER
+	return sampled;
+#else
     flex4 palvald = textureLod(displayPalette, vec2(sampled.r, 0.5), 0);
 
     flex transparency = (sampled.r == 0.0) ? flex(0.0) : flex(1.0);
     return flex4(palvald.r, palvald.g, palvald.b, transparency);
+#endif
 }
 
 void main(void)

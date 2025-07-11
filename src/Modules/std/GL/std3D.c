@@ -856,8 +856,8 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pFb->tex0);
 		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, fboFormat, pFb->internalWidth, pFb->internalHeight, GL_TRUE);
 
-		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		//glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		//glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	}
 	else
 	{
@@ -889,8 +889,8 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 			glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pFb->tex1);
 			glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, emissiveFormat, pFb->internalWidth, pFb->internalHeight, GL_TRUE);
 			
-			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			//glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			//glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		}
 		else
 		{
@@ -948,8 +948,8 @@ void std3D_generateFramebuffer(int32_t width, int32_t height, std3DFramebuffer* 
 		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, pFb->ztex);
 		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, pFb->samples, GL_DEPTH24_STENCIL8, pFb->internalWidth, pFb->internalHeight, GL_TRUE);
 		
-		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		//glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		//glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	}
 	else
 	{
@@ -1173,12 +1173,19 @@ typedef struct std3D_DrawSurface
 
 std3D_DrawSurface* drawSurfaces = NULL;
 
+void BLAH()
+{
+	if (glGetError() == GL_INVALID_OPERATION)
+		printf("fuckkk\n");
+}
+
 void std3D_SetupDrawSurface(std3D_DrawSurface* surface)
 {
 	glActiveTexture(GL_TEXTURE0);
 
 	glGenFramebuffers(1, &surface->fbo);
 	glBindFramebuffer(GL_FRAMEBUFFER, surface->fbo);
+	BLAH();
 
 	// Set up our framebuffer texture
 	glGenTextures(1, &surface->tex);
@@ -1189,11 +1196,14 @@ void std3D_SetupDrawSurface(std3D_DrawSurface* surface)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 1);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 1);
+	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+	BLAH();
 
 	// Attach fbTex to our currently bound framebuffer fb
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, surface->tex, 0);
+	BLAH();
 
 	int status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if (status != GL_FRAMEBUFFER_COMPLETE)
@@ -1218,6 +1228,8 @@ void std3D_SetupDrawSurface(std3D_DrawSurface* surface)
 			break;
 		}
 	}
+	BLAH();
+
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -1321,7 +1333,10 @@ void std3D_MakeDrawSurfaceResident(std3D_DrawSurface* surface)
 		if (surface->data)
 		{
 			glBindTexture(GL_TEXTURE_2D, surface->tex);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface->w, surface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->data);
+			glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, surface->w, surface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->data);
+			BLAH();
 		}
 	}
 }
@@ -1337,7 +1352,7 @@ void std3D_UploadDrawSurface(std3D_DrawSurface* src, int width, int height, void
 	uint8_t* pal = palette;
 
 	// temp, currently all RGBA8
-	uint8_t* image_data = src->data ? src->data : malloc(width * height * 4);
+	uint32_t* image_data = src->data ? src->data : malloc(width * height * 4);
 
 	if (0)//src->fmt.format.colorMode)
 	{
@@ -1345,7 +1360,7 @@ void std3D_UploadDrawSurface(std3D_DrawSurface* src, int width, int height, void
 		{
 			for (int i = 0; i < width; i++)
 			{
-				uint32_t index = (i * height) + j;
+				uint32_t index = j * width + i;
 				uint32_t val_rgba = 0x00000000;
 
 				uint16_t val = image_16bpp[index];
@@ -1407,31 +1422,33 @@ void std3D_UploadDrawSurface(std3D_DrawSurface* src, int width, int height, void
 		{
 			for (int i = 0; i < width; i++)
 			{
-				uint32_t index = (i * height) + j;
-				uint32_t val_rgba = 0xFF000000;
+				uint32_t index = j * width + i;
+				uint32_t val_rgba = image_8bpp[index] == 0 ? 0x00000000 : 0xFF000000;
 
 				if (pal)
 				{
 					uint8_t val = image_8bpp[index];
-					val_rgba |= (pal[(val * 3) + 2] << 16);
+					val_rgba |= (pal[(val * 3) + 2] << 0);
 					val_rgba |= (pal[(val * 3) + 1] << 8);
-					val_rgba |= (pal[(val * 3) + 0] << 0);
+					val_rgba |= (pal[(val * 3) + 0] << 16);
 				}
 				else
 				{
 					uint8_t val = image_8bpp[index];
 					rdColor24* pal_master = (rdColor24*)stdDisplay_masterPalette;//stdDisplay_gammaPalette;
 					rdColor24* color = &pal_master[val];
-					val_rgba |= (color->r << 16);
+					val_rgba |= (color->r << 0);
 					val_rgba |= (color->g << 8);
-					val_rgba |= (color->b << 0);
+					val_rgba |= (color->b << 16);
 				}
 
-				*(uint32_t*)(image_data + index * 4) = val_rgba;
+				image_data[index] = val_rgba;
 			}
 		}
+		glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
+		BLAH();
 	}
 
 	src->data = image_data;
@@ -1448,32 +1465,75 @@ void std3D_BlitDrawSurface(std3D_DrawSurface* src, rdRect* srcRect, std3D_DrawSu
 
 	std3D_MakeDrawSurfaceResident(src);
 	std3D_MakeDrawSurfaceResident(dst);
-
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, src->fbo);
-	if(glGetError() == GL_INVALID_OPERATION)
-		printf("fuckkk\n");
 	
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst->fbo);
-	if (glGetError() == GL_INVALID_OPERATION)
-		printf("fuckkk\n");
+	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	//
+	//glBindFramebuffer(GL_READ_FRAMEBUFFER, src->fbo);
+	//BLAH();
+	//
+	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst->fbo);
+	//BLAH();
+	//
+	//glDrawBuffer(GL_COLOR_ATTACHMENT0);
+	//BLAH();
+	//
+	//glReadBuffer(GL_COLOR_ATTACHMENT0);
+	//BLAH();
+	//
+	//
+	//int srcX0 = srcRect->x;
+	//int srcX1 = srcRect->x + srcRect->width;
+	//int srcY0 = srcRect->y;
+	//int srcY1 = srcRect->y + srcRect->height;
+	//
+	//int dstX0 = dstRect->x;
+	//int dstX1 = dstRect->x + dstRect->width;
+	//int dstY0 = dstRect->y;
+	//int dstY1 = dstRect->y + dstRect->height;
+	//
+	//glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+	//BLAH();
 
-	glDrawBuffer(GL_COLOR_ATTACHMENT0);
-	glReadBuffer(GL_COLOR_ATTACHMENT0);
-
-	int srcX0 = srcRect->x;
-	int srcX1 = srcRect->x + srcRect->width;
-	int srcY0 = srcRect->y;
-	int srcY1 = srcRect->y + srcRect->height;
-
-	int dstX0 = dstRect->x;
-	int dstX1 = dstRect->x + dstRect->width;
-	int dstY0 = dstRect->y;
-	int dstY1 = dstRect->y + dstRect->height;
-
-	glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+	glViewport(dstRect->x, dstRect->y, dstRect->width, dstRect->height);
 	
+	glBindFramebuffer(GL_FRAMEBUFFER, dst->fbo);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+	glDepthFunc(GL_ALWAYS);
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	
+	glBlendEquation(GL_FUNC_ADD);
+	glUseProgram(std3D_texFboStage.program);
+	
+	glBindVertexArray(vao);
+	glActiveTexture(GL_TEXTURE0 + 0);
+	glBindTexture(GL_TEXTURE_2D, src->tex);
+	
+	glUniform1i(std3D_texFboStage.uniform_tex, 0);
+	
+	glUniform1f(std3D_texFboStage.uniform_param1, 1.0f);
+	glUniform1f(std3D_texFboStage.uniform_param2, 1.0f);
+	glUniform1f(std3D_texFboStage.uniform_param3, 1.0f);
+	
+	glUniform1i(std3D_texFboStage.uniform_tex, TEX_SLOT_DIFFUSE);
+	
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+
+	//glBindFramebuffer(GL_FRAMEBUFFER, src->fbo);
+	//glReadBuffer(GL_COLOR_ATTACHMENT0);
+	//BLAH();
+	//
+	//
+	//glActiveTexture(GL_TEXTURE0);
+	//glBindTexture(GL_TEXTURE_2D, dst->tex);
+	//BLAH();
+	//glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+	//
+	//glCopyTexSubImage2D(GL_TEXTURE_2D, 0, dstRect->x, dstRect->y, srcRect->x, srcRect->y, srcRect->width, srcRect->height);
+
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
 	std3D_PopDebugGroup();
 }
 
@@ -1483,8 +1543,9 @@ void std3D_ClearDrawSurface(std3D_DrawSurface* surface, int fillColor, rdRect* r
 
 	std3D_PushDebugGroup("std3D_ClearDrawSurface");
 
-	std3DIntermediateFbo* pFb = (std3DIntermediateFbo*)surface;
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, pFb->fbo);
+
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, surface->fbo);
+	BLAH();
 
 	// it's very unclear what vbuffer fill color format is... might match the format of the fb?
 	float a = ((fillColor >> 24) & 0xFF) / 255.0f;
@@ -1494,6 +1555,7 @@ void std3D_ClearDrawSurface(std3D_DrawSurface* surface, int fillColor, rdRect* r
 
 	glClearColor(r, g, b, a);
 	glClear(GL_COLOR_BUFFER_BIT);
+	BLAH();
 
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	
