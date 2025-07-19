@@ -743,11 +743,11 @@ void rdRaster_DrawToTile(rdProcEntry* entry, rdTexinfo* texinfo, int tileX, int 
 	}
 
 	// Vertex cache
-	rdPoint2Fixed v[24];
-	flex_t invZ[24];
-	flex_maybe<UseGouraud> light[24];
-	flex_maybe<UseTexture> uZ[24];
-	flex_maybe<UseTexture> vZ[24];
+	rdPoint2Fixed v[32];
+	flex_t invZ[32];
+	flex_maybe<UseGouraud> light[32];
+	flex_maybe<UseTexture> uZ[32];
+	flex_maybe<UseTexture> vZ[32];
 
 	for (int i = 0; i < entry->numVertices; ++i)
 	{
