@@ -507,7 +507,7 @@ void sithConstraint_TickConstraints(sithThing* pThing, flex_t deltaSeconds)
 	{
 		iterations = 10; // fixed iterations for players
 	}
-	else if ((pThing->isVisible + 1) == bShowInvisibleThings) // thing is visible, use more iterations
+	else if ((pThing->lastRenderedTickIdx + 1) == jkPlayer_currentTickIdx) // thing is visible, use more iterations
 	{
 		// reduce iteration count by distance
 		flex_t dist = rdVector_Dist3(&pThing->position, &sithCamera_currentCamera->vec3_1);

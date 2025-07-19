@@ -10,7 +10,7 @@
 #include "jk.h"
 
 #include <assert.h>
-#include <unistd.h>
+//#include <unistd.h>
 
 static int sithCvar_numRegistered = 0;
 static stdHashTable* sithCvar_pHashTable = NULL;

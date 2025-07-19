@@ -830,7 +830,7 @@ static int sithRagdoll_IsAtRest(sithThing* thing, flex_t deltaSeconds)
 		return 1;
 
 	// just rest if we haven't been visible for a long time
-	int frames = bShowInvisibleThings - thing->isVisible;
+	int frames = jkPlayer_currentTickIdx - thing->lastRenderedTickIdx;
 	if (frames > 10000)
 		return 1;
 

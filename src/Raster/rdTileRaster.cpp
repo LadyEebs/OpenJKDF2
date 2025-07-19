@@ -691,7 +691,7 @@ void rdRaster_DrawToTile(rdProcEntry* entry, rdTexinfo* texinfo, int tileX, int 
 	uint8_t* transparency = ((uint8_t*)entry->colormap->transparency);
 	uint8_t* lightLevels = ((uint8_t*)entry->colormap->lightlevel);
 	
-	flex_t invFar = stdMath_Rcp(rdCamera_pCurCamera->pClipFrustum->field_0.z);
+	flex_t invFar = stdMath_Rcp(rdCamera_pCurCamera->pClipFrustum->zFar);
 
 	// Texture/color setup
 	uint8_maybe<UseSolidColor> solidColor;
@@ -967,7 +967,7 @@ void rdRaster_DrawToTile(rdProcEntry* entry, rdTexinfo* texinfo, int tileX, int 
 						index = write_mask ? lightLevels[flatLight + index] : 0;
 
 					// Blending
-					uint8_t oldColor oldIndex = rdRaster_TileColor[offset];
+					uint8_t oldIndex = rdRaster_TileColor[offset];
 					if constexpr (UseAlpha)
 						index = write_mask ? transparency[oldIndex * 256 + index] : 0;
 							
