@@ -73,6 +73,12 @@ flex_t stdMath_Frac(flex_t a);
 flex_t stdMath_ClipPrecision(flex_t val);
 flex_t stdMath_Clamp(flex_t val, flex_t valMin, flex_t valMax);
 flex_t stdMath_ClampValue(flex_t val, flex_t valAbsMax);
+
+static inline flex_t stdMath_Saturate(flex_t val)
+{
+	return stdMath_Clamp(val, 0.0f, 1.0f);
+}
+
 static inline flex_t stdMath_Fabs(flex_t val)
 {
     //return fabs(val);
