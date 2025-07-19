@@ -16,7 +16,7 @@ void Video_SwitchToGDI();
 int Video_camera_related();
 int Video_SetVideoDesc(const void *color_buf);
 
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
 extern rdCanvas* Video_pCanvasOverlayMap;
 extern stdVBuffer* Video_pOverlayMapBuffer;
 extern stdVBuffer Video_overlayMapBuffer;

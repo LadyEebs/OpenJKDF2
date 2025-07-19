@@ -452,12 +452,9 @@ int stdDisplay_SetMode(unsigned int modeIdx, const void *palette, int paged)
 
 	Video_otherBuf.sdlSurface = otherSurface;
 	Video_menuBuffer.sdlSurface = otherSurface;//menuSurface;
-	Video_overlayMapBuffer.sdlSurface = overlaySurface;
 
 	_memcpy(&Video_otherBuf.format, &stdDisplay_pCurVideoMode->format, sizeof(Video_otherBuf.format));
 	_memcpy(&Video_menuBuffer.format, &stdDisplay_pCurVideoMode->format, sizeof(Video_menuBuffer.format));
-
-	_memcpy(&Video_overlayMapBuffer.format, &stdDisplay_pCurVideoMode->format, sizeof(Video_overlayMapBuffer.format));
 
 	Video_otherBuf.palette = palette;
 	Video_menuBuffer.palette = palette;
@@ -1122,15 +1119,15 @@ void stdDisplay_FreeBackBuffers()
 			SDL_FreeSurface(Video_otherBuf.sdlSurface);
 		//if (Video_menuBuffer.sdlSurface)
 		//	SDL_FreeSurface(Video_menuBuffer.sdlSurface);
-		if (Video_overlayMapBuffer.sdlSurface)
-			SDL_FreeSurface(Video_overlayMapBuffer.sdlSurface);
+		//if (Video_overlayMapBuffer.sdlSurface)
+			//SDL_FreeSurface(Video_overlayMapBuffer.sdlSurface);
 
 		Video_otherBuf.palette = 0;
 		Video_menuBuffer.palette = 0;
 
 		Video_otherBuf.sdlSurface = 0;
 		Video_menuBuffer.sdlSurface = 0;
-		Video_overlayMapBuffer.sdlSurface = 0;
+		//Video_overlayMapBuffer.sdlSurface = 0;
 		stdDisplay_bModeSet = 0;
 	}
 #endif

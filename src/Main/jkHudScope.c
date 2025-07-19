@@ -174,7 +174,7 @@ void jkHudScope_Draw(void)
 
     jkHudMotsBitmap* pBmIter = jkHudScope_aBitmaps;
 
-#ifndef SDL2_RENDER
+#if !defined(SDL2_RENDER) || defined(TILE_SW_RASTER)
     stdVBuffer* pOverlayBuffer = Video_pMenuBuffer;
     rdCanvas* pOverlayCanvas = Video_pCanvas;
 #else
@@ -185,7 +185,7 @@ void jkHudScope_Draw(void)
 
     do 
     {
-#ifndef SDL2_RENDER
+#if !defined(SDL2_RENDER) || defined(TILE_SW_RASTER)
         stdDisplay_VBufferCopy(pOverlayBuffer, *(*pBmIter->pBitmap)->mipSurfaces, pBmIter->unk4, pBmIter->unk5, NULL, 1);
 #else
         std3D_DrawUIBitmap(*pBmIter->pBitmap, 0, pBmIter->unk4, pBmIter->unk5, NULL, 1.0, 1);
@@ -193,7 +193,7 @@ void jkHudScope_Draw(void)
         pBmIter++;
     } while (pBmIter < &jkHudScope_aBitmaps[1]);
 
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
     stdDisplay_VBufferUnlock(pOverlayBuffer);
 #endif
 }

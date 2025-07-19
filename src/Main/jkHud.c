@@ -452,7 +452,7 @@ void jkHud_Draw()
     if ( Video_modeStruct.b3DAccel )
         stdDisplay_VBufferLock(Video_pMenuBuffer);
 
-#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
+#if defined(SDL2_RENDER) //&& !defined(TILE_SW_RASTER)
 	stdDisplay_VBufferLock(pOverlayBuffer);
 #endif
 
@@ -460,7 +460,7 @@ void jkHud_Draw()
     if ( Video_modeStruct.b3DAccel )
         stdDisplay_VBufferUnlock(Video_pMenuBuffer);
 
-#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
+#if defined(SDL2_RENDER) //&& !defined(TILE_SW_RASTER)
 	stdDisplay_VBufferLock(Video_pCanvas->vbuffer);
 #endif
 

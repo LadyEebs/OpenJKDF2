@@ -1585,7 +1585,7 @@ void jkMain_FixRes()
     sithCamera_Close();
     rdCanvas_Free(Video_pCanvas);
 
-#if defined(SDL2_RENDER)
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
     rdCanvas_Free(Video_pCanvasOverlayMap);
 #endif
 
@@ -1598,7 +1598,7 @@ void jkMain_FixRes()
     jkDev_Open();
     
     Video_pCanvas = rdCanvas_New(2, Video_pMenuBuffer, Video_pVbufIdk, 0, 0, newW, newH, 6);
-#if defined(SDL2_RENDER)
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
     Video_pCanvasOverlayMap = rdCanvas_New(2, Video_pOverlayMapBuffer, Video_pOverlayMapBuffer, 0, 0, newW, newH, 6);
 #endif
     sithCamera_Open(Video_pCanvas, stdDisplay_pCurVideoMode->aspectRatio);

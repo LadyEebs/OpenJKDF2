@@ -2289,7 +2289,8 @@ void std3D_DrawMenu()
 
 void std3D_DrawMapOverlay()
 {
-    if (Main_bHeadless) return;
+#ifndef TILE_SW_RASTER
+	if (Main_bHeadless) return;
 
     //glFlush();
 
@@ -2387,6 +2388,7 @@ void std3D_DrawMapOverlay()
     glDrawElements(GL_TRIANGLES, tris_size / sizeof(GLushort), GL_UNSIGNED_SHORT, 0);
 
 	glBindVertexArray(vao);
+#endif
 }
 
 

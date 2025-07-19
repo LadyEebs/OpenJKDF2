@@ -27,7 +27,7 @@ static flex_d_t aGammaTable[10] = {
     0.4347826086956522,
 };
 
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
 rdCanvas* Video_pCanvasOverlayMap = NULL;
 stdVBuffer* Video_pOverlayMapBuffer = NULL;
 stdVBuffer Video_overlayMapBuffer;
@@ -47,7 +47,7 @@ void Video_SwitchToGDI()
 #endif
     sithCamera_Close();
 
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
     rdCanvas_Free(Video_pCanvasOverlayMap);
 #endif
     rdCanvas_Free(Video_pCanvas);
@@ -86,7 +86,7 @@ int Video_Startup()
         }
         Video_pOtherBuf = &Video_otherBuf;
         Video_pMenuBuffer = &Video_menuBuffer;
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
         Video_pOverlayMapBuffer = &Video_overlayMapBuffer;
 #endif
         stdPalEffects_Open(stdDisplay_SetMasterPalette);

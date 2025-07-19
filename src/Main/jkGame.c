@@ -47,7 +47,7 @@ void jkGame_ForceRefresh()
 {
     sithCamera_Close();
     rdCanvas_Free(Video_pCanvas);
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
     rdCanvas_Free(Video_pCanvasOverlayMap);
 #endif
 }
