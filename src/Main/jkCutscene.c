@@ -278,6 +278,59 @@ int jkCutscene_sub_421310(char* fpath)
     free((void*)r);
 #endif
 
+#ifdef TILE_SW_RASTER
+	stdDeviceParams deviceParams;
+	deviceParams.field_0 = 1;
+	deviceParams.field_C = 1;
+	deviceParams.field_10 = (Main_bWindowGUI == 0);
+	deviceParams.field_4 = (Main_bWindowGUI == 0);
+	deviceParams.field_8 = 0;
+
+	render_pair pair;
+	pair.render_8bpp.bpp = 0;
+	pair.render_8bpp.rBpp = 0x3f800000;
+	pair.render_8bpp.width = 0x280;
+	pair.render_8bpp.height = 0x1e0;
+	pair.render_8bpp.palBytes = 0;
+	pair.render_rgb.bpp = 8;
+	//local_78 = 0;
+	//local_74 = 0x32;
+	//local_70 = 0x280;
+	//local_6c = 300;
+
+	int closestDevice = stdDisplay_FindClosestDevice(&deviceParams);
+	int deviceChanged = 0;
+	if (stdDisplay_bOpen)
+	{
+		if (Video_dword_866D78 != closestDevice)
+		{
+			stdDisplay_Close();
+			if (stdDisplay_Open(closestDevice) == 0)
+			{
+				return 0; 
+			}
+			deviceChanged = 1;
+		}
+	}
+	else
+	{
+		if (stdDisplay_Open(closestDevice) == 0)
+			return 0;
+		deviceChanged = 1;
+	}
+
+	stdHwnd  hWnd = stdGdi_GetHwnd();
+	jk_SetFocus(hWnd);
+
+	int closestMode = stdDisplay_FindClosestMode(&pair, Video_renderSurface, stdDisplay_numVideoModes);
+	if (stdDisplay_bModeSet)
+		stdDisplay_ClearRect(&Video_otherBuf, 0, NULL);
+
+	int needModeChange = deviceChanged || !stdDisplay_bModeSet || (closestMode != Video_curMode) || stdDisplay_bPaged;
+	if (needModeChange && stdDisplay_SetMode(closestMode, &Video_otherBuf, 0) == 0)
+		return 0;
+#endif
+
     jkCutscene_pSmush = smush_from_fpath(tmp);
     if (!jkCutscene_pSmush)
     {
@@ -353,7 +406,9 @@ int jkCutscene_sub_421310(char* fpath)
         
         // TODO kinda hacky
         //jkGui_SetModeMenu(smk_get_palette(jkCutscene_smk));
+	#ifndef TILE_SW_RASTER
         jkGui_SetModeMenu(smk_get_palette(jkCutscene_smk));
+	#endif
     }
     else {
         jkCutscene_bSmkValid = 0;
@@ -390,6 +445,7 @@ int jkCutscene_sub_421310(char* fpath)
         stdVBufferTexFmt texFmt;
         texFmt.width = jkCutscene_smk_w;
         texFmt.height = jkCutscene_smk_h;
+		texFmt.format.colorMode = STDCOLOR_PAL;
         texFmt.format.bpp = 8;
         jkCutscene_frameBuf = stdDisplay_VBufferNew(&texFmt, 1, 0, (void*)1);
         stdDisplay_VBufferFill(jkCutscene_frameBuf, 0, NULL);
@@ -424,7 +480,9 @@ int jkCutscene_sub_421310(char* fpath)
         //stdSound_BufferPlay(jkCutscene_audio3, 0);
 
 		jkGuiRend_StopAudio();
+#ifndef TILE_SW_RASTER
 		jkGui_SetModeMenu(smush_get_palette(jkCutscene_pSmush));
+#endif
     }
 
     jkCutscene_55AA54 = 0;
@@ -653,7 +711,7 @@ int jkCutscene_PauseShow(int unk)
         stdDisplay_VBufferFill(&Video_otherBuf, 0, &jkCutscene_rect2);
     }
 
-#if defined(SDL2_RENDER) || defined(TARGET_TWL)
+#if (defined(SDL2_RENDER) || defined(TARGET_TWL)) && !defined(TILE_SW_RASTER)
     stdDisplay_VBufferLock(Video_pMenuBuffer);
     stdDisplay_VBufferCopy(Video_pMenuBuffer, jkCutscene_frameBuf, 0, 50, NULL, 0);
     stdDisplay_VBufferFill(Video_pMenuBuffer, 0, &jkCutscene_rect1);
@@ -664,7 +722,7 @@ int jkCutscene_PauseShow(int unk)
 #endif
 
     result = Main_bWindowGUI;
-#if !defined(SDL2_RENDER) && !defined(TARGET_TWL)
+#if !defined(SDL2_RENDER) && !defined(TARGET_TWL) || defined(TILE_SW_RASTER)
     if ( Main_bWindowGUI )
         result = stdDisplay_DDrawGdiSurfaceFlip();
 #endif
@@ -743,9 +801,11 @@ int jkCutscene_smacker_process()
 {
     if ( !jkCutscene_isRendering )
         return 0;
+	#ifndef TILE_SW_RASTER
     if (!std3D_IsReady()) {
         return 0;
     }
+	#endif
 
     flex64_t cur_displayFrame = (flex64_t)Linux_TimeUs();
 
@@ -774,17 +834,26 @@ int jkCutscene_smacker_process()
         jkCutscene_dword_55B750 = *subtitle_idx;
     }
 
+
     _memcpy(stdDisplay_masterPalette, smk_get_palette(jkCutscene_smk), 0x300);
     
     stdDisplay_VBufferLock(jkCutscene_frameBuf);
 	_memcpy(jkCutscene_frameBuf->surface_lock_alloc, smk_get_video(jkCutscene_smk), jkCutscene_smk_w*jkCutscene_smk_h);
 	stdDisplay_VBufferUnlock(jkCutscene_frameBuf);
     
-    stdDisplay_VBufferLock(Video_pMenuBuffer);
+#ifdef TILE_SW_RASTER
+	stdDisplay_VBufferLock(Video_pOtherBuf);
+	stdDisplay_VBufferCopy(Video_pOtherBuf, jkCutscene_frameBuf, 0, 50, NULL, 0);
+	//stdDisplay_VBufferFill(Video_pOtherBuf, 0, &jkCutscene_rect1);
+	//stdDisplay_VBufferCopy(Video_pOtherBuf, &Video_otherBuf, jkCutscene_rect1.x, jkCutscene_rect1.y, &jkCutscene_rect1, 0);
+	stdDisplay_VBufferUnlock(Video_pMenuBuffer);
+#else
+	stdDisplay_VBufferLock(Video_pMenuBuffer);
 	stdDisplay_VBufferCopy(Video_pMenuBuffer, jkCutscene_frameBuf, 0, 50, NULL, 0);
     stdDisplay_VBufferFill(Video_pMenuBuffer, 0, &jkCutscene_rect1);
     stdDisplay_VBufferCopy(Video_pMenuBuffer, &Video_otherBuf, jkCutscene_rect1.x, jkCutscene_rect1.y, &jkCutscene_rect1, 0);
 	stdDisplay_VBufferUnlock(Video_pMenuBuffer);
+#endif
 
 #if 0	
 	jkCutscene_audioFlip = !jkCutscene_audioFlip;

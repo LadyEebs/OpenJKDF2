@@ -1,5 +1,9 @@
 #include "rdRaster.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void rdRaster_Startup()
 {
     rdRaster_aOneDivXLUT[0] = 3.4e38;
@@ -16,3 +20,7 @@ void rdRaster_Startup()
         rdRaster_aOtherLUT[j] = rdRaster_aOneDivXLUT[j] * rdRaster_fixedScale;
     }
 }
+
+#ifdef __cplusplus
+}
+#endif

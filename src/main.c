@@ -228,7 +228,7 @@ void* __attribute__((weak)) __memcpy_chk(void * dest, const void * src, size_t l
 }
 #endif // WIN64_MINGW
 
-int main(int argc, char** argv)
+int SDL_main(int argc, char** argv)
 {
 #ifdef ARCH_WASM
     EM_ASM(

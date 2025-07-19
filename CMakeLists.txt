@@ -187,6 +187,7 @@ endif()
 # All of the base sources
 file(GLOB ENGINE_SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/*.c
                        ${PROJECT_SOURCE_DIR}/src/*/*.c
+					   ${PROJECT_SOURCE_DIR}/src/*/*.cpp
                        ${PROJECT_SOURCE_DIR}/src/JK/*.c
 					   ${PROJECT_SOURCE_DIR}/src/JK/GUI/*.c
                        ${PROJECT_SOURCE_DIR}/src/Modules/std/*.c

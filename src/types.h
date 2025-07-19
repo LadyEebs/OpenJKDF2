@@ -306,6 +306,21 @@ typedef flex32_t cog_flex_t;
 extern "C" {
 #endif
 
+#ifdef SDL2_RENDER
+	typedef struct SDL_Surface SDL_Surface;
+	typedef struct SDL_Window SDL_Window;
+#endif
+
+#ifdef HW_VBUFFER
+	typedef struct std3D_DrawSurface std3D_DrawSurface;
+#endif
+
+#ifdef TILE_SW_RASTER
+typedef SDL_Window* stdHwnd;
+#else
+typedef HWND stdHwnd;
+#endif
+
 typedef struct IDirectSound3DBuffer IDirectSound3DBuffer;
 typedef struct IDirectSoundBuffer IDirectSoundBuffer;
 typedef IDirectSoundBuffer* LPDIRECTSOUNDBUFFER;
@@ -718,6 +733,12 @@ typedef struct rdCanvas
     int yStart;
     int widthMinusOne;
     int heightMinusOne;
+#ifdef TILE_SW_RASTER
+	int coarseTileWidth, coarseTileHeight, coarseTileCount;
+	int tileWidth, tileHeight, tileCount;
+	uint64_t* coarseTileBits;
+	uint64_t* tileBits;
+#endif
 } rdCanvas;
 
 typedef struct rdMarkers
@@ -840,6 +861,21 @@ typedef struct rdProcEntry
 	rdVector3 color;
 #endif
 } rdProcEntry;
+
+#if 0//def TILE_SW_RASTER
+typedef struct rdTileEntry
+{
+	const rdProcEntry* owner; // Original polygon
+	int i1, i2, i3;            // Indices into entry->vertices
+	float edgeA[3], edgeB[3], edgeC[3]; // Precomputed edge equations
+	float invArea;
+	float zz[3];              // 1/z per vertex
+	float uz[3], vz[3];       // UV / z per vertex
+	float lz[3];              // Light / z per vertex
+	float zmin, zmax;         // Optional depth bounds
+	float x_min, x_max, y_min, y_max; // Bounding box
+} rdTileEntry;
+#endif
 
 typedef struct v11_struct
 {
@@ -1405,15 +1441,6 @@ typedef struct stdFontExtHeader
   uint16_t characterFirst;
   uint16_t characterLast;
 } stdFontExtHeader;
-
-
-#ifdef SDL2_RENDER
-typedef struct SDL_Surface SDL_Surface;
-#endif
-
-#ifdef HW_VBUFFER
-typedef struct std3D_DrawSurface std3D_DrawSurface;
-#endif
 
 typedef struct stdVBuffer
 {
@@ -2024,11 +2051,16 @@ typedef struct stdVideoDevice
   char driverName[128];
   video_device video_device[14];
   GUID guid;
-  int max_modes;
-  stdVideoMode *stdVideoMode;
-  uint32_t gap2A0;
-  int field_2A4;
 } stdVideoDevice;
+
+typedef struct stdVideoDeviceEntry
+{
+	stdVideoDevice device;
+	int max_modes;
+	stdVideoMode *stdVideoMode;
+	uint32_t gap2A0;
+	int field_2A4;
+} stdVideoDeviceEntry;
 
 typedef struct render_8bpp
 {

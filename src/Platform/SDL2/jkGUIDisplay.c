@@ -182,6 +182,12 @@ void jkGuiDisplay_Startup()
     jk_snwprintf(gamma_level, 255, L"%.2f", ftmp);
     ftmp = jkPlayer_hudScale;
     jk_snwprintf(hud_level, 255, L"%.2f", ftmp);
+
+#ifdef TILE_SW_RASTER
+	// todo: we're really going to want to recreate that original menu to get this working...
+	Video_modeStruct.modeIdx = 0;
+	Video_modeStruct.descIdx = 6;
+#endif
 }
 
 void jkGuiDisplay_Shutdown()

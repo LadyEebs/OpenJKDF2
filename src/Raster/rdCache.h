@@ -68,9 +68,12 @@ void rdCache_FlushOccluders();
 #endif
 
 #ifndef __cplusplus
+
+#ifndef TILE_SW_RASTER
 static void (*rdCache_DrawFaceUser)(rdProcEntry* face) = (void*)rdCache_DrawFaceUser_ADDR;
 static void (*rdCache_DrawFaceN)(rdProcEntry* face) = (void*)rdCache_DrawFaceN_ADDR;
 static void (*rdCache_DrawFaceZ)(rdProcEntry* face) = (void*)rdCache_DrawFaceZ_ADDR;
+#endif
 //static int (*rdCache_SendFaceListToHardware)(void) = (void*)rdCache_SendFaceListToHardware_ADDR;
 //static void (*rdCache_ClearFrameCounters)(void) = (void*)rdCache_ClearFrameCounters_ADDR;
 //static void (*rdCache_AdvanceFrame)(void) = (void*)rdCache_AdvanceFrame_ADDR;

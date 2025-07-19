@@ -1644,4 +1644,9 @@ enum NetSearchDistance
 
 #endif
 
+enum jkMessageBoxFlags
+{
+	MB_ICONERROR = 0x10,
+};
+
 #endif // _OPENJKDF2_TYPES_ENUMS_H

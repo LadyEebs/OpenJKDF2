@@ -13,6 +13,10 @@
 
 #define JOB_SYSTEM           // multithreaded job system
 
+#ifndef RENDER_DROID2
+#define TILE_SW_RASTER
+#endif
+
 // Gameplay features
 #define FP_LEGS              // Draws legs in first person
 #define DYNAMIC_POV          // POV enhancements, such as the weapon following the autoaim target, muzzle flashes, sway improvements
@@ -242,6 +246,13 @@
 #define STD3D_MAX_TEXTURES (1024)
 #define STD3D_MAX_UI_TRIS (0x100)
 #define STD3D_MAX_UI_VERTICES (0x100)
+#elif defined(TILE_SW_RASTER)
+#define RDCACHE_MAX_TRIS (0x1000)
+#define RDCACHE_MAX_VERTICES (0x8000)
+
+#define STD3D_MAX_TEXTURES (4096)
+#define STD3D_MAX_UI_TRIS (0x8000)
+#define STD3D_MAX_UI_VERTICES (0x8000)
 #else
 #define RDCACHE_MAX_TRIS (0x400)
 #define RDCACHE_MAX_VERTICES (0x8000)
@@ -249,6 +260,16 @@
 #define STD3D_MAX_TEXTURES (4096)
 #define STD3D_MAX_UI_TRIS (0x8000)
 #define STD3D_MAX_UI_VERTICES (0x8000)
+#endif
+
+#ifdef TILE_SW_RASTER
+#define RDCACHE_MAX_TILE_TRIS        (RDCACHE_MAX_TRIS * 22)
+#define RDCACHE_FINE_TILE_SIZE       32
+#define RDCACHE_TILE_DOWNSAMPLE      8
+#define RDCACHE_COARSE_TILE_SIZE     (RDCACHE_TILE_DOWNSAMPLE * RDCACHE_FINE_TILE_SIZE)
+#define RDCACHE_TILE_BINNING_STRIDE  ((RDCACHE_MAX_TRIS+63) / 64)
+//#define RDCACHE_TILE_BINNING_STRIDE  ((RDCACHE_MAX_TILE_TRIS+63) / 64)
+#define RDCACHE_FINE_PER_COARSE      RDCACHE_TILE_DOWNSAMPLE
 #endif
 
 #ifdef QOL_IMPROVEMENTS
@@ -273,7 +294,7 @@
 
 // Run game physics at a fixed timestep
 // todo: disabled for now, causes a lot of stuttering esp with high framerates, need to add some control interpolation or something
-//#define FIXED_TIMESTEP_PHYS
+#define FIXED_TIMESTEP_PHYS
 
 // Backport MOTS RGB lighting and bone changes
 #ifdef QOL_IMPROVEMENTS
@@ -313,12 +334,12 @@
 #define SITHCAMERA_ATTENUATION_MIN (0.4)
 #define SITHCAMERA_ATTENUATION_MAX (0.8)
 
-#ifdef DYNAMIC_POV
+#if defined(DYNAMIC_POV) && !defined(TILE_SW_RASTER)
 #define SITHCAMERA_ZNEAR_FIRSTPERSON (1.0 / 512.0f)
 #define SITHCAMERA_ZNEAR (1.0 / 64.0)
 #define SITHCAMERA_ZFAR (256.0)
 #else
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
 #define SITHCAMERA_ZNEAR_FIRSTPERSON (1.0 / 128.0)
 #define SITHCAMERA_ZNEAR (1.0 / 64.0)
 #define SITHCAMERA_ZFAR (128.0)
@@ -434,7 +455,12 @@
 
 extern int Window_isHiDpi;
 #ifdef WIN64_STANDALONE
-#ifdef RENDER_DROID2
+#ifdef TILE_SW_RASTER
+	#define WINDOW_DEFAULT_WIDTH  (640)
+	#define WINDOW_DEFAULT_HEIGHT (480)
+	#define WINDOW_DEFAULT_WIDTH_4K  WINDOW_DEFAULT_WIDTH
+	#define WINDOW_DEFAULT_HEIGHT_4K WINDOW_DEFAULT_HEIGHT
+#elif defined(RENDER_DROID2)
 #	define WINDOW_DEFAULT_WIDTH  (1280)
 #	define WINDOW_DEFAULT_HEIGHT (720)
 #	define WINDOW_DEFAULT_WIDTH_4K  (WINDOW_DEFAULT_WIDTH*2)

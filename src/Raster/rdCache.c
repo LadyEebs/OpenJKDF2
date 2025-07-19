@@ -1,16 +1,18 @@
-#include "rdCache.h"
+﻿#include "rdCache.h"
 
+#include "rdRaster.h"
 #include "Engine/rdroid.h"
 #include "Engine/rdActive.h"
 #include "Platform/std3D.h"
 #include "Engine/rdColormap.h"
 #include "General/stdMath.h"
-
 #include <math.h>
 
 #ifdef QOL_IMPROVEMENTS
 int rdroid_curVertexColorMode = 0; // MOTS added
 #endif
+
+int rdCache_cacheFlushes = 0;
 
 #ifdef RENDER_DROID2
 
@@ -445,11 +447,11 @@ void rdCache_Shutdown()
 
 void rdCache_AdvanceFrame()
 {
-#if defined(SDL2_RENDER) || defined(TARGET_TWL)
+#if !defined(TILE_SW_RASTER) && defined(SDL2_RENDER) || defined(TARGET_TWL)
     rdroid_curAcceleration = 1;
 #endif
 
-#if !defined(SDL2_RENDER) && !defined(TARGET_TWL)
+#if defined(TILE_SW_RASTER) || !defined(SDL2_RENDER) && !defined(TARGET_TWL)
     if ( rdroid_curAcceleration > 0 )
 #endif
         std3D_StartScene();
@@ -457,14 +459,17 @@ void rdCache_AdvanceFrame()
 #ifdef DECAL_RENDERING
 	rdCache_numDecals = 0;
 #endif
+	rdCache_cacheFlushes = 0; // added
 }
 
 void rdCache_FinishFrame()
 {
-#if !defined(SDL2_RENDER) && !defined(TARGET_TWL)
+#if defined(TILE_SW_RASTER) || !defined(SDL2_RENDER) && !defined(TARGET_TWL)
     if ( rdroid_curAcceleration > 0 )
 #endif
         std3D_EndScene();
+
+	//printf("Flushes for frame %d frame: %d\n", rdroid_frameTrue, rdCache_cacheFlushes);
 }
 
 void rdCache_Reset()
@@ -525,7 +530,7 @@ rdProcEntry *rdCache_GetProcEntry()
 #endif
     return out_procEntry;
 }
-
+#include "Win95/stdDisplay.h"
 void rdCache_Flush()
 {
     size_t v0; // eax
@@ -550,7 +555,58 @@ void rdCache_Flush()
         _qsort(rdCache_aProcFaces, rdCache_numProcFaces, sizeof(rdProcEntry), (int (__cdecl *)(const void *, const void *))rdCache_ProcFaceCompareByState);
     }
 #endif
-#if !defined(SDL2_RENDER) && !defined(TARGET_TWL)
+#ifdef TILE_SW_RASTER
+	if (rdroid_curAcceleration <= 0)
+	{
+		rdRaster_ClearBins();
+		
+		for (v3 = 0; v3 < rdCache_numProcFaces; v3++)
+		{
+			face = &rdCache_aProcFaces[v3];
+
+			// Lock the material if needed
+			if(face->material)
+			{
+				int cel = (face->wallCel == 0xFFFFFFFF) ? face->material->celIdx : (int)face->wallCel;
+				if (cel < 0) cel = 0;
+				else if ((uint32_t)cel >= face->material->num_texinfo) cel = face->material->num_texinfo - 1;
+				rdTexinfo* texinfo = face->material->texinfos[cel]; 
+				if(texinfo->texture_ptr)
+				{
+					for (int i = 0; i < texinfo->texture_ptr->num_mipmaps; ++i)
+						stdDisplay_VBufferLock(texinfo->texture_ptr->texture_struct[i]);
+				}
+			}
+			
+			// Bin it
+			rdRaster_BinFaceCoarse(face);
+		}
+		
+		// Fine bin then flush
+		rdRaster_BinFaces();
+		rdRaster_FlushBins();
+	
+		// Unlock materials
+		// todo: lots of redundant stuff here, maybe the lock should be counted properly (the lock_cnt could be atomic?)
+		for (v3 = 0; v3 < rdCache_numProcFaces; v3++)
+		{
+			face = &rdCache_aProcFaces[v3];
+			if (face->material)
+			{
+				int cel = (face->wallCel == 0xFFFFFFFF) ? face->material->celIdx : (int)face->wallCel;
+				if (cel < 0) cel = 0;
+				else if ((uint32_t)cel >= face->material->num_texinfo) cel = face->material->num_texinfo - 1;
+				rdTexinfo* texinfo = face->material->texinfos[cel];
+				if (texinfo->texture_ptr)
+				{
+					for (int i = 0; i < texinfo->texture_ptr->num_mipmaps; ++i)
+						stdDisplay_VBufferUnlock(texinfo->texture_ptr->texture_struct[i]);
+				}
+			}
+		}
+	}
+	else
+#elif !defined(SDL2_RENDER) && !defined(TARGET_TWL)
     if ( rdroid_curAcceleration <= 0 )
     {
         if ( rdroid_curOcclusionMethod )
@@ -598,7 +654,8 @@ void rdCache_Flush()
 	#endif
     }
     rdCache_drawnFaces += rdCache_numProcFaces;
-    rdCache_Reset();
+	rdCache_cacheFlushes++; // added
+	rdCache_Reset();
 }
 
 #if 1

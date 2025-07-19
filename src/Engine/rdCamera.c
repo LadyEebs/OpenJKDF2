@@ -521,7 +521,12 @@ void rdCamera_AdvanceFrame()
     rdRect a4; // [esp+0h] [ebp-10h] BYREF
 
     v0 = rdCamera_pCurCamera->canvas;
-    if ( (rdroid_curRenderOptions & RD_CLEAR_BUFFERS) != 0 && (v0->bIdk & 2) != 0 )
+#ifdef TILE_SW_RASTER
+	// eebs: fixme
+	v0->bIdk |= 4;
+	//stdDisplay_VBufferFill(v0->d3d_vbuf, 0xFFFFFFFF, 0);
+#else
+	if ( (rdroid_curRenderOptions & RD_CLEAR_BUFFERS) != 0 && (v0->bIdk & 2) != 0 )
     {
         if ( rdroid_curAcceleration <= 0 )
         {
@@ -543,6 +548,7 @@ void rdCamera_AdvanceFrame()
             std3D_ClearZBuffer();
         }
     }
+#endif
 }
 
 // MOTS added

@@ -46,7 +46,6 @@ int jkCredits_Show()
 {
     unsigned int v1; // esi
     int v2; // esi
-    HWND v3; // eax
     int v4; // edi
     int v5; // edi
     int v6; // esi
@@ -114,8 +113,7 @@ LABEL_36:
     }
     v2 = 0;
 LABEL_12:
-    v3 = stdGdi_GetHwnd();
-    jk_SetFocus(v3);
+    jk_SetFocus(stdGdi_GetHwnd());
     memset(jkCredits_aPalette, 0, sizeof(jkCredits_aPalette));
     v4 = stdDisplay_FindClosestMode(&a1, Video_renderSurface, stdDisplay_numVideoModes);
     if ( v2 )

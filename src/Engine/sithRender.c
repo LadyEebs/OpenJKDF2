@@ -2277,6 +2277,11 @@ void sithRender_RenderLevelGeometry()
     flex_t tmpBlue[3];
     flex_t tmpGreen[3];
 
+#ifdef TILE_SW_RASTER
+	// TILETODO
+	rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
+	rdSetVertexColorMode(0);
+#else
     if ( rdroid_curAcceleration )
     {
         rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
@@ -2293,6 +2298,7 @@ void sithRender_RenderLevelGeometry()
             rdSetOcclusionMethod(1);
         rdSetVertexColorMode(0);
     }
+#endif
     rdSetSortingMethod(0);
 
     vertices_uvs = sithWorld_pCurrentWorld->vertexUVs;

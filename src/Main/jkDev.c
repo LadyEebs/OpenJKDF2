@@ -228,7 +228,7 @@ void jkDev_BlitLogToScreen()
     int v6; // eax
     rdRect v7; // [esp+0h] [ebp-10h] BYREF
 
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
     jkDev_BlitLogToScreenGPU();
     return;
 #endif
@@ -247,7 +247,7 @@ void jkDev_BlitLogToScreen()
             if ( v2 < jkDev_log_55A4A4 && (v1 + v7.height > Video_pCanvas->yStart || v3->bDrawEntry) )
             {
                 v7.width = v3->drawWidth;
-                v4 = (signed int)(stdDisplay_pCurVideoMode->format.width - v7.width) / 2;
+				v4 = (signed int)(stdDisplay_pCurVideoMode->format.width - v7.width) / 2;
                 if ( v4 < 0 )
                     v4 = 0;
                 stdDisplay_VBufferCopy(Video_pMenuBuffer, jkDev_vbuf, v4, v1, &v7, 1);
@@ -1083,7 +1083,7 @@ void jkDev_DrawEntries()
     rdRect a4; // [esp+8h] [ebp-10h] BYREF
 
     // Added: GPU rendered text
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
     jkDev_DrawEntriesGPU();
     return;
 #endif

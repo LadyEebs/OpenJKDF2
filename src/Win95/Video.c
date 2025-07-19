@@ -33,10 +33,15 @@ stdVBuffer* Video_pOverlayMapBuffer = NULL;
 stdVBuffer Video_overlayMapBuffer;
 #endif
 
+#ifdef TILE_SW_RASTER
+stdVBuffer* Video_pTileColor = NULL;;
+stdVBuffer* Video_pTileDepth = NULL;;
+#endif
+
 void Video_SwitchToGDI()
 {
     jkDev_Close();
-#ifndef LINUX_TMP
+#if !defined(LINUX_TMP) || defined(TILE_SW_RASTER)
     jkHud_Close();
     jkHudInv_Close();
 #endif
@@ -58,9 +63,11 @@ void Video_SwitchToGDI()
     stdDisplay_ddraw_surface_flip2();
     stdDisplay_VBufferFill(Video_pMenuBuffer, Video_fillColor, 0);
 
-#ifndef SDL2_RENDER
+#if !defined(SDL2_RENDER) || defined(TILE_SW_RASTER)
     if ( !Video_modeStruct.b3DAccel )
+	{
         stdDisplay_VBufferFree(Video_pVbufIdk);
+	}
 #else
     jkGame_isDDraw = 0;
 #endif
@@ -178,7 +185,7 @@ int Video_camera_related()
     sithRender_SetGeoMode(Video_modeStruct.geoMode);
     sithRender_SetLightMode(Video_modeStruct.lightMode);
     sithRender_SetTexMode(Video_modeStruct.texMode);
-    sithCamera_Open(Video_pCanvas, stdDisplay_pCurVideoMode->widthMaybe);
+    sithCamera_Open(Video_pCanvas, stdDisplay_pCurVideoMode->aspectRatio);
     return 1;
 }
 
@@ -239,7 +246,7 @@ LABEL_9:
             _memcpy(&Video_format2, &Video_format, sizeof(Video_format2));
             Video_format2.format.bpp = 16;
             Video_pVbufIdk = stdDisplay_VBufferNew(&Video_format2, 0, 0, 0);
-            goto LABEL_25;
+			goto LABEL_25;
         }
     }
     std3D_Startup();

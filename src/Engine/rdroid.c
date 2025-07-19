@@ -361,7 +361,7 @@ int rdSetMipDistances(rdVector4 *dists)
 {
     rdVector_Copy4(&rdroid_aMipDistances, dists);
 
-#ifdef QOL_IMPROVEMENTS
+#if defined(QOL_IMPROVEMENTS) && !defined(TILE_SW_RASTER)
     static rdVector4 origLod;
     static int once = 0;
     if (!once) {

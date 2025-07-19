@@ -69,6 +69,11 @@ flex_t stdMath_Floor(flex_t a);
 flex_t stdMath_Sqrt(flex_t a);
 flex_t stdMath_Frac(flex_t a);
 
+//static inline int32_t stdFixed_Multiply(int param_1, int param_2)
+//{
+//	return (int32_t)(((int64_t)param_1 * (int64_t)param_2) >> 16);
+//}
+
 // Added
 flex_t stdMath_ClipPrecision(flex_t val);
 flex_t stdMath_Clamp(flex_t val, flex_t valMin, flex_t valMax);

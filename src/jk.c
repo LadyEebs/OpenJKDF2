@@ -27,6 +27,10 @@
 #include <stdarg.h>
 #endif
 
+#ifdef SDL2_RENDER
+#include "SDL.h"
+#endif
+
 #if defined(TARGET_ANDROID)
 #include <ctype.h>
 #endif
@@ -878,16 +882,33 @@ int msvc_sub_512D30(int a, int b)
     return 0;
 }
 
-int jk_MessageBoxW(HWND hWnd, LPCWSTR lpText, LPCWSTR lpCaption, UINT uType)
+int jk_MessageBoxW(stdHwnd hWnd, LPCWSTR lpText, LPCWSTR lpCaption, UINT uType)
 {
+#ifdef TILE_SW_RASTER	
+	char* utf8Title = SDL_iconv_string("UTF-8", "UTF-16LE", (char*)lpText, (wcslen(lpText) + 1) * 2);
+	char* utf8Message = SDL_iconv_string("UTF-8", "UTF-16LE", (char*)lpCaption, (wcslen(lpCaption) + 1) * 2);
+
+	int result = SDL_ShowSimpleMessageBox(uType, utf8Title, utf8Message, hWnd);
+
+	SDL_free(utf8Title);
+	SDL_free(utf8Message);
+
+	return result;
+#else
     assert(0);
     return 0;
+#endif
 }
 
-int stdGdi_GetHwnd()
+stdHwnd stdGdi_GetHwnd()
 {
+#ifdef TILE_SW_RASTER
+	extern SDL_Window* displayWindow;
+	return displayWindow;
+#else
     //assert(0);
     return 0;
+#endif
 }
 
 void jk_PostMessageA()
@@ -900,7 +921,7 @@ void jk_GetCursorPos(LPPOINT lpPoint)
     assert(0);
 }
 
-int jk_GetUpdateRect(HWND hWnd, LPRECT lpRect, BOOL bErase)
+int jk_GetUpdateRect(stdHwnd hWnd, LPRECT lpRect, BOOL bErase)
 {
     return 0;
 }
@@ -921,7 +942,7 @@ int jk_vsnwprintf(wchar_t * a, size_t b, const wchar_t *fmt, va_list list)
 #endif
 }
 
-void jk_EndPaint(HWND hWnd, const PAINTSTRUCT *lpPaint)
+void jk_EndPaint(stdHwnd hWnd, const PAINTSTRUCT *lpPaint)
 {
     assert(0);
 }
@@ -943,7 +964,7 @@ void jk_SetCursor(HCURSOR hCursor)
     assert(0);
 }
 
-void jk_InvalidateRect(HWND hWnd, const RECT *lpRect, BOOL bErase)
+void jk_InvalidateRect(stdHwnd hWnd, const RECT *lpRect, BOOL bErase)
 {
     assert(0);
 }
@@ -1023,7 +1044,7 @@ uint32_t jk_GetDesktopWindow()
     return 0;
 }
 
-uint32_t jk_GetDC(HWND hWnd)
+uint32_t jk_GetDC(stdHwnd hWnd)
 {
     assert(0);
     return 0;
@@ -1046,17 +1067,20 @@ int _string_modify_idk(int c)
     return toupper(c);
 }
 
-void jk_ReleaseDC(HWND hWnd, HDC hDC)
+void jk_ReleaseDC(stdHwnd hWnd, HDC hDC)
 {
     assert(0);
 }
 
-void jk_SetFocus(HWND hWnd)
+void jk_SetFocus(stdHwnd hWnd)
 {
+#ifdef TILE_SW_RASTER
+	SDL_RaiseWindow(hWnd);
+#endif
     //assert(0);
 }
 
-void jk_SetActiveWindow(HWND hWnd)
+void jk_SetActiveWindow(stdHwnd hWnd)
 {
     assert(0);
 }
@@ -1067,7 +1091,7 @@ void jk_ShowCursor(int a)
     stdControl_ShowCursor(a);
 }
 
-void jk_ValidateRect(HWND hWnd, const RECT *lpRect)
+void jk_ValidateRect(stdHwnd hWnd, const RECT *lpRect)
 {
     assert(0);
 }

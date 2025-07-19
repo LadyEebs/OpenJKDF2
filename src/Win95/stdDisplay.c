@@ -64,10 +64,46 @@ uint32_t Video_menuTexId = 0;
 uint32_t Video_overlayTexId = 0;
 rdColor24 stdDisplay_masterPalette[256];
 int Video_bModeSet = 0;
+int stdDisplay_numDevices;
+
+static struct SDL_Color stdDisplay_paletteScratch[256] = { 0 };
 
 int stdDisplay_Startup()
 {
     stdDisplay_bStartup = 1;
+	stdDisplay_numDevices = 1;
+#ifdef TILE_SW_RASTER
+	stdVideoDevice* device = &stdDisplay_aDevices[0];
+	stdDisplay_numDevices = 0;
+
+	// Hardcoded fallback GUID (no real GUID)
+	//device->guid.Data1 = 0x92a69f00;
+	//device->guid.Data2 = 0x11d113fa;
+	//device->guid.Data3 = 0xa000c097;
+	//device->guid.Data4 = 0x05302924;
+
+	// Driver description and name
+	_strncpy(device->driverDesc, "Window Display Device", 0x7F);
+	device->driverDesc[0x7F] = '\0';
+
+	_strncpy(device->driverName, "DIBsection windowed display", 0x7F);
+	device->driverName[0x7F] = '\0';
+
+	// Fallback "windowed" video device
+	video_device* vdev = &device->video_device[0];
+	vdev->device_active = 0;
+	vdev->hasGUID = 0;
+	vdev->has3DAccel = 0;
+	vdev->hasNoGuid = 1;
+	vdev->windowedMaybe = 0;
+	vdev->dwVidMemTotal = 2000000;
+	vdev->dwVidMemFree = 2000000;
+
+	stdDisplay_numDevices = 1;
+
+	// todo: enum like d3d
+
+#endif
     return 1;
 }
 
@@ -77,10 +113,214 @@ int stdDisplay_FindClosestDevice(void* a)
     return 0;
 }
 
-int stdDisplay_Open(int a)
+int stdDisplay_Open(int index)
 {
-    stdDisplay_pCurDevice = &stdDisplay_aDevices[0];
-    stdDisplay_bOpen = 1;
+	if (stdDisplay_bOpen != 0)
+		return 0;
+	
+	if (stdDisplay_numDevices <= index)
+		return 0;
+	
+#ifdef TILE_SW_RASTER
+	HWND HVar1;
+	int iVar2;
+	
+	Video_dword_866D78 = index;
+	stdDisplay_pCurDevice = &stdDisplay_aDevices[index];
+	iVar2 = stdDisplay_aDevices[index].video_device[0].device_active;
+	
+	//SDL_DisplayMode lastMode;
+	//memset(&lastMode, 0, sizeof(lastMode));
+	//
+	//int numVideoModes = SDL_GetNumDisplayModes(index);
+	//for (int i = 0; i < numVideoModes; ++i)
+	//{
+	//	if (i >= 64)
+	//		break;
+	//
+	//	SDL_DisplayMode mode;
+	//	if(!SDL_GetDisplayMode(index, i, &mode))
+	//	{
+	//		// we don't care about refresh modes so if the rest is the same, skip
+	//		if (mode.w == lastMode.w && mode.h == lastMode.h && mode.format == lastMode.format)
+	//			continue;
+	//		lastMode = mode;
+	//
+	//		SDL_PixelFormat* pf = SDL_AllocFormat(mode.format);
+	//		uint32_t bytesPerPixel = 1;//pf->BytesPerPixel;
+	//
+	//		// Calculate pitch (row size in bytes, including padding)
+	//		int modeIdx = stdDisplay_numVideoModes++;
+	//		stdVideoMode* videoMode = &Video_renderSurface[modeIdx];
+	//		videoMode->field_0 = 0;
+	//		videoMode->format.format.bpp = 8;//pf->BitsPerPixel;
+	//		videoMode->format.width = mode.w;
+	//		videoMode->format.height = mode.h;
+	//		videoMode->format.texture_size_in_bytes = mode.w * bytesPerPixel * mode.h;
+	//		videoMode->format.width_in_bytes = mode.w * bytesPerPixel;
+	//		videoMode->format.width_in_pixels = mode.w;
+	//		videoMode->format.format.colorMode = 0;//(pf->BitsPerPixel == 8) ? STDCOLOR_PAL : (pf->Amask == 0 ? STDCOLOR_RGB : STDCOLOR_RGBA);
+	//		videoMode->format.format.r_bits = 0;//stdCalcBitPos(pf->Rmask >> pf->Rshift) + 1;
+	//		videoMode->format.format.g_bits = 0;//stdCalcBitPos(pf->Gmask >> pf->Gshift) + 1;
+	//		videoMode->format.format.b_bits = 0;//stdCalcBitPos(pf->Bmask >> pf->Bshift) + 1;
+	//		videoMode->format.format.unk_40 = 0;//stdCalcBitPos(pf->Amask >> pf->Ashift) + 1;
+	//		videoMode->format.format.r_shift = 0;//pf->Rshift;
+	//		videoMode->format.format.g_shift = 0;//pf->Gshift;
+	//		videoMode->format.format.b_shift = 0;//pf->Bshift;
+	//		videoMode->format.format.r_bitdiff = 0;//pf->Rloss;
+	//		videoMode->format.format.g_bitdiff = 0;//pf->Gloss;
+	//		videoMode->format.format.b_bitdiff = 0;//pf->Bloss;
+	//		videoMode->format.format.unk_44 = 0;//pf->Ashift;
+	//		videoMode->format.format.unk_48 = 0;//pf->Aloss;
+	//		videoMode->aspectRatio = 1.0;
+	//		SDL_FreeFormat(pf);
+	//
+	//		stdVBufferTexFmt* fmt = &videoMode->format;
+	//		stdPlatform_Printf("Detected video mode: w %u, h %u, bpp %u, %u %u %u, %u %u %u\n", (unsigned)fmt->width, (unsigned)fmt->height, (unsigned)fmt->format.bpp, (unsigned)fmt->format.r_bits, (unsigned)fmt->format.g_bits, (unsigned)fmt->format.b_bits, (unsigned)fmt->format.r_shift, (unsigned)fmt->format.g_shift, (unsigned)fmt->format.b_shift);
+	//	}
+	//}
+
+	if (iVar2 == 0)
+	{
+		Video_renderSurface[2].format.width = 400;
+		Video_renderSurface[2].format.height = 400;
+		Video_renderSurface[2].format.width_in_bytes = 400;
+		Video_renderSurface[2].format.width_in_pixels = 400;
+		Video_renderSurface[3].format.width = 512;
+		Video_renderSurface[3].format.width_in_bytes = 512;
+		Video_renderSurface[3].format.width_in_pixels = 512;
+		Video_renderSurface[0].field_0 = 0;
+		Video_renderSurface[0].format.width = 320;
+		Video_renderSurface[0].format.height = 200;
+		Video_renderSurface[0].format.texture_size_in_bytes = 64000;
+		Video_renderSurface[0].format.width_in_bytes = 320;
+		Video_renderSurface[0].format.width_in_pixels = 320;
+		Video_renderSurface[0].format.format.colorMode = 0;
+		Video_renderSurface[0].format.format.bpp = 8;
+		Video_renderSurface[0].format.format.r_bits = 0;
+		Video_renderSurface[0].format.format.g_bits = 0;
+		Video_renderSurface[0].format.format.b_bits = 0;
+		Video_renderSurface[0].aspectRatio = 0.75;
+		Video_renderSurface[1].field_0 = 0;
+		Video_renderSurface[1].format.width = 320;
+		Video_renderSurface[1].format.height = 240;
+		Video_renderSurface[1].format.texture_size_in_bytes = 0x12c00;
+		Video_renderSurface[1].format.width_in_bytes = 320;
+		Video_renderSurface[1].format.width_in_pixels = 320;
+		Video_renderSurface[1].format.format.colorMode = 0;
+		Video_renderSurface[1].format.format.bpp = 8;
+		Video_renderSurface[1].format.format.r_bits = 0;
+		Video_renderSurface[1].format.format.g_bits = 0;
+		Video_renderSurface[1].format.format.b_bits = 0;
+		Video_renderSurface[1].aspectRatio = 1.0;
+		Video_renderSurface[2].field_0 = 0;
+		Video_renderSurface[2].format.texture_size_in_bytes = 160000;
+		Video_renderSurface[2].format.format.colorMode = 0;
+		Video_renderSurface[2].format.format.bpp = 8;
+		Video_renderSurface[2].format.format.r_bits = 0;
+		Video_renderSurface[2].format.format.g_bits = 0;
+		Video_renderSurface[2].format.format.b_bits = 0;
+		Video_renderSurface[2].aspectRatio = 1.0;
+		Video_renderSurface[3].field_0 = 0;
+		Video_renderSurface[3].format.height = 384;
+		Video_renderSurface[3].format.texture_size_in_bytes = 0x30000;
+		Video_renderSurface[3].format.format.colorMode = 0;
+		Video_renderSurface[3].format.format.bpp = 8;
+		Video_renderSurface[3].format.format.r_bits = 0;
+		Video_renderSurface[3].format.format.g_bits = 0;
+		Video_renderSurface[3].format.format.b_bits = 0;
+		Video_renderSurface[3].aspectRatio = 1.0;
+		Video_renderSurface[4].field_0 = 0;
+		Video_renderSurface[4].format.width = 640;
+		Video_renderSurface[4].format.height = 480;
+		Video_renderSurface[4].format.texture_size_in_bytes = 0x4b000;
+		Video_renderSurface[4].format.width_in_bytes = 640;
+		Video_renderSurface[4].format.width_in_pixels = 640;
+		Video_renderSurface[4].format.format.colorMode = 0;
+		Video_renderSurface[4].format.format.bpp = 8;
+		Video_renderSurface[4].format.format.r_bits = 0;
+		Video_renderSurface[4].format.format.g_bits = 0;
+		Video_renderSurface[4].format.format.b_bits = 0;
+		Video_renderSurface[4].aspectRatio = 1.0;
+		Video_renderSurface[5].field_0 = 0;
+		Video_renderSurface[5].format.width = 1024;
+		Video_renderSurface[5].format.height = 768;
+		Video_renderSurface[5].format.texture_size_in_bytes = 0xc0000;
+		Video_renderSurface[5].format.width_in_bytes = 1024;
+		Video_renderSurface[5].format.width_in_pixels = 1024;
+		Video_renderSurface[5].format.format.colorMode = 0;
+		Video_renderSurface[5].format.format.bpp = 8;
+		Video_renderSurface[5].format.format.r_bits = 0;
+		Video_renderSurface[5].format.format.g_bits = 0;
+		Video_renderSurface[5].format.format.b_bits = 0;
+		Video_renderSurface[5].aspectRatio = 1.0;
+		Video_renderSurface[6].field_0 = 0;
+		Video_renderSurface[6].format.width = 1920;// 1280;
+		Video_renderSurface[6].format.height = 1080;//1024;
+		Video_renderSurface[6].format.format.bpp = 8;
+		Video_renderSurface[7].format.width = 320;
+		Video_renderSurface[7].format.width_in_pixels = 320;
+		Video_renderSurface[6].format.texture_size_in_bytes = 0x140000;
+		Video_renderSurface[6].format.width_in_bytes = 1920;//1280;
+		Video_renderSurface[6].format.width_in_pixels = 1920;//1280;
+		Video_renderSurface[6].format.format.colorMode = 0;
+		Video_renderSurface[6].format.format.r_bits = 0;
+		Video_renderSurface[6].format.format.g_bits = 0;
+		Video_renderSurface[6].format.format.b_bits = 0;
+		Video_renderSurface[6].aspectRatio = 1.0;
+		Video_renderSurface[7].field_0 = 0;
+		Video_renderSurface[7].format.height = 240;
+		Video_renderSurface[7].format.texture_size_in_bytes = 0x25800;
+		Video_renderSurface[7].format.width_in_bytes = 640;
+		Video_renderSurface[7].format.format.colorMode = 1;
+		Video_renderSurface[7].format.format.bpp = 16;
+		Video_renderSurface[7].format.format.r_bits = 5;
+		Video_renderSurface[7].format.format.g_bits = 5;
+		Video_renderSurface[7].format.format.b_bits = 5;
+		Video_renderSurface[7].format.format.r_bitdiff = 3;
+		Video_renderSurface[7].format.format.g_bitdiff = 3;
+		Video_renderSurface[7].format.format.b_bitdiff = 3;
+		Video_renderSurface[7].format.format.r_shift = 10;
+		Video_renderSurface[7].format.format.g_shift = 5;
+		Video_renderSurface[7].format.format.b_shift = 0;
+		Video_renderSurface[7].aspectRatio = 1.0;
+		Video_renderSurface[8].field_0 = 0;
+		Video_renderSurface[8].format.width = 640;
+		Video_renderSurface[8].format.height = 480;
+		Video_renderSurface[8].format.texture_size_in_bytes = 0x96000;
+		Video_renderSurface[8].format.width_in_bytes = 1280;
+		Video_renderSurface[8].format.width_in_pixels = 640;
+		Video_renderSurface[8].format.format.colorMode = 1;
+		Video_renderSurface[8].format.format.bpp = 16;
+		Video_renderSurface[8].format.format.r_bits = 5;
+		Video_renderSurface[8].format.format.g_bits = 5;
+		Video_renderSurface[8].format.format.b_bits = 5;
+		Video_renderSurface[8].format.format.r_bitdiff = 3;
+		Video_renderSurface[8].format.format.g_bitdiff = 3;
+		Video_renderSurface[8].format.format.b_bitdiff = 3;
+		Video_renderSurface[8].format.format.r_shift = 10;
+		Video_renderSurface[8].format.format.g_shift = 5;
+		Video_renderSurface[8].format.format.b_shift = 0;
+		Video_renderSurface[8].aspectRatio = 1.0;
+		stdDisplay_numVideoModes = 9;
+	}
+	else if (iVar2 == 1)
+		return 0;
+	
+	//else if (iVar2 == 1)
+	//{
+	//	HVar1 = stdGdi_GetHwnd();
+	//	iVar2 = DirectDraw_Startup(HVar1);
+	//	if (iVar2 == 0)
+	//	{
+	//		return 0;
+	//	}
+	//}
+	qsort(Video_renderSurface, stdDisplay_numVideoModes, 0x54, stdDisplay_SortVideoModes);
+#else
+	stdDisplay_pCurDevice = &stdDisplay_aDevices[0];
+	stdDisplay_bOpen = 1;
+#endif
     return 1;
 }
 
@@ -89,16 +329,146 @@ void stdDisplay_Close()
     stdDisplay_bOpen = 0;
 }
 
-int stdDisplay_FindClosestMode(render_pair *a1, struct stdVideoMode *render_surface, unsigned int max_modes)
+int stdDisplay_FindClosestMode(render_pair *target, struct stdVideoMode *modes, unsigned int max_modes)
 {
+#ifdef TILE_SW_RASTER
+	int bestIndex = 0;
+	int bestScore = 0;
+	
+	if (stdDisplay_numVideoModes == 0 || max_modes == 0)
+		return bestIndex;
+
+	for (int i = 0; i < max_modes; i++)
+	{
+		stdVBufferTexFmt* fmt = &modes[i].format;
+		int score = 0;
+
+		// Check if is16bit matches (assuming colorMode encodes is16bit info)
+		int modeIs16bit = (fmt->format.colorMode != STDCOLOR_PAL)? 1 : 0;
+		if (modeIs16bit == target->render_8bpp.palBytes)
+		{
+			score = 1;
+
+			if (fmt->format.bpp == target->render_rgb.bpp)
+			{
+				score = 2;
+
+				if (fmt->width == target->render_8bpp.width)
+				{
+					score = 3;
+
+					if (fmt->height == target->render_8bpp.height)
+					{
+						score = 4;
+
+						if (target->render_8bpp.palBytes != 1)
+						{
+							// Perfect match for non-16bit
+							return i;
+						}
+
+						// For 16-bit mode, check RGB bits too
+						if (fmt->format.r_bits == target->render_rgb.rBpp &&
+							fmt->format.g_bits == target->render_rgb.gBpp &&
+							fmt->format.b_bits == target->render_rgb.bBpp)
+						{
+							// Perfect 16bit RGB match
+							return i;
+						}
+					}
+				}
+			}
+		}
+
+		if (score > bestScore)
+		{
+			bestScore = score;
+			bestIndex = i;
+		}
+	}
+	return bestIndex;
+#else
+	stdDisplay_bPaged = 1;
+	stdDisplay_bModeSet = 1;
     Video_curMode = 0;
-    stdDisplay_bPaged = 1;
-    stdDisplay_bModeSet = 1;
-    return 0;
+	return 0;
+#endif
 }
 
 int stdDisplay_SetMode(unsigned int modeIdx, const void *palette, int paged)
 {
+#ifdef TILE_SW_RASTER
+	if (modeIdx >= stdDisplay_numVideoModes)
+		return 0;
+
+	stdDisplay_FreeBackBuffers();
+
+	stdDisplay_bPaged = paged;
+	Video_curMode = modeIdx;
+	stdDisplay_pCurVideoMode = &Video_renderSurface[modeIdx];
+
+	SDL_Surface* otherSurface = SDL_CreateRGBSurface(0, stdDisplay_pCurVideoMode->format.width, stdDisplay_pCurVideoMode->format.height, 8,
+													 0,
+													 0,
+													 0,
+													 0);
+	//SDL_Surface* menuSurface = SDL_CreateRGBSurface(0, stdDisplay_pCurVideoMode->format.width, stdDisplay_pCurVideoMode->format.height, 8,
+	//												0,
+	//												0,
+	//												0,
+	//												0);
+	SDL_Surface* overlaySurface = SDL_CreateRGBSurface(0, stdDisplay_pCurVideoMode->format.width, stdDisplay_pCurVideoMode->format.height, 8, 0, 0, 0, 0);
+
+	if (palette)
+	{
+		memcpy(stdDisplay_tmpGammaPal, palette, 0x300);
+		if (stdDisplay_paGammaTable != NULL && stdDisplay_gammaIdx != 0)
+		{
+			stdColor_GammaCorrect(&stdDisplay_gammaPalette[0].r, stdDisplay_tmpGammaPal, 256,
+								  stdDisplay_paGammaTable[stdDisplay_gammaIdx - 1]);
+		}
+		else
+		{
+			memcpy(stdDisplay_gammaPalette, palette, 0x300);
+		}
+
+		const rdColor24* pal24 = (const rdColor24*)palette;
+		SDL_Color* tmp = stdDisplay_paletteScratch;
+		for (int i = 0; i < 256; i++)
+		{
+			tmp[i].r = pal24[i].r;
+			tmp[i].g = pal24[i].g;
+			tmp[i].b = pal24[i].b;
+			tmp[i].a = 0xFF;
+		}
+
+		SDL_SetPaletteColors(otherSurface->format->palette, tmp, 0, 256);
+		//SDL_SetPaletteColors(menuSurface->format->palette, tmp, 0, 256);
+		SDL_SetPaletteColors(overlaySurface->format->palette, tmp, 0, 256);
+	}
+
+	//SDL_SetSurfacePalette(otherSurface, palette);
+	//SDL_SetSurfacePalette(menuSurface, palette);
+
+	Video_otherBuf.sdlSurface = otherSurface;
+	Video_menuBuffer.sdlSurface = otherSurface;//menuSurface;
+	Video_overlayMapBuffer.sdlSurface = overlaySurface;
+
+	_memcpy(&Video_otherBuf.format, &stdDisplay_pCurVideoMode->format, sizeof(Video_otherBuf.format));
+	_memcpy(&Video_menuBuffer.format, &stdDisplay_pCurVideoMode->format, sizeof(Video_menuBuffer.format));
+
+	_memcpy(&Video_overlayMapBuffer.format, &stdDisplay_pCurVideoMode->format, sizeof(Video_overlayMapBuffer.format));
+
+	Video_otherBuf.palette = palette;
+	Video_menuBuffer.palette = palette;
+
+	stdDisplay_VBufferFill(&Video_menuBuffer, 0, NULL);
+
+	stdDisplay_bModeSet = 1;
+	return 1;
+
+#else
+
     uint32_t newW = Window_xSize;
     uint32_t newH = Window_ySize;
 
@@ -118,6 +488,12 @@ int stdDisplay_SetMode(unsigned int modeIdx, const void *palette, int paged)
         newW = 640;
     if (newH < 480)
         newH = 480;
+	
+#ifdef TILE_SW_RASTER
+	// eebs: fixme
+	newW = 640;
+	newH = 480;
+#endif
 
     stdDisplay_pCurVideoMode = &Video_renderSurface[modeIdx];
     
@@ -244,6 +620,7 @@ int stdDisplay_SetMode(unsigned int modeIdx, const void *palette, int paged)
     Video_bModeSet = 1;
     
     return 1;
+#endif
 }
 
 int stdDisplay_ClearRect(stdVBuffer *buf, int fillColor, rdRect *rect)
@@ -734,6 +1111,25 @@ int stdDisplay_SetCooperativeLevel(uint32_t a){return 0;}
 int stdDisplay_DrawAndFlipGdi(uint32_t a){return 0;}
 void stdDisplay_FreeBackBuffers()
 {
+#ifdef TILE_SW_RASTER
+	if (stdDisplay_bModeSet)
+	{
+		if (Video_otherBuf.sdlSurface)
+			SDL_FreeSurface(Video_otherBuf.sdlSurface);
+		//if (Video_menuBuffer.sdlSurface)
+		//	SDL_FreeSurface(Video_menuBuffer.sdlSurface);
+		if (Video_overlayMapBuffer.sdlSurface)
+			SDL_FreeSurface(Video_overlayMapBuffer.sdlSurface);
+
+		Video_otherBuf.palette = 0;
+		Video_menuBuffer.palette = 0;
+
+		Video_otherBuf.sdlSurface = 0;
+		Video_menuBuffer.sdlSurface = 0;
+		Video_overlayMapBuffer.sdlSurface = 0;
+		stdDisplay_bModeSet = 0;
+	}
+#endif
 }
 #endif
 

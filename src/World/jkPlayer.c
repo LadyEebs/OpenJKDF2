@@ -1297,7 +1297,7 @@ void jkPlayer_DrawPov()
 
         rdMatrix_BuildRotate34(&jkSaber_rotateMat, &jkSaber_rotateVec);
 
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
         // Force weapon to draw in front of scene
 	#ifdef RENDER_DROID2
 		//rdRenderPass("jkPlayer_DrawPov", 2, RD_RENDERPASS_CLEAR_DEPTH | (jkPlayer_enableSSAO ? RD_RENDERPASS_AMBIENT_OCCLUSION : 0));

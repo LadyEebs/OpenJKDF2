@@ -101,7 +101,7 @@ int jkHud_Open()
     bitmapIter = &jkHud_aBitmaps[0];
     for (int i = 0; i < ARRAYSIZE(jkHud_aBitmaps); i++)
     {
-#ifndef SDL2_RENDER
+#if !defined(SDL2_RENDER) || defined(TILE_SW_RASTER)
         if ( Video_format.format.bpp == 8 )
             _sprintf(tmp, "ui\\bm\\%s", bitmapIter->path8bpp);
         else
@@ -130,7 +130,7 @@ int jkHud_Open()
     fontIter = &jkHud_aFonts[0];
     for (int i = 0; i < 6; i++)
     {
-#ifndef SDL2_RENDER
+#if !defined(SDL2_RENDER) || defined(TILE_SW_RASTER)
         if ( Video_format.format.bpp == 8 )
             _sprintf(tmp, "ui\\sft\\%s", fontIter->path8bpp);
         else
@@ -421,7 +421,7 @@ void jkHud_Draw()
         jkDev_sub_41FC40(0x66, std_genBuffer);
     }
 
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
     jkHud_DrawGPU();
 
 	STD_END_PROFILER_LABEL();
@@ -431,7 +431,7 @@ void jkHud_Draw()
 
     //std3D_DrawUIBitmap(0,0,64,64,0,0,4.0,jkHud_pTestbitmap);
 
-#ifndef SDL2_RENDER
+#if !defined(SDL2_RENDER) || defined(TILE_SW_RASTER)
     stdVBuffer* pOverlayBuffer = Video_pMenuBuffer;
     rdCanvas* pOverlayCanvas = Video_pCanvas;
 #else
@@ -440,7 +440,7 @@ void jkHud_Draw()
 #endif
 
     if (Main_bNoHUD) {
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
     stdDisplay_VBufferUnlock(Video_pCanvas->vbuffer);
 #endif
 		STD_END_PROFILER_LABEL();
@@ -452,16 +452,16 @@ void jkHud_Draw()
     if ( Video_modeStruct.b3DAccel )
         stdDisplay_VBufferLock(Video_pMenuBuffer);
 
-#ifdef SDL2_RENDER
-    stdDisplay_VBufferLock(pOverlayBuffer);
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
+	stdDisplay_VBufferLock(pOverlayBuffer);
 #endif
 
     sithOverlayMap_Render1(pOverlayCanvas);
     if ( Video_modeStruct.b3DAccel )
         stdDisplay_VBufferUnlock(Video_pMenuBuffer);
 
-#ifdef SDL2_RENDER
-    stdDisplay_VBufferLock(Video_pCanvas->vbuffer);
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
+	stdDisplay_VBufferLock(Video_pCanvas->vbuffer);
 #endif
 
     if ( v4->type == SITH_THING_PLAYER && !(sithNet_isServer && jkGuiNetHost_bIsDedicated) )
@@ -621,7 +621,7 @@ void jkHud_Draw()
 #endif /* ifdef QOL_IMPROVEMENTS */
 
     )
-
+	if(0) // issue with display and crashing in old path
     {
 #ifdef DYNAMIC_POV
 	// draw crosshair on projected position
@@ -631,7 +631,7 @@ void jkHud_Draw()
 		v21 = v20 * (64.0f / tex_h);
 		v20 *= (64.0f / tex_w);
 		//std3D_DrawUIBitmapRGBA(jkHud_pCrosshair, 0, jkPlayer_crosshairPos.x - tex_w * v20 / 2.0, jkPlayer_crosshairPos.y - tex_h * v20 / 2.0, NULL, v20, v20, 1, 0xFF, 0xFF, 0xFF, 0x0);
-		stdDisplay_VBufferCopy(*jkHud_pCrosshair->mipSurfaces, jkHud_pCrosshair->mipSurfaces[0], jkPlayer_crosshairPos.x - tex_w * v20 / 2.0, jkPlayer_crosshairPos.y - tex_h * v20 / 2.0, 0, 1);
+		stdDisplay_VBufferCopy(Video_pCanvas->vbuffer, jkHud_pCrosshair->mipSurfaces[0], jkPlayer_crosshairPos.x - tex_w * v20 / 2.0, jkPlayer_crosshairPos.y - tex_h * v20 / 2.0, 0, 1);
 #else
         uint32_t tmpInt;
 #ifdef QOL_IMPROVEMENTS
@@ -910,7 +910,7 @@ LABEL_116:
         stdDisplay_VBufferCopy(Video_pMenuBuffer, *jkHud_pStatusRightBm->mipSurfaces, jkHud_rightBlitX, jkHud_rightBlitY, 0, 1);
     }
 
-#ifdef DEBUG_QOL_CHEATS
+//#ifdef DEBUG_QOL_CHEATS
     int fps = (int)sithTime_TickHz;
     if (fps > 999)
         fps = 999;
@@ -919,14 +919,16 @@ LABEL_116:
     memset(tmp, 0, 32);
     stdString_snprintf(tmp, 32, "%03d", fps);
     stdFont_DrawAscii(Video_pMenuBuffer, jkHud_pMsgFontSft, jkHud_leftBlitX, jkHud_leftBlitY, 999, tmp, 0);
-#endif
+//#endif
 
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
     stdDisplay_VBufferUnlock(Video_pCanvasOverlayMap->vbuffer);
     stdDisplay_VBufferUnlock(Video_pCanvas->vbuffer);
 #endif
 
-    jkHud_DrawGPU();
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
+	jkHud_DrawGPU();
+#endif
 	STD_END_PROFILER_LABEL();
 }
 
@@ -937,8 +939,12 @@ void jkHud_DrawProfilerStats(const char* functionName, int64_t duration, uint32_
 	char tmpText[1024];
 	snprintf(&tmpText, 1024, "%s: %.3f ms (calls: %d)", functionName, (double)duration * 0.001, numCalls);
 
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
 	stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, 25, profilerY, 999, tmpText, 1, jkPlayer_hudScale);
-	
+#else
+	stdFont_DrawAscii(Video_pMenuBuffer, jkHud_pMsgFontSft, 25, profilerY, 999, tmpText, 1);
+#endif
+
 	profilerY += stdFont_GetHeight(jkHud_pMsgFontSft) * jkPlayer_hudScale + jkHud_pMsgFontSft->marginY;
 }
 
@@ -1024,7 +1030,7 @@ void jkHud_DrawGPU()
 
     //std3D_DrawUIBitmap(0,0,64,64,0,0,4.0,jkHud_pTestbitmap);
 
-#ifndef SDL2_RENDER
+#if !defined(SDL2_RENDER) || defined(TILE_SW_RASTER)
     stdVBuffer* pOverlayBuffer = Video_pMenuBuffer;
     rdCanvas* pOverlayCanvas = Video_pCanvas;
 #else
@@ -1033,7 +1039,7 @@ void jkHud_DrawGPU()
 #endif
 
     if (Main_bNoHUD) {
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
     stdDisplay_VBufferUnlock(Video_pCanvas->vbuffer);
 #endif
         return;
@@ -1043,16 +1049,16 @@ void jkHud_DrawGPU()
     if ( Video_modeStruct.b3DAccel )
         stdDisplay_VBufferLock(Video_pMenuBuffer);
 
-#ifdef SDL2_RENDER
-    stdDisplay_VBufferLock(pOverlayBuffer);
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
+	stdDisplay_VBufferLock(pOverlayBuffer);
 #endif
 
     sithOverlayMap_Render1(pOverlayCanvas);
     if ( Video_modeStruct.b3DAccel )
         stdDisplay_VBufferUnlock(Video_pMenuBuffer);
 
-#ifdef SDL2_RENDER
-    stdDisplay_VBufferLock(Video_pCanvas->vbuffer);
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
+	stdDisplay_VBufferLock(Video_pCanvas->vbuffer);
 #endif
 
 	// todo: custom font for debugging
@@ -1100,7 +1106,7 @@ void jkHud_DrawGPU()
                 jkHud_pFieldlightBm->yPos,
                 0,
                 1);*/
-            std3D_DrawUIBitmap(jkHud_pFieldlightBm, v6, jkHud_rightBlitX + (int)((flex_t)jkHud_pFieldlightBm->xPos * jkPlayer_hudScale), jkHud_rightBlitY + (int)((flex_t)jkHud_pFieldlightBm->yPos * jkPlayer_hudScale), NULL, jkPlayer_hudScale, 1);
+            std3D_DrawUIBitmap(jkHud_pFieldlightBm, v6, jkHud_rightBlitX + HUD_SCALED(jkHud_pFieldlightBm->xPos), jkHud_rightBlitY + HUD_SCALED(jkHud_pFieldlightBm->yPos), NULL, jkPlayer_hudScale, 1);
         }
         v7 = (int32_t)sithInventory_GetBinAmount(v4, SITHBIN_FORCEMANA);
         if ( v7 < 0 )
@@ -1560,7 +1566,7 @@ LABEL_116:
     stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, jkHud_leftBlitX, jkHud_leftBlitY, 999, tmp, 1, jkPlayer_hudScale);
 #endif
 
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
     stdDisplay_VBufferUnlock(Video_pCanvasOverlayMap->vbuffer);
     stdDisplay_VBufferUnlock(Video_pCanvas->vbuffer);
 #endif

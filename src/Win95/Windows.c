@@ -13,6 +13,7 @@
 #include "jk.h"
 #include "General/stdString.h"
 #include "Cog/sithCog.h"
+#include "Win95/stdDisplay.h"
 
 #include "Main/Main.h"
 #include "Main/InstallHelper.h"
@@ -245,12 +246,12 @@ int Windows_ErrorMsgboxWide(const char *a1, ...)
     va_list va; // [esp+808h] [ebp+8h] BYREF
 
     va_start(va, a1);
-#ifndef SDL2_RENDER
+#if !defined(SDL2_RENDER) || defined(TILE_SW_RASTER)
     v1 = jkStrings_GetUniStringWithFallback(a1);
     jk_vsnwprintf(Text, 0x400u, v1, va);
     v4 = jkStrings_GetUniStringWithFallback("ERROR");
     v2 = stdGdi_GetHwnd();
-    return jk_MessageBoxW(v2, Text, v4, 0x10u);
+    return jk_MessageBoxW(v2, Text, v4, MB_ICONERROR);
 #else
     v1 = jkStrings_GetUniStringWithFallback(a1);
     jk_vsnwprintf(Text, 0x400u, v1, va);
@@ -266,7 +267,7 @@ int Windows_ErrorMsgboxWide(const char *a1, ...)
 int Windows_ErrorMsgbox(const char *a1, ...)
 {
     wchar_t *v1; // eax
-    HWND v2; // eax
+	stdHwnd v2; // eax
     wchar_t *v4; // [esp-8h] [ebp-408h]
     wchar_t Text[512]; // [esp+0h] [ebp-400h] BYREF
     va_list va; // [esp+408h] [ebp+8h] BYREF
@@ -274,12 +275,12 @@ int Windows_ErrorMsgbox(const char *a1, ...)
 
     va_start(va, a1);
 
-#ifndef SDL2_RENDER
+#if !defined(SDL2_RENDER) || defined(TILE_SW_RASTER)
     v1 = jkStrings_GetUniStringWithFallback(a1);
     jk_vsnwprintf(Text, 0x200u, v1, va);
     v4 = jkStrings_GetUniStringWithFallback("ERROR");
     v2 = stdGdi_GetHwnd();
-    return jk_MessageBoxW(v2, Text, v4, 0x10u);
+    return jk_MessageBoxW(v2, Text, v4, MB_ICONERROR);
 #else
     v1 = jkStrings_GetUniStringWithFallback(a1);
     jk_vsnwprintf(Text, 0x200u, v1, va);
@@ -304,13 +305,13 @@ void Windows_GameErrorMsgbox(const char *a1, ...)
 
     va_start(va, a1);
 
-#if !defined(SDL2_RENDER) && defined(WIN32)
+#if (!defined(SDL2_RENDER) && defined(WIN32)) || defined(TILE_SW_RASTER)
     v1 = jkStrings_GetUniStringWithFallback(a1);
     jk_vsnwprintf(Text, 0x200u, v1, va);
     v3 = jkStrings_GetUniStringWithFallback("ERROR");
     stdDisplay_ClearMode();
     v2 = stdGdi_GetHwnd();
-    jk_MessageBoxW(v2, Text, v3, 0x10u);
+    jk_MessageBoxW(v2, Text, v3, MB_ICONERROR);
 #elif defined(SDL2_RENDER)
     vsnprintf(tmp, 0x200u, a1, va);
     jk_printf("FATAL ERROR: %s\n", tmp);

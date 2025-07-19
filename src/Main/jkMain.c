@@ -1595,6 +1595,56 @@ void jkMain_FixRes()
     sithCamera_Open(Video_pCanvas, stdDisplay_pCurVideoMode->aspectRatio);
 }
 
+#ifdef TILE_SW_RASTER
+int jkMain_SetVideoMode()
+{
+	signed int result; // eax
+	wchar_t* v1; // eax
+	wchar_t* v2; // eax
+	wchar_t* v3; // [esp-4h] [ebp-10h]
+	wchar_t* v4; // [esp-4h] [ebp-10h]
+
+	if (jkGame_isDDraw)
+		return 0;
+	jkPlayer_Open();
+	if (Video_SetVideoDesc(sithWorld_pCurrentWorld->colormaps->colors))
+		goto LABEL_12;
+	if (!sithNet_isMulti)
+	{
+		thing_six = 1;
+		sithControl_Close();
+		v3 = jkStrings_GetUniStringWithFallback("ERR_CHANGING_VIDEO_DESC");
+		v1 = jkStrings_GetUniStringWithFallback("ERR_CHANGING_VIDEO_MODE");
+		jkGuiDialog_ErrorDialog(v1, v3);
+		sithControl_Open();
+		thing_six = 0;
+	}
+	_memcpy(&Video_modeStruct, &Video_modeStruct2, sizeof(Video_modeStruct));
+	jkGuiDisplay_sub_4149C0();
+	if (Video_SetVideoDesc(sithWorld_pCurrentWorld->colormaps->colors))
+	{
+	LABEL_12:
+		Windows_InitGdi(stdDisplay_pCurDevice->video_device[0].windowedMaybe);
+		jkGame_isDDraw = 1;
+		result = 1;
+	}
+	else
+	{
+		jkPlayer_Close();
+		if (sithControl_IsOpen())
+			sithControl_Close();
+		if (jkGuiRend_thing_five)
+			jkGuiRend_thing_four = 1;
+		jkSmack_stopTick = 1;
+		jkSmack_nextGuiState = 3;
+		v4 = jkStrings_GetUniStringWithFallback("ERR_CHANGING_VIDEO_ABORT");
+		v2 = jkStrings_GetUniStringWithFallback("ERR_CHANGING_VIDEO_MODE");
+		jkGuiDialog_ErrorDialog(v2, v4);
+		result = 0;
+	}
+	return result;
+}
+#else
 int jkMain_SetVideoMode()
 {
     signed int result; // eax
@@ -1644,6 +1694,8 @@ int jkMain_SetVideoMode()
         newW = 640;
     if (newH < 480)
         newH = 480;
+	
+	Video_SetVideoDesc(sithWorld_pCurrentWorld->colormaps->colors);
 
     Video_modeStruct.viewSizeIdx = 0;
     Video_modeStruct.aViewSizes[Video_modeStruct.viewSizeIdx].xMin = 0;
@@ -1691,7 +1743,11 @@ int jkMain_SetVideoMode()
     }
     jkDev_Open();
     
+#ifdef TILE_SW_RASTER
+	rdroid_curAcceleration = 0;// tmp
+#else
     rdroid_curAcceleration = 1;
+#endif
     Video_pCanvas = rdCanvas_New(2, Video_pMenuBuffer, Video_pVbufIdk, 0, 0, newW, newH, 6);
 #if defined(SDL2_RENDER)
     Video_pCanvasOverlayMap = rdCanvas_New(2, Video_pOverlayMapBuffer, Video_pOverlayMapBuffer, 0, 0, newW, newH, 6);
@@ -1717,4 +1773,5 @@ int jkMain_SetVideoMode()
     jkGame_isDDraw = 1;
     return 1;
 }
+#endif
 #endif

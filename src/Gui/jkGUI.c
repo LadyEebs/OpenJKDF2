@@ -237,9 +237,9 @@ void jkGui_Shutdown()
     playerShortName[31] = 0;
     wuRegistry_SetString("playerShortName", playerShortName);
 
-#ifndef SDL2_RENDER
-    stdDisplay_422A50();
-#endif
+//#ifndef SDL2_RENDER
+    stdDisplay_FreeBackBuffers();
+//#endif
     jkGui_bInitialized = 0;
 }
 
@@ -259,9 +259,14 @@ int jkGui_SetModeMenu(const void *palette)
     params.field_10 = 1;
     mode.render_8bpp.bpp = 0;
     mode.render_8bpp.rBpp = 0x3F800000;
+#ifdef TILE_SW_RASTER
+	mode.render_8bpp.width = 640;
+	mode.render_8bpp.height = 480;
+#else
     mode.render_8bpp.width = Window_xSize;
     mode.render_8bpp.height = Window_ySize;
-    mode.render_8bpp.rShift = 0;
+#endif	
+	mode.render_8bpp.rShift = 0;
     mode.render_8bpp.gShift = 0;
     mode.render_8bpp.bShift = 0;
     mode.render_8bpp.palBytes = 0;
