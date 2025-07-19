@@ -7,6 +7,10 @@
 #endif
 #endif
 
+#ifdef TARGET_SSE
+#include <emmintrin.h> // SSE2
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -1,5 +1,6 @@
 #include "stdDisplay.h"
 
+#include "std.h"
 #include "stdPlatform.h"
 #include "jk.h"
 #include "Win95/Video.h"
@@ -419,6 +420,117 @@ int stdDisplay_VBufferCopy(stdVBuffer *vbuf, stdVBuffer *vbuf2, unsigned int bli
     uint32_t srcStride = vbuf2->format.width_in_bytes;
     uint32_t dstStride = vbuf->format.width_in_bytes;
 
+#ifdef TARGET_SSE
+	int self_copy = 0;
+	int has_alpha = !(rect->width == 640) && (alpha_maybe & 1);
+
+	// Handle self-copy case with temporary buffer
+	if (dstPixels == srcPixels)
+	{
+		size_t buf_len = srcStride * dstRect.h;
+		uint8_t* tempBuffer = (uint8_t*)_mm_malloc(buf_len, 16); // Aligned allocation
+		SDL_Rect dstRect_inter = { 0, 0, rect->width, rect->height };
+
+		// Process rows in blocks
+		for (int j = 0; j < rect->height; j++)
+		{
+			int srcY = j + srcRect.y;
+			if ((uint32_t)srcY >= (uint32_t)vbuf2->format.height) continue;
+
+			uint8_t* srcRow = srcPixels + srcY * srcStride + srcRect.x;
+			uint8_t* dstRow = tempBuffer + j * srcStride;
+
+			int i = 0;
+			// Process 16 bytes at a time
+			for (; i + 15 < rect->width; i += 16)
+			{
+				// Load 16 pixels
+				__m128i pixels = _mm_loadu_si128((__m128i*)(srcRow + i));
+
+				if (has_alpha)
+				{
+					// Create mask for non-zero pixels
+					__m128i zero = _mm_setzero_si128();
+					__m128i mask = _mm_cmpeq_epi8(pixels, zero);
+
+					// For self-copy, we just store all pixels (no alpha skip)
+					_mm_store_si128((__m128i*)(dstRow + i), pixels);
+				}
+				else
+				{
+					_mm_store_si128((__m128i*)(dstRow + i), pixels);
+				}
+			}
+
+			// Handle remaining pixels
+			for (; i < rect->width; i++)
+				dstRow[i] = srcRow[i];
+		}
+
+		srcPixels = tempBuffer;
+		srcRect.x = 0;
+		srcRect.y = 0;
+		self_copy = 1;
+	}
+
+	// Main blitting loop with SSE optimization
+	for (int j = 0; j < rect->height; j++)
+	{
+		int srcY = j + srcRect.y;
+		int dstY = j + dstRect.y;
+
+		if ((uint32_t)srcY >= (uint32_t)vbuf2->format.height) continue;
+		if ((uint32_t)dstY >= (uint32_t)vbuf->format.height) continue;
+
+		uint8_t* srcRow = srcPixels + srcY * srcStride + srcRect.x;
+		uint8_t* dstRow = dstPixels + dstY * dstStride + dstRect.x;
+
+		int i = 0;
+		if (!has_alpha)
+		{
+			// Fast path: no alpha handling, copy entire rows
+			for (; i + 15 < rect->width; i += 16)
+			{
+				__m128i pixels = _mm_loadu_si128((__m128i*)(srcRow + i));
+				_mm_storeu_si128((__m128i*)(dstRow + i), pixels);
+			}
+		}
+		else
+		{
+			 // Alpha handling path
+			__m128i zero = _mm_setzero_si128();
+			for (; i + 15 < rect->width; i += 16)
+			{
+				__m128i pixels = _mm_loadu_si128((__m128i*)(srcRow + i));
+				__m128i mask = _mm_cmpeq_epi8(pixels, zero);
+
+				// Load destination pixels
+				__m128i dstPx = _mm_loadu_si128((__m128i*)(dstRow + i));
+
+				// Blend: where mask is true (pixel==0), keep destination
+				__m128i result = _mm_or_si128(
+					_mm_and_si128(mask, dstPx),
+					_mm_andnot_si128(mask, pixels)
+				);
+
+				_mm_storeu_si128((__m128i*)(dstRow + i), result);
+			}
+		}
+
+		// Handle remaining pixels
+		for (; i < rect->width; i++)
+		{
+			uint8_t pixel = srcRow[i];
+			if (!(pixel == 0 && has_alpha))
+				dstRow[i] = pixel;
+		}
+	}
+
+	// Free temporary buffer if used
+	if (self_copy)
+		_mm_free(srcPixels);
+	
+#else
     int self_copy = 0;
 
     if (dstPixels == srcPixels)
@@ -446,8 +558,6 @@ int stdDisplay_VBufferCopy(stdVBuffer *vbuf, stdVBuffer *vbuf2, unsigned int bli
             }
         }
         
-        
-
         srcPixels = dstPixels;
         srcRect.x = 0;
         srcRect.y = 0;
@@ -479,6 +589,7 @@ int stdDisplay_VBufferCopy(stdVBuffer *vbuf, stdVBuffer *vbuf2, unsigned int bli
     {
         free(srcPixels);
     }
+#endif
 
 #ifdef HW_VBUFFER
 	if (vbuf != vbuf2)
