@@ -2530,7 +2530,7 @@ void sithRender_NoClip(sithSector *sector, rdClipFrustum *frustumArg, flex_t a3,
 #endif
 
             if ((thing->thingflags & SITH_TF_LIGHT)
-                 && !(thing->thingflags & (SITH_TF_DISABLED|SITH_TF_10|SITH_TF_WILLBEREMOVED)))
+                 && !(thing->thingflags & (SITH_TF_DISABLED| SITH_TF_INVISIBLE |SITH_TF_WILLBEREMOVED)))
             {
                 if ( thing->light > 0.0 )
                 {
