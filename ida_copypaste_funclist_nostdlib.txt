@@ -566,7 +566,7 @@ stdDisplay_RestoreDisplayMode	.text	004220B0	00000028			R	.	.	.	.	.	T	.
 stdDisplay_Open	.text	004220E0	000003F0	0000000C	00000004	R	.	.	.	.	.	T	.
 stdDisplay_Close	.text	004224D0	000001C6	00000004	00000000	R	.	.	.	.	.	T	.
 stdDisplay_SetMode	.text	004226A0	000003B0	00000010	0000000C	R	.	.	.	.	.	T	.
-stdDisplay_422A50	.text	00422A50	000001D4	00000008	00000000	R	.	.	.	.	.	T	.
+stdDisplay_FreeBackBuffers	.text	00422A50	000001D4	00000008	00000000	R	.	.	.	.	.	T	.
 stdDisplay_ClearMode	.text	00422C30	00000243	00000010	00000000	R	.	.	.	.	.	.	.
 stdDisplay_DrawAndFlipGdi	.text	00422E80	0000010F	00000004	00000000	R	.	.	.	.	.	T	.
 stdDisplay_SetCooperativeLevel	.text	00422F90	0000002F			R	.	.	.	.	.	.	.
