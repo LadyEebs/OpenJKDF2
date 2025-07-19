@@ -5,8 +5,8 @@
 
 #include "rdRaster.h"
 
-//typedef numeric::fixed<24, 8> fixed_t;
-typedef float fixed_t;
+typedef numeric::fixed<24, 8> fixed_t;
+//typedef float fixed_t;
 
 //static inline __m128i mm_min_epu16_sse2(__m128i a, __m128i b)
 //{
@@ -857,20 +857,20 @@ void rdRaster_DrawToTile(rdProcEntry* entry, rdTexinfo* texinfo, int tileX, int 
 		fixed_t w2_dy = setup.B2;
 
 		// Z step per pixel
-		flex_t z_dx = fma(z1, w1_dx, z2 * w2_dx);
+		flex_t z_dx = fma(z1, (flex_t)w1_dx, z2 * (flex_t)w2_dx);
 
 		// UV step per pixel
 		flex_maybe<UseTexture> u_dx, v_dx;
 		if constexpr (UseTexture)
 		{
-			u_dx = fma(u1, w1_dx, u2 * w2_dx);
-			v_dx = fma(v1, w1_dx, v2 * w2_dx);
+			u_dx = fma(u1, (flex_t)w1_dx, u2 * (flex_t)w2_dx);
+			v_dx = fma(v1, (flex_t)w1_dx, v2 * (flex_t)w2_dx);
 		}
 
 		// Light step per pixel
 		flex_maybe<UseGouraud> l_dx;
 		if constexpr (UseGouraud)
-			l_dx = fma(light1, w1_dx, light2 * w2_dx);
+			l_dx = fma(light1, (flex_t)w1_dx, light2 * (flex_t)w2_dx);
 
 		for (int y = minY; y <= maxY; y++)
 		{
@@ -880,20 +880,20 @@ void rdRaster_DrawToTile(rdProcEntry* entry, rdTexinfo* texinfo, int tileX, int 
 			fixed_t w2 = w2_row;
 
 			// Z at row start
-			flex_t z_row = fma(w1_row, z1, fma(w2_row, z2, z0));
+			flex_t z_row = fma((flex_t)w1_row, z1, fma((flex_t)w2_row, z2, z0));
 			
 			// UV at row start
 			flex_maybe<UseTexture> u_row, v_row;
 			if constexpr (UseTexture)
 			{
-				u_row = fma(w1_row, u1, fma(w2_row, u2, u0));
-				v_row = fma(w1_row, v1, fma(w2_row, v2, v0));
+				u_row = fma((flex_t)w1_row, u1, fma((flex_t)w2_row, u2, u0));
+				v_row = fma((flex_t)w1_row, v1, fma((flex_t)w2_row, v2, v0));
 			}
 
 			// Light at row start
 			flex_maybe<UseGouraud> l_row;
 			if constexpr (UseGouraud)
-				l_row = fma(w1_row, light1, fma(w2_row, light2, light0));
+				l_row = fma((flex_t)w1_row, light1, fma((flex_t)w2_row, light2, light0));
 
 			// Tile coordinate at row start
 			int offset = (y - tileMinY) * RDCACHE_FINE_TILE_SIZE + tileOffsetX;
