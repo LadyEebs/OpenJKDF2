@@ -919,7 +919,7 @@ void rdRaster_DrawToTile(rdProcEntry* entry, rdTexinfo* texinfo, int tileX, int 
 			for (int x = minX; x <= maxX; x++)
 			{
 				// Barycentric test (could be faster..)
-				if (w0 > 0 && w1 > 0 && w2 > 0)
+				if ((w0.to_raw() | w1.to_raw() | w2.to_raw()) >= 0)
 				{
 					flex_t z = stdMath_Rcp(z_row);
 
