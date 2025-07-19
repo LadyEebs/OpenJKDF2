@@ -20,6 +20,7 @@
 
 #ifdef TARGET_SSE
 #include <emmintrin.h> // SSE2
+#include <smmintrin.h> // SSE4.1
 #endif
 
 #ifdef __cplusplus
@@ -1571,6 +1572,9 @@ typedef struct rdColormap
     void* dword34C;
 #ifdef RENDER_DROID2
 	//uint8_t searchTable[64][64][64];
+#endif
+#ifdef TILE_SW_RASTER
+	uint8_t* searchTable;
 #endif
 } rdColormap;
 

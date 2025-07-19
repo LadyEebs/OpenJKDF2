@@ -661,8 +661,10 @@ stdVBuffer* stdDisplay_VBufferNew(stdVBufferTexFmt *fmt, int create_ddraw_surfac
     //out->format.width_in_bytes = 0;
     //out->surface_lock_alloc = std_pHS->alloc(texture_size_in_bytes);
     
+#ifndef TILE_SW_RASTER
     //if (fmt->format.g_bits == 6) // RGB565
     {
+		// eebs: why is this here??
         fmt->format.r_bits = 0;
         fmt->format.g_bits = 0;
         fmt->format.b_bits = 0;
@@ -670,6 +672,7 @@ stdVBuffer* stdDisplay_VBufferNew(stdVBufferTexFmt *fmt, int create_ddraw_surfac
         fmt->format.g_shift = 0;
         fmt->format.b_shift = 0;
     }
+#endif
 
     uint32_t rbitmask = ((1 << fmt->format.r_bits) - 1) << fmt->format.r_shift;
     uint32_t gbitmask = ((1 << fmt->format.g_bits) - 1) << fmt->format.g_shift;

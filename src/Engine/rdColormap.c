@@ -4,6 +4,7 @@
 #include "Platform/std3D.h"
 #include "Win95/std.h"
 #include "stdPlatform.h"
+#include "General/stdColor.h"
 
 static rdTexformat rdColormap_colorInfo = {1, 0x10, 5, 6, 5, 0x0B, 5, 0, 3, 2, 3, 0, 0, 0};
 
@@ -218,33 +219,21 @@ LABEL_26:
         colormap->dword344 = 0;
     }
 
-#ifdef RENDER_DROID2
-	//for (int b = 0; b < 256; b += 4)
-	//{
-	//	for (int g = 0; g < 256; g += 4)
-	//	{
-	//		for (int r = 0; r < 256; r += 4)
-	//		{
-	//			float bestdistortion = 1000000.0f;
-	//			int bestcolor = 0;
-	//			for (int i = 0; i < 256; i++)
-	//			{
-	//				rdVector3 pixelCol = { r / 255.0f, g / 255.0f, b / 255.0f };
-	//				rdVector3 paletteColor = { colormap->colors[i].r / 255.0f, colormap->colors[i].g / 255.0f,colormap->colors[i].b / 255.0f };
-	//				float distortion = rdVector_DistSquared3(&pixelCol, &paletteColor);
-	//				if (distortion < bestdistortion)
-	//				{
-	//					if (!distortion)
-	//						break;
-	//
-	//					bestdistortion = distortion;
-	//					bestcolor = i;
-	//				}
-	//			}
-	//			colormap->searchTable[b >> 2][g >> 2][r >> 2] = bestcolor;
-	//		}
-	//	}
-	//}
+#ifdef TILE_SW_RASTER// def RENDER_DROID2
+	colormap->searchTable = rdroid_pHS->alloc(sizeof(uint8_t)*64*64*64);
+	for (int b = 0; b < 64; ++b)
+	{
+		for (int g = 0; g < 64; ++g)
+		{
+			for (int r = 0; r < 64; ++r)
+			{
+				rdColor32 col = { r << 2, g << 2, b << 2, 255 };
+				int bestcolor = stdColor_FindClosest32(&col, colormap->colors);
+				uint32_t offset = (b * 64 * 64) + (g * 64) + r;
+				colormap->searchTable[offset] = bestcolor;
+			}
+		}
+	}
 #endif
 
     rdroid_pHS->fileClose(colormap_fptr);
@@ -288,6 +277,10 @@ void rdColormap_FreeEntry(rdColormap *colormap)
             colormap->dword34C = 0;
         }
     }
+#ifdef TILE_SW_RASTER
+	rdroid_pHS->free(colormap->searchTable);
+	colormap->searchTable = 0;
+#endif
 }
 
 // MOTS altered

@@ -5,6 +5,8 @@
 
 #include "rdRaster.h"
 
+#include "SDL.h"
+
 typedef numeric::fixed<24, 8> fixed_t;
 //typedef float fixed_t;
 
@@ -666,7 +668,7 @@ template <bool Enabled> using uint_maybe = maybe<Enabled, uint32_t>;
 
 // Draws a face to a tile by triangulating it and using edge functions
 // Templated using constexpr branches to avoid having to duplicate a crap ton of code
-template <int8_t ZMethod, int8_t GeoMode, int8_t TextureMode, int8_t LightMode, bool UseDiscard, bool UseAlpha>
+template <int8_t ZMethod, int8_t GeoMode, int8_t TextureMode, typename TextureStorage, int8_t LightMode, bool UseDiscard, bool UseAlpha>
 void rdRaster_DrawToTile(rdProcEntry* entry, rdTexinfo* texinfo, int tileX, int tileY)
 {
 	// Setup a few compile time options
@@ -677,6 +679,7 @@ void rdRaster_DrawToTile(rdProcEntry* entry, rdTexinfo* texinfo, int tileX, int 
 	static constexpr bool UseSolidColor = GeoMode == RD_GEOMODE_SOLIDCOLOR;
 	static constexpr bool UseTexture = GeoMode == RD_GEOMODE_TEXTURED && TextureMode >= 0;
 	static constexpr bool Perspective = TextureMode == RD_TEXTUREMODE_PERSPECTIVE;
+	static constexpr bool IsIndexedColor = std::is_same_v<TextureStorage, uint8_t>;
 
 	//uint16_t iz_min = (uint16_t)(int)(entry->z_min * 65536.0f + 0.5f);
 	//if(iz_min >= rdRaster_TileHiZ)
@@ -699,7 +702,7 @@ void rdRaster_DrawToTile(rdProcEntry* entry, rdTexinfo* texinfo, int tileX, int 
 		solidColor = (uint8_t)(texinfo->header.field_4 & 0xFF);
 
 	maybe<UseTexture, stdVBuffer*> tex;
-	maybe<UseTexture, uint8_t*> pixels;
+	maybe<UseTexture, TextureStorage*> pixels;
 	flex_maybe<UseTexture> mip_scale;
 	int_maybe<UseTexture> mipmap_level, texRowShift, uWrap, vWrap;
 	if constexpr (UseTexture)
@@ -707,14 +710,30 @@ void rdRaster_DrawToTile(rdProcEntry* entry, rdTexinfo* texinfo, int tileX, int 
 		flex_t z_min = entry->z_min * rdCamera_GetMipmapScalar(); // MOTS added
 		mipmap_level = rdRaster_GetMipmapLevel(texinfo, z_min);
 		tex = texinfo->texture_ptr->texture_struct[mipmap_level];
-		//stdDisplay_VBufferLock(tex);
 
 		mip_scale = stdMath_Rcp((flex_t)(1 << mipmap_level));
-		pixels = (uint8_t*)tex->surface_lock_alloc;
+		pixels = (TextureStorage*)tex->sdlSurface->pixels;
 
 		texRowShift = texinfo->texture_ptr->width_bitcnt - mipmap_level;
 		uWrap = (texinfo->texture_ptr->width_minus_1 >> (mipmap_level & 31)) << 16;
 		vWrap = (texinfo->texture_ptr->height_minus_1 >> (mipmap_level & 31)) << (texRowShift & 31);
+	}
+
+	// todo: precompute some of the shifting math
+	uint_maybe<!IsIndexedColor> r_mask, g_mask, b_mask, r_shift, g_shift, b_shift, r_loss, g_loss, b_loss;
+	if constexpr (!IsIndexedColor)
+	{
+		r_shift = tex->format.format.r_shift;
+		g_shift = tex->format.format.g_shift;
+		b_shift = tex->format.format.b_shift;
+
+		r_loss = tex->format.format.r_bitdiff;
+		g_loss = tex->format.format.g_bitdiff;
+		b_loss = tex->format.format.b_bitdiff;
+
+		r_mask = (1u << tex->format.format.r_bits) - 1;
+		g_mask = (1u << tex->format.format.g_bits) - 1;
+		b_mask = (1u << tex->format.format.b_bits) - 1;
 	}
 
 	// Lighting setup
@@ -937,7 +956,21 @@ void rdRaster_DrawToTile(rdProcEntry* entry, rdTexinfo* texinfo, int tileX, int 
 						int32_t y_wrapped = (y_fixed >> (16 - texRowShift)) & vWrap;
 
 						// Read the texture
-						index = depthMask ? pixels[x_wrapped + y_wrapped] : 0;
+						// todo: texcache?
+						if constexpr (IsIndexedColor) // direct index lookup
+						{
+							index = depthMask ? pixels[x_wrapped + y_wrapped] : 0;
+						}
+						else // RGB->index conversion
+						{
+							TextureStorage pix = depthMask ? pixels[x_wrapped + y_wrapped] : 0;
+
+							uint32_t r = (((pix >> r_shift) & r_mask) << r_loss) >> 2;
+							uint32_t g = (((pix >> g_shift) & g_mask) << g_loss) >> 2;
+							uint32_t b = (((pix >> b_shift) & b_mask) << b_loss) >> 2;
+							uint32_t offset = (b << 12) | (g << 6) | r;
+							index = depthMask ? entry->colormap->searchTable[offset] : 0;
+						}
 					}
 					
 					// Alpha test
@@ -1009,56 +1042,76 @@ void rdRaster_DrawToTile(rdProcEntry* entry, rdTexinfo* texinfo, int tileX, int 
 
 // Nested dispatches to choose a compile time permutation
 
-template <int8_t ZMethod, int8_t GeoMode, int8_t TextureMode, int8_t LightMode, bool UseDiscard>
+template <int8_t ZMethod, int8_t GeoMode, int8_t TextureMode, typename TextureStorage, int8_t LightMode, bool UseDiscard>
 void rdRaster_DrawToTileByAlpha(rdProcEntry* face, rdTexinfo* texinfo, int tileX, int tileY)
 {
 	bool alpha = (face->type & 2) != 0;
 	if (alpha)
-		rdRaster_DrawToTile<ZMethod, GeoMode, TextureMode, LightMode, UseDiscard, true>(face, texinfo, tileX, tileY);
+		rdRaster_DrawToTile<ZMethod, GeoMode, TextureMode, TextureStorage, LightMode, UseDiscard, true>(face, texinfo, tileX, tileY);
 	else
-		rdRaster_DrawToTile<ZMethod, GeoMode, TextureMode, LightMode, UseDiscard, false>(face, texinfo, tileX, tileY);
+		rdRaster_DrawToTile<ZMethod, GeoMode, TextureMode, TextureStorage, LightMode, UseDiscard, false>(face, texinfo, tileX, tileY);
 }
 
-template <int8_t ZMethod, int8_t GeoMode, int8_t TextureMode, int8_t LightMode>
+template <int8_t ZMethod, int8_t GeoMode, int8_t TextureMode, typename TextureStorage, int8_t LightMode>
 void rdRaster_DrawToTileByDiscard(rdProcEntry* face, rdTexinfo* texinfo, int tileX, int tileY)
 {
 	if (TextureMode < 0)
 	{
-		rdRaster_DrawToTileByAlpha<ZMethod, GeoMode, TextureMode, LightMode, false>(face, texinfo, tileX, tileY);
+		rdRaster_DrawToTileByAlpha<ZMethod, GeoMode, TextureMode, TextureStorage, LightMode, false>(face, texinfo, tileX, tileY);
 	}
 	else
 	{
 		bool discard = (texinfo->texture_ptr->alpha_en & 1) != 0;
 		if (discard)
-			rdRaster_DrawToTileByAlpha<ZMethod, GeoMode, TextureMode, LightMode, true>(face, texinfo, tileX, tileY);
+			rdRaster_DrawToTileByAlpha<ZMethod, GeoMode, TextureMode, TextureStorage, LightMode, true>(face, texinfo, tileX, tileY);
 		else
-			rdRaster_DrawToTileByAlpha<ZMethod, GeoMode, TextureMode, LightMode, false>(face, texinfo, tileX, tileY);
+			rdRaster_DrawToTileByAlpha<ZMethod, GeoMode, TextureMode, TextureStorage, LightMode, false>(face, texinfo, tileX, tileY);
 	}
 }
 
-template <int8_t ZMethod, int8_t GeoMode, int8_t TextureMode>
+template <int8_t ZMethod, int8_t GeoMode, int8_t TextureMode, typename TextureStorage>
 void rdRaster_DrawToTileByLightMode(rdProcEntry* face, rdTexinfo* texinfo, int tileX, int tileY)
 {
 	int lightingMode = rdroid_curLightingMode < face->lightingMode ? rdroid_curLightingMode : face->lightingMode;
 	switch (lightingMode)
 	{
 	case RD_LIGHTMODE_FULLYLIT:
-		rdRaster_DrawToTileByDiscard<ZMethod, GeoMode, TextureMode, RD_LIGHTMODE_FULLYLIT>(face, texinfo, tileX, tileY);
+		rdRaster_DrawToTileByDiscard<ZMethod, GeoMode, TextureMode, TextureStorage, RD_LIGHTMODE_FULLYLIT>(face, texinfo, tileX, tileY);
 		break;
 	case RD_LIGHTMODE_NOTLIT:
-		rdRaster_DrawToTileByDiscard<ZMethod, GeoMode, TextureMode, RD_LIGHTMODE_NOTLIT>(face, texinfo, tileX, tileY);
+		rdRaster_DrawToTileByDiscard<ZMethod, GeoMode, TextureMode, TextureStorage, RD_LIGHTMODE_NOTLIT>(face, texinfo, tileX, tileY);
 		break;
 	case RD_LIGHTMODE_DIFFUSE:
-		rdRaster_DrawToTileByDiscard<ZMethod, GeoMode, TextureMode, RD_LIGHTMODE_DIFFUSE>(face, texinfo, tileX, tileY);
+		rdRaster_DrawToTileByDiscard<ZMethod, GeoMode, TextureMode, TextureStorage, RD_LIGHTMODE_DIFFUSE>(face, texinfo, tileX, tileY);
 		break;
 	case RD_LIGHTMODE_GOURAUD:
-		rdRaster_DrawToTileByDiscard<ZMethod, GeoMode, TextureMode, RD_LIGHTMODE_GOURAUD>(face, texinfo, tileX, tileY);
+		rdRaster_DrawToTileByDiscard<ZMethod, GeoMode, TextureMode, TextureStorage, RD_LIGHTMODE_GOURAUD>(face, texinfo, tileX, tileY);
 		break;
 	default:
 		break;
 	}
 }
 
+template <int8_t ZMethod, int8_t GeoMode, int8_t TextureMode>
+void rdRaster_DrawToTileByTextureBPP(rdProcEntry* face, rdTexinfo* texinfo, int tileX, int tileY)
+{
+	// eebs: verify that it's safe to grab bpp from mip0...
+	int bpp = texinfo->texture_ptr->texture_struct[0]->format.format.bpp;
+	switch (bpp)
+	{
+	case 8:
+		rdRaster_DrawToTileByLightMode<ZMethod, GeoMode, TextureMode, uint8_t>(face, texinfo, tileX, tileY);
+		break;
+	case 16:
+		rdRaster_DrawToTileByLightMode<ZMethod, GeoMode, TextureMode, uint16_t>(face, texinfo, tileX, tileY);
+		break;
+	case 32:
+		rdRaster_DrawToTileByLightMode<ZMethod, GeoMode, TextureMode, uint32_t>(face, texinfo, tileX, tileY);
+		break;
+	default:
+		break;
+	}
+}
 template <int8_t ZMethod, int8_t GeoMode>
 void rdRaster_DrawToTileByTextureMode(rdProcEntry* face, rdTexinfo* texinfo, int tileX, int tileY)
 {
@@ -1066,10 +1119,10 @@ void rdRaster_DrawToTileByTextureMode(rdProcEntry* face, rdTexinfo* texinfo, int
 	switch (textureMode)
 	{
 	case RD_TEXTUREMODE_AFFINE:
-		rdRaster_DrawToTileByLightMode<ZMethod, GeoMode, RD_TEXTUREMODE_AFFINE>(face, texinfo, tileX, tileY);
+		rdRaster_DrawToTileByTextureBPP<ZMethod, GeoMode, RD_TEXTUREMODE_AFFINE>(face, texinfo, tileX, tileY);
 		break;
 	case RD_TEXTUREMODE_PERSPECTIVE:
-		rdRaster_DrawToTileByLightMode<ZMethod, GeoMode, RD_TEXTUREMODE_PERSPECTIVE>(face, texinfo, tileX, tileY);
+		rdRaster_DrawToTileByTextureBPP<ZMethod, GeoMode, RD_TEXTUREMODE_PERSPECTIVE>(face, texinfo, tileX, tileY);
 		break;
 	default:
 		break;
@@ -1087,7 +1140,7 @@ void rdRaster_DrawToTileByGeoMode(rdProcEntry* face, rdTexinfo* texinfo, int til
 	switch (geometryMode)
 	{
 	case RD_GEOMODE_SOLIDCOLOR:
-		rdRaster_DrawToTileByLightMode<ZMethod, RD_GEOMODE_SOLIDCOLOR, -1>(face, texinfo, tileX, tileY);
+		rdRaster_DrawToTileByLightMode<ZMethod, RD_GEOMODE_SOLIDCOLOR, -1, uint8_t>(face, texinfo, tileX, tileY);
 		break;
 	case RD_GEOMODE_TEXTURED:
 		rdRaster_DrawToTileByTextureMode<ZMethod, RD_GEOMODE_TEXTURED>(face, texinfo, tileX, tileY);
@@ -1110,16 +1163,12 @@ void rdCache_DrawFaceTiled(rdProcEntry* face, int tileX, int tileY)
 	int lightingMode = rdroid_curLightingMode < face->lightingMode ? rdroid_curLightingMode : face->lightingMode;
 	int textureMode = rdroid_curTextureMode < face->textureMode ? rdroid_curTextureMode : face->textureMode;
 
-	rdMaterial* mat = face->material;
-	rdTexinfo* texinfo = NULL;
+	int cel = (face->wallCel == 0xFFFFFFFF) ? face->material->celIdx : (int)face->wallCel;
+	cel = stdMath_ClampInt(cel, 0, face->material->num_texinfo - 1);
 
-	if (mat)
-	{
-		int cel = (face->wallCel == 0xFFFFFFFF) ? mat->celIdx : (int)face->wallCel;
-		if (cel < 0) cel = 0;
-		else if ((uint32_t)cel >= mat->num_texinfo) cel = mat->num_texinfo - 1;
-		texinfo = mat->texinfos[cel];
-	}
+	rdTexinfo* texinfo = face->material->texinfos[cel];
+	if (!texinfo)
+		return;
 
 	if (rdroid_curOcclusionMethod) // jk edge table method, just do full z
 	{

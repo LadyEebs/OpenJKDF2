@@ -217,6 +217,7 @@ int rdMaterial_LoadEntry_Common(char *mat_fpath, rdMaterial *material, int creat
         bpp = material->tex_format.bpp;
         format.format.colorMode = material->tex_format.colorMode;
         format.format.bpp = bpp;
+		format.format = material->tex_format;
         if ( texture->num_mipmaps )
           break;
 LABEL_21:
