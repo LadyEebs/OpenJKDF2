@@ -567,47 +567,12 @@ void rdCache_Flush()
 		for (v3 = 0; v3 < rdCache_numProcFaces; v3++)
 		{
 			face = &rdCache_aProcFaces[v3];
-
-			// Lock the material if needed
-			if(face->material)
-			{
-				int cel = (face->wallCel == 0xFFFFFFFF) ? face->material->celIdx : (int)face->wallCel;
-				if (cel < 0) cel = 0;
-				else if ((uint32_t)cel >= face->material->num_texinfo) cel = face->material->num_texinfo - 1;
-				rdTexinfo* texinfo = face->material->texinfos[cel]; 
-				if(texinfo && texinfo->texture_ptr)
-				{
-					for (int i = 0; i < texinfo->texture_ptr->num_mipmaps; ++i)
-						stdDisplay_VBufferLock(texinfo->texture_ptr->texture_struct[i]);
-				}
-
-				if (texinfo)
-					rdRaster_BinFaceCoarse(face);
-			}
+			rdRaster_BinFaceCoarse(face);
 		}
 		
 		// Fine bin then flush
 		rdRaster_BinFaces();
 		rdRaster_FlushBins();
-	
-		// Unlock materials
-		// todo: lots of redundant stuff here, maybe the lock should be counted properly (the lock_cnt could be atomic?)
-		for (v3 = 0; v3 < rdCache_numProcFaces; v3++)
-		{
-			face = &rdCache_aProcFaces[v3];
-			if (face->material)
-			{
-				int cel = (face->wallCel == 0xFFFFFFFF) ? face->material->celIdx : (int)face->wallCel;
-				if (cel < 0) cel = 0;
-				else if ((uint32_t)cel >= face->material->num_texinfo) cel = face->material->num_texinfo - 1;
-				rdTexinfo* texinfo = face->material->texinfos[cel];
-				if (texinfo && texinfo->texture_ptr)
-				{
-					for (int i = 0; i < texinfo->texture_ptr->num_mipmaps; ++i)
-						stdDisplay_VBufferUnlock(texinfo->texture_ptr->texture_struct[i]);
-				}
-			}
-		}
 	}
 	else
 #elif !defined(SDL2_RENDER) && !defined(TARGET_TWL)
