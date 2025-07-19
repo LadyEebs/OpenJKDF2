@@ -157,7 +157,7 @@ void jkHudInv_Draw()
         return;
 #endif
 
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
     jkHudInv_DrawGPU();
     return;
 #endif
@@ -178,8 +178,13 @@ void jkHudInv_Draw()
             v4 = sithInventory_GetItemDesc(player, jkHudInv_aItems[v2])->hudBitmap;
             if ( v4 )
             {
+			#ifdef TILE_SW_RASTER
+				stdDisplay_VBufferCopyScaled(Video_pMenuBuffer, *v4->mipSurfaces, jkHudInv_scroll.blitX, i, 0, 1, jkPlayer_hudScale, jkPlayer_hudScale);
+				i += HUD_SCALED(28);
+			#else
                 stdDisplay_VBufferCopy(Video_pMenuBuffer, *v4->mipSurfaces, jkHudInv_scroll.blitX, i, 0, 1);
                 i += 28;
+			#endif
                 ++v1;
             }
         }
@@ -197,9 +202,15 @@ void jkHudInv_Draw()
                 v7 = v6->hudBitmap;
                 if ( v7 )
                 {
-                    stdDisplay_VBufferCopy(Video_pMenuBuffer, *v7->mipSurfaces, jkHudInv_scroll.blitX, i, 0, 1);
+				#ifdef TILE_SW_RASTER
+					stdDisplay_VBufferCopyScaled(Video_pMenuBuffer, *v7->mipSurfaces, jkHudInv_scroll.blitX, i, 0, 1, jkPlayer_hudScale, jkPlayer_hudScale);
+					i += HUD_SCALED(28);
+					++v1;
+				#else
+					stdDisplay_VBufferCopy(Video_pMenuBuffer, *v7->mipSurfaces, jkHudInv_scroll.blitX, i, 0, 1);
                     i += 28;
                     ++v1;
+				#endif
                 }
             }
         }
@@ -287,8 +298,12 @@ void jkHudInv_Draw()
                 jkHudInv_info.field_1C = time_msec + 100;
                 jkHudInv_info.field_18 = v13;
             }
+		#ifdef TILE_SW_RASTER
+			stdDisplay_VBufferCopyScaled(Video_pMenuBuffer, v14->mipSurfaces[v13], jkHudInv_info.field_8[v11], jkHudInv_info.field_10[v11], 0, 1, jkPlayer_hudScale, jkPlayer_hudScale);
+		#else
             stdDisplay_VBufferCopy(Video_pMenuBuffer, v14->mipSurfaces[v13], jkHudInv_info.field_8[v11], jkHudInv_info.field_10[v11], 0, 1);
-        }
+        #endif
+		}
         v16 = sithInventory_GetItemDesc(player, a2);
         v17 = v16->hudBitmap;
         if ( v17 || (v17 = jkHudInv_aBitmaps[2]) != 0 )
@@ -300,8 +315,12 @@ void jkHudInv_Draw()
                 jkHudInv_dword_553F94 = 0;
                 return;
             }
-            stdDisplay_VBufferCopy(Video_pMenuBuffer, *v17->mipSurfaces, jkHudInv_info.field_0, jkHudInv_info.field_4, 0, 1);
-            if (v16->flags & ITEMINFO_ITEM)
+#ifdef TILE_SW_RASTER
+			stdDisplay_VBufferCopyScaled(Video_pMenuBuffer, *v17->mipSurfaces, jkHudInv_info.field_0, jkHudInv_info.field_4, 0, 1, jkPlayer_hudScale, jkPlayer_hudScale);
+#else
+			stdDisplay_VBufferCopy(Video_pMenuBuffer, *v17->mipSurfaces, jkHudInv_info.field_0, jkHudInv_info.field_4, 0, 1);
+#endif
+			if (v16->flags & ITEMINFO_ITEM)
             {
                 char tmpChars[4];
                 v19 = jkHudInv_info.field_4;
@@ -341,8 +360,12 @@ void jkHudInv_Draw()
                     v27 = (__int64)sithInventory_GetBinAmount(player, idx);
                     if ( v27 <= 0 )
                         goto LABEL_84;
-                    stdDisplay_VBufferCopy(Video_pMenuBuffer, *v26->mipSurfaces, jkHudInv_info.field_0 - v24, jkHudInv_info.field_4, 0, 1);
-                    if (v25->flags & ITEMINFO_ITEM)
+#ifdef TILE_SW_RASTER
+					stdDisplay_VBufferCopyScaled(Video_pMenuBuffer, *v26->mipSurfaces, jkHudInv_info.field_0 - v24, jkHudInv_info.field_4, 0, 1, jkPlayer_hudScale, jkPlayer_hudScale);
+#else
+					stdDisplay_VBufferCopy(Video_pMenuBuffer, *v26->mipSurfaces, jkHudInv_info.field_0 - v24, jkHudInv_info.field_4, 0, 1);
+#endif
+					if (v25->flags & ITEMINFO_ITEM)
                     {
                         v28 = jkHudInv_info.field_4;
                         v29 = jkHudInv_info.field_0 - v24;
@@ -382,8 +405,12 @@ LABEL_84:
                         return;
                     }
                     v35 = v43;
-                    stdDisplay_VBufferCopy(Video_pMenuBuffer, *v33->mipSurfaces, v43 + jkHudInv_info.field_0, jkHudInv_info.field_4, 0, 1);
-                    if (v32->flags & ITEMINFO_ITEM)
+#ifdef TILE_SW_RASTER
+					stdDisplay_VBufferCopyScaled(Video_pMenuBuffer, *v33->mipSurfaces, v43 + jkHudInv_info.field_0, jkHudInv_info.field_4, 0, 1, jkPlayer_hudScale, jkPlayer_hudScale);
+#else
+					stdDisplay_VBufferCopy(Video_pMenuBuffer, *v33->mipSurfaces, v43 + jkHudInv_info.field_0, jkHudInv_info.field_4, 0, 1);
+#endif
+					if (v32->flags & ITEMINFO_ITEM)
                     {
                         char tmpChars[4];
                         v36 = jkHudInv_info.field_4;
@@ -831,7 +858,7 @@ void jkHudInv_LoadItemRes()
         return;
 #endif
 
-#ifndef SDL2_RENDER
+#if !defined(SDL2_RENDER) || defined(TILE_SW_RASTER)
     v0 = stdDisplay_pCurVideoMode->format.format.bpp;
 #else
     v0 = 16;

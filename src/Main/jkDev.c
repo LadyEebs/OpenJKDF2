@@ -254,8 +254,12 @@ void jkDev_BlitLogToScreen()
         v0 = jkDev_BMFontHeight;
         v7.x = 0;
         v7.y = 0;
+	#ifdef TILE_SW_RASTER
+		v7.height = (int)((flex_t)jkDev_BMFontHeight * jkPlayer_hudScale);
+	#else
         v7.height = jkDev_BMFontHeight;
-        v1 = 4;
+    #endif
+		v1 = 4;
         v2 = 0;
         v3 = &jkDev_aEntries[0];
         for (int i = 0; i < 5; i++)
@@ -266,7 +270,11 @@ void jkDev_BlitLogToScreen()
 				v4 = (signed int)(stdDisplay_pCurVideoMode->format.width - v7.width) / 2;
                 if ( v4 < 0 )
                     v4 = 0;
-                stdDisplay_VBufferCopy(Video_pMenuBuffer, jkDev_vbuf, v4, v1, &v7, 1);
+			#ifdef TILE_SW_RASTER
+				stdDisplay_VBufferCopyScaled(Video_pMenuBuffer, jkDev_vbuf, v4, v1, &v7, 1, jkPlayer_hudScale, jkPlayer_hudScale);
+			#else
+				stdDisplay_VBufferCopy(Video_pMenuBuffer, jkDev_vbuf, v4, v1, &v7, 1);
+			#endif
                 v5 = v7.width;
                 v6 = jkDev_dword_55A9D0 + 2 * v2;
                 jkDev_aEntryPositions[v6].x = v4;
@@ -275,10 +283,19 @@ void jkDev_BlitLogToScreen()
             }
             if ( v3->bDrawEntry > 0 )
                 --v3->bDrawEntry;
+		#ifdef TILE_SW_RASTER
+			v1 += (int)((flex_t)jkDev_BMFontHeight * jkPlayer_hudScale);
+			//v1 += stdFont_DrawMultilineCenteredHeight(jkHud_pMsgFontSft, 0, v1, stdDisplay_pCurVideoMode->format.width, v3->text, 1, jkPlayer_hudScale);
+		#else
             v1 += v0;
+		#endif
             ++v3;
             ++v2;
+		#ifdef TILE_SW_RASTER
+			v7.y += (int)((flex_t)jkDev_BMFontHeight * jkPlayer_hudScale);
+		#else
             v7.y += v0;
+		#endif
         }
         jkDev_dword_55A9D0 = (jkDev_dword_55A9D0 + 1) % 2;
     }
@@ -1126,14 +1143,22 @@ void jkDev_DrawEntries()
                 {
                     if ( v3->bDrawEntry )
                     {
+					#ifdef TILE_SW_RASTER
+						a4.height = (int)((flex_t)jkDev_BMFontHeight * jkPlayer_hudScale);
+					#else
                         a4.height = jkDev_BMFontHeight;
-                        a4.width = v3->drawWidth;
+                    #endif
+						a4.width = v3->drawWidth;
                         a4.x = 0;
                         a4.y = v1;
                         stdDisplay_VBufferFill(jkDev_vbuf, jkDev_ColorKey, &a4);
                         v3->drawWidth = stdFont_Draw1(jkDev_vbuf, jkHud_pMsgFontSft, 0, v1, jkDev_vbuf->format.width, v3->text, 0);
                     }
+				#ifdef TILE_SW_RASTER
+					v1 += (int)((flex_t)jkDev_BMFontHeight * jkPlayer_hudScale);
+				#else
                     v1 += jkDev_BMFontHeight;
+				#endif
                     ++v0;
                     ++v3;
                 }

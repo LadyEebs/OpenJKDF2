@@ -906,9 +906,14 @@ LABEL_116:
     }
     if ( Video_modeStruct.viewSizeIdx < 0xAu  && !(sithNet_isServer && jkGuiNetHost_bIsDedicated))
     {
+	#ifdef TILE_SW_RASTER
+		stdDisplay_VBufferCopyScaled(Video_pMenuBuffer, *jkHud_pStatusLeftBm->mipSurfaces, jkHud_leftBlitX, jkHud_leftBlitY, 0, 1, jkPlayer_hudScale, jkPlayer_hudScale);
+		stdDisplay_VBufferCopyScaled(Video_pMenuBuffer, *jkHud_pStatusRightBm->mipSurfaces, jkHud_rightBlitX, jkHud_rightBlitY, 0, 1, jkPlayer_hudScale, jkPlayer_hudScale);
+	#else
         stdDisplay_VBufferCopy(Video_pMenuBuffer, *jkHud_pStatusLeftBm->mipSurfaces, jkHud_leftBlitX, jkHud_leftBlitY, 0, 1);
         stdDisplay_VBufferCopy(Video_pMenuBuffer, *jkHud_pStatusRightBm->mipSurfaces, jkHud_rightBlitX, jkHud_rightBlitY, 0, 1);
-    }
+    #endif
+	}
 
 //#ifdef DEBUG_QOL_CHEATS
     int fps = (int)sithTime_TickHz;

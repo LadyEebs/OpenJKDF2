@@ -1156,3 +1156,93 @@ void stdDisplay_GammaCorrect(const void *pPal)
 		memcpy(stdDisplay_gammaPalette, pPal, 768);
 	}
 }
+
+#ifdef TILE_SW_RASTER
+// Added
+void stdDisplay_VBufferCopyScaled(stdVBuffer* vbuf, stdVBuffer* vbuf2, unsigned int blit_x, unsigned int blit_y, rdRect* rect, int has_alpha, float scaleX, float scaleY)
+{
+	rdRect srcRect;
+	if (!rect)
+	{
+		srcRect.x = 0;
+		srcRect.y = 0;
+		srcRect.width = vbuf2->format.width;
+		srcRect.height = vbuf2->format.height;
+	}
+	else
+	{
+		srcRect = *rect;
+	}
+
+	// Calculate destination dimensions
+	const int dstW = (int)(srcRect.width * scaleX);
+	const int dstH = (int)(srcRect.height * scaleY);
+
+	if (blit_x + dstW > vbuf->format.width || blit_y + dstH > vbuf->format.height)
+		return; 
+
+	uint8_t* srcPixels = (uint8_t*)vbuf2->sdlSurface->pixels;
+	uint8_t* dstPixels = (uint8_t*)vbuf->sdlSurface->pixels;
+	const int srcStride = vbuf2->format.width_in_bytes;
+	const int dstStride = vbuf->format.width_in_bytes;
+
+	const float invScaleX = 1.0f / scaleX;
+	const float invScaleY = 1.0f / scaleY;
+
+	for (int dstY = 0; dstY < dstH; dstY++)
+	{
+		const int srcY = srcRect.y + (int)(dstY * invScaleY);
+		if ((uint32_t)srcY >= (uint32_t)vbuf2->format.height) continue;
+
+		const uint8_t* srcRow = srcPixels + srcY * srcStride;
+		uint8_t* dstRow = dstPixels + (blit_y + dstY) * dstStride + blit_x;
+
+		if (!has_alpha)
+		{
+			// SSE-optimized path (no alpha)
+			int dstX = 0;
+			for (; dstX + 3 < dstW; dstX += 4)
+			{
+				// Compute source positions
+				__m128 xOffsets = _mm_setr_ps(0, 1, 2, 3);
+				__m128 srcXs = _mm_add_ps(_mm_set1_ps(dstX * invScaleX), xOffsets);
+				__m128i srcXi = _mm_cvtps_epi32(srcXs);
+
+				// Gather pixels
+				uint8_t px[4];
+				for (int k = 0; k < 4; k++)
+				{
+					int x = srcRect.x + ((int*)&srcXi)[k];
+					px[k] = ((uint32_t)x < (uint32_t)vbuf2->format.width) ? srcRow[x] : 0;
+				}
+				_mm_storeu_si128((__m128i*)(dstRow + dstX), _mm_loadu_si128((__m128i*)px));
+			}
+
+			// Remaining pixels
+			for (; dstX < dstW; dstX++)
+			{
+				int srcX = srcRect.x + (int)(dstX * invScaleX);
+				if ((uint32_t)srcX < (uint32_t)vbuf2->format.width)
+				{
+					dstRow[dstX] = srcRow[srcX];
+				}
+			}
+		}
+		else
+		{
+			 // Alpha path (scalar)
+			for (int dstX = 0; dstX < dstW; dstX++)
+			{
+				int srcX = srcRect.x + (int)(dstX * invScaleX);
+				if ((uint32_t)srcX >= (uint32_t)vbuf2->format.width) continue;
+
+				uint8_t px = srcRow[srcX];
+				if (!(px == 0 && has_alpha))
+				{
+					dstRow[dstX] = px;
+				}
+			}
+		}
+	}
+}
+#endif

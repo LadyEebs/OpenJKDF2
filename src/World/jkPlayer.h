@@ -231,7 +231,7 @@ extern flex_t jkPlayer_puppetFriction;
 extern int jkPlayer_bJankyPhysics;
 #endif
 
-#ifdef TILE_SW_RASTER
+#if 0//def TILE_SW_RASTER
 #define HUD_SCALED(x) x // TILETODO, need to implement stdVBufferCopy with upscaling for this to work properly
 #else
 #define HUD_SCALED(x) ((int)((flex_t)(x) * jkPlayer_hudScale)) // FLEXTODO
