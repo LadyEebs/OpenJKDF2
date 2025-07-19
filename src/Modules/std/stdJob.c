@@ -15,10 +15,13 @@
 #include "SDL_mutex.h"
 #include "SDL_thread.h"
 
+int stdJob_bInit = 0;
+
 typedef struct stdJob
 {
 	stdJob_function_t function;         // The actual job function
-	void*             args;             // arguments for the function
+	//void*             args;             // arguments for the function
+	stdJobGroupArgs   args;
 	SDL_mutex*        completionMutex;  // Mutex to protect completion flag
 	SDL_cond*         completionCond;   // Condition variable to signal job completion
 	SDL_atomic_t      isCompleted;      // Completion flag (1 = completed, 0 = not completed)
@@ -45,15 +48,6 @@ typedef struct stdJobSystem
 	SDL_atomic_t      finishedLabel;
 	SDL_atomic_t      quit; // lazy way to quit
 } stdJobSystem;
-
-typedef struct stdJobGroupArgs
-{
-	void          (*job)(uint32_t, uint32_t);
-	stdJobSystem* jobs;
-	uint32_t      jobCount;
-	uint32_t      groupSize;
-	uint32_t      groupIndex;
-} stdJobGroupArgs;
 
 stdJobSystem stdJob_jobSystem;
 
@@ -82,7 +76,7 @@ void stdJob_InitRingBuffer(stdRingBuffer* rb, uint32_t size)
 	}
 }
 
-int stdJob_PushRingBuffer(stdRingBuffer* rb, stdJob_function_t job, void* args)
+int stdJob_PushRingBuffer(stdRingBuffer* rb, stdJob_function_t job, stdJobGroupArgs* args)// void* args)
 {
 	int result = 0;
 
@@ -92,7 +86,7 @@ int stdJob_PushRingBuffer(stdRingBuffer* rb, stdJob_function_t job, void* args)
 	if (next_back != rb->front) // Check if buffer is not full
 	{
 		rb->buffer[rb->back].function = job;
-		rb->buffer[rb->back].args = args;
+		rb->buffer[rb->back].args = *args;
 		SDL_AtomicSet(&rb->buffer[rb->back].isCompleted, 0);
 		rb->back = next_back;
 		result = 1;
@@ -132,7 +126,8 @@ void stdJob_FreeRingBuffer(stdRingBuffer* rb)
 	for (uint32_t i = rb->front; i != rb->back; i = (i + 1) % rb->size)
 	{
 		stdJob* job = &rb->buffer[i];
-		job->args = NULL;
+		//job->args = NULL;
+		job->args.job = NULL;
 		SDL_DestroyMutex(job->completionMutex); // Cleanup mutex
 		SDL_DestroyCond(job->completionCond);   // Cleanup condition variable
 	}
@@ -173,8 +168,12 @@ void stdJob_WorkerThread(void* param)
 
 		if (stdJob_PopRingBuffer(&jobs->jobPool, &job))
 		{
-			job->function(job->args); // Execute job
-			job->args = NULL;
+			//if (!job->args)
+			//	stdPlatform_Printf("Job arguments are NULL, the job will fail. Try increasing the ring buffer size.\n");
+			//else
+			//	job->function(job->args); // Execute job
+			//job->args = NULL;
+			job->function(&job->args);
 			stdJob_Complete(job);
 		}
 		else
@@ -203,7 +202,7 @@ void stdJob_Startup()
 	stdPlatform_Printf("Starting job system with %d threads\n", numCores);
 	stdJob_jobSystem.numThreads = numCores > 0 ? numCores : 1;
 
-	stdJob_InitRingBuffer(&stdJob_jobSystem.jobPool, 256);
+	stdJob_InitRingBuffer(&stdJob_jobSystem.jobPool, 1024);
 
 	stdJob_jobSystem.workerThreads = (SDL_Thread**)std_pHS->alloc(stdJob_jobSystem.numThreads * sizeof(SDL_Thread*));
 	if (!stdJob_jobSystem.workerThreads)
@@ -242,10 +241,14 @@ void stdJob_Startup()
 
 	stdPlatform_Printf("Kicking off test job\n");
 	stdJob_Execute(stdJob_TestJob, NULL);
+
+	stdJob_bInit = 1;
 }
 
 void stdJob_Shutdown()
 {
+	stdJob_bInit = 0;
+
 	SDL_AtomicSet(&stdJob_jobSystem.quit, 1);
 
 	stdJob_Wait();
@@ -275,8 +278,11 @@ void stdJob_Wait()
 		SDL_CondSignal(stdJob_jobSystem.wakeCondition); // Signal workers
 }
 
-uint32_t stdJob_Execute(stdJob_function_t job, void* args)
+uint32_t stdJob_Execute(stdJob_function_t job, stdJobGroupArgs* args)
 {
+	if(!stdJob_bInit)
+		return 0;
+
 	SDL_AtomicIncRef(&stdJob_jobSystem.currentLabel);
 
 	while (!stdJob_PushRingBuffer(&stdJob_jobSystem.jobPool, job, args))
@@ -316,11 +322,14 @@ void stdJob_ExecuteGroup(void* param)
 	for (uint32_t i = groupJobOffset; i < groupJobEnd; ++i)
 		args->job(i, args->groupIndex);
 
-	std_pHS->free(args);
+	//std_pHS->free(args);
 }
 
 void stdJob_Dispatch(uint32_t jobCount, uint32_t groupSize, void (*job)(uint32_t, uint32_t))
 {
+	if (!stdJob_bInit)
+		return;
+
 	if (jobCount == 0 || groupSize == 0)
 		return;
 
@@ -329,20 +338,26 @@ void stdJob_Dispatch(uint32_t jobCount, uint32_t groupSize, void (*job)(uint32_t
 
 	for (uint32_t groupIndex = 0; groupIndex < groupCount; ++groupIndex)
 	{
-		stdJobGroupArgs* args = (stdJobGroupArgs*)std_pHS->alloc(sizeof(stdJobGroupArgs));
-		if (!args)
-		{
-			stdPrintf(std_pHS->errorPrint, ".\\General\\stdJob.c", __LINE__, "Memory allocation failed for job group arguments\n");
-			exit(EXIT_FAILURE);
-		}
-		args->jobs = &stdJob_jobSystem;
-		args->jobCount = jobCount;
-		args->groupSize = groupSize;
-		args->job = job;
-		args->groupIndex = groupIndex;
+		//stdJobGroupArgs* args = (stdJobGroupArgs*)std_pHS->alloc(sizeof(stdJobGroupArgs));
+		//if (!args)
+		//{
+		//	stdPrintf(std_pHS->errorPrint, ".\\General\\stdJob.c", __LINE__, "Memory allocation failed for job group arguments\n");
+		//	exit(EXIT_FAILURE);
+		//}
+		//args->jobs = &stdJob_jobSystem;
+		//args->jobCount = jobCount;
+		//args->groupSize = groupSize;
+		//args->job = job;
+		//args->groupIndex = groupIndex;
+		stdJobGroupArgs args;
+		args.jobs = &stdJob_jobSystem;
+		args.jobCount = jobCount;
+		args.groupSize = groupSize;
+		args.job = job;
+		args.groupIndex = groupIndex;
 
 		stdJob_function_t jobGroup = stdJob_ExecuteGroup;
-		while (!stdJob_PushRingBuffer(&stdJob_jobSystem.jobPool, jobGroup, args))
+		while (!stdJob_PushRingBuffer(&stdJob_jobSystem.jobPool, jobGroup, &args))
 			SDL_CondSignal(stdJob_jobSystem.wakeCondition); // Notify worker threads
 
 		SDL_CondSignal(stdJob_jobSystem.wakeCondition); // Notify worker threads

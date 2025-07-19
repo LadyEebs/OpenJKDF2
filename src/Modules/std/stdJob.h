@@ -6,7 +6,19 @@
 
 #ifdef JOB_SYSTEM
 
-typedef void (*stdJob_function_t)(void*);
+typedef struct stdJobSystem stdJobSystem;
+// JOBTODO the group job func can be a union or something?
+typedef struct stdJobGroupArgs
+{
+	void          (*job)(uint32_t, uint32_t);
+	stdJobSystem* jobs;
+	uint32_t      jobCount;
+	uint32_t      groupSize;
+	uint32_t      groupIndex;
+	void*         data;
+} stdJobGroupArgs;
+
+typedef void (*stdJob_function_t)(stdJobGroupArgs*);
 
 void     stdJob_Startup();
 void     stdJob_Shutdown();
