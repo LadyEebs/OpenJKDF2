@@ -579,10 +579,10 @@ void rdCache_Flush()
 				{
 					for (int i = 0; i < texinfo->texture_ptr->num_mipmaps; ++i)
 						stdDisplay_VBufferLock(texinfo->texture_ptr->texture_struct[i]);
-
-					// Bin it
-					rdRaster_BinFaceCoarse(face);
 				}
+
+				if (texinfo)
+					rdRaster_BinFaceCoarse(face);
 			}
 		}
 		
