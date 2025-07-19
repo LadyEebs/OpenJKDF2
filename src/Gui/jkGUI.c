@@ -22,42 +22,50 @@
 #include "Main/jkStrings.h"
 #include "Cog/jkCog.h"
 
+#ifdef TARGET_TWL
+#include <nds.h>
+#endif
+
 const char* jkGui_aBitmaps[35] = {
-    "bkMain",
-    "bkSingle",
-    "bkMulti",
-    "bkSetup",
-    "bkEsc",
-    "bkLoading",
-    "bkFieldLog",
-    "bkDialog",
-    "bkEsc",
-    "bkForce",
-    "bkTally",
-    "bkBuildMulti",
-    "bkBuildLoad",
-    "up15",
-    "down15",
-    "check",
-    "objectivescheck",
-    "sliderThumb",
-    "sliderBack",
-    "sliderBack200",
-    "flOk",
-    "flRotLef",
-    "flRotRig",
-    "flRotUp",
-    "flRotDow",
-    "flPlus",
-    "flMinus",
-    "flTransLeft",
-    "flTransRight",
-    "flTransUp",
-    "flTransDown",
-    "flSpin",
-    "flReset",
-    "arrowLeft",
-    "arrowRight"
+#ifdef TARGET_TWL
+    "bkMain.bm",
+#else
+    "bkMain.bm",
+#endif
+    "bkSingle.bm",
+    "bkMulti.bm",
+    "bkSetup.bm",
+    "bkEsc.bm",
+    "bkLoading.bm",
+    "bkFieldLog.bm",
+    "bkDialog.bm",
+    "bkEsc.bm",
+    "bkForce.bm",
+    "bkTally.bm",
+    "bkBuildMulti.bm",
+    "bkBuildLoad.bm",
+    "up15.bm",
+    "down15.bm",
+    "check.bm",
+    "objectivescheck.bm",
+    "sliderThumb.bm",
+    "sliderBack.bm",
+    "sliderBack200.bm",
+    "flOk.bm",
+    "flRotLef.bm",
+    "flRotRig.bm",
+    "flRotUp.bm",
+    "flRotDow.bm",
+    "flPlus.bm",
+    "flMinus.bm",
+    "flTransLeft.bm",
+    "flTransRight.bm",
+    "flTransUp.bm",
+    "flTransDown.bm",
+    "flSpin.bm",
+    "flReset.bm",
+    "arrowLeft.bm",
+    "arrowRight.bm"
 };
 
 const char* jkGui_aFonts[12] = {
@@ -169,6 +177,8 @@ int jkGui_Startup()
     char playerShortName[32];
     char tmp[128];
 
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__);
+
     stdString_WcharToChar(playerShortName, jkPlayer_playerShortName, 31);
     playerShortName[31] = 0;
     wuRegistry_GetString("playerShortName", playerShortName, 32, playerShortName);
@@ -177,21 +187,47 @@ int jkGui_Startup()
 
     for (int i = 0; i < 12; i++)
     {
+        // TODO: Eviction caching for stdBitmap, rdMaterial
+#ifdef TARGET_TWL
+        int replace_lut[] = {0,1,2,3,4,2,3,4,2,3,4,2};
+        if (openjkdf2_bIsLowMemoryPlatform && i >= 5) {
+            jkGui_stdFonts[i] = jkGui_stdFonts[replace_lut[i]];
+            continue;
+        }
+#endif
         stdString_snprintf(tmp, 128, "ui\\sft\\%s", jkGui_aFonts[i]);
         jkGui_stdFonts[i] = stdFont_Load(tmp, 1, 0);
         if (jkGui_stdFonts[i] == NULL) {
             Windows_GameErrorMsgbox("ERR_CANNOT_LOAD_FILE %s", tmp);
         }
     }
+#ifdef TARGET_TWL
+    stdPlatform_Printf("after fonts 0x%x 0x%x\n", (intptr_t)getHeapLimit() - (intptr_t)getHeapEnd(), (intptr_t)getHeapEnd() - (intptr_t)getHeapStart());
+#endif
 
     for (int i = 0; i < 35; i++)
     {
-        stdString_snprintf(tmp, 128, "ui\\bm\\%s.bm", jkGui_aBitmaps[i]);
+        // TODO: Eviction caching for stdBitmap, rdMaterial
+#ifdef TARGET_TWL
+        if (i >= 1 && i <= 6) {
+            jkGui_stdBitmaps[i] = jkGui_stdBitmaps[0];
+            continue;
+        }
+        if (i >= 7 && i <= 11) {
+            jkGui_stdBitmaps[i] = jkGui_stdBitmaps[0];
+            continue;
+        }
+#endif
+        stdString_snprintf(tmp, 128, "ui\\bm\\%s", jkGui_aBitmaps[i]);
         jkGui_stdBitmaps[i] = stdBitmap_Load(tmp, 1, 0);
         if (jkGui_stdBitmaps[i] == NULL) {
             Windows_GameErrorMsgbox("ERR_CANNOT_LOAD_FILE %s", tmp);
         }
     }
+    // TODO: Eviction caching for stdBitmap, rdMaterial
+#ifdef TARGET_TWL
+    stdPlatform_Printf("after bms 0x%x 0x%x\n", (intptr_t)getHeapLimit() - (intptr_t)getHeapEnd(), (intptr_t)getHeapEnd() - (intptr_t)getHeapStart());
+#endif
 
 #ifdef MENU_16BIT
 	for (int i = 0; i < 35; i++)
@@ -211,16 +247,31 @@ int jkGui_Startup()
 
 void jkGui_Shutdown()
 {
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__);
+
     char playerShortName[32];
 
     for (int i = 0; i < 12; i++)
     {
+#ifdef TARGET_TWL
+        if (i >= 5) {
+            continue;
+        }
+#endif
         stdFont_Free(jkGui_stdFonts[i]);
         jkGui_stdFonts[i] = NULL;
     }
 
     for (int i = 0; i < 35; i++)
     {
+#ifdef TARGET_TWL
+        if (i >= 1 && i <= 6) {
+            continue;
+        }
+        if (i >= 7 && i <= 11) {
+            continue;
+        }
+#endif
         stdBitmap_Free(jkGui_stdBitmaps[i]);
         jkGui_stdBitmaps[i] = NULL;
     }

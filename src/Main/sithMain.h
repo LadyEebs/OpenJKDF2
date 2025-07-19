@@ -33,13 +33,16 @@ int sithMain_Mode1Init_3(char *fpath);
 int sithMain_Open();
 void sithMain_Close();
 void sithMain_SetEndLevel();
-int sithMain_Tick();
+MATH_FUNC int sithMain_Tick();
 void sithMain_UpdateCamera();
 void sithMain_sub_4C4D80();
 void sithMain_set_sithmode_5();
 void sithMain_SetEpisodeName(char *text);
 void sithMain_AutoSave();
 void sithMain_sub_4C4D80();
+
+extern int sithMain_tickStartMs;
+extern int sithMain_tickEndMs;
 
 //static int (*sithMain_Startup)() = (void*)sithMain_Startup_ADDR;
 //static int (*sithMain_Tick)() = (void*)sithMain_Tick_ADDR;

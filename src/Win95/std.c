@@ -29,6 +29,8 @@ void stdStartup(HostServices* pServices)
 
 void stdShutdown()
 {
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__);
+    
 #ifdef ARCH_X86
 #ifndef LINUX
     asm volatile ("fldcw\t%0" : "=m" (word_860800));
@@ -93,6 +95,7 @@ int stdConsolePrintf(const char *fmt, ...)
 
     va_start(va, fmt);
     __vsnprintf(std_genBuffer, 0x400u, fmt, va);
+    va_end(va);
 #ifndef PLATFORM_POSIX
     stdConsole_Puts(std_genBuffer, 7u);
 #else
@@ -108,6 +111,7 @@ int stdFilePrintf(stdFile_t pFile, const char *fmt, ...)
 
     va_start(va, fmt);
     int ret = __vsnprintf(tmp, 0x400u, fmt, va);
+    va_end(va);
     fwrite(tmp, 1u, ret, (FILE*)pFile);
     return 0;
 }

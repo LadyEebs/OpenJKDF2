@@ -24,7 +24,7 @@ enum jkGuiDecisionButton_t
 };
 
 static wchar_t slider_val_text[5] = {0};
-static int slider_images[2] = {JKGUI_BM_SLIDER_BACK, JKGUI_BM_SLIDER_THUMB};
+static int32_t slider_images[2] = {JKGUI_BM_SLIDER_BACK, JKGUI_BM_SLIDER_THUMB};
 void jkGuiGeneral_FovDraw(jkGuiElement *element, jkGuiMenu *menu, stdVBuffer *vbuf, int redraw);
 
 static jkGuiElement jkGuiGeneral_aElements[23] = { 
@@ -111,6 +111,8 @@ void jkGuiGeneral_Shutdown()
 	jkGuiGeneral_menu.bkBm16 = NULL;
 	jkGuiGeneral_menuAdvanced.bkBm16 = NULL;
 #endif
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__); // Added
+
     // Added: clean restart
     memset(slider_val_text, 0, sizeof(slider_val_text));
 }

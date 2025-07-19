@@ -52,7 +52,7 @@ void jkGuiDialog_Shutdown()
 	jkGuiDialog_OkCancel_menu.bkBm16 = NULL;
 	jkGuiDialog_Ok_menu.bkBm16 = NULL;
 #endif
-    ;
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__); // Added
 }
 
 stdVBuffer *jkGuiDialog_sub_416900()

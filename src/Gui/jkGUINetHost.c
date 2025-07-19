@@ -56,7 +56,7 @@ enum jkGuiNetHostAdvancedElement_t
 	NETHOST_PROXIMITY_CHECKBOX = 6,
 };
 
-static int jkGuiNetHost_aIdk[2] = {0xd, 0xe};
+static int32_t jkGuiNetHost_aIdk[2] = {0xd, 0xe};
 
 // MOTS altered
 static jkGuiElement jkGuiNetHost_aElements[28] =
@@ -307,6 +307,7 @@ void jkGuiNetHost_Startup()
     jkGui_InitMenu(&jkGuiNetHost_menu, jkGui_stdBitmaps[JKGUI_BM_BK_MULTI]);
     jkGui_InitMenu(&jkGuiNetHost_menuSettings, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
 #endif
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__); // Added
     
     jkGuiNetHost_LoadSettings();
     jkGuiNetHost_bInitted = 1;
@@ -318,6 +319,7 @@ void jkGuiNetHost_Shutdown()
 	jkGuiNetHost_menu.bkBm16 = NULL;
 	jkGuiNetHost_menuSettings.bkBm16 = NULL;
 #endif
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__); // Added
 
     jkGuiNetHost_SaveSettings();
     jkGuiNetHost_bInitted = 0;
@@ -580,7 +582,7 @@ int jkGuiNetHost_sub_4118C0(stdCommSession3 *pEntry)
 }
 
 // MOTS altered
-int jkGuiNetHost_sub_4119D0(jkGuiElement *pElement, jkGuiMenu *pMenu, int mouseX, int mouseY, int redraw)
+int jkGuiNetHost_sub_4119D0(jkGuiElement *pElement, jkGuiMenu *pMenu, int32_t mouseX, int32_t mouseY, int redraw)
 {
     if ( mouseX != -1 || mouseY != -1 )
         jkGuiRend_ClickSound(pElement, pMenu, mouseX, mouseY, redraw);
@@ -633,7 +635,7 @@ int jkGuiNetHost_sub_4119D0(jkGuiElement *pElement, jkGuiMenu *pMenu, int mouseX
     return 0;
 }
 
-int jkGuiNetHost_sub_411AE0(jkGuiElement *pElement, jkGuiMenu *pMenu, int mouseX, int mouseY, int redraw)
+int jkGuiNetHost_sub_411AE0(jkGuiElement *pElement, jkGuiMenu *pMenu, int32_t mouseX, int32_t mouseY, int redraw)
 {
     wchar_t *v7; // eax
     int v9; // [esp-8h] [ebp-28h]

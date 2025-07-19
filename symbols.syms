@@ -43,7 +43,7 @@ sithTime_deltaMs 0x00836C08 int32_t
 sithTime_deltaSeconds 0x00836C0C flex_t
 sithTime_TickHz 0x00836C10 flex_t 
 sithTime_curMs 0x00836C14 uint32_t
-sithTime_curSeconds 0x00836C18 flex_t
+sithTime_curSeconds 0x00836C18 flex32_t
 sithTime_curMsAbsolute 0x00836C1C uint32_t
 sithTime_pauseTimeMs 0x00836C20 int32_t
 sithTime_bRunning 0x00836C24 int
@@ -226,29 +226,29 @@ sithGamesave_headerTmp 0x00835918 sithGamesave_Header
 rdCamera_pCurCamera 0x0073A3D0 rdCamera*
 rdCamera_camMatrix 0x0086EE40 rdMatrix34
 
-sithNet_MultiModeFlags 0x008C4BA0 int
-sithNet_scorelimit 0x008C4BAC int
-sithNet_teamScore 0x008C4BC0 int[5]
-sithNet_multiplayer_timelimit 0x008C4BD4 int
-sithMulti_multiplayerTimelimit 0x0083261C int
-sithNet_isMulti 0x00832624 int
-sithNet_isServer 0x00832628 int
-sithMulti_bTimelimitMet 0x00832638 int
+sithNet_MultiModeFlags 0x008C4BA0 int32_t
+sithNet_scorelimit 0x008C4BAC int32_t
+sithNet_teamScore 0x008C4BC0 int32_t[5]
+sithNet_multiplayer_timelimit 0x008C4BD4 int32_t
+sithMulti_multiplayerTimelimit 0x0083261C int32_t
+sithNet_isMulti 0x00832624 int32_t
+sithNet_isServer 0x00832628 int32_t
+sithMulti_bTimelimitMet 0x00832638 int32_t
 sithNet_serverNetId 0x008C4BA4 DPID
-sithNet_things 0x008326AC int[SITH_MAX_THINGS]
-sithNet_thingsIdx 0x008330F0 int
-sithNet_syncIdx 0x008330F4 int
-sithNet_aSyncFlags 0x008330B0 int[SITH_MAX_SYNC_THINGS]
+sithNet_things 0x008326AC int32_t[SITH_MAX_THINGS]
+sithNet_thingsIdx 0x008330F0 int32_t
+sithNet_syncIdx 0x008330F4 int32_t
+sithNet_aSyncFlags 0x008330B0 int32_t[SITH_MAX_SYNC_THINGS]
 sithNet_aSyncThings 0x00832668 sithThing*[SITH_MAX_SYNC_THINGS]
-sithNet_tickrate 0x005490D4 int = 180
-sithNet_dword_8C4BA8 0x008C4BA8 int
+sithNet_tickrate 0x005490D4 int32_t = 180
+sithNet_dword_8C4BA8 0x008C4BA8 int32_t
 sithNet_dword_83262C 0x0083262C DPID
-sithMulti_leaveJoinType 0x0083263C int
-sithNet_checksum 0x00832630 int
-sithNet_bNeedsFullThingSyncForLeaveJoin 0x00832640 int
+sithMulti_leaveJoinType 0x0083263C int32_t
+sithNet_checksum 0x00832630 int32_t
+sithNet_bNeedsFullThingSyncForLeaveJoin 0x00832640 int32_t
 sithMulti_sendto_id 0x00832644 DPID
-sithNet_bSyncScores 0x00832648 int
-sithNet_dword_832620 0x00832620 int
+sithNet_bSyncScores 0x00832648 int32_t
+sithNet_dword_832620 0x00832620 int32_t
 
 sithOverlayMap_flMapSize 0x0054A5E0 flex_t = 100.0
 sithOverlayMap_matrix 0x00835840 rdMatrix34
@@ -327,11 +327,15 @@ d3d_device_ptr 0x0055C7DC d3d_device*
 std3D_rectViewIdk 0x00865320 rdRect
 std3D_aViewIdk 0x008652A0 flex_t[32]
 std3D_aViewTris 0x00865260 rdTri[2]
-std3D_gpuMaxTexSizeMaybe 0x0053D668 int = 1
-std3D_dword_53D66C 0x0053D66C int = 1
-std3D_dword_53D670 0x0053D670 int = 0x100
-std3D_dword_53D674 0x0053D674 int = 0x100
+std3D_gpuMaxTexSizeMaybe 0x0053D668 int32_t = 1
+std3D_dword_53D66C 0x0053D66C int32_t = 1
+std3D_dword_53D670 0x0053D670 int32_t = 0x100
+std3D_dword_53D674 0x0053D674 int32_t = 0x100
+std3D_frameCount 0c0053d678 int32_t = 1
 std3D_renderList 0x0055C7D0 intptr_t
+std3D_numCachedTextures 0x0055C7F4 int32_t
+std3D_pFirstTexCache 0x0055C7F8 rdDDrawSurface*
+std3D_pLastTexCache 0x0055C7Fc rdDDrawSurface* 
 
 stdComm_dword_8321F8 0x008321F8 int
 stdComm_bInitted 0x008321D8 int
@@ -521,7 +525,7 @@ jkHud_targetRed 0x00525960 uint32_t = 1
 jkHud_targetBlue 0x00525964 uint32_t = 2
 jkHud_targetGreen 0x00525968 uint32_t = 3
 jkHud_aFltIdk 0x00525970 flex_t[6] = {0.2, 0.4, 0.8, 1.0, 2.0, 0.0}
-jkHud_aColors8bpp 0x00525988 int[6] = {1,2,3,4,5,0}
+jkHud_aColors8bpp 0x00525988 int32_t[6] = {1,2,3,4,5,0}
 //jkHud_aFonts 0x005259A0 
 //jkHud_aBitmaps 0x005259E8 
 jkHud_aTeamColors8bpp 0x00525A48 int[5] = {0x0, 0x6, 0x69, 0x1F, 0x2}
@@ -535,7 +539,7 @@ jkHud_chatStrPos 0x00552CB8 int
 jkHud_rightBlitY 0x00552CBC int
 jkHud_aTeamScores 0x00552CC0 jkHudTeamScore[5]
 jkHud_dword_552D10 0x00552D10 int
-jkHud_aColors16bpp 0x00552D18 int[6]
+jkHud_aColors16bpp 0x00552D18 int32_t[6]
 jkHud_aPlayerScores 0x00552D30 jkHudPlayerScore[32]
 jkHud_blittedAmmoAmt 0x00553E30 int
 jkHud_idk14 0x00553E34 int
@@ -698,14 +702,14 @@ sithWeapon_bMultiAutoPickup 0x008BD08C int
 sithWeapon_bMultiplayerAutoSwitch 0x008BD090 int
 sithWeapon_bMultiAutoReload 0x008BD094 int
 sithWeapon_bAutoAim 0x008BD098 int
-sithWeapon_mountWait 0x008BD09C flex_t
+sithWeapon_mountWait 0x008BD09C flex32_t
 sithWeapon_8BD0A0 0x008BD0A0 flex_t[2]
-sithWeapon_fireWait 0x008BD0A8 flex_t
-sithWeapon_fireRate 0x008BD0AC flex_t
-sithWeapon_LastFireTimeSecs 0x008BD0B0 flex_t
+sithWeapon_fireWait 0x008BD0A8 flex32_t
+sithWeapon_fireRate 0x008BD0AC flex32_t
+sithWeapon_LastFireTimeSecs 0x008BD0B0 flex32_t
 sithWeapon_a8BD030 0x008BD030 int[4]
 sithWeapon_8BD05C 0x008BD05C int
-sithWeapon_8BD060 0x008BD060 flex_t
+sithWeapon_8BD060 0x008BD060 flex32_t
 sithWeapon_8BD008 0x008BD008 int[6]
 sithWeapon_8BD024 0x008BD024 int
 sithWeapon_senderIndex 0x008BD028 int
@@ -716,7 +720,6 @@ jkPlayer_numOtherThings 0x0085FF44 int
 jkPlayer_numThings 0x0085B560 int
 jkPlayer_otherThings 0x008592E0 jkPlayerInfo[NUM_JKPLAYER_THINGS]
 jkPlayer_bLoadingSomething 0x00525470 int = 1
-bShowInvisibleThings 0x8EE640 int
 playerThingIdx 0x83199C int
 jkPlayer_maxPlayers 0x8319A0 uint32_t
 sithPlayer_pLocalPlayerThing 0x8319A4 sithThing*
@@ -732,6 +735,7 @@ jkPlayer_setDisableCutscenes 0x00860778 int
 jkPlayer_aCutsceneVal 0x0085FAC0 int[32]
 jkPlayer_cutscenePath 0x0085FB40 char[1024]
 jkPlayer_setNumCutscenes 0x0085FF40 int
+jkPlayer_currentTickIdx 0x8EE640 int
 jkPlayer_setDiff 0x008EE670 int
 jkPlayer_waggleVec 0x00552BA0 rdVector3
 jkPlayer_waggleMag 0x00552BAC flex_t
@@ -880,7 +884,7 @@ cog_parser_node_stackpos 0x008554C8 int[SITHCOG_NODE_STACKDEPTH]
 cogvm_stackpos 0x00855CD8 int
 cogparser_nodes_alloc 0x00855CD0 sith_cog_parser_node*
 cogparser_topnode 0x00855CCC sith_cog_parser_node*
-cogvm_stack 0x00855CC8 int*
+cogvm_stack 0x00855CC8 int32_t*
 cogparser_num_nodes 0x00855CE0 int
 cogparser_current_nodeidx 0x00855CDC int
 parsing_script 0x00855CD4 sithCogScript*

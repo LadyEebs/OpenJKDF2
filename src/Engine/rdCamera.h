@@ -37,34 +37,34 @@ extern "C" {
 #define rdCamera_AdvanceFrame_ADDR (0x00443D10)
 
 rdCamera* rdCamera_New(flex_t fov, flex_t x, flex_t y, flex_t z, flex_t aspectRatio);
-int rdCamera_NewEntry(rdCamera *camera, flex_t fov, flex_t a3, flex_t zNear, flex_t zFar, flex_t aspectRatio);
+int rdCamera_NewEntry(rdCamera *camera, flex_t fov, BOOL bClipFar, flex_t zNear, flex_t zFar, flex_t aspectRatio);
 void rdCamera_Free(rdCamera *camera);
 void rdCamera_FreeEntry(rdCamera *camera);
-int rdCamera_SetCanvas(rdCamera *camera, rdCanvas *canvas);
+MATH_FUNC int rdCamera_SetCanvas(rdCamera *camera, rdCanvas *canvas);
 int rdCamera_SetCurrent(rdCamera *camera);
-int rdCamera_SetFOV(rdCamera *camera, flex_t fovVal);
+MATH_FUNC int rdCamera_SetFOV(rdCamera *camera, flex_t fovVal);
 int rdCamera_SetProjectType(rdCamera *camera, int type);
-int rdCamera_SetOrthoScale(rdCamera *camera, flex_t scale);
-int rdCamera_SetAspectRatio(rdCamera *camera, flex_t ratio);
-int rdCamera_BuildFOV(rdCamera *camera);
-int rdCamera_BuildClipFrustum(rdCamera *camera, rdClipFrustum *outClip, signed int height, signed int width, signed int height2, signed int width2);
-void rdCamera_Update(rdMatrix34 *orthoProj);
-void rdCamera_OrthoProject(rdVector3* out, rdVector3* v);
-void rdCamera_OrthoProjectLst(rdVector3 *vertices_out, rdVector3 *vertices_in, unsigned int num_vertices);
-void rdCamera_OrthoProjectSquare(rdVector3 *out, rdVector3 *v);
-void rdCamera_OrthoProjectSquareLst(rdVector3 *vertices_out, rdVector3 *vertices_in, unsigned int num_vertices);
-void rdCamera_PerspProject(rdVector3 *out, rdVector3 *v);
-void rdCamera_PerspProjectLst(rdVector3 *vertices_out, rdVector3 *vertices_in, unsigned int num_vertices);
-void rdCamera_PerspProjectSquare(rdVector3 *out, rdVector3 *v);
-void rdCamera_PerspProjectSquareLst(rdVector3 *vertices_out, rdVector3 *vertices_in, unsigned int num_vertices);
+MATH_FUNC int rdCamera_SetOrthoScale(rdCamera *camera, flex_t scale);
+MATH_FUNC int rdCamera_SetAspectRatio(rdCamera *camera, flex_t ratio);
+MATH_FUNC int rdCamera_BuildFOV(rdCamera *camera);
+MATH_FUNC int rdCamera_BuildClipFrustum(rdCamera *camera, rdClipFrustum *outClip, signed int height, signed int width, signed int height2, signed int width2);
+MATH_FUNC void rdCamera_Update(rdMatrix34 *orthoProj);
+MATH_FUNC void rdCamera_OrthoProject(rdVector3* out, rdVector3* v);
+MATH_FUNC void rdCamera_OrthoProjectLst(rdVector3 *vertices_out, rdVector3 *vertices_in, unsigned int num_vertices);
+MATH_FUNC void rdCamera_OrthoProjectSquare(rdVector3 *out, rdVector3 *v);
+MATH_FUNC void rdCamera_OrthoProjectSquareLst(rdVector3 *vertices_out, rdVector3 *vertices_in, unsigned int num_vertices);
+MATH_FUNC void rdCamera_PerspProject(rdVector3 *out, rdVector3 *v);
+MATH_FUNC void rdCamera_PerspProjectLst(rdVector3 *vertices_out, rdVector3 *vertices_in, unsigned int num_vertices);
+MATH_FUNC void rdCamera_PerspProjectSquare(rdVector3 *out, rdVector3 *v);
+MATH_FUNC void rdCamera_PerspProjectSquareLst(rdVector3 *vertices_out, rdVector3 *vertices_in, unsigned int num_vertices);
 #ifdef RGB_AMBIENT
 void rdCamera_SetAmbientLight(rdCamera *camera, rdVector3* amt);
 void rdCamera_SetDirectionalAmbientLight(rdCamera* camera, rdAmbient* ambientSH);
 #else
 void rdCamera_SetAmbientLight(rdCamera* camera, flex_t amt);
 #endif
-void rdCamera_SetAttenuation(rdCamera *camera, flex_t minVal, flex_t maxVal);
-int rdCamera_AddLight(rdCamera *camera, rdLight *light, rdVector3 *lightPos);
+MATH_FUNC void rdCamera_SetAttenuation(rdCamera *camera, flex_t minVal, flex_t maxVal);
+MATH_FUNC int rdCamera_AddLight(rdCamera *camera, rdLight *light, rdVector3 *lightPos);
 int rdCamera_ClearLights(rdCamera *camera);
 void rdCamera_AdvanceFrame();
 flex_t rdCamera_GetMipmapScalar(); // MOTS added

@@ -1565,7 +1565,7 @@ void std3D_Shutdown()
 
 void std3D_FreeResources()
 {
-    std3D_PurgeTextureCache();
+    std3D_PurgeEntireTextureCache();
 
     glDeleteProgram(programDefault);
     glDeleteProgram(programMenu);
@@ -1648,6 +1648,8 @@ void std3D_useProgram(int program)
 int std3D_StartScene()
 {
     if (Main_bHeadless) return 1;
+
+    ++std3D_frameCount;
 
     //printf("Begin draw\n");
     if (!has_initted)
@@ -4355,8 +4357,15 @@ int std3D_AddBitmapToTextureCache(stdBitmap *texture, int mipIdx, int is_alpha_t
     return 1;
 }
 
-void std3D_UpdateFrameCount(rdDDrawSurface *surface)
-{
+void std3D_UpdateFrameCount(rdDDrawSurface *pTexture) {
+    //pTexture->frameNum = std3D_frameCount; // lol LEC bug
+    std3D_RemoveTextureFromCacheList(pTexture);
+    std3D_AddTextureToCacheList(pTexture);
+    pTexture->frameNum = std3D_frameCount;
+}
+void std3D_RemoveTextureFromCacheList(rdDDrawSurface *surface) {
+}
+void std3D_AddTextureToCacheList(rdDDrawSurface *surface) {
 }
 
 // Added helpers
@@ -4569,7 +4578,42 @@ void std3D_PurgeUIEntry(int i, int idx) {
     std3D_loadedUITexturesAmt--;
 }
 
-void std3D_PurgeTextureCache()
+// From https://github.com/smlu/OpenJones3D/blob/main/Libs/std/Win95/std3D.c
+int std3D_PurgeTextureCache(size_t size)
+{
+    size_t purgedBytes = 0;
+    for ( rdDDrawSurface* pCacheTexture = std3D_pFirstTexCache; pCacheTexture && pCacheTexture->frameNum != std3D_frameCount; pCacheTexture = pCacheTexture->pNextCachedTexture )
+    {
+        if ( pCacheTexture->textureSize == size )
+        {
+            //IDirect3DTexture2_Release(pCacheTexture->pD3DCachedTex);
+            std3D_PurgeSurfaceRefs(pCacheTexture);
+            //pCacheTexture->pD3DCachedTex = NULL;
+            std3D_RemoveTextureFromCacheList(pCacheTexture);
+            return 1;
+        }
+    }
+
+    rdDDrawSurface* pNextCachedTexture = NULL;
+    for ( rdDDrawSurface* pCacheTexture = std3D_pFirstTexCache; pCacheTexture && purgedBytes < size; pCacheTexture = pNextCachedTexture )
+    {
+        pNextCachedTexture = pCacheTexture->pNextCachedTexture;
+        if ( pCacheTexture->frameNum != std3D_frameCount )
+        {
+            //if ( pCacheTexture->pD3DCachedTex ) { // Added: Added check for null pointer
+                //IDirect3DTexture2_Release(pCacheTexture->pD3DCachedTex);
+                std3D_PurgeSurfaceRefs(pCacheTexture);
+            //}
+            //pCacheTexture->pD3DCachedTex = NULL;
+            purgedBytes += pCacheTexture->textureSize;
+            std3D_RemoveTextureFromCacheList(pCacheTexture);
+        }
+    }
+
+    return purgedBytes != 0;
+}
+
+void std3D_PurgeEntireTextureCache()
 {
     if (Main_bHeadless) {
         std3D_loadedTexturesAmt = 0;

@@ -94,12 +94,13 @@ void jkGuiEsc_Shutdown()
 #ifdef MENU_16BIT
 	jkGuiEsc_menu.bkBm16 = NULL;
 #endif
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__); // Added
     jkGuiEsc_bInitialized = 0;
 }
 
 void jkGuiEsc_Show()
 {
-    signed int v3; // eax
+    int32_t v3; // eax
 
     if ( sithNet_isMulti )
     {

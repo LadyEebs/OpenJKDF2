@@ -24,7 +24,7 @@ flex_t jkGuiSound_cutsceneVolume = 1.0;
 flex_t jkGuiSound_voiceVolume = 1.0;
 #endif
 
-static int slider_images[2] = {JKGUI_BM_SLIDER_BACK, JKGUI_BM_SLIDER_THUMB};
+static int32_t slider_images[2] = {JKGUI_BM_SLIDER_BACK, JKGUI_BM_SLIDER_THUMB};
 
 static jkGuiElement jkGuiSound_elements[] = {
     {ELEMENT_TEXT, 0, 0, 0, 3, {0, 410, 640, 20}, 1, 0, 0, 0, 0, 0, {0}, 0},

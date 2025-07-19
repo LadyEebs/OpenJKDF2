@@ -36,6 +36,7 @@ void jkGuiDecision_Shutdown()
 #ifdef MENU_16BIT
 	jkGuiDecision_menu.bkBm16 = NULL;
 #endif
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__); // Added
 }
 
 int jkGuiDecision_Show()

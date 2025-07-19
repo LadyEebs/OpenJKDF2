@@ -63,6 +63,8 @@ int jkDSS_005aec8c = 0;
 
 int jkDSS_Startup()
 {
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__);
+    
     sithComm_SetMsgFunc(DSS_JKENABLESABER, jkDSS_ProcessJKEnableSaber);
     sithComm_SetMsgFunc(DSS_SABERINFO3, jkDSS_ProcessSetSaberInfo2);
     sithComm_SetMsgFunc(DSS_JKSETWEAPONMESH, jkDSS_ProcessJKSetWeaponMesh);
@@ -94,7 +96,7 @@ int jkDSS_Startup()
     return 1;
 }
 
-int jkDSS_JKM1(int unused1, sithEventInfo* unused2)
+int jkDSS_JKM1(int32_t unused1, sithEventInfo* unused2)
 {
     if (jkDSS_005aec8c != 0) {
         jkDSS_SendSaberInfo_alt_Mots(sithPlayer_pLocalPlayerThing,jkGuiMultiplayer_mpcInfo.model,jkGuiMultiplayer_mpcInfo.soundClass,jkGuiMultiplayer_mpcInfo.sideMat,jkGuiMultiplayer_mpcInfo.tipMat,jkGuiMultiplayer_mpcInfo.personality);
@@ -104,7 +106,7 @@ int jkDSS_JKM1(int unused1, sithEventInfo* unused2)
 
 void jkDSS_Shutdown()
 {
-    ;
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__);
 }
 
 // MOTS altered
@@ -1011,7 +1013,7 @@ int jkDSS_Processx36_setwaggle(sithCogMsg *msg)
     return 1;
 }
 
-void jkDSS_SendJKPrintUniString(int a1, unsigned int a2)
+void jkDSS_SendJKPrintUniString(int a1, uint32_t a2)
 {
     DPID v2; // eax
 
@@ -1110,9 +1112,9 @@ void jkDSS_SendSetTeam(int16_t teamNum)
 // MOTS altered
 int jkDSS_ProcessSetTeam(sithCogMsg *pMsg)
 {
-    unsigned int playerIdx; // edx
-    unsigned int teamNum; // ecx
-    unsigned int v4; // esi
+    uint32_t playerIdx; // edx
+    uint32_t teamNum; // ecx
+    uint32_t v4; // esi
     rdModel3 *v5; // eax
 
     int personality = -1;

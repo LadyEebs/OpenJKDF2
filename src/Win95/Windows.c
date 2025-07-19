@@ -36,6 +36,8 @@ void Windows_Startup()
 {
     char cdPath[128]; // [esp+0h] [ebp-80h] BYREF
 
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__);
+
     Windows_bInitted = 1;
     WinIdk_SetDplayGuid(Windows_DplayGuid);
     WinIdk_detect_cpu(Windows_cpu_info);
@@ -45,6 +47,7 @@ void Windows_Startup()
 #else
     memset(cdPath, 0, sizeof(cdPath));
 #endif
+
     jkRes_LoadCd(cdPath);
     Windows_installType = wuRegistry_GetInt("InstallType", 9);
     Window_AddMsgHandler(Windows_DefaultHandler);
@@ -52,6 +55,8 @@ void Windows_Startup()
 
 void Windows_Shutdown()
 {
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__);
+
     Window_RemoveMsgHandler(Windows_DefaultHandler);
     wuRegistry_Shutdown();
 
@@ -255,6 +260,7 @@ int Windows_ErrorMsgboxWide(const char *a1, ...)
 #else
     v1 = jkStrings_GetUniStringWithFallback(a1);
     jk_vsnwprintf(Text, 0x400u, v1, va);
+    va_end(va);
     //v4 = jkStrings_GetUniStringWithFallback("ERROR");
     stdString_WcharToChar(tmp, Text, 1024);
 
@@ -284,6 +290,7 @@ int Windows_ErrorMsgbox(const char *a1, ...)
 #else
     v1 = jkStrings_GetUniStringWithFallback(a1);
     jk_vsnwprintf(Text, 0x200u, v1, va);
+    va_end(va);
     //v4 = jkStrings_GetUniStringWithFallback("ERROR");
 
     stdString_WcharToChar(tmp, Text, 512);
@@ -322,6 +329,7 @@ void Windows_GameErrorMsgbox(const char *a1, ...)
 #endif
 #else
     vsnprintf(tmp, 0x200u, a1, va);
+    va_end(va);
     jk_printf("FATAL ERROR: %s\n", tmp);
     while(1);
 #endif

@@ -206,6 +206,8 @@ void crash_handler_basic(int sig);
 #ifdef TARGET_TWL
 #include <nds.h>
 #include <fat.h>
+#include <nds/arm9/dldi.h>
+#include "Platform/TWL/dlmalloc.h"
 
 volatile int frame = 0;
 //---------------------------------------------------------------------------------
@@ -228,7 +230,17 @@ void* __attribute__((weak)) __memcpy_chk(void * dest, const void * src, size_t l
 }
 #endif // WIN64_MINGW
 
-int SDL_main(int argc, char** argv)
+#ifdef TARGET_TWL
+mspace openjkdf2_mem_alt_mspace;
+mspace openjkdf2_mem_main_mspace;
+
+intptr_t openjkdf2_mem_alt_mspace_start;
+intptr_t openjkdf2_mem_alt_mspace_end;
+intptr_t openjkdf2_mem_main_mspace_start;
+intptr_t openjkdf2_mem_main_mspace_end;
+#endif
+
+int main(int argc, char** argv)
 {
 #ifdef ARCH_WASM
     EM_ASM(
@@ -254,6 +266,11 @@ int SDL_main(int argc, char** argv)
 #endif // ARCH_WASM
 
 #ifdef TARGET_TWL
+    extern int32_t openjkdf2_mem_alt_mspace_valid;
+
+    REG_SQRTCNT = SQRT_64;
+    REG_DIVCNT = DIV_64_32;
+
     defaultExceptionHandler();
     consoleDebugInit(DebugDevice_NOCASH);
 
@@ -263,13 +280,119 @@ int SDL_main(int argc, char** argv)
     consoleInit( NULL, 0, BgType_Text4bpp, BgSize_T_256x256, 23, 2, false, true );
     consoleDemoInit();
 
-    fatInitDefault();
+    printf("Waddup\n");
+
+    if (isDSiMode()) {
+        *(u32*)0x4004008 |= 0x8F;
+        REG_EXMEMCNT &= ~(1<<15);
+
+        setCpuClock(1); 
+    }
+
+    if (peripheralSlot2Init(SLOT2_PERIPHERAL_EXTRAM)) {
+        peripheralSlot2Open(SLOT2_PERIPHERAL_EXTRAM);
+        peripheralSlot2EnableCache(true);
+
+        size_t alt_sz = peripheralSlot2RamSize() - 0x1000;
+        openjkdf2_mem_alt_mspace_start = (intptr_t)peripheralSlot2RamStart();
+        openjkdf2_mem_alt_mspace_end = openjkdf2_mem_alt_mspace_start + alt_sz;
+
+        openjkdf2_mem_alt_mspace = create_mspace_with_base((void*)openjkdf2_mem_alt_mspace_start, alt_sz, 0);
+        openjkdf2_mem_alt_mspace_valid = 1;
+
+        printf("Added extra 0x%zx bytes to heap.\n", alt_sz);
+
+        openjkdf2_bIsLowMemoryPlatform = 1;
+        openjkdf2_bIsExtraLowMemoryPlatform = 0;
+    }
+    else {
+        printf("No extra RAM available to use.\n");
+
+        openjkdf2_bIsLowMemoryPlatform = 1;
+        openjkdf2_bIsExtraLowMemoryPlatform = 1;
+    }
+
+    printf("DLDI name:\n%s\n\n", io_dldi_data->friendlyName);
+    printf("DSi mode: %d\n\n", isDSiMode());
+
+    bool init_ok = fatInitDefault();
+    if (!init_ok)
+    {
+        perror("fatInitDefault()");
+    }
+    else
+    {
+        char *cwd = getcwd(NULL, 0);
+        printf("Current dir: %s\n\n", cwd);
+        free(cwd);
+    }
 
     // Millisecond timer
     TIMER0_CR = TIMER_ENABLE|TIMER_DIV_1024;
     TIMER1_CR = TIMER_ENABLE|TIMER_CASCADE;
 
-    printf("Waddup\n");
+    printf("heap free=0x%x\n  allocated=0x%x\n", (intptr_t)getHeapLimit() - (intptr_t)getHeapEnd(), (intptr_t)getHeapEnd() - (intptr_t)getHeapStart());
+
+    printf("heap start=0x%p\n  end=0x%p\n  limit=0x%p\n", (intptr_t)getHeapStart(), (intptr_t)getHeapEnd(), (intptr_t)getHeapLimit());
+
+    printf("ext heap start=%p, size=%x\n", peripheralSlot2RamStart(), peripheralSlot2RamSize());
+    //*(u32*)0x0D000000 = 0x12345678;
+    //printf("%x %x\n", *(u32*)0x0C000000, *(u32*)0x0D000000);
+
+#if 0
+    // This memleaks with jkRes_pHS! but not with pLowLevelHS so it's my fault, somewhere
+    int i = 0;
+    while(1) {
+        FILE* f = fopen("test_nonexistant.txt", "rb");
+        printf("Opened file %d\n", i);
+        if (f) {
+            fclose(f);
+            printf("Closed file %d\n", i);
+        }
+
+        stdPlatform_PrintHeapStats();
+        i++;
+    }
+#endif
+
+    // Nice for debugging
+#if 0
+    while (1) {
+        scanKeys();
+        u16 keys_held = keysHeld();
+        if (!!(keys_held & KEY_A)) {
+            break;
+        }
+    }
+#endif
+
+    scanKeys();
+    u16 keys_held = keysHeld();
+
+    if (!!(keys_held & KEY_B)) {
+        Main_bMotsCompat = 1;
+    }
+
+    const char* tmpDir = fatGetDefaultDrive();
+    chdir(tmpDir);
+
+    char *cwd = getcwd(NULL, 0);
+        printf("Current dir: %s\n\n", cwd);
+        free(cwd);
+
+#if 0
+    FILE* test = fopen("sd:/test_write.txt", "wb");
+    if (test) {
+        fwrite("asdf", 4, 1, test);
+        printf("Got file open!\n");
+        fclose(test);
+    }
+    else {
+        printf("Failed to open.\n");
+    }
+#endif
+
+
 #endif
 #ifdef WIN64_STANDALONE
     FILE* fp;
@@ -301,7 +424,7 @@ int SDL_main(int argc, char** argv)
     }
 #endif // WIN64_STANDALONE
 
-#if !defined(ARCH_WASM) && !defined(TARGET_ANDROID)
+#if !defined(ARCH_WASM) && !defined(TARGET_ANDROID) && !defined(TARGET_TWL)
     openjkdf2_pExecutablePath = argv[0];
 #endif // !ARCH_WASM
 

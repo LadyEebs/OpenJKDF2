@@ -272,7 +272,7 @@ int jkGuiDisplay_ShowAdvanced()
 			jkPlayer_enableDecals = jkGuiDisplay_aElementsAdvanced[id++].selectedTextEntry;
 #endif
 
-            std3D_PurgeTextureCache();
+            std3D_PurgeEntireTextureCache();
 
             jkPlayer_WriteConf(jkPlayer_playerShortName);
         }

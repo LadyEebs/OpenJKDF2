@@ -1286,7 +1286,12 @@ void sithControl_PlayerMovementMots(sithThing *player)
     iVar2 = sithControl_ReadFunctionMap(INPUT_FUNC_SLIDETOGGLE,&local_4);
     if (iVar2 == 0) {
         fVar4 = sithControl_GetAxis(INPUT_FUNC_TURN);
+#ifdef QOL_IMPROVEMENTS
+        // Scale appropriately to high framerates
+        fVar4 = fVar4 * 25.0;
+#else
         fVar4 = fVar4 * sithTime_TickHz;
+#endif
         if (1.0 <= move_multiplier) {
             local_8 = 1.0;
         }
@@ -1296,7 +1301,7 @@ void sithControl_PlayerMovementMots(sithThing *player)
         fVar3 = sithControl_ReadAxisStuff(INPUT_FUNC_TURN);
 #ifdef QOL_IMPROVEMENTS
         // Scale appropriately to high framerates
-        fVar3 *= (sithTime_TickHz / 50.0);
+        //fVar3 *= (sithTime_TickHz / 50.0);
 #endif
 
         fVar4 += fVar3 * thing->actorParams.maxRotThrust * local_8;
@@ -1492,7 +1497,12 @@ void sithControl_PlayerMovement(sithThing *player)
         else
         {
             // Player yaw handling
+#ifdef QOL_IMPROVEMENTS
+            // Scale appropriately to high and low framerates
+            player->physicsParams.angVel.y = sithControl_GetAxis(INPUT_FUNC_TURN) * 25.0;
+#else
             player->physicsParams.angVel.y = sithControl_GetAxis(INPUT_FUNC_TURN) * sithTime_TickHz;
+#endif
             if ( move_multiplier > 1.0 )
                 move_multiplier_ = move_multiplier;
             else
@@ -1500,7 +1510,7 @@ void sithControl_PlayerMovement(sithThing *player)
             
 #ifdef QOL_IMPROVEMENTS
             // Scale appropriately to high framerates
-            player->physicsParams.angVel.y += (sithTime_TickHz / 50.0) * sithControl_ReadAxisStuff(INPUT_FUNC_TURN) * player->actorParams.maxRotThrust * move_multiplier_;
+            player->physicsParams.angVel.y += sithControl_ReadAxisStuff(INPUT_FUNC_TURN) * player->actorParams.maxRotThrust * move_multiplier_;
 #else
             player->physicsParams.angVel.y += sithControl_ReadAxisStuff(INPUT_FUNC_TURN) * player->actorParams.maxRotThrust * move_multiplier_;
 #endif
@@ -1601,11 +1611,13 @@ void sithControl_FreeCam(sithThing *player)
         {
             // Why did MoTS do this lol
             v7->x = (Main_bMotsCompat ? -1 : 1) * sithControl_GetAxis2(INPUT_FUNC_SLIDE) * (v1->actorParams.extraSpeed + v1->actorParams.maxThrust) * 0.7;
-            v1->physicsParams.angVel.y = sithControl_GetAxis(INPUT_FUNC_TURN) * sithTime_TickHz;
+            
 #ifdef QOL_IMPROVEMENTS
             // Scale appropriately to high framerates
-            v1->physicsParams.angVel.y +=  (sithTime_TickHz / 50.0) * sithControl_ReadAxisStuff(INPUT_FUNC_TURN) * v1->actorParams.maxRotThrust;
+            v1->physicsParams.angVel.y = sithControl_GetAxis(INPUT_FUNC_TURN) * 25.0;
+            v1->physicsParams.angVel.y +=  sithControl_ReadAxisStuff(INPUT_FUNC_TURN) * v1->actorParams.maxRotThrust;
 #else
+            v1->physicsParams.angVel.y = sithControl_GetAxis(INPUT_FUNC_TURN) * sithTime_TickHz;
             v1->physicsParams.angVel.y += sithControl_ReadAxisStuff(INPUT_FUNC_TURN) * v1->actorParams.maxRotThrust;
 #endif
         }
@@ -1621,7 +1633,9 @@ void sithControl_FreeCam(sithThing *player)
                     mult *= 5.0;
                 }
                 else if (sithControl_ReadFunctionMap(INPUT_FUNC_JUMP, &tmp)) {
+#ifndef TARGET_TWL
                     mult *= 5.0;
+#endif
                 }
                 if (sithControl_ReadFunctionMap(INPUT_FUNC_DUCK, &tmp)) {
                     mult *= 0.5;
@@ -1633,6 +1647,14 @@ void sithControl_FreeCam(sithThing *player)
                 rdMatrix_BuildRotate34(&a, &v1->actorParams.eyePYR);
                 rdVector_Zero3(&addVec);
                 rdVector_MultAcc3(&addVec, &rdroid_yVector3, sithControl_ReadAxisStuff(INPUT_FUNC_FORWARD) * mult);
+#ifdef TARGET_TWL
+                if (sithControl_ReadFunctionMap(INPUT_FUNC_JUMP, &tmp)) {
+                    rdVector_MultAcc3(&addVec, &rdroid_zVector3, 1.0);
+                }
+                if (sithControl_ReadFunctionMap(INPUT_FUNC_DUCK, &tmp)) {
+                    rdVector_MultAcc3(&addVec, &rdroid_zVector3, -1.0);
+                }
+#endif
 
                 rdMatrix_TransformVector34Acc(&addVec, &a);
                 rdMatrix_TransformVector34Acc(&addVec, &v1->lookOrientation);
@@ -1657,7 +1679,7 @@ void sithControl_FreeCam(sithThing *player)
             {
                 // Added: noclip
                 if ((g_debugmodeFlags & DEBUGFLAG_NOCLIP)) {
-                    
+
                 }
                 else if ( (v1->physicsParams.physflags & SITH_PF_WATERSURFACE) != 0 )
                 {
@@ -1797,18 +1819,18 @@ void sithControl_InputInit()
     sithControl_MapDefaults();
     sithControl_MapAxisFunc(INPUT_FUNC_FORWARD, AXIS_JOY1_Y, 4u);
     sithControl_MapAxisFunc(INPUT_FUNC_TURN, AXIS_JOY1_X, 4u);
+#ifndef TARGET_TWL
     sithControl_DefaultHelper(INPUT_FUNC_FIRE1, KEY_JOY1_B1, 2);
     sithControl_DefaultHelper(INPUT_FUNC_FIRE2, KEY_JOY1_B2, 2);
     sithControl_DefaultHelper(INPUT_FUNC_ACTIVATE, KEY_JOY1_B3, 2);
     sithControl_MapFunc(INPUT_FUNC_JUMP, KEY_JOY1_B4, 0);
-#ifndef TARGET_TWL
     sithControl_MapFunc(INPUT_FUNC_PITCH, KEY_JOY1_HUP, 4);
     sithControl_MapFunc(INPUT_FUNC_PITCH, KEY_JOY1_HDOWN, 0);
     sithControl_MapFunc(INPUT_FUNC_SLIDE, KEY_JOY1_HLEFT, 4);
     sithControl_MapFunc(INPUT_FUNC_SLIDE, KEY_JOY1_HRIGHT, 0);
-#endif
     sithControl_MapFunc(INPUT_FUNC_NEXTINV, KEY_JOY1_B5, 0);
     sithControl_MapFunc(INPUT_FUNC_USEINV, KEY_JOY1_B7, 0);
+#endif
     v6 = sithControl_MapAxisFunc(INPUT_FUNC_TURN, AXIS_MOUSE_X, 0xCu);
     if ( v6 )
         v6->binaryAxisVal = 0.4;
@@ -1817,7 +1839,7 @@ void sithControl_InputInit()
 #else
     v7 = sithControl_MapAxisFunc(INPUT_FUNC_PITCH, AXIS_MOUSE_Y, 8u);
 #endif
-    if ( v7 )
+    if ( v7 ) 
         v7->binaryAxisVal = 0.3;
     v8 = sithControl_MapAxisFunc(INPUT_FUNC_PITCH, AXIS_MOUSE_Z, 0);
     if ( v8 )
@@ -1832,6 +1854,14 @@ void sithControl_InputInit()
     sithControl_MapFunc(INPUT_FUNC_FORWARD, KEY_JOY1_HDOWN, 4);
     sithControl_MapFunc(INPUT_FUNC_TURN, KEY_JOY1_HLEFT, 0);
     sithControl_MapFunc(INPUT_FUNC_TURN, KEY_JOY1_HRIGHT, 4);
+    sithControl_DefaultHelper(INPUT_FUNC_FIRE1, KEY_JOY1_B1, 2);
+    sithControl_DefaultHelper(INPUT_FUNC_DUCK, KEY_JOY1_B2, 0);
+    sithControl_DefaultHelper(INPUT_FUNC_ACTIVATE, KEY_JOY1_B3, 2);
+    sithControl_MapFunc(INPUT_FUNC_JUMP, KEY_JOY1_B4, 0);
+    sithControl_MapFunc(INPUT_FUNC_NEXTINV, KEY_JOY1_B5, 0); // L
+    sithControl_MapFunc(INPUT_FUNC_NEXTWEAPON, KEY_JOY1_B6, 0); // R
+    sithControl_MapFunc(INPUT_FUNC_USEINV, KEY_JOY1_B7, 0);
+    sithWeapon_controlOptions |= 2;
 #endif
 }
 

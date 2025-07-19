@@ -27,6 +27,19 @@
 #ifndef FIXED_H_
 #define FIXED_H_
 
+#ifdef TARGET_TWL
+#include <nds/arm9/math.h>
+static inline s32 div64_mine_(s64 num, s32 den)
+{
+    REG_DIV_NUMER = ((s64)num);
+    REG_DIV_DENOM_L = den;
+
+    while(REG_DIVCNT & DIV_BUSY);
+
+    return (REG_DIV_RESULT_L);
+}
+#endif
+
 #if __cplusplus >= 201402L
 #define CONSTEXPR14 constexpr
 #else
@@ -128,7 +141,9 @@ struct divide_by_zero : std::exception {
 
 template <size_t I, size_t F>
 CONSTEXPR14 fixed<I, F> divide(fixed<I, F> numerator, fixed<I, F> denominator, fixed<I, F> &remainder, typename std::enable_if<type_from_size<I + F>::next_size::is_specialized>::type * = nullptr) {
-
+#ifdef TARGET_TWL
+	return fixed<I, F>::from_base(div64_mine_((s64)numerator.to_raw() << F, denominator.to_raw()));
+#else
 	using next_type                  = typename fixed<I, F>::next_type;
 	using base_type                  = typename fixed<I, F>::base_type;
 	constexpr size_t fractional_bits = fixed<I, F>::fractional_bits;
@@ -142,11 +157,14 @@ CONSTEXPR14 fixed<I, F> divide(fixed<I, F> numerator, fixed<I, F> denominator, f
 	remainder = fixed<I, F>::from_base(next_to_base<base_type>(t % denominator.to_raw()));
 
 	return quotient;
+#endif
 }
 
 template <size_t I, size_t F>
 CONSTEXPR14 fixed<I, F> divide(fixed<I, F> numerator, fixed<I, F> denominator, fixed<I, F> &remainder, typename std::enable_if<!type_from_size<I + F>::next_size::is_specialized>::type * = nullptr) {
-
+#ifdef TARGET_TWL
+	return fixed<I, F>::from_base(div64_mine_((s64)numerator.to_raw() << F, denominator.to_raw()));
+#else
 	using unsigned_type = typename fixed<I, F>::unsigned_type;
 
 	constexpr int bits = fixed<I, F>::total_bits;
@@ -209,6 +227,7 @@ CONSTEXPR14 fixed<I, F> divide(fixed<I, F> numerator, fixed<I, F> denominator, f
 
 		return quotient;
 	}
+#endif
 }
 
 // this is the usual implementation of multiplication
@@ -451,6 +470,10 @@ public: // conversion to basic types
 		return static_cast<uint8_t>((data_ & integer_mask) >> fractional_bits);
 	}
 
+	constexpr uint16_t to_int16() const {
+		return static_cast<int16_t>((data_ & integer_mask) >> fractional_bits);
+	}
+
 	constexpr uint16_t to_uint16() const {
 		return static_cast<uint16_t>((data_ & integer_mask) >> fractional_bits);
 	}
@@ -459,16 +482,24 @@ public: // conversion to basic types
 		return static_cast<int>((data_ & integer_mask) >> fractional_bits);
 	}
 
+	constexpr unsigned int to_uint() const {
+		return static_cast<unsigned int>((data_ & integer_mask) >> fractional_bits);
+	}
+
+	constexpr int to_int32() const {
+		return static_cast<int32_t>((data_ & integer_mask) >> fractional_bits);
+	}
+
+	constexpr int to_uint32() const {
+		return static_cast<uint32_t>((data_ & integer_mask) >> fractional_bits);
+	}
+
 	constexpr int64_t to_int64() const {
 		return static_cast<int64_t>((data_ & integer_mask) >> fractional_bits);
 	}
 
 	constexpr uint64_t to_uint64() const {
 		return static_cast<uint64_t>((data_ & integer_mask) >> fractional_bits);
-	}
-
-	constexpr unsigned int to_uint() const {
-		return static_cast<unsigned int>((data_ & integer_mask) >> fractional_bits);
 	}
 
 	constexpr float to_float() const {
@@ -487,8 +518,20 @@ public: // conversion to basic types
         return to_uint8();
     }
 
+    operator int16_t() const {
+        return to_int16();
+    }
+
     operator uint16_t() const {
         return to_uint16();
+    }
+
+    operator int32_t() const {
+        return to_int32();
+    }
+
+    operator uint32_t() const {
+        return to_uint32();
     }
 
 	operator int64_t() const {
@@ -500,9 +543,10 @@ public: // conversion to basic types
     }
 
     operator bool() const {
-        return (bool)!!to_int();
+        return (bool)!!to_int32();
     }
 
+#ifdef TARGET_TWL
     operator int() const {
         return to_int();
     }
@@ -510,6 +554,7 @@ public: // conversion to basic types
     operator unsigned int() const {
         return to_uint();
     }
+#endif
 
     operator float() const {
         return to_float(); 

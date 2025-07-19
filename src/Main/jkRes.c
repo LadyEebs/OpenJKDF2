@@ -12,11 +12,14 @@
 #include "Gui/jkGUIDialog.h"
 #include "Main/jkStrings.h"
 #include "General/stdString.h"
+#include "General/stdHashTable.h"
 
 static int jkRes_bInit;
 
 int jkRes_Startup(HostServices *a1)
 {
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__);
+    
     if ( jkRes_bInit )
         return 0;
 
@@ -38,6 +41,8 @@ int jkRes_Startup(HostServices *a1)
 
 int jkRes_Shutdown()
 {
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__);
+
     if (!jkRes_bInit)
         return 0;
 
@@ -635,6 +640,7 @@ int jkRes_FilePrintf(stdFile_t fd, const char* fmt, ...)
     jkResFile* resFile = &jkRes_aFiles[fd - 1];
     
     int v3 = __vsnprintf(std_genBuffer, 0x400u, fmt, va);
+    va_end(va);
     
     // No GOB impl
     if ( resFile->useLowLevel )
@@ -642,4 +648,3 @@ int jkRes_FilePrintf(stdFile_t fd, const char* fmt, ...)
 
     return 0;
 }
-

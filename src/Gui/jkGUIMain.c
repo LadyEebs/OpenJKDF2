@@ -38,7 +38,7 @@ static wchar_t jkGuiMain_versionBuffer[64];
 static int jkGuiMain_bIdk = 1;
 static int jkGuiCutscenes_initted;
 
-static int jkGuiMain_listboxIdk[2] = {0xd, 0xe};
+static int32_t jkGuiMain_listboxIdk[2] = {0xd, 0xe};
 
 static jkGuiElement jkGuiMain_cutscenesElements[5] = {
     {ELEMENT_TEXT, 0, 5, "GUI_VIEWCUTSCENES", 3, {0, 50, 640, 60}, 1, 0, 0, 0, 0, 0, {0}, 0},
@@ -285,6 +285,8 @@ void jkGuiMain_Shutdown()
 #ifdef MENU_16BIT
 	jkGuiMain_menu.bkBm16 = NULL;
 #endif
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__); // Added
+
     // Added: clean reset
     jkGuiCutscenes_initted = 0;
 }

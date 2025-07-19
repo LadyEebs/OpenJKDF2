@@ -27,14 +27,16 @@ extern "C" {
 #define rdCache_ProcFaceCompareByDistance_ADDR (0x0043E170)
 
 int rdCache_Startup();
-void rdCache_AdvanceFrame();
-void rdCache_FinishFrame();
-void rdCache_Reset();
+MATH_FUNC void rdCache_AdvanceFrame();
+MATH_FUNC void rdCache_FinishFrame();
+MATH_FUNC void rdCache_Reset();
 void rdCache_ClearFrameCounters();
 rdProcEntry *rdCache_GetProcEntry();
-int rdCache_SendFaceListToHardware();
+
+MATH_FUNC int rdCache_SendFaceListToHardware();
+
 void rdCache_ResetRenderList();
-void rdCache_DrawRenderList();
+MATH_FUNC void rdCache_DrawRenderList();
 int rdCache_TriCompare(const void* a_, const void* b_);
 
 #ifdef RENDER_DROID2
@@ -50,7 +52,7 @@ int rdCache_ProcFaceCompareByDistance(rdProcEntry *a, rdProcEntry *b);
 #ifdef QOL_IMPROVEMENTS
 int rdCache_ProcFaceCompareByState(rdProcEntry* a, rdProcEntry* b);
 #endif
-int rdCache_AddProcFace(int a1, unsigned int num_vertices, char flags);
+MATH_FUNC int rdCache_AddProcFace(int a1, unsigned int num_vertices, char flags);
 
 #ifdef DECAL_RENDERING
 void rdCache_FlushDecals();

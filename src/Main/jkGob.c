@@ -7,6 +7,8 @@ static int jkGob_bInit;
 
 int jkGob_Startup()
 {
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__);
+    
     stdGob_Startup(pHS);
     jkGob_bInit = 1;
     return 1;
@@ -14,7 +16,9 @@ int jkGob_Startup()
 
 void jkGob_Shutdown()
 {
-#ifndef SDL2_RENDER
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__);
+
+#if !defined(SDL2_RENDER) && defined(WIN32)
     jk_ChangeDisplaySettingsA(0, 0);
 #endif
 }

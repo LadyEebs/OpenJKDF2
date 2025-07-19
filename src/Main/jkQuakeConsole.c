@@ -136,6 +136,7 @@ void jkQuakeConsole_Startup()
 
 void jkQuakeConsole_Shutdown()
 {
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__);
     stdFont_Free(jkQuakeConsole_pFont);
     jkQuakeConsole_pFont = NULL;
 
@@ -775,6 +776,9 @@ int jkQuakeConsole_WmHandler(HWND a1, UINT msg, WPARAM wParam, HWND a4, LRESULT 
 
 void jkQuakeConsole_PrintLine(const char* pLine)
 {
+#ifdef TARGET_TWL
+    return;
+#endif
     if (!pLine) return;
 
     char* pLastLine = jkQuakeConsole_aLines[JKQUAKECONSOLE_NUM_LINES-1];

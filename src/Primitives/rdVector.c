@@ -5,6 +5,10 @@
 #include "General/stdMath.h"
 #include "Primitives/rdMath.h"
 
+#ifdef TARGET_TWL
+#include <nds.h>
+#endif
+
 const rdVector2 rdroid_zeroVector2 = {0.0, 0.0};
 const rdVector3 rdroid_zeroVector3 = {0.0,0.0,0.0};
 const rdVector3 rdroid_xVector3 = {1.0,0.0,0.0};
@@ -238,7 +242,12 @@ flex_t rdVector_Len2(const rdVector2* v)
 
 flex_t rdVector_Len3(const rdVector3* v)
 {
+#ifdef TARGET_TWL
+    int64_t val = ((int64_t)v->x.to_raw()*v->x.to_raw())+((int64_t)v->y.to_raw()*v->y.to_raw())+((int64_t)v->z.to_raw()*v->z.to_raw());
+    return sqrt64fixed_mine_2(val);
+#else
     return stdMath_Sqrt(rdVector_Dot3(v,v));
+#endif
 }
 
 flex_t rdVector_Len4(const rdVector4* v)
@@ -264,6 +273,39 @@ flex_t rdVector_Normalize2(rdVector2 *v1, const rdVector2 *v2)
 
 flex_t rdVector_Normalize3(rdVector3 *v1, const rdVector3 *v2)
 {
+#ifdef TARGET_TWL
+#if 0
+    static int last_frame = 0;
+    static int num_sqrts = 0;
+    extern int std3D_frameCount;
+    if (last_frame != std3D_frameCount) {
+        printf("norms %d\n", num_sqrts);
+        last_frame = std3D_frameCount;
+        num_sqrts = 0;
+    }
+    num_sqrts += 1;
+#endif
+
+    flex_t len = sqrt64fixed_mine_2(((int64_t)v2->x.to_raw()*v2->x.to_raw())+((int64_t)v2->y.to_raw()*v2->y.to_raw())+((int64_t)v2->z.to_raw()*v2->z.to_raw()));
+    //flex_t len = rdVector_Len3(v2);
+    if (len == 0.0)
+    {
+        v1->x = v2->x;
+        v1->y = v2->y;
+        v1->z = v2->z;
+    }
+    else
+    {
+        v1->x = divflex_mine(v2->x, len);
+        v1->y = divflex_mine(v2->y, len);
+        v1->z = divflex_mine(v2->z, len);
+
+        //v1->x = f32toflex(divf32_mine(flextof32(v2->x), flextof32(len)));
+        //v1->y = f32toflex(divf32_mine(flextof32(v2->y), flextof32(len)));
+        //v1->z = f32toflex(divf32_mine(flextof32(v2->z), flextof32(len)));
+    }
+    return len;
+#else
     flex_t len = rdVector_Len3(v2);
     if (len == 0.0)
     {
@@ -278,6 +320,7 @@ flex_t rdVector_Normalize3(rdVector3 *v1, const rdVector3 *v2)
         v1->z = v2->z / len;
     }
     return len;
+#endif
 }
 
 flex_t rdVector_Normalize3Quick(rdVector3 *v1, const rdVector3 *v2)

@@ -123,7 +123,7 @@
 #define DEFERRED_FRAMEWORK // helper stuff for deferred passes
 #endif
 
-#endif
+#endif // QOL_IMPROVEMENTS
 
 #ifdef PUPPET_PHYSICS
 
@@ -135,14 +135,19 @@
 #define ANIMCLASS_NAMES // make sure we use the named system
 #endif
 
-#endif
+#endif // QOL_IMPROVEMENTS
 
 // If I ever do demo recording, add it here
 #define NEEDS_STEPPED_PHYS 0//(!jkPlayer_bJankyPhysics || sithNet_isMulti)
 
 // Settings for stepped physics
+#ifdef TARGET_TWL
+#define TARGET_PHYSTICK_FPS (20.0)
+#define DELTA_PHYSTICK_FPS (1.0/TARGET_PHYSTICK_FPS)
+#else
 #define TARGET_PHYSTICK_FPS (sithNet_isMulti ? (sithNet_tickrate < 100 ? 150.0 : 50.0) : 150.0)
 #define DELTA_PHYSTICK_FPS (1.0/TARGET_PHYSTICK_FPS)
+#endif
 
 // Settings for the old stepped physics
 #define OLDSTEP_TARGET_FPS (sithNet_isMulti ? (sithNet_tickrate < 100 ? 150.0 : 50.0) : 50.0)
@@ -199,16 +204,24 @@
 #endif
 
 // World limits
-#if !defined(QOL_IMPROVEMENTS) || defined(TARGET_TWL)
+#if !defined(QOL_IMPROVEMENTS)
 #define SITH_MAX_THINGS (641)
 #define SITH_MAX_VISIBLE_SECTORS (0x80)
 #define SITH_MAX_VISIBLE_SECTORS_2 (0xA0)
 #define SITH_MAX_VISIBLE_ALPHA_SURFACES (32)
+#define SITH_MAX_SURFACE_CLIP_ITERS (25) // not real
+#elif defined(TARGET_TWL)
+#define SITH_MAX_THINGS (641)
+#define SITH_MAX_VISIBLE_SECTORS (256)
+#define SITH_MAX_VISIBLE_SECTORS_2 (256+32)
+#define SITH_MAX_VISIBLE_ALPHA_SURFACES (32)
+#define SITH_MAX_SURFACE_CLIP_ITERS (25)
 #else // QOL_IMPROVEMENTS
 #define SITH_MAX_THINGS (32000)
 #define SITH_MAX_VISIBLE_SECTORS (1024)
 #define SITH_MAX_VISIBLE_SECTORS_2 (1280)
 #define SITH_MAX_VISIBLE_ALPHA_SURFACES (1024)
+#define SITH_MAX_SURFACE_CLIP_ITERS (50)
 #endif // QOL_IMPROVEMENTS
 
 #if !defined(QOL_IMPROVEMENTS) || defined(TARGET_TWL)
@@ -228,22 +241,30 @@
 #define SITHCOG_LINKED_SYMBOL_LIMIT (2048)
 #define SITHCOG_MAX_LINKS (2048)
 #define SITHCOG_NODE_STACKDEPTH (0x800) // JK was 0x200, MoTS is 0x400
+#elif defined(TARGET_TWL)
+
+#define SITHCOGVM_MAX_STACKSIZE (64)
+#define SITHCOG_SYMBOL_LIMIT (1024) // JK was 512, MoTS/DW are 1024
+#define SITHCOG_LINKED_SYMBOL_LIMIT (256)
+#define SITHCOG_MAX_LINKS (512)
+#define SITHCOG_NODE_STACKDEPTH (0x400) // JK was 0x200, MoTS is 0x400
+
 #else // !QOL_IMPROVEMENTS
 #define SITHCOGVM_MAX_STACKSIZE (64)
 #define SITHCOG_SYMBOL_LIMIT (1024) // JK was 512, MoTS/DW are 1024
 #define SITHCOG_LINKED_SYMBOL_LIMIT (256)
 #define SITHCOG_MAX_LINKS (512)
-#define SITHCOG_NODE_STACKDEPTH (0x200) // JK was 0x200, MoTS is 0x400
+#define SITHCOG_NODE_STACKDEPTH (0x400) // JK was 0x200, MoTS is 0x400
 #endif // QOL_IMPROVEMENTS
 
 // Weapon-related limits
 #define MAX_DEFLECTION_BOUNCES (6)
 
 #if defined(TARGET_TWL)
-#define RDCACHE_MAX_TRIS (0x200) // theoretical max 0x800?
-#define RDCACHE_MAX_VERTICES (0x600)
+#define RDCACHE_MAX_TRIS (0x800) // theoretical max 0x800?
+#define RDCACHE_MAX_VERTICES (0x1800)
 
-#define STD3D_MAX_TEXTURES (1024)
+#define STD3D_MAX_TEXTURES (512)
 #define STD3D_MAX_UI_TRIS (0x100)
 #define STD3D_MAX_UI_VERTICES (0x100)
 #elif defined(TILE_SW_RASTER)
@@ -343,6 +364,10 @@
 #define SITHCAMERA_ZNEAR_FIRSTPERSON (1.0 / 128.0)
 #define SITHCAMERA_ZNEAR (1.0 / 64.0)
 #define SITHCAMERA_ZFAR (128.0)
+#elif defined(TARGET_TWL)
+#define SITHCAMERA_ZNEAR_FIRSTPERSON (1.0 / 64.0)
+#define SITHCAMERA_ZNEAR (1.0 / 64.0)
+#define SITHCAMERA_ZFAR (64.0)
 #else
 #define SITHCAMERA_ZNEAR_FIRSTPERSON (1.0 / 64.0)
 #define SITHCAMERA_ZNEAR (1.0 / 64.0)
@@ -411,6 +436,18 @@
 #define VOICE_OUTPUT_SAMPLE_RATE		11025
 #define VOICE_OUTPUT_BYTES_PER_SAMPLE		2
 
+#endif
+
+//
+// Misc optimizations/features
+//
+#if defined(TARGET_TWL)
+#define STDHASHTABLE_CRC32_KEYS
+#endif
+
+// Deferred loading and LRU unloading
+#if defined(QOL_IMPROVEMENTS)
+#define RDMATERIAL_LRU_LOAD_UNLOAD
 #endif
 
 #ifdef QOL_IMPROVEMENTS
@@ -486,6 +523,12 @@ extern int Window_isHiDpi;
 typedef float flex_t_type; // _Float16
 typedef double flex_d_t_type;
 
+// Fixed point experiment
+#ifdef EXPERIMENTAL_FIXED_POINT
+#define FIXED_POINT_DECIMAL_BITS (16)
+#define FIXED_POINT_WHOLE_BITS   (32-FIXED_POINT_DECIMAL_BITS)
+#endif
+
 #define FLEX(n) ((flex_t)n)
 
 // Disable warnings for Vegetable Studio
@@ -507,6 +550,14 @@ typedef double flex_d_t_type;
 #pragma warning(disable: 4715) // not all control paths return a value
 #pragma warning(disable: 4716) // 'blahblah': must return a value
 #pragma warning(disable: 5105) // macro expansion producing 'defined' has undefined behavior
+#endif
+
+// Optimize for math operations, depending on the architecture
+// TODO: Have a TARGET_ARMvIDK or something
+#ifdef TARGET_TWL
+#define MATH_FUNC __attribute__((target("arm")))
+#else
+#define MATH_FUNC
 #endif
 
 #endif // _OPENJKDF2_ENGINE_CONFIG_H

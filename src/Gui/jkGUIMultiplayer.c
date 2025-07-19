@@ -23,8 +23,8 @@
 #endif
 
 static int jkGuiMultiplayer_bInitted = 0;
-static int jkGuiMultiplayer_aElements2_aIdk[2] = {0xd, 0xe};
-static int jkGuiMultiplayer_aElements3_aIdk[2] = {0xd, 0xe};
+static int32_t jkGuiMultiplayer_aElements2_aIdk[2] = {0xd, 0xe};
+static int32_t jkGuiMultiplayer_aElements3_aIdk[2] = {0xd, 0xe};
 
 #ifdef PLATFORM_STEAM
 static const char* jkGuiMultiplayer_searchDistances[] =
@@ -156,6 +156,8 @@ void jkGuiMultiplayer_Startup()
 	jkGui_InitMenu(&jkGuiMultiplayer_menu3, jkGui_stdBitmaps[JKGUI_BM_BK_MULTI]);
 	jkGui_InitMenu(&jkGuiMultiplayer_menu4, jkGui_stdBitmaps[JKGUI_BM_BK_MULTI]);
 #endif
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__); // Added
+
     jkGuiMultiplayer_bInitted = 1;
 
 #ifdef QOL_IMPROVEMENTS
@@ -207,7 +209,8 @@ void jkGuiMultiplayer_Shutdown()
 	jkGuiMultiplayer_menu3.bkBm16 = NULL;
 	jkGuiMultiplayer_menu4.bkBm16 = NULL;
 #endif
-
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__); // Added
+	
     jkGuiMultiplayer_bInitted = 0;
 }
 
@@ -215,7 +218,7 @@ void jkGuiMultiplayer_Shutdown()
 int jkGuiMultiplayer_Show()
 {
     int result; // eax
-    unsigned int v1; // esi
+    uint32_t v1; // esi
     sith_dplay_connection *v2; // edi
     int v3; // esi
     HRESULT v4; // eax
@@ -227,7 +230,7 @@ int jkGuiMultiplayer_Show()
     wchar_t *v11; // eax
     int v12; // esi
     int v13; // eax
-    unsigned int v14; // esi
+    uint32_t v14; // esi
     sith_dplay_connection *v15; // edi
     int v16; // esi
     HRESULT v17; // eax
@@ -860,7 +863,7 @@ void jkGuiMultiplayer_sub_413E50(int idx)
     jkGuiRend_UpdateAndDrawClickable(&jkGuiMultiplayer_aElements3[8], &jkGuiMultiplayer_menu3, 1);
 }
 
-int jkGuiMultiplayer_sub_413E00(jkGuiElement *pElement, jkGuiMenu *pMenu, int mouseX, int mouseY, int bRedraw)
+int jkGuiMultiplayer_sub_413E00(jkGuiElement *pElement, jkGuiMenu *pMenu, int32_t mouseX, int32_t mouseY, int bRedraw)
 {
     int v5; // eax
 
@@ -999,7 +1002,7 @@ void jkGuiMultiplayer_sub_4142C0(jkGuiMenu *pMenu)
 
 int jkGuiMultiplayer_sub_413C80(Darray *pDarray, jkGuiElement *pElement, int a3)
 {
-    unsigned int v3; // esi
+    uint32_t v3; // esi
     sith_dplay_connection *v4; // edi
     int result; // eax
 

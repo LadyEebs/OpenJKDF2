@@ -58,6 +58,14 @@ uint64_t stdPlatform_GetMotSAppID();
 
 int stdConsolePrintf(const char *fmt, ...);
 
+#ifdef TARGET_TWL
+extern size_t trackingAllocsA;
+extern size_t trackingAllocsB;
+extern size_t trackingAllocsBLimit;
+
+void stdPlatform_PrintHeapStats();
+#endif
+
 #ifdef __cplusplus
 }
 #endif

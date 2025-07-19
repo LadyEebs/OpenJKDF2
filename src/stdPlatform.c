@@ -4,6 +4,12 @@
 #include "General/stdMemory.h"
 #include "Main/jkQuakeConsole.h"
 
+#ifdef TARGET_TWL
+#include <nds.h>
+#include <sys/stat.h>
+#include "Platform/TWL/dlmalloc.h"
+#endif
+
 #ifdef PLATFORM_POSIX
 #include <stdlib.h>
 #include <stdio.h>
@@ -16,17 +22,13 @@
 
 #include "SDL2_helper.h"
 
-#ifdef TARGET_TWL
-#include <nds.h>
-#endif
-
 #ifdef PLATFORM_POSIX
 uint32_t Linux_TimeMs()
 {
     // TWL has hardware timers we can use for accurate ms timing
-#ifdef TARGET_TWL
+#if defined(TARGET_TWL)
     return (uint32_t)(((TIMER1_DATA*(1<<16))+TIMER0_DATA)/32.7285);
-#endif
+#else
 
     struct timespec _t;
 
@@ -37,13 +39,14 @@ uint32_t Linux_TimeMs()
 #endif
 
     return _t.tv_sec*1000 + lround(_t.tv_nsec/1.0e6);
+#endif
 }
 
 uint64_t Linux_TimeUs()
 {
-#ifdef TARGET_TWL
+#if defined(TARGET_TWL)
     return (uint64_t)(((TIMER1_DATA*(1<<16))+TIMER0_DATA)/32728.5);
-#endif
+#else
     struct timespec _t;
 
 #if defined(_MSC_VER) && !defined(WIN64_MINGW)
@@ -53,10 +56,17 @@ uint64_t Linux_TimeUs()
 #endif
 
     return _t.tv_sec*1000000 + lround(_t.tv_nsec/1.0e3);
+#endif
 }
 
 static stdFile_t Linux_stdFileOpen(const char* fpath, const char* mode)
 {
+    // TODO figure out melonds failing
+#ifdef TARGET_TWL
+    if (!strcmp(mode, "w") || !strcmp(mode, "wb")) {
+        return 0;
+    }
+#endif
     char tmp[512];
     size_t len = strlen(fpath);
 
@@ -83,7 +93,19 @@ for (int i = 0; i < len; i++)
 }
 #endif
 
-    stdFile_t ret = (stdFile_t)fcaseopen(tmp, mode);
+    stdFile_t ret;
+#ifndef TARGET_TWL
+    ret = (stdFile_t)fcaseopen(tmp, mode);
+#else
+    struct stat statstuff;
+    int exists = stat(tmp, &statstuff) >= 0;
+    if (exists) {
+        ret = (stdFile_t)fopen(tmp, mode);
+    }
+    else {
+        return 0;
+    }
+#endif
     //printf("File open `%s`->`%s` mode `%s`, ret %x\n", fpath, tmp, mode, ret);
     
     return ret;
@@ -137,15 +159,6 @@ static int Linux_stdFtell(stdFile_t fhand)
 
 static void* Linux_alloc(uint32_t len)
 {
-#ifdef TARGET_TWL
-    void* ret = malloc(len);
-    if (!ret) {
-        printf("Failed to allocate %x bytes...\n", len);
-        return NULL;
-    }
-    return ret;
-#endif
-    //TODO figure out where we're having alloc issues?
     return malloc(len);
 }
 
@@ -156,9 +169,302 @@ static void Linux_free(void* ptr)
 
 static void* Linux_realloc(void* ptr, uint32_t len)
 {
-    //printf("%p %zx\n", ptr, len);
     return realloc(ptr, len);
 }
+
+#ifdef TARGET_TWL
+
+#define ALLOC_ALIGN (0x10)
+
+#define MEM_CHECKING
+#define MEM_CHECKING_ADD (0x10)
+#define MEM_CHECKING_ZERO_VAL (0x00)
+#define MEM_CHECKING_VAL (0xAA)
+#define MEM_CHECKING_VAL_FREE (0x55)
+
+size_t trackingAllocsA = 0;
+size_t trackingAllocsB = 0;
+size_t trackingAllocsAReal = 0;
+size_t trackingAllocsBReal = 0;
+size_t trackingAllocsBLimit = 0;
+
+extern mspace openjkdf2_mem_alt_mspace;
+extern mspace openjkdf2_mem_main_mspace;
+extern int32_t openjkdf2_mem_alt_mspace_valid;
+
+extern intptr_t openjkdf2_mem_alt_mspace_start;
+extern intptr_t openjkdf2_mem_alt_mspace_end;
+extern intptr_t openjkdf2_mem_main_mspace_start;
+extern intptr_t openjkdf2_mem_main_mspace_end;
+
+typedef struct MemTrackingHeader {
+    uint32_t memtype_size;
+} tMemTrackingHeader;
+
+#define HDR_MEMTYPE_RD(p) (((p)->memtype_size >> 24) & 0xFF)
+#define HDR_SIZE_RD(p) ((p)->memtype_size & 0xFFFFFF)
+#define HDR_SET(p,t,s) ((p)->memtype_size=(((t&0xFF)<<24) | (s & 0xFFFFFF)))
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern void *__real_malloc(size_t size);
+extern void __real_free(void *ptr);
+extern void* __real_realloc(void *ptr, size_t len);
+
+#ifdef __cplusplus
+}
+#endif
+
+
+static void* TWL_alloc(uint32_t len)
+{
+    if (!len) {
+        return NULL;
+    }
+    // Why?
+    uint32_t lenAlign = ((len + sizeof(tMemTrackingHeader)) + (ALLOC_ALIGN-1)) & ~(ALLOC_ALIGN-1);
+#ifdef MEM_CHECKING
+    lenAlign += MEM_CHECKING_ADD;
+#endif
+    void* ret = NULL;
+
+    if (!trackingAllocsBLimit) {
+        trackingAllocsBLimit = (intptr_t)getHeapLimit() - (intptr_t)getHeapEnd();
+        void* mainBase = NULL;
+        while (!mainBase) {
+            mainBase = __real_malloc(trackingAllocsBLimit);
+            if (!mainBase) {
+                trackingAllocsBLimit -= 0x1000;
+            }
+        }
+        openjkdf2_mem_main_mspace_start = (intptr_t)mainBase;
+        openjkdf2_mem_main_mspace_end = (intptr_t)mainBase + trackingAllocsBLimit;
+        //printf("mainBase %p\n", mainBase);
+        openjkdf2_mem_main_mspace = create_mspace_with_base(mainBase, trackingAllocsBLimit, 0);
+    }
+
+    if (openjkdf2_mem_alt_mspace_valid) {
+        ret = mspace_malloc(openjkdf2_mem_alt_mspace, lenAlign);
+        if (ret) {
+            trackingAllocsA += len;
+            trackingAllocsAReal += lenAlign;
+#ifdef MEM_CHECKING
+            memset(ret, MEM_CHECKING_ZERO_VAL, len);
+            memset((uint8_t*)ret+len, MEM_CHECKING_VAL, lenAlign-len);
+#endif
+            HDR_SET((tMemTrackingHeader*)ret, 0xF0, len);
+            //printf("ret %p\n", ret);
+            return (void*)(((intptr_t)ret) + sizeof(tMemTrackingHeader));
+        }
+    }
+
+    if (trackingAllocsBReal + lenAlign < trackingAllocsBLimit) {
+        ret = mspace_malloc(openjkdf2_mem_main_mspace, lenAlign);//malloc(len + sizeof(tMemTrackingHeader));
+        if (ret) {
+            trackingAllocsB += len;
+            trackingAllocsBReal += lenAlign;
+            //printf("%p %x\n", ret, len + sizeof(tMemTrackingHeader));
+#ifdef MEM_CHECKING
+            memset(ret, MEM_CHECKING_ZERO_VAL, len);
+            memset((uint8_t*)ret+len, MEM_CHECKING_VAL, lenAlign-len);
+#endif
+            HDR_SET((tMemTrackingHeader*)ret, 0xDA, len);
+            return (void*)(((intptr_t)ret) + sizeof(tMemTrackingHeader));
+        }
+    }
+
+    //uint32_t freeEst = (intptr_t)getHeapLimit() - (intptr_t)getHeapEnd();
+
+    printf("already out? %zx %zx\n", trackingAllocsA, trackingAllocsB);
+
+    if (!ret) {
+        printf("Failed to allocate %x bytes...\n", len);
+        //while (1) {}
+        return NULL;
+    }
+    
+    return ret;
+}
+
+static void TWL_free(void* ptr)
+{
+    if (!ptr) {
+        return;
+    }
+
+    tMemTrackingHeader* pHdr = (tMemTrackingHeader*)((intptr_t)ptr - sizeof(tMemTrackingHeader));
+    uint32_t sizeAlign = ((HDR_SIZE_RD(pHdr) + sizeof(tMemTrackingHeader)) + (ALLOC_ALIGN-1)) & ~(ALLOC_ALIGN-1);
+
+#ifdef MEM_CHECKING
+    sizeAlign += MEM_CHECKING_ADD;
+#endif
+
+#ifdef MEM_CHECKING
+    for (uint32_t i = HDR_SIZE_RD(pHdr); i < sizeAlign - sizeof(tMemTrackingHeader); i++) {
+        if (*((uint8_t*)ptr + i) != MEM_CHECKING_VAL) {
+            printf("OOB write!! %p %x %x\n", pHdr, HDR_SIZE_RD(pHdr), sizeAlign - sizeof(tMemTrackingHeader));
+            while(1);
+        }
+    }
+#endif
+
+    if (openjkdf2_mem_alt_mspace && HDR_MEMTYPE_RD(pHdr) == 0xF0 /*|| ((intptr_t)pHdr >= openjkdf2_mem_alt_mspace_start && (intptr_t)pHdr <= openjkdf2_mem_alt_mspace_end)*/) {
+        trackingAllocsA -= HDR_SIZE_RD(pHdr);
+        trackingAllocsAReal -= sizeAlign;
+        HDR_SET(pHdr, 0xDE, 0);
+#ifdef MEM_CHECKING
+        memset(ptr, MEM_CHECKING_VAL_FREE, sizeAlign);
+#endif
+        mspace_free(openjkdf2_mem_alt_mspace, (void*)pHdr);
+        return;
+    }
+    else if (HDR_MEMTYPE_RD(pHdr) == 0xDA /*|| ((intptr_t)pHdr >= openjkdf2_mem_main_mspace_start && (intptr_t)pHdr <= openjkdf2_mem_main_mspace_end)*/) {
+        trackingAllocsB -= HDR_SIZE_RD(pHdr);
+        trackingAllocsBReal -= sizeAlign;
+        HDR_SET(pHdr, 0xDE, 0);
+#ifdef MEM_CHECKING
+        memset(ptr, MEM_CHECKING_VAL_FREE, sizeAlign);
+#endif
+        mspace_free(openjkdf2_mem_main_mspace, (void*)pHdr);//free((void*)pHdr);
+        return;
+    }
+    else if (HDR_MEMTYPE_RD(pHdr) == 0xDE) {
+        printf("Double free? %p\n", ptr);
+        while(1);
+    }
+    else {
+        printf("Where does this go?? %p\n", ptr);
+        while(1);
+    }
+    /*else {
+        __real_free(ptr);
+    }*/
+}
+
+static void* TWL_realloc(void* ptr, uint32_t len)
+{
+    if (!len) { return NULL; }
+    if (!ptr) {
+        return Linux_alloc(len);
+    }
+    extern mspace openjkdf2_mem_alt_mspace;
+    tMemTrackingHeader* pHdr = (tMemTrackingHeader*)((intptr_t)ptr - sizeof(tMemTrackingHeader));
+    uint32_t oldSize = HDR_SIZE_RD(pHdr);
+    uint32_t sizeAlign = ((HDR_SIZE_RD(pHdr) + sizeof(tMemTrackingHeader)) + (ALLOC_ALIGN-1)) & ~(ALLOC_ALIGN-1);
+    uint32_t lenAlign = ((len + sizeof(tMemTrackingHeader)) + (ALLOC_ALIGN-1)) & ~(ALLOC_ALIGN-1);
+
+#ifdef MEM_CHECKING
+    sizeAlign += MEM_CHECKING_ADD;
+    lenAlign += MEM_CHECKING_ADD;
+#endif
+
+#ifdef MEM_CHECKING
+    for (uint32_t i = HDR_SIZE_RD(pHdr); i < sizeAlign - sizeof(tMemTrackingHeader); i++) {
+        if (*((uint8_t*)ptr + i) != MEM_CHECKING_VAL) {
+            printf("OOB write!! %p %x %x, %x %x\n", pHdr, HDR_SIZE_RD(pHdr), sizeAlign - sizeof(tMemTrackingHeader), len, lenAlign - sizeof(tMemTrackingHeader));
+            while(1);
+        }
+    }
+#endif
+
+
+    void* ret = NULL;
+    if (openjkdf2_mem_alt_mspace && HDR_MEMTYPE_RD(pHdr) == 0xF0) {
+        ret = mspace_realloc(openjkdf2_mem_alt_mspace, (void*)pHdr, lenAlign);
+        if (ret) {
+            pHdr = (tMemTrackingHeader*)ret;
+            trackingAllocsA -= oldSize;
+            trackingAllocsA += len;
+            trackingAllocsAReal -= sizeAlign;
+            trackingAllocsAReal += lenAlign;
+#ifdef MEM_CHECKING
+            if (lenAlign > sizeAlign && len > oldSize) {
+                memset((uint8_t*)ret + sizeAlign, MEM_CHECKING_VAL, lenAlign - sizeAlign);
+            }
+#endif
+            HDR_SET(pHdr, 0xF0, len);
+            return (void*)((intptr_t)ret + sizeof(tMemTrackingHeader));
+        }
+
+        printf("realloc Fallback A??\n");
+
+        // Fallback option
+        ret = Linux_alloc(len);
+        if (ret) {
+            memcpy(ret, ptr, oldSize);
+            Linux_free(ptr);
+            return ret;
+        }
+
+        printf("aaaaaaaA realloc fail\n");
+        return NULL;
+    }
+    else if (HDR_MEMTYPE_RD(pHdr) == 0xDA) {
+        ret = mspace_realloc(openjkdf2_mem_main_mspace, (void*)pHdr, lenAlign);//realloc((void*)pHdr, len + sizeof(tMemTrackingHeader));
+        if (ret) {
+            pHdr = (tMemTrackingHeader*)ret;
+            trackingAllocsB -= oldSize;
+            trackingAllocsB += len;
+            trackingAllocsBReal -= sizeAlign;
+            trackingAllocsBReal += lenAlign;
+#ifdef MEM_CHECKING
+            if (lenAlign > sizeAlign && len > oldSize) {
+                memset((uint8_t*)ret + sizeAlign, MEM_CHECKING_VAL, lenAlign - sizeAlign);
+            }
+#endif
+            HDR_SET(pHdr, 0xDA, len);
+            return (void*)((intptr_t)ret + sizeof(tMemTrackingHeader));
+        }
+
+        printf("realloc Fallback B??\n");
+
+        // Fallback option
+        ret = Linux_alloc(len);
+        if (ret) {
+            memcpy(ret, ptr, oldSize);
+            Linux_free(ptr);
+            return ret;
+        }
+
+        printf("aaaaaaaB realloc fail\n");
+        return NULL;
+    }
+    else if (HDR_MEMTYPE_RD(pHdr) == 0xDE) {
+        printf("Double free realloc? %p\n", ptr);
+        while(1);
+    }
+    else {
+        printf("Where does this go?? %p %d\n", ptr, len);
+        while(1);
+        //return __real_realloc(ptr, len);
+    }
+}
+
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void *__wrap_malloc(uint32_t size) {
+    return TWL_alloc(size);
+}
+
+void __wrap_free(void *ptr) {
+    TWL_free(ptr);
+}
+
+void* __wrap_realloc(void *ptr, uint32_t len) {
+    return TWL_realloc(ptr, len);
+}
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
 
 static int Linux_stdFeof(stdFile_t fhand)
 {
@@ -212,7 +518,7 @@ void stdPlatform_InitServices(HostServices *handlers)
     handlers->lockHandle = stdPlatform_LockHandle;
     handlers->unlockHandle = stdPlatform_UnlockHandle;
 #endif
-    
+
 #ifdef PLATFORM_POSIX
     handlers->alloc = Linux_alloc;
     handlers->free = Linux_free;
@@ -226,6 +532,12 @@ void stdPlatform_InitServices(HostServices *handlers)
     handlers->ftell = Linux_stdFtell;
     handlers->getTimerTick = Linux_TimeMs;
     handlers->fileEof = Linux_stdFeof;
+#endif
+
+#ifdef TARGET_TWL
+    handlers->alloc = TWL_alloc;
+    handlers->free = TWL_free;
+    handlers->realloc = TWL_realloc;
 #endif
 }
 
@@ -285,5 +597,12 @@ int stdPlatform_Printf(const char *fmt, ...)
     SDL_UnlockMutex(stdPlatform_mtxPrintf);
 #endif
     return ret;
+}
+#endif
+
+#ifdef TARGET_TWL
+void stdPlatform_PrintHeapStats()
+{
+    stdPlatform_Printf("heap ext=0x%zx mn=0x%zx wst=0x%zx\n", trackingAllocsA, trackingAllocsB, (trackingAllocsAReal - trackingAllocsA) + (trackingAllocsBReal - trackingAllocsB));
 }
 #endif

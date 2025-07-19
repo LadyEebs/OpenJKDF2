@@ -25,6 +25,7 @@ rdMaterial* rdMaterial_Load(char *material_fname, int create_ddraw_surface, int 
 int rdMaterial_LoadEntry(char *mat_fpath, rdMaterial *material, int create_ddraw_surface, int gpu_mem);
 void rdMaterial_Free(rdMaterial *material);
 void rdMaterial_FreeEntry(rdMaterial* material);
+int rdMaterial_EnsureData(rdMaterial* material);
 int rdMaterial_AddToTextureCache(rdMaterial *material, rdTexture *texture, int mipmap_level, int no_alpha, int cel_idx);
 void rdMaterial_ResetCacheInfo(rdMaterial *material);
 //static int (*rdMaterial_AddToTextureCache)(rdMaterial *material, rdTexture *a2, int mipmap_level, int no_alpha) = (void*)rdMaterial_AddToTextureCache_ADDR;
@@ -35,6 +36,21 @@ int rdMaterial_GetFillColor(rdVector3* pOutColor, rdMaterial* pMaterial, rdColor
 #endif
 
 //int rdMaterial_AddToTextureCache(rdMaterial *material, sith_tex *a2, int mipmap_level, int no_alpha);
+
+
+
+#if defined(RDMATERIAL_LRU_LOAD_UNLOAD)
+
+void rdMaterial_EvictData(rdMaterial *pMaterial);
+
+// Based on https://github.com/smlu/OpenJones3D/blob/main/Libs/std/Win95/std3D.c
+void rdMaterial_UpdateFrameCount(rdMaterial *pMaterial);
+void rdMaterial_RemoveMaterialFromCacheList(rdMaterial *pCacheMaterial);
+void rdMaterial_AddMaterialToCacheList(rdMaterial *pMaterial);
+int rdMaterial_PurgeMaterialCache();
+int rdMaterial_PurgeEntireMaterialCache();
+
+#endif // defined(RDMATERIAL_LRU_LOAD_UNLOAD)
 
 #ifdef __cplusplus
 }

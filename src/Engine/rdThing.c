@@ -78,7 +78,7 @@ void rdThing_FreeEntry(rdThing *thing)
         }
         if ( thing->hierarchyNodes2 )
         {
-            rdroid_pHS->free((void *)thing->hierarchyNodes2);
+            rdroid_pHS->free((void *)thing->hierarchyNodes2); // Possible OOB write in this
             thing->hierarchyNodes2 = 0;
         }
         if ( thing->amputatedJoints )

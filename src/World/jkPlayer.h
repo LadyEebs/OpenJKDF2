@@ -92,12 +92,13 @@ void jkPlayer_CreateConf(wchar_t *name);
 void jkPlayer_WriteConf(wchar_t *name);
 int jkPlayer_ReadConf(wchar_t *name);
 void jkPlayer_SetPovModel(jkPlayerInfo *info, rdModel3 *model);
-void jkPlayer_DrawPov();
+
+MATH_FUNC void jkPlayer_DrawPov();
 #ifdef QOL_IMPROVEMENTS
-void jkPlayer_renderWeaponMesh(sithThing *a1);
-void jkPlayer_renderSaberBlade(sithThing* a1);
+MATH_FUNC void jkPlayer_renderWeaponMesh(sithThing *a1);
+MATH_FUNC void jkPlayer_renderSaberBlade(sithThing* a1);
 #else
-void jkPlayer_renderSaberWeaponMesh(sithThing* a1);
+MATH_FUNC void jkPlayer_renderSaberWeaponMesh(sithThing* a1);
 #endif
 void jkPlayer_renderSaberTwinkle(sithThing *player);
 #ifdef DYNAMIC_POV
@@ -111,6 +112,7 @@ void jkPlayer_SetPovSpriteScale(jkPlayerInfo* info, flex_t scale);
 #else
 void jkPlayer_SetWaggle(sithThing* player, rdVector3* waggleVec, flex_t waggleMag);
 #endif
+
 int jkPlayer_VerifyWcharName(wchar_t *name);
 int jkPlayer_VerifyCharName(char *name);
 void jkPlayer_SetMpcInfo(wchar_t *name, char *model, char *soundclass, char *sidemat, char *tipmat);

@@ -17,7 +17,7 @@
 #include "types_enums.h"
 
 static wchar_t slider_val_text[5] = {0};
-static int slider_images[2] = {JKGUI_BM_SLIDER_BACK_200, JKGUI_BM_SLIDER_THUMB};
+static int32_t slider_images[2] = {JKGUI_BM_SLIDER_BACK_200, JKGUI_BM_SLIDER_THUMB};
 
 void jkGuiGameplay_ScaleDraw(jkGuiElement *element, jkGuiMenu *menu, stdVBuffer *vbuf, int redraw);
 
@@ -102,7 +102,7 @@ void jkGuiGameplay_Shutdown()
 #ifdef MENU_16BIT
 	jkGuiGameplay_menu.bkBm16 = NULL;
 #endif
-    ;
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__); // Added
 }
 
 #ifdef QOL_IMPROVEMENTS

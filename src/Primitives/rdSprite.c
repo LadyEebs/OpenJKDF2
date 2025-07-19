@@ -49,6 +49,7 @@ int rdSprite_NewEntry(rdSprite *sprite, char *spritepath, int type, char *materi
 #endif
     if ( sprite->face.material )
     {
+        rdMaterial_EnsureData(sprite->face.material); // Added: TWL
         sprite->face.numVertices = 4;
         sprite->face.vertexPosIdx = (int *)rdroid_pHS->alloc(sizeof(int) * sprite->face.numVertices);
         if ( sprite->face.vertexPosIdx )
@@ -74,13 +75,21 @@ int rdSprite_NewEntry(rdSprite *sprite, char *spritepath, int type, char *materi
                 sprite->vertexUVs = (rdVector2 *)rdroid_pHS->alloc(sizeof(rdVector2) * sprite->face.numVertices);
                 if ( !sprite->vertexUVs )
                     return 0;
-                uint32_t* v24 = (uint32_t*)sprite->face.material->texinfos[0]->texture_ptr->texture_struct[0];
+                
+                // Odd quirk: This requires the material be actually loaded
+                // Added: nullptr fallbacks
+                stdVBuffer* v24 = NULL;
+                if (sprite->face.material->texinfos && sprite->face.material->texinfos[0] && sprite->face.material->texinfos[0]->texture_ptr) {
+                    v24 = sprite->face.material->texinfos[0]->texture_ptr->texture_struct[0];
+                }
+                int32_t width = v24 ? v24->format.width : 1; // Added: nullptr check and fallback
+                int32_t height = v24 ? v24->format.height : 1; // Added: nullptr check and fallback
 
                 sprite->vertexUVs[0].x = 0.5;
-                sprite->vertexUVs[0].y = (flex_d_t)v24[4] - 0.5;
-                sprite->vertexUVs[1].x = (flex_d_t)v24[3] - 0.5;
-                sprite->vertexUVs[1].y = (flex_d_t)v24[4] - 0.5;
-                sprite->vertexUVs[2].x = (flex_d_t)v24[3] - 0.5;
+                sprite->vertexUVs[0].y = (flex_d_t)height - 0.5;
+                sprite->vertexUVs[1].x = (flex_d_t)width - 0.5;
+                sprite->vertexUVs[1].y = (flex_d_t)height - 0.5;
+                sprite->vertexUVs[2].x = (flex_d_t)width - 0.5;
                 sprite->vertexUVs[2].y = 0.5;
                 sprite->vertexUVs[3].x = 0.5;
                 sprite->vertexUVs[3].y = 0.5;

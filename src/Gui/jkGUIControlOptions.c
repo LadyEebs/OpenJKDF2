@@ -54,7 +54,7 @@ void jkGuiControlOptions_Shutdown()
 #ifdef MENU_16BIT
 	jkGuiControlOptions_menu.bkBm16 = NULL;
 #endif
-    ;
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__); // Added
 }
 
 // MOTS altered

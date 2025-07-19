@@ -10,6 +10,7 @@
 #include "jk.h"
 
 #include <assert.h>
+#include <unistd.h>
 
 static int sithCvar_numRegistered = 0;
 static stdHashTable* sithCvar_pHashTable = NULL;
@@ -18,6 +19,8 @@ static int sithCvar_bInitted = 0;
 
 int sithCvar_Startup()
 {
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__);
+    
     if (sithCvar_bInitted) return 1;
 
     sithCvar_numRegistered = 0;
@@ -36,6 +39,8 @@ int sithCvar_Startup()
 
 void sithCvar_Shutdown()
 {
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__);
+
     if (!sithCvar_bInitted) return;
 
     sithCvar_SaveGlobals();
@@ -116,7 +121,7 @@ int sithCvar_LoadVar(tSithCvar* pCvar, const char* pFpath)
             break;
         case CVARTYPE_STR:
             memset(tmp, 0, SITHCVAR_MAX_STRLEN);
-            stdJSON_GetString(pFpath, pCvar->pName, tmp, SITHCVAR_MAX_STRLEN, pCvar->pStrVal);
+            stdJSON_GetString(pFpath, pCvar->pName, tmp, SITHCVAR_MAX_STRLEN-1, pCvar->pStrVal);
             memset((char*)pCvar->pStrVal, 0, SITHCVAR_MAX_STRLEN);
             stdString_SafeStrCopy((char*)pCvar->pStrVal, tmp, SITHCVAR_MAX_STRLEN);
             break;

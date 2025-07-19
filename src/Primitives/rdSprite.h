@@ -42,9 +42,9 @@ typedef struct rdSprite
 #endif
 
 rdSprite* rdSprite_New(int type, char *fpath, char *materialFpath, flex_t width, flex_t height, int geometryMode, int lightMode, int textureMode, flex_t extraLight, rdVector3 *offset);
-int rdSprite_NewEntry(rdSprite *sprite, char *spritepath, int type, char *material, flex_t width, flex_t height, rdGeoMode_t geometryMode, rdLightMode_t lightMode, rdTexMode_t textureMode, flex_t extraLight, rdVector3 *offset);
+MATH_FUNC int rdSprite_NewEntry(rdSprite *sprite, char *spritepath, int type, char *material, flex_t width, flex_t height, rdGeoMode_t geometryMode, rdLightMode_t lightMode, rdTexMode_t textureMode, flex_t extraLight, rdVector3 *offset);
 void rdSprite_Free(rdSprite *sprite);
 void rdSprite_FreeEntry(rdSprite *sprite);
-int rdSprite_Draw(rdThing *thing, rdMatrix34 *mat);
+MATH_FUNC int rdSprite_Draw(rdThing *thing, rdMatrix34 *mat);
 
 #endif // _RDSPRITE_H

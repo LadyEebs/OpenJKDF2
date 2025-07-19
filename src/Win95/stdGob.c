@@ -84,8 +84,13 @@ int stdGob_LoadEntry(stdGob *gob, char *fname, int a3, int a4)
 
     gob->viewMapped = 0;
     gob->fhand = pGobHS->fileOpen(gob->fpath, "r+b");
-    if ( !gob->fhand )
-      return 0;
+    if ( !gob->fhand ) {
+        stdPlatform_Printf("OpenJKDF2: Failed to open `%s`.\n", gob->fpath); // Added
+        return 0;
+    }
+    else {
+        stdPlatform_Printf("OpenJKDF2: Opened `%s`.\n", gob->fpath); // Added
+    }
     gob->openedFile = (stdGobFile *)std_pHS->alloc(sizeof(stdGobFile) * gob->numFilesOpen);
     if ( !gob->openedFile )
       return 0;
@@ -171,7 +176,7 @@ stdGobFile* stdGob_FileOpen(stdGob *gob, const char *filepath)
     int v5;
 
     // Embedded resources
-#ifdef QOL_IMPROVEMENTS
+#if defined(QOL_IMPROVEMENTS) && !defined(TARGET_TWL)
     size_t sz = 0;
     void* data = stdEmbeddedRes_LoadOnlyInternal(filepath, &sz);
     if (data) {

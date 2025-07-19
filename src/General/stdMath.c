@@ -89,7 +89,7 @@ void stdMath_SinCos(flex_t angle, flex_t *pSinOut, flex_t *pCosOut)
     flex_t v13; // [esp+18h] [ebp-14h]
     int32_t quantized; // [esp+1Ch] [ebp-10h]
     int32_t quantized_plus1; // [esp+20h] [ebp-Ch]
-    flex_t normalized_; // [esp+24h] [ebp-8h]
+    flex32_t normalized_; // why tho (flex_t broke TWL matrix rotations)
     flex_t v17; // [esp+28h] [ebp-4h]
     flex_t v18; // [esp+28h] [ebp-4h]
     flex_t v19; // [esp+28h] [ebp-4h]
@@ -103,12 +103,11 @@ void stdMath_SinCos(flex_t angle, flex_t *pSinOut, flex_t *pCosOut)
     //return;
 
     normalized = stdMath_NormalizeAngle(angle);
-    normalized_ = normalized;
     if ( normalized >= 90.0 )
     {
-        if ( normalized_ >= 180.0 )
+        if ( normalized >= 180.0 )
         {
-            if ( normalized_ >= 270.0 )
+            if ( normalized >= 270.0 )
                 v8 = 3;
             else
                 v8 = 2;
@@ -122,11 +121,17 @@ void stdMath_SinCos(flex_t angle, flex_t *pSinOut, flex_t *pCosOut)
     {
         v8 = 0;
     }
-    a1 = normalized_ * 45.511112;
+
+    // Dance around the precision for fixed point
+#ifdef QOL_IMPROVEMENTS
+    a1 = (normalized / 90.0) * 4096.0;
+#else
+    a1 = normalized * (4096.0/90.0);
+#endif
     v6 = a1 - stdMath_Floor(a1);
     quantized = (int32_t)a1;
     // TODO quantized is set to -0x800000000??
-#ifdef ARCH_64BIT
+#if defined(ARCH_64BIT) || defined(EXPERIMENTAL_FIXED_POINT)
     if (quantized > 0x8000 || quantized < -0x8000)
     {
         quantized = 0;
@@ -492,15 +497,96 @@ flex_t stdMath_Dist3D3(flex_t a1, flex_t a2, flex_t a3)
 
 flex_t stdMath_Floor(flex_t a)
 {
-    return floorf(a);
+#if defined(EXPERIMENTAL_FIXED_POINT)
+    return flexdirect(a.to_raw() & ~((1<<FIXED_POINT_DECIMAL_BITS)-1));
+#else
+    return floorf((float)a);
+#endif
+}
+
+// From https://github.com/chmike/fpsqrt/blob/master/fpsqrt.c
+int32_t sqrt_fx16_16_to_fx16_16(int32_t v) {
+    uint32_t t, q, b, r;
+    r = (int32_t)v; 
+    q = 0;          
+    b = 0x40000000UL;
+    if( r < 0x40000200 )
+    {
+        while( b != 0x40 )
+        {
+            t = q + b;
+            if( r >= t )
+            {
+                r -= t;
+                q = t + b; // equivalent to q += 2*b
+            }
+            r <<= 1;
+            b >>= 1;
+        }
+        q >>= 8;
+        return q;
+    }
+    while( b > 0x40 )
+    {
+        t = q + b;
+        if( r >= t )
+        {
+            r -= t;
+            q = t + b; // equivalent to q += 2*b
+        }
+        if( (r & 0x80000000) != 0 )
+        {
+            q >>= 1;
+            b >>= 1;
+            r >>= 1;
+            while( b > 0x20 )
+            {
+                t = q + b;
+                if( r >= t )
+                {
+                    r -= t;
+                    q = t + b;
+                }
+                r <<= 1;
+                b >>= 1;
+            }
+            q >>= 7;
+            return q;
+        }
+        r <<= 1;
+        b >>= 1;
+    }
+    q >>= 8;
+    return q;
 }
 
 flex_t stdMath_Sqrt(flex_t a)
 {
-    if (a < 0.0)
-        return 0.0;
+#if 0
+    static int last_frame = 0;
+    static int num_sqrts = 0;
+    extern int std3D_frameCount;
+    if (last_frame != std3D_frameCount) {
+        printf("sqrts %d\n", num_sqrts);
+        last_frame = std3D_frameCount;
+        num_sqrts = 0;
+    }
+    num_sqrts += 1;
+#endif
 
-    return sqrtf(a);
+    if (a < (flex_t)0.0)
+        return (flex_t)0.0;
+
+#if defined(TARGET_TWL)
+    //return f32toflex(sqrtf32_mine(flextof32(a)));
+    //return flexdirect(sqrt_fx16_16_to_fx16_16(a.to_raw()));
+    return sqrtfixed_mine(a);
+#elif defined(EXPERIMENTAL_FIXED_POINT)
+    //return flexdirect(sqrt_fx16_16_to_fx16_16(a.to_raw()));
+    return sqrtf((float)a);
+#else
+    return sqrtf((float)a);
+#endif
 }
 
 flex_t stdMath_Frac(flex_t a)
@@ -897,8 +983,10 @@ int32_t stdMath_FloorDivMod(int32_t in1, int32_t in2, int32_t *out1, int32_t *ou
 
 flex_t stdMath_ClipPrecision(flex_t val)
 {
+#ifndef EXPERIMENTAL_FIXED_POINT
     if (stdMath_Fabs(val) <= 0.00001)
         return 0.0;
+#endif
     return val;
 }
 

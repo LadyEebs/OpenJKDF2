@@ -54,6 +54,7 @@
 #include <math.h>
 #endif
 
+// Added: FoV fixes
 flex_t sithMain_lastAspect = 1.0;
 
 int sithMain_Startup(HostServices *commonFuncs)
@@ -118,6 +119,7 @@ int sithMain_Startup(HostServices *commonFuncs)
 
 void sithMain_Shutdown()
 {
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__);
     //sithWeapon
 #ifdef RENDER_DROID2
 	sithShader_Shutdown();
@@ -198,6 +200,9 @@ void sithMain_Free()
 		}
 	}
 #endif
+
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__);
+
     if ( sithWorld_pStatic )
     {
         sithWorld_FreeEntry(sithWorld_pStatic);
@@ -247,7 +252,7 @@ int sithMain_Mode1Init_3(char *fpath)
 
 int sithMain_Open()
 {
-    bShowInvisibleThings = 0;
+    jkPlayer_currentTickIdx = 0;
     sithRender_lastRenderTick = 1;
     sithWorld_sub_4D0A20(sithWorld_pCurrentWorld);
     sithEvent_Open();
@@ -290,6 +295,9 @@ void sithMain_SetEndLevel()
     sithMain_bEndLevel = 1;
 }
 
+int sithMain_tickStartMs;
+int sithMain_tickEndMs;
+
 // MOTS altered
 int sithMain_Tick()
 {
@@ -305,6 +313,18 @@ int sithMain_Tick()
     }
 #endif
     
+#ifdef TARGET_TWL
+    // Fallback to stepped 30Hz physics if ms delta is very high
+    if (sithTime_deltaMs > 55) {
+        jkPlayer_bJankyPhysics = 0;
+    }
+    else {
+        jkPlayer_bJankyPhysics = 1;
+    }
+#endif
+
+    sithMain_tickStartMs = stdPlatform_GetTimeMsec(); // Added: perf analyzing
+
     if ( (g_submodeFlags & SITH_SUBMODE_JOINING) != 0 )
     {
         sithTime_Tick();
@@ -350,7 +370,7 @@ int sithMain_Tick()
         //sithWorld_pCurrentWorld->playerThing->physicsParams.physflags |= SITH_PF_FLY;
         //sithWorld_pCurrentWorld->playerThing->physicsParams.physflags &= ~SITH_PF_USEGRAVITY;
         
-        ++bShowInvisibleThings;
+        ++jkPlayer_currentTickIdx;
         sithMain_sub_4C4D80();
         sithSoundMixer_ResumeMusic(0);
         sithTime_Tick();
@@ -458,40 +478,63 @@ int sithMain_Tick()
         sithConsole_AdvanceLogBuf();
         sithMulti_HandleTimeLimit(sithTime_deltaMs);
         sithGamesave_Flush();
+
+        sithMain_tickEndMs = stdPlatform_GetTimeMsec();
+
         return 0;
     }
 }
 
 void sithMain_UpdateCamera()
 {
+#if defined(TARGET_TWL)
+    jkPlayer_fov = 90.0;
+    jkPlayer_bJankyPhysics = 1;
+    jkPlayer_fovIsVertical = 0;
+#endif
+
     if ( (g_submodeFlags & SITH_SUBMODE_JOINING) == 0 )
     {
         sithMain_sub_4C4D80();
 
-#ifdef QOL_IMPROVEMENTS
+#if defined(QOL_IMPROVEMENTS)
         if (sithCamera_currentCamera && sithCamera_currentCamera->rdCam.canvas)
         {
             // Set screen aspect ratio
-            flex_t aspect = sithCamera_currentCamera->rdCam.canvas->screen_width_half / sithCamera_currentCamera->rdCam.canvas->screen_height_half;
-            
-            //if (aspect != sithMain_lastAspect)
-            if (!Main_bMotsCompat)
-            {
-                rdCamera_SetAspectRatio(&sithCamera_currentCamera->rdCam, aspect);
-                rdCamera_SetFOV(&sithCamera_currentCamera->rdCam, jkPlayer_fov);
-                rdCamera_SetOrthoScale(&sithCamera_currentCamera->rdCam, 250.0);
-            }
-            else {
-                rdCamera_SetAspectRatio(&sithCamera_currentCamera->rdCam, aspect);
+            flex_t aspect = sithCamera_currentCamera->rdCam.canvas->half_screen_height / sithCamera_currentCamera->rdCam.canvas->half_screen_width;
+#if defined(TARGET_TWL)
+            aspect = 192.0/256.0;
+            sithCamera_currentCamera->rdCam.canvas->half_screen_width = 256.0;
+            sithCamera_currentCamera->rdCam.canvas->half_screen_height = 192.0;
+            static flex_t sithMain_UpdateCamera_lastFov = 90.0;
+            static void* sithMain_UpdateCamera_lastCamera = NULL;
 
-                // We still need this override for cameras that don't have zoom (third-person)
-                if (sithCamera_currentCamera->cameraPerspective != 1) {
+            if (aspect != sithMain_lastAspect || jkPlayer_fov != sithCamera_currentCamera->rdCam.fov || jkPlayer_fov != sithMain_UpdateCamera_lastFov || sithMain_UpdateCamera_lastCamera != sithCamera_currentCamera) {
+#endif
+                if (!Main_bMotsCompat)
+                {
+                    rdCamera_SetAspectRatio(&sithCamera_currentCamera->rdCam, aspect);
                     rdCamera_SetFOV(&sithCamera_currentCamera->rdCam, jkPlayer_fov);
+                    rdCamera_SetOrthoScale(&sithCamera_currentCamera->rdCam, 250.0);
                 }
-                rdCamera_SetOrthoScale(&sithCamera_currentCamera->rdCam, 250.0);
+                else {
+                    rdCamera_SetAspectRatio(&sithCamera_currentCamera->rdCam, aspect);
+
+                    // We still need this override for cameras that don't have zoom (third-person)
+                    if (sithCamera_currentCamera->cameraPerspective != 1) {
+                        rdCamera_SetFOV(&sithCamera_currentCamera->rdCam, jkPlayer_fov);
+                    }
+                    rdCamera_SetOrthoScale(&sithCamera_currentCamera->rdCam, 250.0);
+                }
+#if defined(TARGET_TWL)
             }
-            
+#endif
+
             sithMain_lastAspect = aspect;
+#if defined(TARGET_TWL)
+            sithMain_UpdateCamera_lastFov = jkPlayer_fov;
+            sithMain_UpdateCamera_lastCamera = sithCamera_currentCamera;
+#endif
         }
 #endif
 

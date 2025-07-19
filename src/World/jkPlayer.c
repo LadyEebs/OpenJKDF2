@@ -1145,6 +1145,7 @@ void jkPlayer_SetPovModel(jkPlayerInfo *info, rdModel3 *model)
     }
 }
 
+int jkPlayer_checkPov = 0;
 void jkPlayer_DrawPov()
 {
     rdVector3 trans;
@@ -1297,7 +1298,7 @@ void jkPlayer_DrawPov()
 
         rdMatrix_BuildRotate34(&jkSaber_rotateMat, &jkSaber_rotateVec);
 
-#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
+#if (defined(SDL2_RENDER) || defined(TARGET_TWL)) && !defined(TILE_SW_RASTER)
         // Force weapon to draw in front of scene
 	#ifdef RENDER_DROID2
 		//rdRenderPass("jkPlayer_DrawPov", 2, RD_RENDERPASS_CLEAR_DEPTH | (jkPlayer_enableSSAO ? RD_RENDERPASS_AMBIENT_OCCLUSION : 0));
@@ -1383,6 +1384,16 @@ void jkPlayer_DrawPov()
 		if (player->physicsParams.physflags & SITH_PF_CROUCHING)
 			trans.z -= /*player->physicsParams.povOffset + */ 0.0025f;
 #endif
+
+        // Shift gun up slightly
+#ifdef TARGET_TWL
+        //trans.y -= 0.037; //znear 16
+        //trans.z += 0.013; //znear 16
+
+        //trans.x += 0.009; //30deg fov
+        //trans.z -= 0.017; //30deg fov
+#endif
+
         rdVector_Neg3Acc(&trans);
         rdMatrix_PreTranslate34(&viewMat, &trans);
 
@@ -1545,7 +1556,7 @@ void jkPlayer_DrawPov()
 #endif
 
         // Moved: see below.
-#ifndef SDL2_RENDER
+#if !(defined(SDL2_RENDER) || defined(TARGET_TWL))
         // Render saber if applicable
         if (playerThings[playerThingIdx].actorThing->jkFlags & JKFLAG_SABERON)
         {
@@ -1553,20 +1564,28 @@ void jkPlayer_DrawPov()
         }
 #endif
         
+        //printf("pov in\n");
+        //jkPlayer_checkPov = 1;
         rdThing_Draw(&playerThings[playerThingIdx].povModel, &viewMat);
-
+        // DSi doesn't really have Z buffer stuff so just batch everything
+#ifndef TARGET_TWL
         rdCache_Flush("jkPlayer_DrawPov:Model");
+#endif
+        //jkPlayer_checkPov = 0;
+        //printf("pov done\n");
 
         // Added: we want the polyline to render in draw order so the spheres don't clip, 
         // but we want the POV model to be aware of the depths still.
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) || defined(TARGET_TWL)
         if (playerThings[playerThingIdx].actorThing->jkFlags & JKFLAG_SABERON)
         {
             rdSetZBufferMethod(RD_ZBUFFER_READ_NOWRITE);
 			rdSetSortingMethod(2);
             jkSaber_Draw(&viewMat);
         }
+#ifndef TARGET_TWL
         rdCache_Flush("jkPlayer_DrawPov:Saber"); // Added: force polyline to be underneath model
+#endif
         rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
 #endif
 #ifdef SPHERE_AO

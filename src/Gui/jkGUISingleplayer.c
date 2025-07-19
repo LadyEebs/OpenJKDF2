@@ -22,7 +22,7 @@
 #include "Primitives/rdVector.h"
 #include "General/stdString.h"
 
-static int jkGuiSingleplayer_unk_52B170[2] = {0xd, 0xe};
+static int32_t jkGuiSingleplayer_unk_52B170[2] = {0xd, 0xe};
 
 static jkGuiElement jkGuiSingleplayer_buttons1[7] = {
     { ELEMENT_TEXT,        0,               0,  NULL,              3, {0,  410,  640, 20},  1,  0,  0,  0,  0,  0, {0},  0},
@@ -93,6 +93,8 @@ void jkGuiSingleplayer_Shutdown()
 	jkGuiSingleplayer_menu2.bkBm16 = NULL;
 	jkGuiSingleplayer_menu3.bkBm16 = NULL;
 #endif
+
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__); // Added
 
     // Added: memleak
     if ( jkGui_episodeLoad.paEntries )

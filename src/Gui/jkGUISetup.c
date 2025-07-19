@@ -171,6 +171,8 @@ void jkGuiSetup_Startup()
 	jkGui_InitMenu(&jkGuiSetup_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP], jkGui_stdBitmaps16[JKGUI_BM_BK_SETUP]);
 	jkGui_InitMenu(&jkGuiSetupControls_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP], jkGui_stdBitmaps16[JKGUI_BM_BK_SETUP]);
 #else
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__); // Added
+
     jkGui_InitMenu(&jkGuiSetup_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
     jkGui_InitMenu(&jkGuiSetupControls_menu, jkGui_stdBitmaps[JKGUI_BM_BK_SETUP]);
 #endif
@@ -182,5 +184,6 @@ void jkGuiSetup_Shutdown()
 	jkGuiSetup_menu.bkBm16 = NULL;
 	jkGuiSetupControls_menu.bkBm16 = NULL;
 #endif
-	;
+
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__); // Added
 }

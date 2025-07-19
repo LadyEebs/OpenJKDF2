@@ -4,6 +4,7 @@
 #include "Win95/Window.h"
 #include "stdPlatform.h"
 #include "Main/jkQuakeConsole.h"
+#include "Main/jkDev.h"
 
 #include <nds.h>
 
@@ -789,8 +790,28 @@ void stdControl_ReadControls()
         else {
             stdControl_aAxisPos[AXIS_JOY1_Y] = 0;
         }
-        
+
+        static int sampleTime_last = 0;
+        if (keys_held & KEY_SELECT) {
+            int sampleTime_roundtrip = stdPlatform_GetTimeMsec() - sampleTime_last;
+            //stdPlatform_Printf("total %u heap 0x%x 0x%x\n", sampleTime_roundtrip, (intptr_t)getHeapLimit() - (intptr_t)getHeapEnd(), (intptr_t)getHeapEnd() - (intptr_t)getHeapStart());
+        }
+        if (keysPressed & KEY_SELECT) {
+            jkDev_CmdNoclip(NULL, NULL);
+        }
+        sampleTime_last = stdPlatform_GetTimeMsec();
     }
+
+    static touchPosition lastTouchXY;
+    touchPosition touchXY;
+    touchRead(&touchXY);
+    if (touchXY.px != 0 || touchXY.py != 0) {
+        if (lastTouchXY.px != 0 || lastTouchXY.py != 0) {
+            Window_lastXRel = touchXY.px - lastTouchXY.px;
+            Window_lastYRel = touchXY.py - lastTouchXY.py;
+        }
+    }
+    lastTouchXY = touchXY;
 
     stdControl_ReadMouse();
     stdControl_msLast = stdControl_curReadTime;

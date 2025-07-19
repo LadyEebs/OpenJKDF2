@@ -31,6 +31,8 @@
 
 int jkGame_Startup()
 {
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__);
+    
     sithWorld_SetSectionParser("jk", jkGame_ParseSection);
     jkGame_bInitted = 1;
     return 1;
@@ -52,6 +54,8 @@ void jkGame_ForceRefresh()
 
 void jkGame_Shutdown()
 {
+    stdPlatform_Printf("OpenJKDF2: %s\n", __func__);
+    
     jkGame_bInitted = 0;
 }
 
@@ -134,17 +138,27 @@ int jkGame_Update()
 
 	STD_BEGIN_PROFILER_LABEL();
 
+    static int jkGame_Update_Start = 0;
+    static int jkGame_Update_ClearScreen = 0;
+    static int jkGame_Update_AdvanceFrame = 0;
+    static int jkGame_Update_UpdateCamera = 0;
+    static int jkGame_Update_DrawPov = 0;
+    static int jkGame_Update_HudDrawn = 0;
+    static int jkGame_Update_End = 0;
+
+    jkGame_Update_Start = stdPlatform_GetTimeMsec();
+
     // HACK HACK HACK: Adjust zNear depending on if we're using the scope/camera views
 #if defined(SDL2_RENDER) || defined(TARGET_TWL)
     if (sithCamera_cameras[0].rdCam.pClipFrustum) {
-        sithCamera_cameras[0].rdCam.pClipFrustum->field_0.y = SITHCAMERA_ZNEAR_FIRSTPERSON;
+        sithCamera_cameras[0].rdCam.pClipFrustum->zNear = SITHCAMERA_ZNEAR_FIRSTPERSON;
 
         if (Main_bMotsCompat) {
             if (playerThings[playerThingIdx].actorThing->actorParams.typeflags & SITH_AF_SCOPEHUD) {
-                sithCamera_cameras[0].rdCam.pClipFrustum->field_0.y = SITHCAMERA_ZNEAR;
+                sithCamera_cameras[0].rdCam.pClipFrustum->zNear = SITHCAMERA_ZNEAR;
             }
             if ((playerThings[playerThingIdx].actorThing->actorParams.typeflags & SITH_AF_80000000) != 0) {
-                sithCamera_cameras[0].rdCam.pClipFrustum->field_0.y = SITHCAMERA_ZNEAR;
+                sithCamera_cameras[0].rdCam.pClipFrustum->zNear = SITHCAMERA_ZNEAR;
             }
         }
     }
@@ -161,10 +175,13 @@ int jkGame_Update()
 #if (!defined(SDL2_RENDER) && !defined(TARGET_TWL)) || defined(TILE_SW_RASTER)
     if ( Video_modeStruct.Video_8606C0 || Video_modeStruct.geoMode <= 2 )
 #endif
-        stdDisplay_VBufferFill(Video_pMenuBuffer, Video_fillColor, 0);
+#if !defined(TARGET_TWL)
+        stdDisplay_VBufferFill(Video_pMenuBuffer, Video_fillColor, 0); // Significant delay on TWL
+#endif
     jkDev_DrawLog();
     jkHudInv_ClearRects();
     jkHud_ClearRects(0);
+    jkGame_Update_ClearScreen = stdPlatform_GetTimeMsec();
 
     stdPalEffects_UpdatePalette(stdDisplay_GetPalette());
 #if !defined(SDL2_RENDER) && !defined(TARGET_TWL) || defined(TILE_SW_RASTER)
@@ -185,6 +202,7 @@ int jkGame_Update()
 //	jkPlayer_DrawPov();
 //#endif
 
+    jkGame_Update_AdvanceFrame = stdPlatform_GetTimeMsec();
 #if !defined(SDL2_RENDER) && !defined(TARGET_TWL) || defined(TILE_SW_RASTER)
     if ( Video_modeStruct.b3DAccel )
 #endif
@@ -213,6 +231,10 @@ int jkGame_Update()
 #ifdef TILE_SW_RASTER
 	rdFinishFrame();
 #endif
+
+    jkGame_Update_UpdateCamera = stdPlatform_GetTimeMsec();
+    jkPlayer_DrawPov();
+    jkGame_Update_DrawPov = stdPlatform_GetTimeMsec();
 
 #if 1
     //if (Main_bMotsCompat)
@@ -304,6 +326,8 @@ int jkGame_Update()
         }
     }
 
+    jkGame_Update_HudDrawn = stdPlatform_GetTimeMsec();
+
     jkDev_BlitLogToScreen();
     jkHudInv_Draw();
 #if !defined(SDL2_RENDER) && !defined(TARGET_TWL) || defined(TILE_SW_RASTER)
@@ -349,6 +373,27 @@ int jkGame_Update()
     */
 
 	STD_END_PROFILER_LABEL();
+
+    jkGame_Update_End = stdPlatform_GetTimeMsec();
+
+#if defined(TARGET_TWL)
+    int jkGame_Delta_Start_ClearScreen = jkGame_Update_ClearScreen - jkGame_Update_Start;
+    int jkGame_Delta_ClearScreen_AdvanceFrame = jkGame_Update_AdvanceFrame - jkGame_Update_ClearScreen;
+    int jkGame_Delta_AdvanceFrame_UpdateCamera = jkGame_Update_UpdateCamera - jkGame_Update_AdvanceFrame;
+    int jkGame_Delta_UpdateCamera_DrawPov = jkGame_Update_DrawPov - jkGame_Update_UpdateCamera;
+    int jkGame_Delta_DrawPov_HudDrawn = jkGame_Update_HudDrawn - jkGame_Update_DrawPov;
+    int jkGame_Delta_HudDrawn_End = jkGame_Update_End - jkGame_Update_HudDrawn;
+    
+    static int last_time_ms = 0;
+    int now_ms = stdPlatform_GetTimeMsec();
+    int total_delta = now_ms - last_time_ms;
+    last_time_ms = now_ms;
+    extern int std3D_timeWastedWaitingAround;
+    extern int32_t sithRender_numSectors;
+    //stdPlatform_Printf("dlt all=%d mn=%d %d wrld=%d\n pov=%d hud=%d drw=%d wst=%d %d\n", total_delta-std3D_timeWastedWaitingAround, sithMain_tickEndMs-sithMain_tickStartMs, jkGame_Delta_ClearScreen_AdvanceFrame, jkGame_Delta_AdvanceFrame_UpdateCamera, jkGame_Delta_UpdateCamera_DrawPov, jkGame_Delta_DrawPov_HudDrawn, jkGame_Delta_HudDrawn_End - std3D_timeWastedWaitingAround, std3D_timeWastedWaitingAround, sithRender_numSectors);
+    //world=28 drw=15 emu
+    //world=48 drw=33 dsi, 33 down to 25 with jank phys?
+#endif
 
     return result;
 }

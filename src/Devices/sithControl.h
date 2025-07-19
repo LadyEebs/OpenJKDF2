@@ -46,10 +46,11 @@ void sithControl_Close();
 void sithControl_InitFuncToControlType();
 void sithControl_Tick(flex_t deltaSecs, int deltaMs);
 void sithControl_AddInputHandler(sithControl_handler_t a1);
-int sithControl_HandlePlayer(sithThing *player_, flex_t a2);
-void sithControl_PlayerLook(sithThing *player, flex_t deltaSecs);
-void sithControl_PlayerMovement(sithThing *player);
-void sithControl_FreeCam(sithThing *player);
+MATH_FUNC int sithControl_HandlePlayer(sithThing *player_, flex_t a2);
+MATH_FUNC void sithControl_PlayerLook(sithThing *player, flex_t deltaSecs);
+MATH_FUNC void sithControl_PlayerMovement(sithThing *player);
+MATH_FUNC void sithControl_PlayerMovementMots(sithThing *player);
+MATH_FUNC void sithControl_FreeCam(sithThing *player);
 
 stdControlKeyInfoEntry* sithControl_MapFunc(int funcIdx, int keyNum, int flags);
 stdControlKeyInfoEntry* sithControl_MapAxisFunc(int funcIdx, int dxKeyNum, uint32_t flags);
@@ -62,9 +63,9 @@ void sithControl_ReadControls();
 void sithControl_FinishRead();
 void sithControl_MapDefaults();
 void sithControl_InputInit();
-flex_t sithControl_GetAxis2(int axisNum);
-flex_t sithControl_ReadAxisStuff(int funcIdx);
-flex_t sithControl_GetAxis(int funcIdx);
+MATH_FUNC flex_t sithControl_GetAxis2(int axisNum);
+MATH_FUNC flex_t sithControl_ReadAxisStuff(int funcIdx);
+MATH_FUNC flex_t sithControl_GetAxis(int funcIdx);
 int sithControl_ReadFunctionMap(int func, int* out);
 
 void sithControl_sub_4D6930(int a);

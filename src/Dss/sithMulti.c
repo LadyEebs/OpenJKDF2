@@ -288,15 +288,15 @@ int sithMulti_SendJoinRequest(DPID sendto_id)
 
 int sithMulti_GetSpawnIdx(sithThing *pPlayerThing)
 {
-    unsigned int v2; // ebp
-    unsigned int v3; // ecx
+    uint32_t v2; // ebp
+    uint32_t v3; // ecx
     int *v4; // eax
     int v5; // edx
-    unsigned int v7; // ebx
+    uint32_t v7; // ebx
     int v8; // edi
     sithCollisionSearchEntry *i; // esi
     sithThing *v10; // eax
-    unsigned int v11; // [esp+10h] [ebp-90h]
+    uint32_t v11; // [esp+10h] [ebp-90h]
     int v12[32]; // [esp+20h] [ebp-80h] BYREF
     int realMaxSpawns = jkPlayer_maxPlayers;
 
@@ -501,7 +501,7 @@ void sithMulti_ProcessScore()
     }
 }
 
-void sithMulti_EndLevel(unsigned int waitMs, int type)
+void sithMulti_EndLevel(uint32_t waitMs, int type)
 {
     if ( sithMulti_leaveJoinType != type || waitMs < sithMulti_leaveJoinWaitMs )
     {
@@ -819,9 +819,9 @@ int sithMulti_ProcessQuit(sithCogMsg *msg)
     return 1;
 }
 
-int sithMulti_ServerLeft(int a, sithEventInfo* b)
+int sithMulti_ServerLeft(int32_t a, sithEventInfo* b)
 {
-    unsigned int v0; // edi
+    uint32_t v0; // edi
     sithPlayerInfo* v1; // esi
 	DPID v2; // eax
     wchar_t *v3; // eax
@@ -968,7 +968,7 @@ int sithMulti_ProcessLeaveJoin(sithCogMsg *msg)
 {
     uint32_t v1; // eax
     int v2; // edx
-    unsigned int v3; // ebp
+    uint32_t v3; // ebp
     uint32_t v4; // eax
     sithPlayerInfo* v6; // edi
     int v7; // ecx
@@ -1143,7 +1143,7 @@ LABEL_10:
     }
 }
 
-void sithMulti_InitTick(unsigned int tickrate)
+void sithMulti_InitTick(uint32_t tickrate)
 {
     sithNet_isMulti = 1;
     sithNet_dword_83262C = stdComm_dplayIdSelf;
@@ -1174,7 +1174,7 @@ int sithMulti_ProcessJoinRequest(sithCogMsg *msg)
     sithPlayerInfo* v6; // eax
     uint32_t v7; // eax
     int *v8; // ecx
-    unsigned int v9; // eax
+    uint32_t v9; // eax
     int v10; // ecx
     char v11[32]; // [esp+Ch] [ebp-20h] BYREF
 
@@ -1360,7 +1360,7 @@ int stdComm_cogMsg_HandleEnumPlayers(sithCogMsg *msg)
     int v3; // edi
     uint32_t v4; // eax
     sithDplayPlayer* v5; // ecx
-    signed int result; // eax
+    int32_t result; // eax
 
     NETMSG_IN_START(msg);
 
@@ -1403,12 +1403,12 @@ LABEL_11:
 // MOTS altered
 void sithMulti_HandleTimeLimit(int deltaMs)
 {
-    unsigned int v2; // esi
+    uint32_t v2; // esi
     sithSurface *v8; // edx
     sithSurface *v9; // ecx
     sithSector *v11; // esi
     sithThing *v14; // esi
-    unsigned int deltaMsa; // [esp+18h] [ebp+4h]
+    uint32_t deltaMsa; // [esp+18h] [ebp+4h]
 
     if (!sithNet_isMulti)
         return;

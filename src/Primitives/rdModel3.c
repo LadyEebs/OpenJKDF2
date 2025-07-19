@@ -1423,6 +1423,14 @@ void rdModel3_DrawMesh(rdMesh *meshIn, rdMatrix34 *mat)
         rdModel3_lightingMode = curLightingMode;
     }
 
+// This function = 1ms or so
+#ifdef TARGET_TWL
+    //thingFrustrumCull = 0;
+    //meshFrustrumCull = 0;
+    // TODO: Check if it's really that expensive
+    rdModel3_lightingMode = RD_LIGHTMODE_DIFFUSE;
+#endif
+
     rdModel3_textureMode = pCurMesh->textureMode;
     if ( rdModel3_textureMode >= curTextureMode )
         rdModel3_textureMode = curTextureMode;
@@ -1447,7 +1455,10 @@ void rdModel3_DrawMesh(rdMesh *meshIn, rdMatrix34 *mat)
         for (int i = 0; i < rdModel3_numGeoLights; i++)
         {
             int lightIdx = (*pGeoLight)->id;
-            if ( (*pGeoLight)->falloffMin + pCurMesh->radius > rdVector_Dist3(&rdCamera_pCurCamera->lightPositions[lightIdx], &mat->scale) )
+
+            // Added: dist -> dist squared
+            flex_t dist = (*pGeoLight)->falloffMin + pCurMesh->radius;
+            if ( dist*dist > rdVector_DistSquared3(&rdCamera_pCurCamera->lightPositions[lightIdx], &mat->scale) )
             {
                 apMeshLights[rdModel3_numMeshLights] = *pGeoLight;
                 rdMatrix_TransformPoint34(&rdModel3_aLocalLightPos[rdModel3_numMeshLights], &rdCamera_pCurCamera->lightPositions[lightIdx], &matInv);
@@ -1473,32 +1484,32 @@ void rdModel3_DrawMesh(rdMesh *meshIn, rdMatrix34 *mat)
     {
         rdModel3_numMeshLights = 0;
 #ifndef RENDER_DROID2
-        if (rdModel3_numGeoLights > 0)
+        pGeoLight = apGeoLights;
+        for (int i = 0; i < rdModel3_numGeoLights; i++)
         {
-            pGeoLight = apGeoLights;
-            for (int i = 0; i < rdModel3_numGeoLights; i++)
+            int lightIdx = (*pGeoLight)->id;
+
+            // Added: dist -> dist squared
+            flex_t dist = (*pGeoLight)->falloffMin + pCurMesh->radius;
+            if ( dist*dist > rdVector_DistSquared3(&rdCamera_pCurCamera->lightPositions[lightIdx], &mat->scale) )
             {
-                int lightIdx = (*pGeoLight)->id;
-                if ( (*pGeoLight)->falloffMin + pCurMesh->radius > rdVector_Dist3(&rdCamera_pCurCamera->lightPositions[lightIdx], &mat->scale) )
-                {
-                    apMeshLights[rdModel3_numMeshLights] = *pGeoLight;
-                    rdMatrix_TransformPoint34(&rdModel3_aLocalLightPos[rdModel3_numMeshLights], &rdCamera_pCurCamera->lightPositions[lightIdx], &matInv);
-                    
-                    // MOTS added
-                    if ((*pGeoLight)->type == 3) {
-                        flex_t tmpZ = mat->scale.z;
-                        rdVector_Zero3(&mat->scale);
+                apMeshLights[rdModel3_numMeshLights] = *pGeoLight;
+                rdMatrix_TransformPoint34(&rdModel3_aLocalLightPos[rdModel3_numMeshLights], &rdCamera_pCurCamera->lightPositions[lightIdx], &matInv);
+                
+                // MOTS added
+                if ((*pGeoLight)->type == 3) {
+                    flex_t tmpZ = mat->scale.z;
+                    rdVector_Zero3(&mat->scale);
 
-                        rdVector3 tmpDir;
-                        rdVector_Neg3(&tmpDir, &(*pGeoLight)->direction);
-                        rdMatrix_TransformPoint34(&rdModel3_aLocalLightDir[rdModel3_numMeshLights], &tmpDir, &matInv);
-                        mat->scale.z = tmpZ;
-                    }
-
-                    ++rdModel3_numMeshLights;
+                    rdVector3 tmpDir;
+                    rdVector_Neg3(&tmpDir, &(*pGeoLight)->direction);
+                    rdMatrix_TransformPoint34(&rdModel3_aLocalLightDir[rdModel3_numMeshLights], &tmpDir, &matInv);
+                    mat->scale.z = tmpZ;
                 }
-                ++pGeoLight;
+
+                ++rdModel3_numMeshLights;
             }
+            ++pGeoLight;
         }
 #endif
 
@@ -1569,14 +1580,26 @@ void rdModel3_DrawMesh(rdMesh *meshIn, rdMatrix34 *mat)
 	rdSortOrder(0);
 #endif
 
+    // This is about 1/2 of the render time for E-11, 1/4 for saber
+    // Before this is about 1/2 the render time for saber
     rdMatrix_TransformPoint34(&localCamera, &rdCamera_camMatrix.scale, &matInv);
     rdFace* face = &meshIn->faces[0];
+
+    // Be extra sure we're setting backface culling
+#ifdef TARGET_TWL
+    rdroid_curRenderOptions |= 1;
+#endif
+
     for (int i = 0; i < meshIn->numFaces; i++)
     {
         int flags = 0;
-        if ( (localCamera.y - pCurMesh->vertices[*face->vertexPosIdx].y) * face->normal.y
+        flex_t normalCheck = (localCamera.y - pCurMesh->vertices[*face->vertexPosIdx].y) * face->normal.y
            + (localCamera.x - pCurMesh->vertices[*face->vertexPosIdx].x) * face->normal.x
-           + (localCamera.z - pCurMesh->vertices[*face->vertexPosIdx].z) * face->normal.z <= 0.0 )
+           + (localCamera.z - pCurMesh->vertices[*face->vertexPosIdx].z) * face->normal.z;
+        
+        // Allow rendering faces facing away from camera if they're double-sided,
+        // or we aren't doing backface culling
+        if ( normalCheck <= 0.0 )
         {
             flags = 1;
             if ( !(face->type & RD_FF_DOUBLE_SIDED) && (rdroid_curRenderOptions & RD_BACKFACE_CULLING) )
@@ -1586,6 +1609,7 @@ void rdModel3_DrawMesh(rdMesh *meshIn, rdMatrix34 *mat)
             }
         }
 
+        // Everything except rdModel3_DrawFace: 2ms
         rdModel3_DrawFace(face, flags);
         ++face;
     }
@@ -1829,6 +1853,11 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
     if ( !procEntry )
         return 0;
 
+    // Force diffuse lighting, we can't be ballers on DSi
+#ifdef TARGET_TWL
+    rdModel3_lightingMode = RD_LIGHTMODE_DIFFUSE;
+#endif
+
     geometryMode = rdModel3_geometryMode;
     if ( rdModel3_geometryMode >= face->geometryMode )
         geometryMode = face->geometryMode;
@@ -1843,7 +1872,7 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 
     // MOTS added
     if ((face->type & 0x10) != 0) {
-        procEntry->lightingMode = 1;
+        procEntry->lightingMode = RD_LIGHTMODE_NOTLIT;
     }
 
     // Added: safeguard
@@ -1867,7 +1896,7 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
     vertexSrc.vertexUVIdx = face->vertexUVIdx;
 
     // MOTS added: RGB
-    if ((rdGetVertexColorMode() == 0) || (procEntry->lightingMode == 2)) {
+    if ((rdGetVertexColorMode() == 0) || (procEntry->lightingMode == RD_LIGHTMODE_DIFFUSE)) {
         if ( meshFrustrumCull )
             rdPrimit3_ClipFace(rdCamera_pCurCamera->pClipFrustum, geometryMode, lightingMode, textureMode, (rdVertexIdxInfo *)&vertexSrc, &vertexDst, &face->clipIdk);
         else
@@ -1890,7 +1919,7 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
     if ( vertexDst.numVertices < 3u )
         return 0;
 
-    if ( procEntry->lightingMode == 2 )
+    if ( procEntry->lightingMode == RD_LIGHTMODE_DIFFUSE )
     {
         if ( lightFlags )
         {
@@ -1947,19 +1976,19 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
 	if ( procEntry->ambientLight < 1.0 )
 #endif
     {
-        if ( procEntry->lightingMode == 2 )
+        if ( procEntry->lightingMode == RD_LIGHTMODE_DIFFUSE )
         {
             if ( procEntry->light_level_static >= 1.0 && isIdentityMap )
             {
-                procEntry->lightingMode = 0;
+                procEntry->lightingMode = RD_LIGHTMODE_FULLYLIT;
             }
             else if ( procEntry->light_level_static <= 0.0 )
             {
-                procEntry->lightingMode = 1;
+                procEntry->lightingMode = RD_LIGHTMODE_NOTLIT;
             }
             goto LABEL_44;
         }
-        if ( (rdGetVertexColorMode() != 0) || procEntry->lightingMode != 3 )
+        if ( (rdGetVertexColorMode() != 0) || procEntry->lightingMode != RD_LIGHTMODE_GOURAUD )
             goto LABEL_44;
 
         for (int i = 1; i < vertexDst.numVertices; i++ )
@@ -1976,33 +2005,33 @@ int rdModel3_DrawFace(rdFace *face, int lightFlags)
         {
             if ( procEntry->vertexIntensities[0] == 0.0 )
             {
-                procEntry->lightingMode = 1;
+                procEntry->lightingMode = RD_LIGHTMODE_NOTLIT;
                 procEntry->light_level_static = 0.0;
             }
             else
             {
-                procEntry->lightingMode = 2;
+                procEntry->lightingMode = RD_LIGHTMODE_DIFFUSE;
                 procEntry->light_level_static = procEntry->vertexIntensities[0];
             }
             goto LABEL_44;
         }
         if ( isIdentityMap )
         {
-            procEntry->lightingMode = 0;
+            procEntry->lightingMode = RD_LIGHTMODE_FULLYLIT;
             goto LABEL_44;
         }
 
-        procEntry->lightingMode = 2;
+        procEntry->lightingMode = RD_LIGHTMODE_DIFFUSE;
         procEntry->light_level_static = 1.0;
         goto LABEL_44;
     }
     if ( !isIdentityMap )
     {
-        procEntry->lightingMode = 2;
+        procEntry->lightingMode = RD_LIGHTMODE_DIFFUSE;
         procEntry->light_level_static = 1.0;
         goto LABEL_44;
     }
-    procEntry->lightingMode = 0;
+    procEntry->lightingMode = RD_LIGHTMODE_FULLYLIT;
 
 LABEL_44:
     flags = 1;

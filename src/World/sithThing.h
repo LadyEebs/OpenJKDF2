@@ -85,7 +85,7 @@ void sithThing_EnterSector(sithThing* pThing, sithSector *sector, int a3, int a4
 sithThing* sithThing_CreateThingOfType(uint32_t thingType);
 void sithThing_EnterWater(sithThing* pThing, int a2);
 void sithThing_ExitWater(sithThing* pThing, int a2);
-uint32_t sithThing_Checksum(sithThing* pThing, unsigned int last_hash);
+uint32_t sithThing_Checksum(sithThing* pThing, uint32_t last_hash);
 int sithThing_netidk2(int a1);
 int sithThing_GetIdxFromThing(sithThing* pThing);
 void sithThing_TickPhysics(sithThing* pThing, flex_t deltaSecs);
@@ -97,10 +97,11 @@ void sithThing_FreeEverythingNet(sithThing* pThing);
 void sithThing_AttachToSurface(sithThing* pThing, sithSurface *surface, int a3);
 void sithThing_LandThing(sithThing *a1, sithThing *a2, rdFace *a3, rdVector3 *a4, int a5);
 void sithThing_MoveToSector(sithThing* pThing, sithSector *sector, int a4);
-int sithThing_DetachThing(sithThing* pThing);
+MATH_FUNC int sithThing_DetachThing(sithThing* pThing);
 void sithThing_Destroy(sithThing* pThing);
 flex_t sithThing_Damage(sithThing *sender, sithThing *reciever, flex_t amount, int damageClass, int hitJoint); // Added: hitJoint
-void sithThing_detachallchildren(sithThing* pThing);
+MATH_FUNC void sithThing_detachallchildren(sithThing* pThing);
+
 void sithThing_AttachThing(sithThing *parent, sithThing *child);
 void sithThing_SetSyncFlags(sithThing *pThing, int flags);
 int sithThing_ShouldSync(sithThing* pThing);
