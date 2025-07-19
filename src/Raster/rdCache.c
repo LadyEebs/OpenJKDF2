@@ -575,15 +575,15 @@ void rdCache_Flush()
 				if (cel < 0) cel = 0;
 				else if ((uint32_t)cel >= face->material->num_texinfo) cel = face->material->num_texinfo - 1;
 				rdTexinfo* texinfo = face->material->texinfos[cel]; 
-				if(texinfo->texture_ptr)
+				if(texinfo && texinfo->texture_ptr)
 				{
 					for (int i = 0; i < texinfo->texture_ptr->num_mipmaps; ++i)
 						stdDisplay_VBufferLock(texinfo->texture_ptr->texture_struct[i]);
+
+					// Bin it
+					rdRaster_BinFaceCoarse(face);
 				}
 			}
-			
-			// Bin it
-			rdRaster_BinFaceCoarse(face);
 		}
 		
 		// Fine bin then flush
@@ -601,7 +601,7 @@ void rdCache_Flush()
 				if (cel < 0) cel = 0;
 				else if ((uint32_t)cel >= face->material->num_texinfo) cel = face->material->num_texinfo - 1;
 				rdTexinfo* texinfo = face->material->texinfos[cel];
-				if (texinfo->texture_ptr)
+				if (texinfo && texinfo->texture_ptr)
 				{
 					for (int i = 0; i < texinfo->texture_ptr->num_mipmaps; ++i)
 						stdDisplay_VBufferUnlock(texinfo->texture_ptr->texture_struct[i]);
