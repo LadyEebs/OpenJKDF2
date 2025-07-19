@@ -1547,7 +1547,7 @@ void jkMain_FixRes()
     
     stdDisplay_pCurVideoMode->format.width = newW;
     stdDisplay_pCurVideoMode->format.height = newH;
-    stdDisplay_pCurVideoMode->widthMaybe = newW;
+    stdDisplay_pCurVideoMode->aspectRatio = newW / newH;
     stdDisplay_pCurVideoMode->format.width_in_pixels = newW;
     stdDisplay_pCurVideoMode->format.width_in_bytes = newW;
     
@@ -1592,7 +1592,7 @@ void jkMain_FixRes()
 #if defined(SDL2_RENDER)
     Video_pCanvasOverlayMap = rdCanvas_New(2, Video_pOverlayMapBuffer, Video_pOverlayMapBuffer, 0, 0, newW, newH, 6);
 #endif
-    sithCamera_Open(Video_pCanvas, stdDisplay_pCurVideoMode->widthMaybe);
+    sithCamera_Open(Video_pCanvas, stdDisplay_pCurVideoMode->aspectRatio);
 }
 
 int jkMain_SetVideoMode()
@@ -1653,7 +1653,7 @@ int jkMain_SetVideoMode()
 
     stdDisplay_pCurVideoMode->format.width = newW;
     stdDisplay_pCurVideoMode->format.height = newH;
-    stdDisplay_pCurVideoMode->widthMaybe = newW;
+    stdDisplay_pCurVideoMode->aspectRatio = newW / newH;
     stdDisplay_pCurVideoMode->format.width_in_pixels = newW;
     stdDisplay_pCurVideoMode->format.width_in_bytes = newW;
     
@@ -1709,7 +1709,7 @@ int jkMain_SetVideoMode()
     sithRender_SetGeoMode(Video_modeStruct.geoMode);
     sithRender_SetLightMode(Video_modeStruct.lightMode);
     sithRender_SetTexMode(Video_modeStruct.texMode);
-    sithCamera_Open(Video_pCanvas, stdDisplay_pCurVideoMode->widthMaybe);
+    sithCamera_Open(Video_pCanvas, stdDisplay_pCurVideoMode->aspectRatio);
 
     stdDisplay_SetMode(0, 0, 0);
 

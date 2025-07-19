@@ -424,7 +424,7 @@ Video_modeStruct 0x008605C0 videoModeStruct
 Video_otherBuf 0x00866CA0 stdVBuffer
 Video_dword_866D78 0x00866D78 int
 Video_curMode 0x00866D7C int
-Video_renderSurface 0x00866D80 stdVideoMode[9] // TODO verify
+Video_renderSurface 0x00866D80 stdVideoMode[64] // TODO verify
 Video_menuBuffer 0x0086AC00 stdVBuffer
 Video_pOtherBuf 0x00552888 stdVBuffer*
 Video_pMenuBuffer 0x0055288C stdVBuffer*

@@ -495,5 +495,5 @@ int stdDisplay_GammaCorrect3(int a1)
 
 int stdDisplay_SetCooperativeLevel(uint32_t a){return 0;}
 int stdDisplay_DrawAndFlipGdi(uint32_t a){return 0;}
-void stdDisplay_422A50(){}
+void stdDisplay_FreeBackBuffers(){}
 #endif

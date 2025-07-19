@@ -21,6 +21,38 @@ uint8_t* stdDisplay_GetPalette()
     return (uint8_t*)stdDisplay_gammaPalette;
 }
 
+int stdDisplay_SortVideoModes(stdVideoMode* modeA, stdVideoMode* modeB)
+{
+	// Prioritize active modes
+	if (modeA->field_0 == 0 && modeB->field_0 != 0)
+	{
+		return 1; // B comes before A
+	}
+	if (modeA->field_0 != 0 && modeB->field_0 == 0)
+	{
+		return -1; // A comes before B
+	}
+
+	// If both inactive or both active, compare by bit depth
+	uint32_t bppA = modeA->format.format.bpp;
+	uint32_t bppB = modeB->format.format.bpp;
+	if (bppA != bppB)
+	{
+		return bppA - bppB;
+	}
+
+	// Then compare width
+	int widthA = modeA->format.width;
+	int widthB = modeB->format.width;
+	if (widthA != widthB)
+	{
+		return widthA - widthB;
+	}
+
+	// Finally compare height
+	return modeA->format.height - modeB->format.height;
+}
+
 #ifndef SDL2_RENDER
 
 #else
@@ -141,7 +173,17 @@ int stdDisplay_SetMode(unsigned int modeIdx, const void *palette, int paged)
     
     if (palette)
     {
-        memcpy(stdDisplay_gammaPalette, palette, 0x300);
+		if (stdDisplay_paGammaTable != NULL && stdDisplay_gammaIdx != 0)
+		{
+			memcpy(stdDisplay_tmpGammaPal, palette, 0x300);
+			stdColor_GammaCorrect(&stdDisplay_gammaPalette[0].r, stdDisplay_tmpGammaPal, 256,
+								  stdDisplay_paGammaTable[stdDisplay_gammaIdx - 1]);
+		}
+		else
+		{
+			memcpy(stdDisplay_gammaPalette, palette, 0x300);
+		}
+
         const rdColor24* pal24 = (const rdColor24*)palette;
         SDL_Color* tmp = (SDL_Color*)malloc(sizeof(SDL_Color) * 256);
         for (int i = 0; i < 256; i++)
@@ -298,16 +340,20 @@ stdVBuffer* stdDisplay_VBufferNew(stdVBufferTexFmt *fmt, int create_ddraw_surfac
 int stdDisplay_VBufferLock(stdVBuffer *buf)
 {
     if (!buf) return 0;
-
+	if (buf->bSurfaceLocked)
+		return 0;
     SDL_LockSurface(buf->sdlSurface);
     buf->surface_lock_alloc = (char*)buf->sdlSurface->pixels;
-    return 1;
+    buf->bSurfaceLocked = 1;
+	return 1;
 }
 
 void stdDisplay_VBufferUnlock(stdVBuffer *buf)
 {
     if (!buf) return;
-   #ifdef HW_VBUFFER
+	if (!buf->bSurfaceLocked)
+		return;
+#ifdef HW_VBUFFER
 	if (buf->device_surface && buf->surface_lock_alloc)
 	{
 		std3D_UploadDrawSurface(buf->device_surface, buf->format.width, buf->format.height, buf->surface_lock_alloc, buf->palette);
@@ -315,6 +361,7 @@ void stdDisplay_VBufferUnlock(stdVBuffer *buf)
    #endif
     buf->surface_lock_alloc = NULL;
     SDL_UnlockSurface(buf->sdlSurface);
+	buf->bSurfaceLocked = 0;
 }
 
 int stdDisplay_VBufferCopy(stdVBuffer *vbuf, stdVBuffer *vbuf2, unsigned int blit_x, int blit_y, rdRect *rect, int alpha_maybe)
@@ -541,22 +588,60 @@ stdVBuffer* stdDisplay_VBufferConvertColorFormat(void* a, stdVBuffer* b)
     return b;
 }
 
-int stdDisplay_GammaCorrect3(int a1)
+int stdDisplay_GammaCorrect3(int gammaIndex)
 {
-    jk_printf("STUB: stdDisplay_GammaCorrect3\n");
-    return 1;
+	uint8_t convertedPalette[768];
+
+	if (stdDisplay_paGammaTable == NULL)
+	{
+		memcpy(stdDisplay_gammaPalette, stdDisplay_tmpGammaPal, sizeof(rdColor24) * 256);
+		return 0;
+	}
+
+	if (gammaIndex == 0)
+	{
+		memcpy(stdDisplay_gammaPalette, stdDisplay_tmpGammaPal, sizeof(rdColor24) * 256);
+	}
+	else
+	{
+		stdColor_GammaCorrect(
+			&stdDisplay_gammaPalette[0].r,
+			stdDisplay_tmpGammaPal,
+			768,
+			stdDisplay_paGammaTable[gammaIndex - 1]
+		);
+	}
+
+	// jk usually sets palette to the window with GDI or D3D here
+	memcpy(stdDisplay_masterPalette, stdDisplay_gammaPalette, sizeof(stdDisplay_masterPalette));
+
+	stdDisplay_gammaIdx = gammaIndex;
+	return 1;
 }
 
 int stdDisplay_SetCooperativeLevel(uint32_t a){return 0;}
 int stdDisplay_DrawAndFlipGdi(uint32_t a){return 0;}
-void stdDisplay_422A50(){}
+void stdDisplay_FreeBackBuffers()
+{
+}
 #endif
 
 void stdDisplay_GammaCorrect(const void *pPal)
 {
-    _memcpy(stdDisplay_tmpGammaPal, pPal, sizeof(stdDisplay_tmpGammaPal));
-    //if ( stdDisplay_paGammaTable && stdDisplay_gammaIdx )
-    //    stdColor_GammaCorrect((uint8_t *)stdDisplay_gammaPalette, (uint8_t *)stdDisplay_tmpGammaPal, 256, stdDisplay_paGammaTable[stdDisplay_gammaIdx - 1]);
-    //else
-        _memcpy(stdDisplay_gammaPalette, pPal, sizeof(stdDisplay_gammaPalette));
+	memcpy(stdDisplay_tmpGammaPal, pPal, 768);
+
+	if (stdDisplay_paGammaTable != NULL && stdDisplay_gammaIdx != 0)
+	{
+		double gammaValue = stdDisplay_paGammaTable[stdDisplay_gammaIdx - 1];
+		stdColor_GammaCorrect(
+			&stdDisplay_gammaPalette[0].r,
+			stdDisplay_tmpGammaPal,
+			256,
+			gammaValue
+		);
+	}
+	else
+	{
+		memcpy(stdDisplay_gammaPalette, pPal, 768);
+	}
 }

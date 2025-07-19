@@ -2010,7 +2010,7 @@ typedef struct video_device
 typedef struct stdVideoMode
 {
   int field_0;
-  flex_t widthMaybe;
+  flex_t aspectRatio;
   stdVBufferTexFmt format;
 } stdVideoMode;
 

@@ -1,6 +1,7 @@
 #include "stdColor.h"
 
 #include <float.h>
+#include <math.h>
 #include "jk.h"
 
 int stdColor_Indexed8ToRGB16(uint8_t idx, rdColor24 *pal, rdTexformat *fmt)
@@ -150,7 +151,22 @@ int stdColor_FindClosest32(rdColor32* rgb, rdColor24* pal)
 	return idx;
 }
 
-int stdColor_GammaCorrect(uint8_t *a1, uint8_t *a2, int a3, flex_d_t a4) {
-    jk_printf("OpenJKDF2: Unimplemented function stdColor_GammaCorrect!!\n");
-    return 1;
+int stdColor_GammaCorrect(uint8_t* dest, uint8_t* src, int count, flex_d_t gamma)
+{
+	const uint8_t MAX_COLOR = 255;
+
+	if (count <= 0)
+	{
+		return count;
+	}
+
+	for (int i = 0; i < count; i++)
+	{
+		double normalized = src[i] / 255.0;
+		double corrected = pow(normalized, gamma);
+		double scaled = corrected * MAX_COLOR;
+		dest[i] = (scaled > 255.0) ? 255 : ((scaled < 0.0) ? 0 : (uint8_t)scaled);
+	}
+
+	return count;
 }

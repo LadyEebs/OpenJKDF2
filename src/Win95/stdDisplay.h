@@ -13,7 +13,7 @@
 #define stdDisplay_Open_ADDR (0x04220E0)
 #define stdDisplay_Close_ADDR (0x04224D0)
 #define stdDisplay_SetMode_ADDR (0x04226A0) // MOTS altered
-#define stdDisplay_422A50_ADDR (0x0422A50)
+#define stdDisplay_FreeBackBuffers_ADDR (0x0422A50)
 #define stdDisplay_ClearMode_ADDR (0x0422C30)
 #define stdDisplay_DrawAndFlipGdi_ADDR (0x0422E80)
 #define stdDisplay_SetCooperativeLevel_ADDR (0x0422F90)
@@ -55,7 +55,7 @@ void stdDisplay_GammaCorrect(const void *pPal);
 #if !defined(SDL2_RENDER) && defined(WIN32)
 static int (*stdDisplay_DrawAndFlipGdi)(uint32_t) = (void*)stdDisplay_DrawAndFlipGdi_ADDR;
 static int (*stdDisplay_SetCooperativeLevel)(uint32_t) = (void*)stdDisplay_SetCooperativeLevel_ADDR;
-static void (*stdDisplay_422A50)() = (void*)stdDisplay_422A50_ADDR;
+static void (*stdDisplay_FreeBackBuffers)() = (void*)stdDisplay_FreeBackBuffers_ADDR;
 static void (*stdDisplay_ClearMode)() = (void*)stdDisplay_ClearMode_ADDR;
 //static char* (*stdDisplay_GetPalette)() = (void*)stdDisplay_GetPalette_ADDR;
 
@@ -107,7 +107,9 @@ int stdDisplay_GammaCorrect3(int a1);
 
 int stdDisplay_SetCooperativeLevel(uint32_t a);
 int stdDisplay_DrawAndFlipGdi(uint32_t a);
-void stdDisplay_422A50();
+void stdDisplay_FreeBackBuffers();
+
+static void stdDisplay_ClearMode(){}
 #endif
 
 #endif // _STDDISPLAY_H

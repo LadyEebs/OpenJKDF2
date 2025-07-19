@@ -211,7 +211,7 @@ jkGuiDisplay_sub_4152E0
 jkGuiDisplay_sub_415410
 jkGuiDisplay_sub_415620
 jkDev_DialogFunc
-stdDisplay_422A50
+stdDisplay_FreeBackBuffers
 stdDisplay_ClearMode
 stdDisplay_DrawAndFlipGdi
 stdDisplay_SetCooperativeLevel
