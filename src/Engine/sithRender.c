@@ -39,6 +39,10 @@
 
 #include "Modules/rdroid/Engine/rdCluster.h"
 
+#ifdef TARGET_TWL
+void sithRender_NoClip(sithSector* sector, rdClipFrustum* frustumArg, flex_t a3, int depth);
+#endif
+
 #if defined(DECAL_RENDERING) || defined(RENDER_DROID2)
 #include "World/sithDecal.h"
 #endif
@@ -2759,16 +2763,16 @@ void sithRender_RenderLevelGeometry()
     flex_t tmpBlue[3];
     flex_t tmpGreen[3];
 
+#ifdef TARGET_TWL
+	int skip_this_surface = 1;
+	//rdroid_curAcceleration = 1;
+#endif
+
 #ifdef TILE_SW_RASTER
 	// TILETODO
 	rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
 	rdSetVertexColorMode(0);
 #else
-	
-#ifdef TARGET_TWL
-    int skip_this_surface = 1;
-    rdroid_curAcceleration = 1;
-#endif
 
     if ( rdroid_curAcceleration )
     {
