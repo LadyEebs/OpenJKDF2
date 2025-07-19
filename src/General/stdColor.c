@@ -134,14 +134,14 @@ int stdColor_ColorConvertOneRow(uint8_t *outPixels, rdTexformat *formatTo, uint8
 int stdColor_FindClosest32(rdColor32* rgb, rdColor24* pal)
 {
 	uint8_t idx = 0;
-	flex_t maxDist = FLT_MAX;
+	int maxDist = INT_MAX;
 	for (int k = 0; k < 256; ++k)
 	{
-		flex_t dr = ((flex_t)rgb->r - (flex_t)pal[k].r) / 255.0f;
-		flex_t dg = ((flex_t)rgb->g - (flex_t)pal[k].g) / 255.0f;
-		flex_t db = ((flex_t)rgb->b - (flex_t)pal[k].b) / 255.0f;
+		int dr = (int)rgb->r - (int)pal[k].r;
+		int dg = (int)rgb->g - (int)pal[k].g;
+		int db = (int)rgb->b - (int)pal[k].b;
 
-		flex_t dist = (dr * dr + dg * dg + db * db);
+		int dist = dr * dr + (dg * dg + (db * db));
 		if (dist < maxDist)
 		{
 			idx = k;

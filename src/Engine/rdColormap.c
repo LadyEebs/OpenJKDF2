@@ -229,7 +229,7 @@ LABEL_26:
 			{
 				rdColor32 col = { r << 2, g << 2, b << 2, 255 };
 				int bestcolor = stdColor_FindClosest32(&col, colormap->colors);
-				uint32_t offset = (b * 64 * 64) + (g * 64) + r;
+				uint32_t offset = (b << 12) | (g << 6) | r;
 				colormap->searchTable[offset] = bestcolor;
 			}
 		}
