@@ -432,9 +432,15 @@ LABEL_84:
                     }
                 }
             }
-            v24 = v43 + 32;
+		#ifdef TILE_SW_RASTER
+			v24 = v43 + HUD_SCALED(32);
+			v43 += HUD_SCALED(32);
+			if (v43 >= HUD_SCALED(96))
+		#else
+			v24 = v43 + 32;
             v43 += 32;
             if ( v43 >= 96 )
+		#endif
                 return;
             v23 = idx;
         }
