@@ -48,7 +48,10 @@ int rdCanvas_NewEntry(rdCanvas *canvas, int bIdk, stdVBuffer *vbuf, stdVBuffer *
 void rdCanvas_Free(rdCanvas *canvas)
 {
     if ( canvas )
-        rdroid_pHS->free(canvas);
+	{
+		rdCanvas_FreeEntry(canvas);
+		rdroid_pHS->free(canvas);
+	}
 }
 
 void rdCanvas_FreeEntry(rdCanvas *canvas)
