@@ -805,7 +805,7 @@ void sithRender_ResetState()
 {
 	rdMatrixMode(RD_MATRIX_PROJECTION);
 	rdIdentity();
-	rdPerspective(rdCamera_pCurCamera->fov, rdCamera_pCurCamera->screenAspectRatio, rdCamera_pCurCamera->pClipFrustum->field_0.y, rdCamera_pCurCamera->pClipFrustum->field_0.z);
+	rdPerspective(rdCamera_pCurCamera->fov, rdCamera_pCurCamera->screenAspectRatio, rdCamera_pCurCamera->pClipFrustum->zNear, rdCamera_pCurCamera->pClipFrustum->zFar);
 
 	rdMatrixMode(RD_MATRIX_MODEL);
 	rdIdentity();

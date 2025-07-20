@@ -763,7 +763,7 @@ void jkGuiBuildMulti_ModelDrawer(jkGuiElement *pElement, jkGuiMenu *pMenu, stdVB
 
 		rdMatrixMode(RD_MATRIX_PROJECTION);
 		rdIdentity();
-		rdPerspective(jkGuiBuildMulti_pCamera->fov, jkGuiBuildMulti_pCamera->screenAspectRatio, jkGuiBuildMulti_pCamera->pClipFrustum->field_0.y, jkGuiBuildMulti_pCamera->pClipFrustum->field_0.z);
+		rdPerspective(jkGuiBuildMulti_pCamera->fov, jkGuiBuildMulti_pCamera->screenAspectRatio, jkGuiBuildMulti_pCamera->pClipFrustum->zNear, jkGuiBuildMulti_pCamera->pClipFrustum->zFar);
 
 		// set the viewport to the canvas area
 		// it would be nice to render to an FBO or something and just let the blitter handle it...
