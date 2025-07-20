@@ -287,8 +287,8 @@ int rdCamera_BuildClipFrustum(rdCamera *camera, rdClipFrustum *outClip, signed i
 #ifdef RENDER_DROID2
 	outClip->x = (float)minX / (float)(canvas->widthMinusOne + 1);
 	outClip->y = (float)minY / (float)(canvas->heightMinusOne + 1);
-	outClip->width = (float)(height2 - minX) / (float)(canvas->widthMinusOne + 1);
-	outClip->height = (float)(minY - width) / (float)(canvas->heightMinusOne + 1);
+	outClip->width = (float)(maxX - minX) / (float)(canvas->widthMinusOne + 1);
+	outClip->height = (float)(minY - maxY) / (float)(canvas->heightMinusOne + 1);
 #endif
 
 #ifdef TARGET_TWL
@@ -583,18 +583,18 @@ void rdCamera_GetFrustumCornerRays(rdCamera* camera, rdMatrix34* camMat, rdVecto
 	// todo: do all this math in view space to avoid the view -> world -> view transforms
 	float fovRad = camera->fov * M_PI / 180.0f;
 	float aspect = camera->screenAspectRatio;
-	float wNear = 2.0f * tanf(fovRad / 2.0f) * camera->pClipFrustum->field_0.y;
+	float wNear = 2.0f * tanf(fovRad / 2.0f) * camera->pClipFrustum->zNear;
 	float hNear = wNear * aspect;
-	float wFar = 2.0f * tanf(fovRad / 2.0f) * camera->pClipFrustum->field_0.z;
+	float wFar = 2.0f * tanf(fovRad / 2.0f) * camera->pClipFrustum->zFar;
 	float hFar = wFar * aspect;
 
 	rdVector3 cNear;
 	rdVector_Copy3(&cNear, &camMat->scale);
-	rdVector_MultAcc3(&cNear, &camMat->lvec, camera->pClipFrustum->field_0.y);
+	rdVector_MultAcc3(&cNear, &camMat->lvec, camera->pClipFrustum->zNear);
 
 	rdVector3 cFar;
 	rdVector_Copy3(&cFar, &camMat->scale);
-	rdVector_MultAcc3(&cFar, &camMat->lvec, camera->pClipFrustum->field_0.z);
+	rdVector_MultAcc3(&cFar, &camMat->lvec, camera->pClipFrustum->zFar);
 
 	rdVector3 nearTopLeft;
 	nearTopLeft.x = (cNear.x + (camMat->uvec.x * hNear / 2.0f)) - (camMat->rvec.x * wNear / 2.0f);
