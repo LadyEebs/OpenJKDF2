@@ -1179,7 +1179,7 @@ void jkPlayer_DrawPov()
 	flex_t povfov = (flex_t)stdMath_ClampInt(jkPlayer_povFov, FOV_MIN, FOV_MAX);
 	flex_t fpfov = stdMath_ArcTan3(1.0, stdMath_Tan(povfov * 0.5f) / rdCamera_pCurCamera->screenAspectRatio) * -2.0;
 	fpfov /= sithCamera_currentCamera->zoomScale;
-	rdPerspective(/*rdCamera_pCurCamera->fov*/fpfov, rdCamera_pCurCamera->screenAspectRatio, rdCamera_pCurCamera->pClipFrustum->field_0.y, rdCamera_pCurCamera->pClipFrustum->field_0.z);
+	rdPerspective(/*rdCamera_pCurCamera->fov*/fpfov, rdCamera_pCurCamera->screenAspectRatio, rdCamera_pCurCamera->pClipFrustum->zNear, rdCamera_pCurCamera->pClipFrustum->zFar);
 
 	rdMatrixMode(RD_MATRIX_MODEL);
 	rdIdentity();
