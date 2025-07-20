@@ -86,7 +86,7 @@ int stdDisplay_Startup()
 	_strncpy(device->driverDesc, "Window Display Device", 0x7F);
 	device->driverDesc[0x7F] = '\0';
 
-	_strncpy(device->driverName, "DIBsection windowed display", 0x7F);
+	_strncpy(device->driverName, "Windowed display", 0x7F); // DIBsection windowed display
 	device->driverName[0x7F] = '\0';
 
 	// Fallback "windowed" video device
@@ -302,7 +302,26 @@ int stdDisplay_Open(int index)
 		Video_renderSurface[8].format.format.g_shift = 5;
 		Video_renderSurface[8].format.format.b_shift = 0;
 		Video_renderSurface[8].aspectRatio = 1.0;
-		stdDisplay_numVideoModes = 9;
+		// Added
+		Video_renderSurface[9].field_0 = 0;
+		Video_renderSurface[9].format.width = 1280;
+		Video_renderSurface[9].format.height = 720;
+		Video_renderSurface[9].format.texture_size_in_bytes = 1280 * 720;
+		Video_renderSurface[9].format.width_in_bytes = 1280;
+		Video_renderSurface[9].format.width_in_pixels = 1280;
+		Video_renderSurface[9].format.format.colorMode = 0;
+		Video_renderSurface[9].format.format.bpp = 8;
+		Video_renderSurface[9].format.format.r_bits = 0;
+		Video_renderSurface[9].format.format.g_bits = 0;
+		Video_renderSurface[9].format.format.b_bits = 0;
+		Video_renderSurface[9].format.format.r_bitdiff = 0;
+		Video_renderSurface[9].format.format.g_bitdiff = 0;
+		Video_renderSurface[9].format.format.b_bitdiff = 0;
+		Video_renderSurface[9].format.format.r_shift = 0;
+		Video_renderSurface[9].format.format.g_shift = 0;
+		Video_renderSurface[9].format.format.b_shift = 0;
+		Video_renderSurface[9].aspectRatio = 1.0;//1280.0/720.0;
+		stdDisplay_numVideoModes = 10;
 	}
 	else if (iVar2 == 1)
 		return 0;
@@ -1268,4 +1287,125 @@ void stdDisplay_VBufferCopyScaled(stdVBuffer* vbuf, stdVBuffer* vbuf2, unsigned 
 		}
 	}
 }
+
+stdDisplayEnvironment* stdBuildDisplayEnvironment()
+{
+	stdDisplayEnvironment* result = (stdDisplayEnvironment*)std_pHS->alloc(sizeof(stdDisplayEnvironment));
+	if (!result)
+		return NULL;
+	result->numDevices = 0;
+	result->devices = NULL;
+
+	if (stdDisplay_Startup() == 0)
+	{
+		std_pHS->free(result);
+		return NULL;
+	}
+
+	uint32_t numDevices = stdDisplay_numDevices;
+	result->numDevices = numDevices;
+
+	if (numDevices == 0)
+	{
+		stdDisplay_RestoreDisplayMode();
+		return result;
+	}
+
+	stdVideoDeviceEntry* devices = (stdVideoDeviceEntry*)std_pHS->alloc(numDevices * sizeof(stdVideoDeviceEntry));
+	if (!devices)
+	{
+		stdDisplay_RestoreDisplayMode();
+		std_pHS->free(result);
+		return NULL;
+	}
+	result->devices = devices;
+	
+	// added
+	memset(devices, 0, numDevices * sizeof(stdVideoDeviceEntry));
+
+	int numModes;
+	stdVideoMode* modes;
+
+	for (uint32_t i = 0; i < numDevices; ++i)
+	{
+		stdVideoDeviceEntry* dst = &devices[i];
+		//memset(dst, 0, sizeof(stdVideoDeviceEntry)); // moved
+		memcpy(&dst->device, &stdDisplay_aDevices[i], sizeof(stdVideoDevice));
+
+		if (stdDisplay_Open(i) == 0)
+			goto fail;
+
+		numModes = stdDisplay_numVideoModes;
+		dst->max_modes = numModes;
+
+		if (numModes > 0)
+		{
+			modes = (stdVideoMode*)std_pHS->alloc(numModes * sizeof(stdVideoMode));
+			if (!modes)
+				goto fail;
+			dst->stdVideoMode = modes;
+			memcpy(modes, Video_renderSurface, numModes * sizeof(stdVideoMode));
+
+			dst->field_2A4 = 0;
+			dst->hwModeList = 0;
+			//if (dst->device.video_device[0].has3DAccel)
+			//{
+			//	if (std3D_Startup() == 0)
+			//		goto fail;
+			//
+			//	dst->field_2A4 = std3D_numHwModesMaybe;
+			//	if (dst->field_2A4 > 0)
+			//	{
+			//		void* modeList = std_pHS->alloc(dst->field_2A4 * 0x22C);
+			//		if (!modeList) goto fail;
+			//		dst->hwModeList = (uint32_t)modeList;
+			//		memcpy(modeList, &std3D_hwModeListMaybe, dst->field_2A4 * 0x22C);
+			//	}
+			//	std3D_Shutdown();
+			//}
+		}
+
+		stdDisplay_Close();
+	}
+
+	stdDisplay_RestoreDisplayMode();
+	return result;
+
+fail:
+	if (result->devices)
+	{
+		for (uint32_t i = 0; i < result->numDevices; ++i)
+		{
+			stdVideoDeviceEntry* dev = &result->devices[i];
+			if (dev->hwModeList)
+				std_pHS->free((void*)dev->hwModeList);
+			if (dev->stdVideoMode)
+				std_pHS->free((void*)dev->stdVideoMode);
+		}
+		std_pHS->free(result->devices);
+	}
+	std_pHS->free(result);
+	return NULL;
+}
+
+void stdFreeDisplayEnvironment(stdDisplayEnvironment* displayEnv)
+{
+	if (displayEnv->devices != NULL)
+	{
+		for (uint32_t i = 0; i < displayEnv->numDevices; ++i)
+		{
+			stdVideoDeviceEntry* dev = &displayEnv->devices[i];
+			if (dev->hwModeList)
+				std_pHS->free((void*)dev->hwModeList);
+			if (dev->stdVideoMode)
+				std_pHS->free((void*)dev->stdVideoMode);
+		}
+
+		std_pHS->free(displayEnv->devices);
+		displayEnv->devices = NULL;
+	}
+
+	std_pHS->free(displayEnv);
+}
+
 #endif

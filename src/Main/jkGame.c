@@ -69,15 +69,22 @@ void jkGame_ScreensizeIncrease()
             jkHudCameraView_Close();
         }
 
-#ifndef LINUX_TMP
-        sithCamera_Close();
-        rdCanvas_Free(Video_pCanvas);
-#ifdef SDL2_RENDER
-        rdCanvas_Free(Video_pCanvasOverlayMap);
-#endif
-        ++Video_modeStruct.viewSizeIdx;
-        Video_camera_related();
-#endif
+#ifdef TILE_SW_RASTER
+		sithCamera_Close(); // TILETODO: why do we need to add this?
+
+		++Video_modeStruct.viewSizeIdx;
+		Video_camera_related();
+#else
+	#ifndef LINUX_TMP
+			sithCamera_Close();
+			rdCanvas_Free(Video_pCanvas);
+	#ifdef SDL2_RENDER
+			rdCanvas_Free(Video_pCanvasOverlayMap);
+	#endif
+			++Video_modeStruct.viewSizeIdx;
+			Video_camera_related();
+	#endif
+#endif // TILE_SW_RASTER
         // MOTS added
         if (Main_bMotsCompat) {
             jkHudScope_Open();
@@ -96,6 +103,12 @@ void jkGame_ScreensizeDecrease()
             jkHudCameraView_Close();
         }
 
+#ifdef TILE_SW_RASTER
+		sithCamera_Close(); // TILETODO: why do we need to add this?
+		--Video_modeStruct.viewSizeIdx;
+		Video_camera_related();
+#else
+
 #ifndef LINUX_TMP
         sithCamera_Close();
         rdCanvas_Free(Video_pCanvas);
@@ -105,6 +118,8 @@ void jkGame_ScreensizeDecrease()
         --Video_modeStruct.viewSizeIdx;
         Video_camera_related();
 #endif
+#endif // TILE_SW_RASTER
+
         // MOTS added
         if (Main_bMotsCompat) {
             jkHudScope_Open();
@@ -173,7 +188,7 @@ int jkGame_Update()
 #endif
 
 #if (!defined(SDL2_RENDER) && !defined(TARGET_TWL)) || defined(TILE_SW_RASTER)
-    if ( Video_modeStruct.Video_8606C0 || Video_modeStruct.geoMode <= 2 )
+    if ( Video_modeStruct.has3DAccel || Video_modeStruct.geoMode <= 2 )
 #endif
 #if !defined(TARGET_TWL)
         stdDisplay_VBufferFill(Video_pMenuBuffer, Video_fillColor, 0); // Significant delay on TWL
@@ -428,11 +443,11 @@ void jkGame_Gamma()
     int v0; // eax
     char *v1; // eax
 
-    v0 = ++Video_modeStruct.Video_8606A4;
-    if ( Video_modeStruct.Video_8606A4 >= 0xAu )
+    v0 = ++Video_modeStruct.gammaLevel;
+    if ( Video_modeStruct.gammaLevel >= 0xAu )
     {
         v0 = 0;
-        Video_modeStruct.Video_8606A4 = 0;
+        Video_modeStruct.gammaLevel = 0;
     }
     stdDisplay_GammaCorrect3(v0);
 #if !defined(SDL2_RENDER) && !defined(TARGET_TWL) || defined(TILE_SW_RASTER)

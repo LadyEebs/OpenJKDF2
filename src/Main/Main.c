@@ -313,8 +313,8 @@ int Main_Startup(const char *cmdline)
     Video_modeStruct.Video_8605C8 = 0;
     Video_modeStruct.b3DAccel = 0;
     Video_modeStruct.viewSizeIdx = 5;
-    Video_modeStruct.Video_8606A4 = 0;
-    Video_modeStruct.Video_8606A8 = 1;
+    Video_modeStruct.gammaLevel = 0;
+    Video_modeStruct.minTexSize = 1;
 #ifdef RENDER_DROID2
 	Video_modeStruct.lightMode = RD_LIGHTMODE_SUBSURFACE;
 #elif defined(SPECULAR_LIGHTING)
@@ -323,12 +323,16 @@ int Main_Startup(const char *cmdline)
     Video_modeStruct.lightMode = 3;
 #endif
     Video_modeStruct.texMode = 1;
-    Video_modeStruct.Video_8606B8 = 0;
-    Video_modeStruct.Video_8606BC = 0;
-    Video_modeStruct.Video_8606C0 = 0;
+    Video_modeStruct.noPageFlip = 0;
+    Video_modeStruct.sysBackbuffer = 0;
+    Video_modeStruct.has3DAccel = 0;
     //Main_path[0] = 0; // Added: We reset this elsewhere
     Main_bWindowGUI = 1;
-    Main_bDisplayConfig = 0;
+#ifdef _DEBUG
+    Main_bDisplayConfig = 1;
+#else
+	Main_bDisplayConfig = 0;
+#endif
     Main_dword_86078C = 0;
     Main_bFrameRate = 0;
     Main_bDispStats = 0;

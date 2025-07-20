@@ -81,7 +81,7 @@ int jkHudCameraView_Open(void)
     iVar2 = Video_modeStruct.aViewSizes[Video_modeStruct.viewSizeIdx].yMin;
     lVar7 = (int)(Video_modeStruct.aViewSizes[Video_modeStruct.viewSizeIdx].xMax - (flex_t)(iVar1 / 2));
     lVar8 = (int)(Video_modeStruct.aViewSizes[Video_modeStruct.viewSizeIdx].yMax - (flex_t)(iVar2 / 2));
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
     iVar1 = Video_format.width;
     iVar2 = Video_format.height;
     lVar7 = 0;

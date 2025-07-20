@@ -113,6 +113,8 @@ static void stdDisplay_ClearMode(){}
 #endif
 
 #ifdef TILE_SW_RASTER
+stdDisplayEnvironment* stdBuildDisplayEnvironment();
+void stdFreeDisplayEnvironment(stdDisplayEnvironment* param_1);
 // Added
 void stdDisplay_VBufferCopyScaled(stdVBuffer* vbuf, stdVBuffer* vbuf2, unsigned int blit_x, unsigned int blit_y, rdRect* rect, int has_alpha, float scaleX, float scaleY);
 #endif

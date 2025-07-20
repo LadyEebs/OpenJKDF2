@@ -16,6 +16,8 @@
 
 #include "jk.h"
 
+#ifndef TILE_SW_RASTER
+
 enum jkGuiDecisionButton_t
 {
     GUI_GENERAL = 100,
@@ -372,7 +374,7 @@ continue_menu:
     return v0;
 }
 
-void jkGuiDisplay_sub_4149C0(){}
+void jkGuiDisplay_PrecalcViewSizes(){}
 
 
 int jkGuiDisplay_ColorDepthArrowButtonClickHandler(jkGuiElement* pElement, jkGuiMenu* pMenu, int mouseX, int mouseY, BOOL a5)
@@ -412,4 +414,6 @@ int jkGuiDisplay_SamplesArrowButtonClickHandler(jkGuiElement* pElement, jkGuiMen
 
 	return 0;
 }
+#endif
+
 #endif

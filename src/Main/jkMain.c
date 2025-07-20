@@ -136,7 +136,7 @@ int jkMain_SetVideoMode()
         thing_six = 0;
     }
     _memcpy(&Video_modeStruct, &Video_modeStruct2, sizeof(Video_modeStruct));
-    jkGuiDisplay_sub_4149C0();
+    jkGuiDisplay_PrecalcViewSizes();
     if ( Video_SetVideoDesc(sithWorld_pCurrentWorld->colormaps->colors) )
     {
 LABEL_12:
@@ -1629,7 +1629,7 @@ int jkMain_SetVideoMode()
 		thing_six = 0;
 	}
 	_memcpy(&Video_modeStruct, &Video_modeStruct2, sizeof(Video_modeStruct));
-	jkGuiDisplay_sub_4149C0();
+	jkGuiDisplay_PrecalcViewSizes();
 	if (Video_SetVideoDesc(sithWorld_pCurrentWorld->colormaps->colors))
 	{
 	LABEL_12:

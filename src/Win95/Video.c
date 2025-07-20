@@ -229,7 +229,7 @@ LABEL_9:
     {
         return 0;
     }
-    stdDisplay_GammaCorrect3(Video_modeStruct.Video_8606A4);
+    stdDisplay_GammaCorrect3(Video_modeStruct.gammaLevel);
     _memcpy(&Video_format, &stdDisplay_pCurVideoMode->format, sizeof(Video_format));
     _memcpy(Video_aPalette, color_buf, sizeof(Video_aPalette));
     Video_pOtherBuf = &Video_otherBuf;
@@ -262,7 +262,7 @@ LABEL_9:
         v4 = std3D_GetRenderList();
         std3D_SetRenderList(v4 & ~0x1B2u);
     }
-    std3D_GetValidDimensions(Video_modeStruct.Video_8606A8, Video_modeStruct.Video_8606A8, 256, 256);
+    std3D_GetValidDimensions(Video_modeStruct.minTexSize, Video_modeStruct.minTexSize, 256, 256);
     result = rdOpen(1);
     if ( result )
     {

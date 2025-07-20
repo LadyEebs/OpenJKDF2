@@ -2153,9 +2153,15 @@ typedef struct stdVideoDeviceEntry
 	stdVideoDevice device;
 	int max_modes;
 	stdVideoMode *stdVideoMode;
-	uint32_t gap2A0;
+	void* hwModeList; // some kind of hw mode list
 	int field_2A4;
 } stdVideoDeviceEntry;
+
+typedef struct stdDisplayEnvironment
+{
+	uint32_t numDevices;
+	stdVideoDeviceEntry* devices;
+} stdDisplayEnvironment;
 
 typedef struct render_8bpp
 {
@@ -2205,7 +2211,7 @@ typedef struct videoModeStruct
   int32_t modeIdx;
   int32_t descIdx;
   int32_t Video_8605C8;
-  int32_t field_C;
+  int32_t field_0C;
   int32_t field_10;
   int32_t field_14;
   int32_t field_18;
@@ -2216,8 +2222,8 @@ typedef struct videoModeStruct
   HKEY b3DAccel;
   uint32_t viewSizeIdx;
   jkViewSize aViewSizes[11];
-  int32_t Video_8606A4;
-  int32_t Video_8606A8;
+  int32_t gammaLevel;
+  int32_t minTexSize;
 #ifndef JKM_TYPES
   int32_t geoMode;
   int32_t lightMode;
@@ -2226,12 +2232,12 @@ typedef struct videoModeStruct
   int32_t geoMode;
 #endif
   int32_t texMode;
-  HKEY Video_8606B8;
-  HKEY Video_8606BC;
+  HKEY noPageFlip;
+  HKEY sysBackbuffer;
 #ifdef JKM_TYPES
   int32_t Video_motsNew1;
 #endif
-  int32_t Video_8606C0;
+  int32_t has3DAccel;
 } videoModeStruct;
 
 typedef struct stdConsole

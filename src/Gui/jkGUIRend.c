@@ -852,16 +852,16 @@ void jkGuiRend_UpdateAndDrawClickable(jkGuiElement *clickable, jkGuiMenu *menu, 
         drawFunc(clickable, menu, jkGuiRend_menuBuffer, forceRedraw);
         menu->lastMouseOverClickable = lastSave;
 #if !defined(SDL2_RENDER) || defined(TILE_SW_RASTER)
-        if ( forceRedraw )
-            jkGuiRend_FlipAndDraw(menu, drawRect);
+        //if ( forceRedraw )
+           // jkGuiRend_FlipAndDraw(menu, drawRect);
 #endif
     }
     else if ( forceRedraw )
     {
         jkGuiRend_CopyVBuffer(menu, drawRect);
 #if !defined(SDL2_RENDER) || defined(TILE_SW_RASTER)
-        if ( forceRedraw )
-            jkGuiRend_FlipAndDraw(menu, drawRect);
+        //if ( forceRedraw )
+            //jkGuiRend_FlipAndDraw(menu, drawRect);
 #endif
     }
 
@@ -1025,7 +1025,7 @@ void jkGuiRend_RenderIdk2_alt(jkGuiMenu *menu)
     jkGuiElement* element = &menu->paElements[idxOther];
     if ( element && jkGuiRend_sub_5103E0(element) )
     {
-#if !defined(SDL2_RENDER) && !defined(TARGET_TWL)
+#if !defined(SDL2_RENDER) && !defined(TARGET_TWL) 
         menu->focusedElement = element;
 #endif
         if ( focusedElement )

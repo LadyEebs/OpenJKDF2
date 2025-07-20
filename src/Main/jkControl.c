@@ -105,7 +105,7 @@ int jkControl_HandleHudKeys(sithThing *player, flex_t b)
             {
                 if (sithThing_MotsTick(0xe,1,3.0)) { // MOTS altered
                     jkGame_ScreensizeIncrease();
-                    jk_snwprintf(v16, 0x80u, jkStrings_GetUniStringWithFallback("GAME_SCREENSIZE"), jkGame_screenSize);
+                    jk_snwprintf(v16, 0x80u, jkStrings_GetUniStringWithFallback("GAME_SCREENSIZE"), Video_modeStruct.viewSizeIdx);//jkGame_screenSize);
                     jkDev_PrintUniString(v16);
                 }
                 i = v15 == 0;
@@ -115,7 +115,7 @@ int jkControl_HandleHudKeys(sithThing *player, flex_t b)
             {
                 if (sithThing_MotsTick(0xe,-1,3.0)) { // MOTS altered
                     jkGame_ScreensizeDecrease();
-                    jk_snwprintf(v16, 0x80u, jkStrings_GetUniStringWithFallback("GAME_SCREENSIZE"), jkGame_screenSize);
+                    jk_snwprintf(v16, 0x80u, jkStrings_GetUniStringWithFallback("GAME_SCREENSIZE"), Video_modeStruct.viewSizeIdx);//jkGame_screenSize);
                     jkDev_PrintUniString(v16);
                 }
                 i = v15 == 0;
