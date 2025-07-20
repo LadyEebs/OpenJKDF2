@@ -574,8 +574,8 @@ void rdCache_Flush()
 		rdRaster_BinFaces();
 		rdRaster_FlushBins();
 	}
-	else
-#elif !defined(SDL2_RENDER) && !defined(TARGET_TWL)
+#else
+#if !defined(SDL2_RENDER) && !defined(TARGET_TWL)
     if ( rdroid_curAcceleration <= 0 )
     {
         if ( rdroid_curOcclusionMethod )
@@ -622,6 +622,7 @@ void rdCache_Flush()
 		//rdCache_FlushDecals();
 	#endif
     }
+#endif // TILE_SW_RASTER
     rdCache_drawnFaces += rdCache_numProcFaces;
 	rdCache_cacheFlushes++; // added
 	rdCache_Reset();
@@ -632,7 +633,7 @@ const static flex_t res_fix_x = (1.0/512.0);
 const static flex_t res_fix_y = (1.0/384.0);
 #endif
 
-#if 1
+#ifndef TILE_SW_RASTER
 
 int rdCache_SendFaceListToHardware()
 {
