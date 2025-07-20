@@ -629,7 +629,12 @@ int stdDisplay_ClearRect(stdVBuffer *buf, int fillColor, rdRect *rect)
 
 int stdDisplay_DDrawGdiSurfaceFlip()
 {
+#ifdef TILE_SW_RASTER
+	extern void SwapWindow(SDL_Window * window);
+	SwapWindow(stdGdi_GetHwnd());
+#else
     Window_SdlUpdate();
+#endif
     return 1;
 }
 
@@ -1112,7 +1117,25 @@ int stdDisplay_GammaCorrect3(int gammaIndex)
 }
 
 int stdDisplay_SetCooperativeLevel(uint32_t a){return 0;}
-int stdDisplay_DrawAndFlipGdi(uint32_t a){return 0;}
+int stdDisplay_DrawAndFlipGdi(uint32_t a)
+{
+#ifdef TILE_SW_RASTER
+	if (stdDisplay_bOpen == 0)
+		return 0;
+
+	if (stdDisplay_bModeSet == 0)
+		return 0;
+
+	int isActive = stdDisplay_pCurDevice->video_device[0].device_active + -1;
+	if (isActive != 0)
+		return isActive;
+
+	stdDisplay_VBufferFill(&Video_menuBuffer, 0, (rdRect*)0x0);
+	stdDisplay_DDrawGdiSurfaceFlip();
+#endif
+	return 0;
+}
+
 void stdDisplay_FreeBackBuffers()
 {
 #ifdef TILE_SW_RASTER

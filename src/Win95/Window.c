@@ -1,4 +1,4 @@
-#include "Window.h"
+ï»¿#include "Window.h"
 
 #include "Win95/stdGdi.h"
 #include "Platform/std3D.h"
@@ -691,7 +691,7 @@ static void SwapWindowJob(uint32_t jobIndex, uint32_t groupIndex)
 
 
 // no palette branch check version
-Uint32 SDL_MapRGBFast(const SDL_PixelFormat* format, Uint8 r, Uint8 g, Uint8 b)
+inline Uint32 SDL_MapRGBFast(const SDL_PixelFormat* format, Uint8 r, Uint8 g, Uint8 b)
 {
 	return  (r >> format->Rloss) << format->Rshift
 		| (g >> format->Gloss) << format->Gshift
@@ -699,6 +699,7 @@ Uint32 SDL_MapRGBFast(const SDL_PixelFormat* format, Uint8 r, Uint8 g, Uint8 b)
 }
 
 
+// TILETODO move me
 void SwapWindow(SDL_Window* window)
 {
 	stdVBuffer* buffer = Video_pOtherBuf;//Video_pMenuBuffer
@@ -736,7 +737,7 @@ void SwapWindow(SDL_Window* window)
 
 		if (dstAspect > srcAspect)
 		{
-			// Destination is wider than source — scale by height
+			// Destination is wider than source â€” scale by height
 			dstRect.h = Window_screenYSize;
 			dstRect.w = (int)(Window_screenYSize * srcAspect);
 			dstRect.x = (Window_screenXSize - dstRect.w) / 2;
@@ -744,7 +745,7 @@ void SwapWindow(SDL_Window* window)
 		}
 		else
 		{
-			// Destination is taller than source — scale by width
+			// Destination is taller than source â€” scale by width
 			dstRect.w = Window_screenXSize;
 			dstRect.h = (int)(Window_screenXSize / srcAspect);
 			dstRect.x = 0;
@@ -763,18 +764,22 @@ void SwapWindow(SDL_Window* window)
 		copyHeight = SDL_min(dstRect.h, windowSurf->h - dstRect.y);
 
 		rdColor24* pal_master = (rdColor24*)stdDisplay_masterPalette;
-		for (int i = 0; i < 256; ++i)
+		for (int i = 0; i < 256; i+= 4) // lazy hoping that the compiler will auto vectorize...
 		{
-			paletteCache[i] = SDL_MapRGB(windowSurf->format,
-											 pal_master[i].r,
-											 pal_master[i].g,
-											 pal_master[i].b);
+			int i0 = i;
+			int i1 = i + 1;
+			int i2 = i + 2;
+			int i3 = i + 3;
+			paletteCache[i0] = SDL_MapRGBFast(windowSurf->format, pal_master[i0].r, pal_master[i0].g, pal_master[i0].b);
+			paletteCache[i1] = SDL_MapRGBFast(windowSurf->format, pal_master[i1].r, pal_master[i1].g, pal_master[i1].b);
+			paletteCache[i2] = SDL_MapRGBFast(windowSurf->format, pal_master[i2].r, pal_master[i2].g, pal_master[i2].b);
+			paletteCache[i3] = SDL_MapRGBFast(windowSurf->format, pal_master[i3].r, pal_master[i3].g, pal_master[i3].b);
 		}
 
 
 	#ifdef USE_JOBS
 		stdJob_Dispatch(copyHeight, 16, SwapWindowJob);
-		stdJob_Wait();
+		//stdJob_Wait(); // do we need to wait? it seems to be fine without
 
 	#else
 #ifdef TARGET_SSE
@@ -1309,7 +1314,7 @@ void Window_SdlUpdate()
         SDL_SetRelativeMouseMode(SDL_FALSE);
 
 	#ifdef TILE_SW_RASTER
-		SwapWindow(displayWindow);
+		//SwapWindow(displayWindow);
 	#else
         if (!jkGuiBuildMulti_bRendering) {
             std3D_StartScene();
@@ -1397,7 +1402,7 @@ void Window_SdlVblank()
     if (!jkGuiBuildMulti_bRendering)
 #endif
 #ifdef TILE_SW_RASTER
-	SwapWindow(displayWindow);
+	//SwapWindow(displayWindow);
 #else
     SDL_GL_SwapWindow(displayWindow);
 #endif
@@ -1540,6 +1545,9 @@ void Window_RecreateSDL2Window()
 
 void Window_Main_Loop()
 {
+#ifdef TILE_SW_RASTER
+	Window_SdlUpdate();
+#endif
     jkMain_GuiAdvance(); // TODO needed?
     Window_msg_main_handler(g_hWnd, WM_PAINT, 0, 0);
     
@@ -1782,6 +1790,9 @@ int Window_DefaultHandler(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam, voi
 
 int Window_MessageLoop()
 {
+#ifdef TILE_SW_RASTER
+	Window_SdlUpdate();
+#endif
     jkMain_GuiAdvance();
     Window_msg_main_handler(g_hWnd, WM_PAINT, 0, 0);
     
