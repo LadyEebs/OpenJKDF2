@@ -5468,6 +5468,30 @@ void std3D_PurgeTextureCache()
     std3D_loadedTexturesAmt = 0;
 }
 
+
+void std3D_PurgeEntireTextureCache()
+{
+	if (Main_bHeadless)
+	{
+		std3D_loadedTexturesAmt = 0;
+		return;
+	}
+
+	if (!std3D_loadedTexturesAmt)
+	{
+		jk_printf("Skipping texture cache purge, nothing loaded.\n");
+		return;
+	}
+
+	jk_printf("Purging texture cache... %x\n", std3D_loadedTexturesAmt);
+	for (int i = 0; i < std3D_loadedTexturesAmt; i++)
+	{
+		std3D_PurgeTextureEntry(i);
+	}
+	std3D_loadedTexturesAmt = 0;
+}
+
+
 void std3D_InitializeViewport(rdRect *viewRect)
 {
     std3D_rectViewIdk.x = viewRect->x;
