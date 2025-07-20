@@ -439,7 +439,7 @@ void sithThing_Remove(sithThing* pThing)
 		#if defined(DECAL_RENDERING) || defined(RENDER_DROID2)
 			if (pThing->thingflags & SITH_TF_ALIVE_WHILE_VISIBLE)
 			{
-				if (pThing->isVisible + 1 == bShowInvisibleThings)
+				if (pThing->lastRenderedTickIdx + 1 == jkPlayer_currentTickIdx)
 				{
 					pThing->lifeLeftMs = pThing->initialLifeLeftMs;
 					break;
