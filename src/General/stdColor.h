@@ -24,6 +24,24 @@ int stdColor_GammaCorrect(uint8_t *a1, uint8_t *a2, int a3, flex_d_t a4);
 //static int (*stdColor_GammaCorrect)(uint8_t *a1, uint8_t *a2, int a3, flex_d_t a4) = (void*)stdColor_GammaCorrect_ADDR;
 //static int (*stdColor_ColorConvertOneRow)(uint8_t *outPixels, rdTexformat *formatTo, uint8_t *inPixels, rdTexformat *formatFrom, int numPixels) = (void*)stdColor_ColorConvertOneRow_ADDR;
 
+uint32_t stdColor_ScaleColorComponent(uint32_t cc, int srcBPP, int deltaBPP);
+uint32_t stdColor_EncodeRGB(const rdTexformat* ci, uint8_t r, uint8_t g, uint8_t b);
+uint32_t stdColor_EncodeRGBA(const rdTexformat* ci, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+void stdColor_DecodeRGB(uint32_t encoded, const rdTexformat* ci, uint8_t* r, uint8_t* g, uint8_t* b);
+void stdColor_DecodeRGBA(uint32_t encoded, const rdTexformat* ci, uint8_t* r, uint8_t* g, uint8_t* b, uint8_t* a);
+uint32_t stdColor_Recode(uint32_t encoded, const rdTexformat* pSrcCI, const rdTexformat* pDestCI);
+
+#ifdef TARGET_SSE
+
+__m128i stdColor_ScaleColorComponentSIMD(__m128i cc, int srcBPP, int deltaBPP);
+__m128i stdColor_EncodeRGBSIMD(const rdTexformat* ci, __m128i r, __m128i g, __m128i b);
+__m128i stdColor_EncodeRGBASIMD(const rdTexformat* ci, __m128i r, __m128i g, __m128i b, __m128i a);
+void stdColor_DecodeRGBSIMD(__m128i encoded, const rdTexformat* ci, __m128i* r, __m128i* g, __m128i* b);
+void stdColor_DecodeRGBASIMD(__m128i encoded, const rdTexformat* ci, __m128i* r, __m128i* g, __m128i* b, __m128i* a);
+__m128i stdColor_RecodeSIMD(__m128i encoded, const rdTexformat* pSrcCI, const rdTexformat* pDestCI);
+
+#endif
+
 // Added
 int stdColor_FindClosest32(rdColor32* rgb, rdColor24* pal);
 
