@@ -36,6 +36,13 @@
 #include "Engine/sithPuppet.h"
 #include "World/sithSoundClass.h"
 #endif
+#ifdef JOB_SYSTEM
+#include "Modules/std/stdJob.h"
+#endif
+
+#ifdef JOB_SYSTEM
+#define USE_LIGHT_JOBS
+#endif
 
 #include "Modules/rdroid/Engine/rdCluster.h"
 
@@ -2768,6 +2775,11 @@ void sithRender_RenderLevelGeometry()
 	//rdroid_curAcceleration = 1;
 #endif
 
+#ifdef USE_LIGHT_JOBS
+	// wait for any lighting jobs to finish
+	stdJob_Wait();
+#endif
+
 #ifdef TILE_SW_RASTER
 	// TILETODO
 	rdSetZBufferMethod(RD_ZBUFFER_READ_WRITE);
@@ -3651,6 +3663,45 @@ void sithRender_UpdateLights(sithSector *sector, flex_t prev, flex_t dist, int d
 #endif
 }
 
+#ifdef USE_LIGHT_JOBS
+
+void sithRender_DynamicLightJob(uint32_t jobIndex, uint32_t groupIndex)
+{
+	int sectorIdx = jobIndex / rdCamera_pCurCamera->numLights;
+	int lightIdx = jobIndex % rdCamera_pCurCamera->numLights;
+
+	if (sectorIdx >= sithRender_numSectors || lightIdx >= rdCamera_pCurCamera->numLights)
+		return;
+
+	sithSector* sector = sithRender_aSectors[sectorIdx];
+	rdLight* light = rdCamera_pCurCamera->lights[lightIdx];
+
+	flex_t distCalc = rdVector_Dist3(&rdCamera_pCurCamera->lightPositions[light->id], &sector->center);
+	if (light->falloffMin + sector->radius <= distCalc)
+		return;
+
+	for (int j = 0; j < sector->numVertices; j++)
+	{
+		int idx = sector->verticeIdxs[j];
+		if (sithWorld_pCurrentWorld->verticesDynamicLight[idx] < 1.0)
+		//if (sithWorld_pCurrentWorld->alloc_unk9c[idx] != sithRender_lastRenderTick)
+		{
+			flex_t distCalc = rdVector_Dist3(&rdCamera_pCurCamera->lightPositions[light->id], &sithWorld_pCurrentWorld->vertices[idx]);
+			if (distCalc < light->falloffMax)
+			{
+				float intensity = light->intensity - distCalc * rdCamera_pCurCamera->attenuationMax;
+				sithWorld_pCurrentWorld->verticesDynamicLight[idx] += intensity;
+#ifdef RGB_THING_LIGHTS
+				sithWorld_pCurrentWorld->verticesDynamicLightR[idx] += intensity * light->color.x;
+				sithWorld_pCurrentWorld->verticesDynamicLightG[idx] += intensity * light->color.y;
+				sithWorld_pCurrentWorld->verticesDynamicLightB[idx] += intensity * light->color.z;
+#endif
+			}
+		}
+	}
+}
+#endif
+
 void sithRender_RenderDynamicLights()
 {
 #ifdef RENDER_DROID2
@@ -3676,6 +3727,33 @@ void sithRender_RenderDynamicLights()
 	for (int i = 0; i < rdCamera_pCurCamera->numLights; i++)
 		rdAddLight(rdCamera_pCurCamera->lights[i], &rdCamera_pCurCamera->lightPositions[i]);
 
+#else
+
+#ifdef USE_LIGHT_JOBS
+	if (!sithRender_numSectors)
+		return;
+
+	for (int k = 0; k < sithRender_numSectors; k++)
+	{
+		sithSector* sectorIter = sithRender_aSectors[k];
+		for (int j = 0; j < sectorIter->numVertices; j++)
+		{
+			int idx = sectorIter->verticeIdxs[j];
+			if (sithWorld_pCurrentWorld->alloc_unk9c[idx] != sithRender_lastRenderTick)
+			{
+				sithWorld_pCurrentWorld->verticesDynamicLight[idx] = 0.0;
+#ifdef RGB_THING_LIGHTS
+				sithWorld_pCurrentWorld->verticesDynamicLightR[idx] = 0.0;
+				sithWorld_pCurrentWorld->verticesDynamicLightG[idx] = 0.0;
+				sithWorld_pCurrentWorld->verticesDynamicLightB[idx] = 0.0;
+#endif
+				sithWorld_pCurrentWorld->alloc_unk9c[idx] = sithRender_lastRenderTick;
+			}
+		}
+	}
+
+	stdJob_Dispatch(sithRender_numSectors * rdCamera_pCurCamera->numLights, 8, sithRender_DynamicLightJob);
+	//stdJob_Wait();
 #else
     rdLight *tmpLights[RDCAMERA_MAX_LIGHTS];
 
@@ -3745,6 +3823,7 @@ void sithRender_RenderDynamicLights()
             }
         }
     }
+#endif // JOB_SYSTEM
 #endif
 }
 
