@@ -1014,6 +1014,32 @@ flex_t stdMath_ClampValue(flex_t val, flex_t valAbsMax)
     return val;
 }
 
+int stdMath_FindLSB(uint32_t value)
+{
+#if defined(_MSC_VER)
+	unsigned long index;
+	if (_BitScanForward(&index, value))
+		return (int)index;
+	else
+		return -1;
+#else
+	return (value == 0) ? -1 : __builtin_ffs(value) - 1;
+#endif
+}
+
+int stdMath_FindMSB(uint32_t value)
+{
+#if defined(_MSC_VER)
+	unsigned long index;
+	if (_BitScanReverse(&index, value))
+		return (int)index;
+	else
+		return -1;
+#else
+	return (value == 0) ? -1 : 31 - __builtin_clz(value);
+#endif
+}
+
 int stdMath_FindLSB64(uint64_t value)
 {
 #if defined(_MSC_VER) && !defined(WIN64_MINGW)

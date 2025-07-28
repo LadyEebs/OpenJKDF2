@@ -190,6 +190,9 @@ static inline flex_t sqrt64fixed_mine_2(s64 a)
 extern const flex_t aSinTable[4096];
 extern const flex_t aTanTable[4096];
 
+int stdMath_FindLSB(uint32_t value);
+int stdMath_FindMSB(uint32_t value);
+
 int stdMath_FindLSB64(uint64_t value);
 int stdMath_FindMSB64(uint64_t value);
 int stdMath_NextPow2(uint32_t value);
