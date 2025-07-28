@@ -730,7 +730,10 @@ int rdMaterial_GetFillColor(rdVector3* pOutColor, rdMaterial* pMaterial, rdColor
 	rdVector_Set3(pOutColor, 1.0f, 1.0f, 1.0f);
 	if (pMaterial && pMaterial->texinfos)
 	{
-		int paletteIndex = pMaterial->texinfos[cel < 0 ? 0 : (cel >= pMaterial->num_texinfo ? pMaterial->num_texinfo-1 : cel)]->header.field_4;
+		cel = stdMath_ClampInt(cel, 0, pMaterial->num_texinfo - 1);
+		if (!pMaterial->texinfos[cel])
+			return 0;
+		int paletteIndex = pMaterial->texinfos[cel]->header.field_4;
 		if (pMaterial->tex_format.bpp == 8)
 		{
 			if (pColormap)
