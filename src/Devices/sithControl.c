@@ -1286,7 +1286,7 @@ void sithControl_PlayerMovementMots(sithThing *player)
     iVar2 = sithControl_ReadFunctionMap(INPUT_FUNC_SLIDETOGGLE,&local_4);
     if (iVar2 == 0) {
         fVar4 = sithControl_GetAxis(INPUT_FUNC_TURN);
-#ifdef QOL_IMPROVEMENTS
+#ifdef TARGET_TWL
         // Scale appropriately to high framerates
         fVar4 = fVar4 * 25.0;
 #else
@@ -1497,7 +1497,7 @@ void sithControl_PlayerMovement(sithThing *player)
         else
         {
             // Player yaw handling
-#ifdef QOL_IMPROVEMENTS
+#ifdef TARGET_TWL
             // Scale appropriately to high and low framerates
             player->physicsParams.angVel.y = sithControl_GetAxis(INPUT_FUNC_TURN) * 25.0;
 #else
@@ -1612,7 +1612,7 @@ void sithControl_FreeCam(sithThing *player)
             // Why did MoTS do this lol
             v7->x = (Main_bMotsCompat ? -1 : 1) * sithControl_GetAxis2(INPUT_FUNC_SLIDE) * (v1->actorParams.extraSpeed + v1->actorParams.maxThrust) * 0.7;
             
-#ifdef QOL_IMPROVEMENTS
+#ifdef TARGET_TWL
             // Scale appropriately to high framerates
             v1->physicsParams.angVel.y = sithControl_GetAxis(INPUT_FUNC_TURN) * 25.0;
             v1->physicsParams.angVel.y +=  sithControl_ReadAxisStuff(INPUT_FUNC_TURN) * v1->actorParams.maxRotThrust;
