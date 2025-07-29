@@ -117,7 +117,7 @@ void Windows_InitGdi(int windowed)
 
 void Windows_ShutdownGdi()
 {
-#ifndef SDL2_RENDER
+#if !defined(SDL2_RENDER) || defined(TILE_SW_RASTER)
     if ( Windows_bInittedGdi )
 #endif
     {

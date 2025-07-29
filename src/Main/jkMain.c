@@ -519,7 +519,9 @@ void jkMain_GameplayShow(int a1, int a2)
         sithSoundMixer_ResumeMusic(1);
 #ifdef SDL2_RENDER
         jkGame_isDDraw = 0;
+	#ifndef TILE_SW_RASTER
         Window_RemoveMsgHandler(Windows_GdiHandler);
+	#endif
 #endif
     }
     else if ( jkSmack_gameMode == JK_GAMEMODE_VIDEO2 )
