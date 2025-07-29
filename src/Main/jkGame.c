@@ -181,7 +181,7 @@ int jkGame_Update()
 #endif
 
 #if defined(TILE_SW_RASTER)
-	Video_modeStruct.b3DAccel = 0;
+	//Video_modeStruct.b3DAccel = 0;
 #elif defined(SDL2_RENDER) || defined(TARGET_TWL)
     // HACK
     Video_modeStruct.b3DAccel = 1;

@@ -304,9 +304,10 @@ int jkCutscene_sub_421310(char* fpath)
 
 	int closestDevice = stdDisplay_FindClosestDevice(&deviceParams);
 	int deviceChanged = 0;
+#ifndef TILE_SW_RASTER
 	if (stdDisplay_bOpen)
 	{
-		if (Video_dword_866D78 != closestDevice)
+		if (stdDisplay_lastDisplayIdx != closestDevice)
 		{
 			stdDisplay_Close();
 			if (stdDisplay_Open(closestDevice) == 0)
@@ -322,6 +323,7 @@ int jkCutscene_sub_421310(char* fpath)
 			return 0;
 		deviceChanged = 1;
 	}
+#endif
 
 	stdHwnd  hWnd = stdGdi_GetHwnd();
 	jk_SetFocus(hWnd);
@@ -848,11 +850,11 @@ int jkCutscene_smacker_process()
 	stdDisplay_VBufferUnlock(jkCutscene_frameBuf);
     
 #ifdef TILE_SW_RASTER
-	stdDisplay_VBufferLock(Video_pOtherBuf);
+	//stdDisplay_VBufferLock(Video_pOtherBuf);
 	stdDisplay_VBufferCopy(Video_pOtherBuf, jkCutscene_frameBuf, 0, 50, NULL, 0);
 	//stdDisplay_VBufferFill(Video_pOtherBuf, 0, &jkCutscene_rect1);
 	//stdDisplay_VBufferCopy(Video_pOtherBuf, &Video_otherBuf, jkCutscene_rect1.x, jkCutscene_rect1.y, &jkCutscene_rect1, 0);
-	stdDisplay_VBufferUnlock(Video_pMenuBuffer);
+	//stdDisplay_VBufferUnlock(Video_pMenuBuffer);
 #else
 	stdDisplay_VBufferLock(Video_pMenuBuffer);
 	stdDisplay_VBufferCopy(Video_pMenuBuffer, jkCutscene_frameBuf, 0, 50, NULL, 0);

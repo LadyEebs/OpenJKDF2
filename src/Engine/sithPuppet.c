@@ -1048,7 +1048,11 @@ void sithPuppet_DebugDrawJointNames(sithThing* pThing)
 		rdCamera_pCurCamera->fnProject(&projPos, &viewPos);
 
 		const char* jointName = sithPuppet_jointNames[jointIdx];
+	#ifdef TILE_SW_RASTER
+		// tiletodo
+	#else
 		stdFont_DrawAsciiGPU(jkHud_pMsgFontSft, projPos.x, projPos.y, 999, jointName, 1, jkPlayer_hudScale);
+	#endif
 	}
 }
 #endif

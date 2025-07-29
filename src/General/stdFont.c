@@ -1166,6 +1166,7 @@ int stdFont_sub_4355B0(stdFont *font, uint16_t a2)
     return v3 != 0;
 }
 
+#ifndef TILE_SW_RASTER
 uint32_t stdFont_DrawAsciiGPU(stdFont *a2, unsigned int blit_x, int blit_y, int x_max, const char *str, int alpha_maybe, flex_t scale)
 {
     unsigned int v8; // ebp
@@ -1943,6 +1944,7 @@ LABEL_26:
     }
     return (blit_y - orig_blit_y) + INT_FLOAT_SCALED(a5a.height, scale);//v9 - blit_x;
 }
+#endif
 
 int stdFont_GetHeight(stdFont* font)
 {

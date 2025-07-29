@@ -406,6 +406,16 @@ static flex_t rdCache_aGreenIntensities[RDCACHE_MAX_VERTICES];
 static flex_t rdCache_aBlueIntensities[RDCACHE_MAX_VERTICES];
 #endif
 
+// Added: ability to redirect (ex. hardware memory)
+static rdVector3* rdCache_paVertices = rdCache_aVertices;
+static rdVector2* rdCache_paTexVertices = rdCache_aTexVertices;
+static flex_t* rdCache_paIntensities = rdCache_aIntensities;
+#ifdef JKM_LIGHTING
+static flex_t* rdCache_paRedIntensities = rdCache_aRedIntensities;
+static flex_t* rdCache_paGreenIntensities = rdCache_aGreenIntensities;
+static flex_t* rdCache_paBlueIntensities = rdCache_aBlueIntensities;
+#endif
+
 #ifdef VIEW_SPACE_GBUFFER
 rdVector3 rdCache_aVerticesVS[RDCACHE_MAX_VERTICES] = { 0 };
 #endif
@@ -487,6 +497,15 @@ void rdCache_Reset()
 #ifdef DECAL_RENDERING
 	//rdCache_numDecals = 0;
 #endif
+
+#ifdef TILE_SW_RASTER
+	if(rdroid_curAcceleration)
+	{
+		rdCache_paVertices = std3D_LockVertexStream(0);
+		rdCache_paTexVertices = std3D_LockVertexStream(1);
+		rdCache_paIntensities = std3D_LockVertexStream(2);
+	}
+#endif
 }
 
 void rdCache_ClearFrameCounters()
@@ -516,16 +535,16 @@ rdProcEntry *rdCache_GetProcEntry()
         return 0;
 
     out_procEntry = &rdCache_aProcFaces[idx];
-    out_procEntry->vertices = &rdCache_aVertices[rdCache_numUsedVertices];
-    out_procEntry->vertexUVs = &rdCache_aTexVertices[rdCache_numUsedTexVertices];
+    out_procEntry->vertices = &rdCache_paVertices[rdCache_numUsedVertices];
+    out_procEntry->vertexUVs = &rdCache_paTexVertices[rdCache_numUsedTexVertices];
 #ifdef VIEW_SPACE_GBUFFER
 	out_procEntry->vertexVS = &rdCache_aVerticesVS[rdCache_numUsedTexVertices];
 #endif
-    out_procEntry->vertexIntensities = &rdCache_aIntensities[rdCache_numUsedIntensities];
+    out_procEntry->vertexIntensities = &rdCache_paIntensities[rdCache_numUsedIntensities];
 #ifdef JKM_LIGHTING
-    out_procEntry->paRedIntensities = &rdCache_aRedIntensities[rdCache_numUsedIntensities];
-    out_procEntry->paGreenIntensities = &rdCache_aGreenIntensities[rdCache_numUsedIntensities];
-    out_procEntry->paBlueIntensities = &rdCache_aBlueIntensities[rdCache_numUsedIntensities];
+    out_procEntry->paRedIntensities = &rdCache_paRedIntensities[rdCache_numUsedIntensities];
+    out_procEntry->paGreenIntensities = &rdCache_paGreenIntensities[rdCache_numUsedIntensities];
+    out_procEntry->paBlueIntensities = &rdCache_paBlueIntensities[rdCache_numUsedIntensities];
 #endif
 #ifdef VERTEX_COLORS
 	rdVector_Set3(&out_procEntry->color, 1.0f, 1.0f, 1.0f);
@@ -560,19 +579,26 @@ void rdCache_Flush()
     }
 #endif
 #ifdef TILE_SW_RASTER
-	if (rdroid_curAcceleration <= 0)
+	rdRaster_StartBinning();
+
+	for (v3 = 0; v3 < rdCache_numProcFaces; v3++)
 	{
-		rdRaster_ClearBins();
-		
-		for (v3 = 0; v3 < rdCache_numProcFaces; v3++)
-		{
-			face = &rdCache_aProcFaces[v3];
-			rdRaster_BinFaceCoarse(face);
-		}
-		
-		// Fine bin then flush
-		rdRaster_BinFaces();
+		face = &rdCache_aProcFaces[v3];
+		rdRaster_BinFaceCoarse(face);
+	}
+	rdRaster_BinFaces();
+
+	rdRaster_EndBinning();
+
+	if (!rdroid_curAcceleration)
+	{
 		rdRaster_FlushBins();
+	}
+	else
+	{
+		std3D_UnlockVertexStream(0);
+		std3D_UnlockVertexStream(1);
+		std3D_UnlockVertexStream(2);
 	}
 #else
 #if !defined(SDL2_RENDER) && !defined(TARGET_TWL)
@@ -1835,6 +1861,7 @@ skip_colormap_deref:
 
 #endif
 
+#ifndef TILE_SW_RASTER
 void rdCache_ResetRenderList()
 {
     std3D_ResetRenderList();
@@ -1878,6 +1905,7 @@ void rdCache_DrawRenderList()
 	//std3D_FlushDrawCalls();
 #endif
 }
+#endif
 
 int rdCache_TriCompare(const void* a_, const void* b_)
 {

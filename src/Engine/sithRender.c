@@ -119,6 +119,7 @@ void sithRender_GetSaberLightColor(rdVector3* outColor, sithThing* thing)
 
 void sithRender_DebugDrawThingName(sithThing* pThing)
 {
+#ifndef TILE_SW_RASTER // TILETODO
 	rdVector3 viewPos;
 	rdMatrix_TransformPoint34(&viewPos, &pThing->position, &rdCamera_pCurCamera->view_matrix);
 
@@ -331,6 +332,7 @@ void sithRender_DebugDrawThingName(sithThing* pThing)
 			}
 		}
 	}
+#endif
 }
 
 void sithRender_RenderDebugLight(flex_t intensity, rdVector3* pos)
@@ -669,7 +671,9 @@ void sithRender_SetPalette(const void *palette)
     if ( rdroid_curAcceleration > 0 )
     {
         sithMaterial_UnloadAll();
+#ifndef TILE_SW_RASTER
         std3D_UnloadAllTextures();
+#endif
         std3D_SetCurrentPalette((rdColor24 *)palette, 90);
     }
 }
@@ -3421,7 +3425,10 @@ LABEL_150:
                 continue;
             }
 
-#ifndef FP_LEGS
+#ifdef FP_LEGS
+			if (!sithRender_ShouldRenderCameraThing(i))
+				continue;
+#else
 			if (!((sithCamera_currentCamera->cameraPerspective & 0xFC) != 0 || i != sithCamera_currentCamera->primaryFocus)) {
                 continue;
             }

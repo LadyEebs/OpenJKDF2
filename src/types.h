@@ -166,6 +166,10 @@ typedef struct GUID_idk
     uint32_t a,b,c,d;
 } GUID_idk;
 #endif
+typedef struct GUID_U
+{
+	uint32_t Data1, Data2, Data3, Data4;
+} GUID_U;
 
 #if defined(PLAT_MISSING_WIN32)
 #define __stdcall
@@ -734,8 +738,8 @@ typedef struct rdCanvas
 #ifdef TILE_SW_RASTER
 	int coarseTileWidth, coarseTileHeight, coarseTileCount;
 	int tileWidth, tileHeight, tileCount;
-	uint64_t* coarseTileBits;
-	uint64_t* tileBits;
+	uint32_t* coarseTileBits;
+	uint32_t* tileBits;
 #endif
 } rdCanvas;
 
@@ -1521,7 +1525,7 @@ typedef struct stdFontExtHeader
 typedef struct stdVBuffer
 {
     uint32_t bSurfaceLocked;
-    uint32_t lock_cnt;
+    int32_t lock_cnt;
     uint32_t gap8;
     stdVBufferTexFmt format;
     void* palette;
@@ -1536,6 +1540,9 @@ typedef struct stdVBuffer
     };
 #ifdef HW_VBUFFER
 	std3D_DrawSurface* device_surface;
+#endif
+#ifdef TILE_SW_RASTER
+	uint64_t gpuHandle;
 #endif
     void* ddraw_palette; // LPDIRECTDRAWPALETTE
     uint8_t desc[0x6c];
@@ -1575,6 +1582,8 @@ typedef struct rdColormap
 #endif
 #ifdef TILE_SW_RASTER
 	uint8_t* searchTable;
+	uint64_t gpulight;
+	uint64_t gpualpha;
 #endif
 } rdColormap;
 
@@ -2135,9 +2144,12 @@ typedef struct video_device
 
 typedef struct stdVideoMode
 {
-  int32_t field_0;
-  flex_t aspectRatio;
-  stdVBufferTexFmt format;
+	int32_t field_0;
+	flex_t aspectRatio;
+#ifdef TILE_SW_RASTER
+	flex_t refreshRate;
+#endif
+	stdVBufferTexFmt format;
 } stdVideoMode;
 
 typedef struct stdVideoDevice
@@ -2145,15 +2157,18 @@ typedef struct stdVideoDevice
   char driverDesc[128];
   char driverName[128];
   video_device video_device[14];
-  GUID guid;
+  GUID_U guid;
+#ifdef TILE_SW_RASTER
+  void* adapter;
+#endif
 } stdVideoDevice;
 
 typedef struct stdVideoDeviceEntry
 {
 	stdVideoDevice device;
 	int max_modes;
-	stdVideoMode *stdVideoMode;
-	void* hwModeList; // some kind of hw mode list
+	stdVideoMode *videoModes;
+	d3d_device *halDevices; // originally some larger video mode struct
 	int field_2A4;
 } stdVideoDeviceEntry;
 
@@ -2211,15 +2226,10 @@ typedef struct videoModeStruct
   int32_t modeIdx;
   int32_t descIdx;
   int32_t Video_8605C8;
-  int32_t field_0C;
-  int32_t field_10;
-  int32_t field_14;
-  int32_t field_18;
-  int32_t field_1C;
-  int32_t field_20;
-  int32_t field_24;
-  int32_t field_28;
-  HKEY b3DAccel;
+  GUID_U deviceGuid;
+  GUID_U halGuid;
+  //HKEY b3DAccel;
+  int32_t b3DAccel;
   uint32_t viewSizeIdx;
   jkViewSize aViewSizes[11];
   int32_t gammaLevel;

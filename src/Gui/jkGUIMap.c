@@ -274,13 +274,18 @@ int jkGuiMap_Show()
     rdVector3 a2; // [esp+4h] [ebp-58h] BYREF
     stdVBufferTexFmt v3; // [esp+10h] [ebp-4Ch] BYREF
 
+	int use3d = 0; // added
+#ifdef TILE_SW_RASTER
+	use3d = Video_modeStruct.b3DAccel && d3d_device_ptr;
+#endif
+
     v3.width = 520;
     v3.height = 320;
     v3.format.bpp = 8;
     v3.format.colorMode = STDCOLOR_PAL;
     jkGuiMap_pVbuffer = stdDisplay_VBufferNew(&v3, 0, 0, 0);
     stdDisplay_VBufferFill(jkGuiMap_pVbuffer, 0, 0);
-    if ( rdOpen(0) )
+    if ( rdOpen(use3d) )
     {
         jkGuiMap_pCanvas = rdCanvas_New(1, jkGuiMap_pVbuffer, 0, 0, 0, 519, 319, 6);
         jkGuiMap_pCamera = rdCamera_New(90.0, 1.0, 0.2, 10.0, 1.0);

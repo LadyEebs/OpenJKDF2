@@ -20,6 +20,7 @@
 #include "Main/Main.h"
 #include "Main/jkGame.h"
 #include "Main/jkStrings.h"
+#include "General/stdFnames.h"
 #include "Cog/jkCog.h"
 
 #ifdef TARGET_TWL
@@ -176,6 +177,7 @@ int jkGui_Startup()
 {
     char playerShortName[32];
     char tmp[128];
+	char tmp2[128];
 
     stdPlatform_Printf("OpenJKDF2: %s\n", __func__);
 
@@ -232,7 +234,9 @@ int jkGui_Startup()
 #ifdef MENU_16BIT
 	for (int i = 0; i < 35; i++)
 	{
-		stdString_snprintf(tmp, 128, "ui\\bm\\%s16.bm", jkGui_aBitmaps[i]);
+		strcpy_s(tmp2, 128, jkGui_aBitmaps[i]);
+		stdFnames_StripExtAndDot(tmp2);
+		stdString_snprintf(tmp, 128, "ui\\bm\\%s16.bm", tmp2);
 		jkGui_stdBitmaps16[i] = stdBitmap_Load(tmp, 1, 0);
 		if (jkGui_stdBitmaps16[i])
 			jkGui_stdBitmaps16[i]->useLights = jkGui_MenuUsesLights(i);
@@ -340,6 +344,7 @@ int jkGui_SetModeMenu(const void *palette)
     params.field_10 = Main_bWindowGUI == 0;
     v2 = stdDisplay_FindClosestDevice(&params);
     v3 = 1;
+#ifndef TILE_SW_RASTER
     if ( stdDisplay_bOpen )
     {
         if ( Video_dword_866D78 == v2 )
@@ -354,6 +359,7 @@ int jkGui_SetModeMenu(const void *palette)
         stdPrintf(pHS->errorPrint, ".\\Gui\\jkGUI.c", 400, "Error opening display device.\n", 0, 0, 0, 0);
         return 0;
     }
+#endif
 
     if ( Main_bWindowGUI )
         Window_ShowCursorUnwindowed(0);
@@ -361,7 +367,12 @@ int jkGui_SetModeMenu(const void *palette)
         Window_ShowCursorUnwindowed(1);
 
     v4 = stdDisplay_FindClosestMode(&mode, Video_renderSurface, stdDisplay_numVideoModes);
-    if ( !v3 && stdDisplay_bModeSet && v4 == Video_curMode && stdDisplay_bPaged == 1 || stdDisplay_SetMode(v4, palette, 1) )
+#if 0//def TILE_SW_RASTER
+	Video_modeStruct.modeIdx = v4;
+	if (!v3 && stdDisplay_bModeSet && v4 == Video_curMode && stdDisplay_bPaged == 1 || Video_SetVideoDesc(palette))
+#else
+	if ( !v3 && stdDisplay_bModeSet && v4 == Video_curMode && stdDisplay_bPaged == 1 || stdDisplay_SetMode(v4, palette, 1) )
+#endif
     {
         jkGuiRend_Open(&Video_menuBuffer, &Video_otherBuf, 0);
         jkGui_GdiMode = 1;

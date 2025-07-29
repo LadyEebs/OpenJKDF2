@@ -166,6 +166,7 @@ void jkQuakeConsole_ResetShade()
 
 void jkQuakeConsole_Render()
 {
+#ifndef TILE_SW_RASTER // TILETODO
     if (!jkQuakeConsole_bInitted) return;
 
     int64_t deltaUs = Linux_TimeUs() - jkQuakeConsole_lastTimeUs;
@@ -298,6 +299,7 @@ void jkQuakeConsole_Render()
     if (realScrollY) {
         stdFont_DrawAsciiGPU(jkQuakeConsole_pFont, 0, realShadeBottom - fontHeight*3, screenW, "^   ^   ^   ^   ^   ^   ^", 1, jkPlayer_hudScale);
     }
+#endif
 }
 
 int jkQuakeConsole_AutocompleteCvarsCallback_bPrintOnce = 0;

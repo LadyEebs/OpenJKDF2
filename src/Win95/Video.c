@@ -52,12 +52,13 @@ void Video_SwitchToGDI()
 #endif
     rdCanvas_Free(Video_pCanvas);
     rdClose();
-    if ( Video_modeStruct.b3DAccel )
+#ifndef TILE_SW_RASTER
+	if ( Video_modeStruct.b3DAccel )
     {
         //std3D_PurgeTextureCache(); // Added: Don't purge
         std3D_Shutdown();
     }
-
+#endif
     stdDisplay_VBufferFill(Video_pMenuBuffer, Video_fillColor, 0);
     stdDisplay_DDrawGdiSurfaceFlip();
     stdDisplay_ddraw_surface_flip2();
@@ -110,6 +111,10 @@ void Video_Shutdown()
     stdPalEffects_Close();
     stdDisplay_Close();
     stdDisplay_RestoreDisplayMode();
+
+#ifdef TILE_SW_RASTER
+	//stdDisplay_Shutdown();
+#endif
     Video_bInitted = 0;
 }
 
@@ -205,9 +210,14 @@ int Video_SetVideoDesc(const void *color_buf)
     stdDisplay_DDrawGdiSurfaceFlip();
     stdDisplay_ddraw_surface_flip2();
     stdDisplay_VBufferFill(Video_pMenuBuffer, Video_fillColor, 0);
+#ifndef TILE_SW_RASTER
     if ( stdDisplay_bOpen )
     {
+	#ifdef TILE_SW_RASTER // Video_dword_866D78 is being clobbered somewhere, probably a memcpy
+		if (stdDisplay_lastDisplayIdx == Video_modeStruct.modeIdx)
+	#else
         if ( Video_dword_866D78 == Video_modeStruct.modeIdx )
+	#endif
         {
             v1 = 0;
             goto LABEL_9;
@@ -218,6 +228,9 @@ int Video_SetVideoDesc(const void *color_buf)
     if ( !stdDisplay_Open(Video_modeStruct.modeIdx) )
         return 0;
     v1 = 1;
+#else
+	v1 = 0;
+#endif
 LABEL_9:
     v3 = Video_modeStruct.b3DAccel != 0;
     if ( !v1 && stdDisplay_bModeSet && Video_modeStruct.descIdx == Video_curMode && v3 == stdDisplay_bPaged )
@@ -234,12 +247,14 @@ LABEL_9:
     _memcpy(Video_aPalette, color_buf, sizeof(Video_aPalette));
     Video_pOtherBuf = &Video_otherBuf;
     Video_pMenuBuffer = &Video_menuBuffer;
-    if ( !Video_modeStruct.b3DAccel )
+	int use3d = 0; // added
+	use3d = Video_modeStruct.b3DAccel && d3d_device_ptr;
+    if ( !Video_modeStruct.b3DAccel || !d3d_device_ptr) // Added d3d_device_ptr
     {
         Video_pMenuBuffer = stdDisplay_VBufferNew(&Video_format, 0, 0, color_buf);
-        if ( !Video_modeStruct.b3DAccel )
+        //if ( !Video_modeStruct.b3DAccel || !d3d_device_ptr )
         {
-            result = rdOpen(0);
+            result = rdOpen(use3d);
             if ( !result )
                 return result;
             v6 = rdGetRenderOptions();
@@ -251,16 +266,16 @@ LABEL_9:
 			goto LABEL_25;
         }
     }
-    std3D_Startup();
+    //std3D_Startup();
     if ( !std3D_FindClosestDevice(Video_modeStruct.Video_8605C8, 1) )
     {
-        std3D_Shutdown();
+        //std3D_Shutdown();
         return 0;
     }
     if ( !d3d_device_ptr->hasColorModel )
     {
-        v4 = std3D_GetRenderList();
-        std3D_SetRenderList(v4 & ~0x1B2u);
+        //v4 = std3D_GetRenderList();
+        //std3D_SetRenderList(v4 & ~0x1B2u);
     }
     std3D_GetValidDimensions(Video_modeStruct.minTexSize, Video_modeStruct.minTexSize, 256, 256);
     result = rdOpen(1);

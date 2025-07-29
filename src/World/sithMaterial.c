@@ -270,6 +270,7 @@ rdVector2* sithMaterial_New(sithWorld *world, int num)
 
 void sithMaterial_UnloadAll()
 {
+#ifndef TILE_SW_RASTER
     unsigned int v0; // edi
     rdMaterial *i; // esi
 
@@ -278,4 +279,5 @@ void sithMaterial_UnloadAll()
     {
         rdMaterial_ResetCacheInfo(i++);
     }
+#endif
 }

@@ -918,7 +918,10 @@ void jk_PostMessageA()
 
 void jk_GetCursorPos(LPPOINT lpPoint)
 {
-    assert(0);
+#ifdef SDL2_RENDER
+	SDL_GetMouseState(&lpPoint->x, &lpPoint->y);
+#endif
+    //assert(0);
 }
 
 int jk_GetUpdateRect(stdHwnd hWnd, LPRECT lpRect, BOOL bErase)

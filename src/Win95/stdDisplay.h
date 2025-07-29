@@ -84,15 +84,19 @@ static int (*stdDisplay_GammaCorrect3)(int a1) = (void*)stdDisplay_GammaCorrect3
 extern uint32_t Video_menuTexId;
 
 int stdDisplay_Startup();
+#ifdef TILE_SW_RASTER
+//void stdDisplay_Shutdown();
+#endif
+extern int stdDisplay_lastDisplayIdx;
 int stdDisplay_VBufferFill(stdVBuffer *a2, int fillColor, rdRect *a4);
-int stdDisplay_VBufferCopy(stdVBuffer *vbuf, stdVBuffer *vbuf2, unsigned int blit_x, int blit_y, rdRect *rect, int alpha_maybe);
+int stdDisplay_VBufferCopy(stdVBuffer *vbuf, stdVBuffer *vbuf2, int blit_x, int blit_y, rdRect *rect, int alpha_maybe);
 int stdDisplay_SetMasterPalette(uint8_t* pal);
 int stdDisplay_DDrawGdiSurfaceFlip();
 int stdDisplay_ddraw_waitforvblank();
 int stdDisplay_ClearRect(stdVBuffer *buf, int fillColor, rdRect *rect);
 MATH_FUNC int stdDisplay_SetMode(unsigned int modeIdx, const void *palette, int paged);
 int stdDisplay_FindClosestMode(render_pair *a1, struct stdVideoMode *render_surface, unsigned int max_modes);
-int stdDisplay_FindClosestDevice(void* a);
+int stdDisplay_FindClosestDevice(stdDeviceParams* a);
 int stdDisplay_Open(int a); // MOTS altered (added a video mode)
 void stdDisplay_Close();
 stdVBuffer* stdDisplay_VBufferNew(stdVBufferTexFmt *a1, int create_ddraw_surface, int gpu_mem, const void* palette);
@@ -113,6 +117,7 @@ static void stdDisplay_ClearMode(){}
 #endif
 
 #ifdef TILE_SW_RASTER
+extern int stdDisplay_numDevices;
 stdDisplayEnvironment* stdBuildDisplayEnvironment();
 void stdFreeDisplayEnvironment(stdDisplayEnvironment* param_1);
 // Added

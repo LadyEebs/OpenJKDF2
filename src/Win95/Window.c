@@ -14,6 +14,7 @@
 #include "Platform/wuRegistry.h"
 #include "Main/jkQuakeConsole.h"
 #include "Modules/std/stdProfiler.h"
+#include "General/stdColor.h"
 
 #include "jk.h"
 
@@ -494,7 +495,9 @@ void Window_HandleWindowEvent(SDL_Event* event)
 
             //Window_xSize = event->window.data1;
             //Window_ySize = event->window.data2;
+#ifndef TILE_SW_RASTER
             SDL_GL_GetDrawableSize(displayWindow, &Window_xSize, &Window_ySize);
+#endif
             SDL_GetWindowSize(displayWindow, &Window_screenXSize, &Window_screenYSize);
 
             if (Window_xSize < 640) Window_xSize = 640;
@@ -610,9 +613,19 @@ int my_kbhit() {
 
 static char Window_headlessBuffer[256];
 
+#ifdef TILE_SW_RASTER
+
 #define USE_JOBS
 
-static uint32_t paletteCache[256];
+static ALIGNED_(16) uint32_t paletteCache[256];
+
+// no palette branch check version
+inline Uint32 SDL_MapRGBFast(const SDL_PixelFormat* format, Uint8 r, Uint8 g, Uint8 b)
+{
+	return  (r >> format->Rloss) << format->Rshift
+		| (g >> format->Gloss) << format->Gshift
+		| (b >> format->Bloss) << format->Bshift | format->Amask;
+}
 
 #ifdef USE_JOBS
 #include "Modules/std/stdJob.h"
@@ -631,6 +644,15 @@ int srcPitch;
 uint8_t* dstPixels;
 int dstPitch;
 
+float dstScaleW = 1.0f;
+float dstScaleH = 1.0f;
+
+const int fixed_shift = 16; // Bits of fractional precision
+int scale_x_fp;
+int scale_y_fp;
+__m128i scale_x_fp_vec;
+__m128i x_offset_vec;
+
 static void SwapWindowJob(uint32_t jobIndex, uint32_t groupIndex)
 {
 	if (jobIndex >= copyHeight)
@@ -638,42 +660,51 @@ static void SwapWindowJob(uint32_t jobIndex, uint32_t groupIndex)
 
 	int y = jobIndex;
 
-	// Scale dst Y to src Y
-	int srcY = srcRect.y + (y * srcRect.h) / dstRect.h;
+	int srcY = srcRect.y + ((y * scale_y_fp) >> fixed_shift);
 	uint8_t* srcRow = srcPixels + srcY * srcPitch;
+
 	uint32_t* dstRow = (uint32_t*)(dstPixels + (dstRect.y + y) * dstPitch + dstRect.x * 4);
 
 #ifdef TARGET_SSE
 	int x = 0;
 	for (; x <= copyWidth - 4; x += 4)
 	{
-		__m128i srcX = _mm_setr_epi32(
-			srcRect.x + (x * srcRect.w) / dstRect.w,
-			srcRect.x + ((x + 1) * srcRect.w) / dstRect.w,
-			srcRect.x + ((x + 2) * srcRect.w) / dstRect.w,
-			srcRect.x + ((x + 3) * srcRect.w) / dstRect.w
+		// Create x positions: x, x+1, x+2, x+3
+		__m128i x_vec = _mm_setr_epi32(x, x + 1, x + 2, x + 3);
+
+		// Scale dst X to src X
+		__m128i srcX_fp = _mm_add_epi32(
+			x_offset_vec,
+			_mm_mullo_epi32(x_vec, scale_x_fp_vec)
 		);
 
-		__m128i indices = _mm_setr_epi32(
-			srcRow[_mm_extract_epi32(srcX, 0)],
-			srcRow[_mm_extract_epi32(srcX, 1)],
-			srcRow[_mm_extract_epi32(srcX, 2)],
-			srcRow[_mm_extract_epi32(srcX, 3)]
-		);
+		// Convert back to integer
+		__m128i srcX = _mm_srli_epi32(srcX_fp, fixed_shift);
 
+		// Extract the 4 indices
+		int srcX_arr[4];
+		_mm_store_si128((__m128i*)srcX_arr, srcX);
+
+		uint8_t indices[4] = {
+			srcRow[srcX_arr[0]],
+			srcRow[srcX_arr[1]],
+			srcRow[srcX_arr[2]],
+			srcRow[srcX_arr[3]]
+		};
+
+		// is this really the best way to do this? would writing directly be faster?
 		__m128i pixels = _mm_setr_epi32(
-			paletteCache[_mm_extract_epi32(indices, 0)],
-			paletteCache[_mm_extract_epi32(indices, 1)],
-			paletteCache[_mm_extract_epi32(indices, 2)],
-			paletteCache[_mm_extract_epi32(indices, 3)]
+			paletteCache[indices[0]],
+			paletteCache[indices[1]],
+			paletteCache[indices[2]],
+			paletteCache[indices[3]]
 		);
-
-		_mm_storeu_si128((__m128i*) & dstRow[x], pixels);
+		_mm_storeu_si128((__m128i*)&dstRow[x], pixels);
 	}
 
 	for (; x < copyWidth; ++x)
 	{
-		int srcX = srcRect.x + (x * srcRect.w) / dstRect.w;
+		int srcX = srcRect.x + (x * srcRect.w) * dstScaleW;
 		uint8_t index = srcRow[srcX];
 		dstRow[x] = paletteCache[index];
 	}	
@@ -681,22 +712,148 @@ static void SwapWindowJob(uint32_t jobIndex, uint32_t groupIndex)
 	for (int x = 0; x < copyWidth; ++x)
 	{
 		// Scale dst X to src X
-		int srcX = srcRect.x + (x * srcRect.w) / dstRect.w;
+		int srcX = srcRect.x + (x * srcRect.w) * dstScaleW;
 		uint8_t index = srcRow[srcX];
 		dstRow[x] = paletteCache[index];
 	}
 #endif
 }
+
+
+static void SwapWindowJobRGB16(uint32_t jobIndex, uint32_t groupIndex)
+{
+	if (jobIndex >= copyHeight)
+		return;
+
+	int y = jobIndex;
+
+	int srcY = srcRect.y + (int)(((int64_t)y * scale_y_fp) >> fixed_shift);
+	//int srcY = srcRect.y + ((y * srcRect.h) * dstScaleH); // or scale as above
+	uint8_t* srcRowBase = srcPixels + srcY * srcPitch;
+
+	uint32_t* dstRow = (uint32_t*)(dstPixels + (dstRect.y + y) * dstPitch + dstRect.x * 4);
+
+	int x = 0;
+
+	int srcFormatIs16Bit = Video_pOtherBuf->format.format.bpp == 16;
+
+	uint32_t canvas_r_mask = (1u << Video_pOtherBuf->format.format.r_bits) - 1;
+	uint32_t canvas_g_mask = (1u << Video_pOtherBuf->format.format.g_bits) - 1;
+	uint32_t canvas_b_mask = (1u << Video_pOtherBuf->format.format.b_bits) - 1;
+
+#if 0//def TARGET_SSE
+
+	for (; x <= copyWidth - 4; x += 4)
+	{
+		// Compute srcX for 4 pixels
+		__m128i x_vec = _mm_setr_epi32(x, x + 1, x + 2, x + 3);
+		__m128i srcX_fp = _mm_add_epi32(x_offset_vec, _mm_mullo_epi32(x_vec, scale_x_fp_vec));
+		__m128i srcX = _mm_srli_epi32(srcX_fp, fixed_shift);
+
+		int srcX_arr[4];
+		_mm_storeu_si128((__m128i*)srcX_arr, srcX);
+
+		if (srcFormatIs16Bit)
+		{
+			// Load 4 16-bit pixels
+			uint16_t srcPixels16[4] = {
+				((uint16_t*)srcRowBase)[srcX_arr[0]],
+				((uint16_t*)srcRowBase)[srcX_arr[1]],
+				((uint16_t*)srcRowBase)[srcX_arr[2]],
+				((uint16_t*)srcRowBase)[srcX_arr[3]],
+			};
+
+			__m128i pix16 = _mm_loadl_epi64((__m128i*)srcPixels16); // load 4 uint16 packed in 64bits + garbage, safe if aligned
+
+			// Unpack 16-bit pixels to 32-bit lanes (zero extend)
+			__m128i pix_lo = _mm_unpacklo_epi16(pix16, _mm_setzero_si128());
+
+			// Decode channels by masking & shifting
+			__m128i r = _mm_and_si128(_mm_srli_epi32(pix_lo, Video_pOtherBuf->format.format.r_shift), _mm_set1_epi32(canvas_r_mask));
+			__m128i g = _mm_and_si128(_mm_srli_epi32(pix_lo, Video_pOtherBuf->format.format.g_shift), _mm_set1_epi32(canvas_g_mask));
+			__m128i b = _mm_and_si128(_mm_srli_epi32(pix_lo, Video_pOtherBuf->format.format.b_shift), _mm_set1_epi32(canvas_b_mask));
+
+			// Apply loss (shift left to expand)
+			r = _mm_slli_epi32(r, Video_pOtherBuf->format.format.r_bitdiff);
+			g = _mm_slli_epi32(g, Video_pOtherBuf->format.format.g_bitdiff);
+			b = _mm_slli_epi32(b, Video_pOtherBuf->format.format.b_bitdiff);
+
+			// Pack channels back into 32-bit output pixels (R in bits 0-7, G in 8-15, B in 16-23)
+			__m128i r_shifted = _mm_slli_epi32(r, windowSurf->format->Rshift);
+			__m128i g_shifted = _mm_slli_epi32(g, windowSurf->format->Gshift);
+			__m128i b_shifted = _mm_slli_epi32(b, windowSurf->format->Bshift);
+
+			__m128i outPixels = _mm_or_si128(r_shifted, _mm_or_si128(g_shifted, b_shifted));
+
+			_mm_storeu_si128((__m128i*) & dstRow[x], outPixels);
+		}
+		else
+		{
+			// 32-bit source pixels (e.g. ARGB, RGBA)
+			uint32_t srcPixels32[4] = {
+				((uint32_t*)srcRowBase)[srcX_arr[0]],
+				((uint32_t*)srcRowBase)[srcX_arr[1]],
+				((uint32_t*)srcRowBase)[srcX_arr[2]],
+				((uint32_t*)srcRowBase)[srcX_arr[3]],
+			};
+
+			__m128i pix32 = _mm_loadu_si128((__m128i*)srcPixels32);
+
+			// Decode channels by masking & shifting
+			__m128i r = _mm_and_si128(_mm_srli_epi32(pix32, Video_pOtherBuf->format.format.r_shift), _mm_set1_epi32(canvas_r_mask));
+			__m128i g = _mm_and_si128(_mm_srli_epi32(pix32, Video_pOtherBuf->format.format.g_shift), _mm_set1_epi32(canvas_g_mask));
+			__m128i b = _mm_and_si128(_mm_srli_epi32(pix32, Video_pOtherBuf->format.format.b_shift), _mm_set1_epi32(canvas_b_mask));
+
+			// Apply loss (shift left)
+			r = _mm_slli_epi32(r, Video_pOtherBuf->format.format.r_bitdiff);
+			g = _mm_slli_epi32(g, Video_pOtherBuf->format.format.g_bitdiff);
+			b = _mm_slli_epi32(b, Video_pOtherBuf->format.format.b_bitdiff);
+
+			__m128i r_shifted = _mm_slli_epi32(r, windowSurf->format->Rshift);
+			__m128i g_shifted = _mm_slli_epi32(g, windowSurf->format->Gshift);
+			__m128i b_shifted = _mm_slli_epi32(b, windowSurf->format->Bshift);
+
+			__m128i outPixels = _mm_or_si128(r_shifted, _mm_or_si128(g_shifted, b_shifted));
+
+			_mm_storeu_si128((__m128i*) & dstRow[x], outPixels);
+		}
+	}
+
+#endif
+
+	for (int x = 0; x < copyWidth; ++x)
+	{
+		int srcX = srcRect.x + (int)(((int64_t)x * scale_x_fp) >> fixed_shift);
+		int bpp = Video_pOtherBuf->format.format.bpp;
+		int byteOffset = srcX * (bpp / 8);
+
+		if (srcFormatIs16Bit)
+		{
+			uint16_t pix = srcRowBase[byteOffset] | (srcRowBase[byteOffset + 1] << 8);
+			uint8_t r, g, b;
+			stdColor_DecodeRGB(pix, &Video_pOtherBuf->format.format, &r, &g, &b);
+			dstRow[x] = SDL_MapRGBFast(windowSurf->format, r, g, b);
+		}
+		else
+		{
+			uint32_t pix = srcRowBase[byteOffset] |
+				(srcRowBase[byteOffset + 1] << 8) |
+				(srcRowBase[byteOffset + 2] << 16) |
+				(srcRowBase[byteOffset + 3] << 24);
+
+			uint32_t r = ((pix >> Video_pOtherBuf->format.format.r_shift) & canvas_r_mask) << Video_pOtherBuf->format.format.r_bitdiff;
+			uint32_t g = ((pix >> Video_pOtherBuf->format.format.g_shift) & canvas_g_mask) << Video_pOtherBuf->format.format.g_bitdiff;
+			uint32_t b = ((pix >> Video_pOtherBuf->format.format.b_shift) & canvas_b_mask) << Video_pOtherBuf->format.format.b_bitdiff;
+
+			dstRow[x] = SDL_MapRGBFast(windowSurf->format, r, g, b);
+		}
+	}
+
+}
+
 #endif
 
 
-// no palette branch check version
-inline Uint32 SDL_MapRGBFast(const SDL_PixelFormat* format, Uint8 r, Uint8 g, Uint8 b)
-{
-	return  (r >> format->Rloss) << format->Rshift
-		| (g >> format->Gloss) << format->Gshift
-		| (b >> format->Bloss) << format->Bshift | format->Amask;
-}
 
 
 // TILETODO move me
@@ -751,11 +908,18 @@ void SwapWindow(SDL_Window* window)
 			dstRect.x = 0;
 			dstRect.y = (Window_screenYSize - dstRect.h) / 2;
 		}
-
-		SDL_LockSurface(buffer->sdlSurface);
 		
-		srcPixels = (uint8_t*)buffer->sdlSurface->pixels;
-		srcPitch = buffer->sdlSurface->pitch;
+		if (stdDisplay_pCurDevice->video_device[0].device_active)
+		{
+			std3D_Present(buffer->gpuHandle, buffer->format.width, buffer->format.height, buffer->format.format.bpp >> 3, &dstRect);
+			//SDL_UpdateWindowSurface(displayWindow);
+			return;
+		}
+
+		//SDL_LockSurface(buffer->sdlSurface);
+		
+		srcPixels = (uint8_t*)buffer->surface_lock_alloc;//sdlSurface->pixels;
+		srcPitch = buffer->format.width_in_bytes;// buffer->sdlSurface->pitch;
 
 		dstPixels = (uint8_t*)windowSurf->pixels;
 		dstPitch = windowSurf->pitch;
@@ -763,23 +927,38 @@ void SwapWindow(SDL_Window* window)
 		copyWidth = SDL_min(dstRect.w, windowSurf->w - dstRect.x);
 		copyHeight = SDL_min(dstRect.h, windowSurf->h - dstRect.y);
 
-		rdColor24* pal_master = (rdColor24*)stdDisplay_masterPalette;
-		for (int i = 0; i < 256; i+= 4) // lazy hoping that the compiler will auto vectorize...
+		if (buffer->format.format.colorMode == STDCOLOR_PAL)
 		{
-			int i0 = i;
-			int i1 = i + 1;
-			int i2 = i + 2;
-			int i3 = i + 3;
-			paletteCache[i0] = SDL_MapRGBFast(windowSurf->format, pal_master[i0].r, pal_master[i0].g, pal_master[i0].b);
-			paletteCache[i1] = SDL_MapRGBFast(windowSurf->format, pal_master[i1].r, pal_master[i1].g, pal_master[i1].b);
-			paletteCache[i2] = SDL_MapRGBFast(windowSurf->format, pal_master[i2].r, pal_master[i2].g, pal_master[i2].b);
-			paletteCache[i3] = SDL_MapRGBFast(windowSurf->format, pal_master[i3].r, pal_master[i3].g, pal_master[i3].b);
+			rdColor24* pal_master = (rdColor24*)stdDisplay_masterPalette;
+			for (int i = 0; i < 256; i+= 4) // lazy hoping that the compiler will auto vectorize...
+			{
+				int i0 = i;
+				int i1 = i + 1;
+				int i2 = i + 2;
+				int i3 = i + 3;
+				paletteCache[i0] = SDL_MapRGBFast(windowSurf->format, pal_master[i0].r, pal_master[i0].g, pal_master[i0].b);
+				paletteCache[i1] = SDL_MapRGBFast(windowSurf->format, pal_master[i1].r, pal_master[i1].g, pal_master[i1].b);
+				paletteCache[i2] = SDL_MapRGBFast(windowSurf->format, pal_master[i2].r, pal_master[i2].g, pal_master[i2].b);
+				paletteCache[i3] = SDL_MapRGBFast(windowSurf->format, pal_master[i3].r, pal_master[i3].g, pal_master[i3].b);
+			}
 		}
 
+		dstScaleW = 1.0f / (float)dstRect.w;
+		dstScaleH = 1.0f / (float)dstRect.h;
 
 	#ifdef USE_JOBS
-		stdJob_Dispatch(copyHeight, 16, SwapWindowJob);
-		//stdJob_Wait(); // do we need to wait? it seems to be fine without
+
+		scale_x_fp = (srcRect.w * (1 << fixed_shift)) / dstRect.w;
+		scale_y_fp = (srcRect.h * (1 << fixed_shift)) / dstRect.h;
+		scale_x_fp_vec = _mm_set1_epi32(scale_x_fp);
+		x_offset_vec = _mm_set1_epi32(srcRect.x << fixed_shift);
+
+		// eebs: tried tiling but it seems that dispatching by row seems to be the fastest option?
+		if (buffer->format.format.colorMode)
+			stdJob_Dispatch(copyHeight, 8, SwapWindowJobRGB16);
+		else
+			stdJob_Dispatch(copyHeight, 8, SwapWindowJob);
+		stdJob_Wait();
 
 	#else
 #ifdef TARGET_SSE
@@ -824,29 +1003,16 @@ void SwapWindow(SDL_Window* window)
 					srcRow[srcX_arr[3]]
 				};
 
-				// Load palette colors
-				__m128i colors[3]; // r, g, b components
-
-				// Load and separate color components
-				for (int i = 0; i < 4; i++)
-				{
-					rdColor24* color = &pal_master[indices[i]];
-					colors[0].m128i_u32[i] = color->r;
-					colors[1].m128i_u32[i] = color->g;
-					colors[2].m128i_u32[i] = color->b;
-				}
-
 				// Map to destination format
-				// This part depends on your pixel format - adjust as needed
 				__m128i pixel_vec = _mm_setr_epi32(
-					SDL_MapRGBFast(windowSurf->format, colors[0].m128i_u8[0], colors[1].m128i_u8[0], colors[2].m128i_u8[0]),
-					SDL_MapRGBFast(windowSurf->format, colors[0].m128i_u8[4], colors[1].m128i_u8[4], colors[2].m128i_u8[4]),
-					SDL_MapRGBFast(windowSurf->format, colors[0].m128i_u8[8], colors[1].m128i_u8[8], colors[2].m128i_u8[8]),
-					SDL_MapRGBFast(windowSurf->format, colors[0].m128i_u8[12], colors[1].m128i_u8[12], colors[2].m128i_u8[12])
+					paletteCache[indices[0]],
+					paletteCache[indices[1]],
+					paletteCache[indices[2]],
+					paletteCache[indices[3]]
 				);
 
 				// Store 4 pixels
-				_mm_storeu_si128((__m128i*) & dstRow[x], pixel_vec);
+				_mm_storeu_si128((__m128i*)&dstRow[x], pixel_vec);
 			}
 
 			// Handle remaining pixels
@@ -873,25 +1039,20 @@ void SwapWindow(SDL_Window* window)
 				int srcX = srcRect.x + (x * srcRect.w) / dstRect.w;
 		
 				uint8_t index = srcRow[srcX];
-		
-				// External palette
-				rdColor24* pal_master = (rdColor24*)stdDisplay_masterPalette;
-				rdColor24* color = &pal_master[index];
-		
-				uint32_t pixel = SDL_MapRGB(windowSurf->format, color->r, color->g, color->b);
-				dstRow[x] = pixel;
+				dstRow[x] = paletteCache[index];
 			}
 		}
 	#endif
 	#endif
 
-		SDL_UnlockSurface(buffer->sdlSurface);
+		//SDL_UnlockSurface(buffer->sdlSurface);
 		SDL_UnlockSurface(windowSurf);
 
 		SDL_UpdateWindowSurface(displayWindow);
 	}
 
 }
+#endif
 
 void Window_UpdateHeadless()
 {
@@ -938,7 +1099,9 @@ void Window_UpdateHeadless()
 
     if (Window_resized)
     {
-	#ifndef TILE_SW_RASTER
+	#ifdef TILE_SW_RASTER
+		std3D_ResizeViewport(Window_screenXSize, Window_screenYSize);
+	#else
         jkMain_FixRes();
         if (!jkGui_SetModeMenu(0))
         {
@@ -1332,11 +1495,14 @@ void Window_SdlUpdate()
 	#endif
 
         if (Window_needsRecreate) {
+	#ifndef TILE_SW_RASTER
             std3D_PurgeEntireTextureCache();
+	#endif
             Window_RecreateSDL2Window();
         }
         
-        // Keep menu FPS at 60FPS, to avoid cranking the GPU unnecessarily.
+#ifndef TILE_SW_RASTER
+  // Keep menu FPS at 60FPS, to avoid cranking the GPU unnecessarily.
         if (sampleTime_roundtrip < menu_framelimit_amt_ms) {
             sampleTime_delay++;
         }
@@ -1350,6 +1516,7 @@ void Window_SdlUpdate()
             sampleTime_delay = menu_framelimit_amt_ms;
         }
         SDL_Delay(sampleTime_delay);
+#endif
     }
     else
     {
@@ -1446,19 +1613,30 @@ void Window_RecreateSDL2Window()
 
     if (displayWindow) {
         std3D_FreeResources();
-        SDL_GL_DeleteContext(glWindowContext);
+#ifdef TILE_SW_RASTER
+		//std3D_FreeSwapChain();
+#else TILE_SW_RASTER
+		SDL_GL_DeleteContext(glWindowContext);
+#endif
         SDL_DestroyWindow(displayWindow);
     }
 
+#ifdef TILE_SW_RASTER
+	int flags = SDL_WINDOW_RESIZABLE; 
+#else
     int flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
-
+#endif
     if (displayWindow) {
         flags = SDL_GetWindowFlags(displayWindow);
         //std3D_FreeResources();
         //SDL_GL_DeleteContext(glWindowContext);
         //SDL_DestroyWindow(displayWindow);
 
-        flags |= SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
+#ifdef TILE_SW_RASTER
+		flags |= SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
+#else
+		flags |= SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
+#endif
     }
 
 #ifdef WIN64_STANDALONE
@@ -1511,7 +1689,8 @@ void Window_RecreateSDL2Window()
         SDL_SetWindowFullscreen(displayWindow, 0);
     }
 
-    glWindowContext = SDL_GL_CreateContext(displayWindow);
+ #ifndef TILE_SW_RASTER
+	glWindowContext = SDL_GL_CreateContext(displayWindow);
     
     // Retry with 3.30 instead
     if (glWindowContext == NULL)
@@ -1535,22 +1714,28 @@ void Window_RecreateSDL2Window()
 
     SDL_GL_MakeCurrent(displayWindow, glWindowContext);
     SDL_GL_SetSwapInterval(jkPlayer_enableVsync); // Disable vsync
-    SDL_StartTextInput();
+ #endif
+	SDL_StartTextInput();
 
+#ifndef TILE_SW_RASTER
     SDL_GL_GetDrawableSize(displayWindow, &Window_xSize, &Window_ySize);
+#endif
     SDL_GetWindowSize(displayWindow, &Window_screenXSize, &Window_screenYSize);
 
     Window_resized = 1;
+
+#ifdef TILE_SW_RASTER
+	//std3D_CreateSwapChain();
+#endif
 }
 
 void Window_Main_Loop()
 {
-#ifdef TILE_SW_RASTER
-	Window_SdlUpdate();
-#endif
     jkMain_GuiAdvance(); // TODO needed?
     Window_msg_main_handler(g_hWnd, WM_PAINT, 0, 0);
-    
+#ifdef TILE_SW_RASTER
+	Window_SdlUpdate();
+#endif 
     //Window_SdlUpdate();
 }
 
@@ -1571,11 +1756,14 @@ int Window_Main_Linux(int argc, char** argv)
 #else
 
 #if defined(WIN64_STANDALONE)
+
+#ifndef TILE_SW_RASTER
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG|SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+#endif
 	Window_GL4 = 1;
 
     // apitrace
@@ -1609,7 +1797,7 @@ int Window_Main_Linux(int argc, char** argv)
 	Window_UpdateDefaultWindowSize();
     
     Window_RecreateSDL2Window();
-#if !defined(TARGET_ANDROID) && !defined(ARCH_WASM)
+#if !defined(TARGET_ANDROID) && !defined(ARCH_WASM) && !defined(TILE_SW_RASTER)
 	glewExperimental = GL_TRUE;
     glewInit();
 #endif
@@ -1647,7 +1835,9 @@ int Window_Main_Linux(int argc, char** argv)
     {
         if (displayWindow) {
             std3D_FreeResources();
-            SDL_GL_DeleteContext(glWindowContext);
+#ifndef TILE_SW_RASTER
+			SDL_GL_DeleteContext(glWindowContext);
+#endif
             SDL_DestroyWindow(displayWindow);
         }
     }
@@ -1790,13 +1980,13 @@ int Window_DefaultHandler(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam, voi
 
 int Window_MessageLoop()
 {
-#ifdef TILE_SW_RASTER
-	Window_SdlUpdate();
-#endif
     jkMain_GuiAdvance();
     Window_msg_main_handler(g_hWnd, WM_PAINT, 0, 0);
     
-    //Window_SdlUpdate();
+#ifdef TILE_SW_RASTER
+	Window_SdlUpdate();
+#endif
+   //Window_SdlUpdate();
     return 0;
 }
 

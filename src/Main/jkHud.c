@@ -953,6 +953,8 @@ void jkHud_DrawProfilerStats(const char* functionName, int64_t duration, uint32_
 	profilerY += stdFont_GetHeight(jkHud_pMsgFontSft) * jkPlayer_hudScale + jkHud_pMsgFontSft->marginY;
 }
 
+#ifndef TILE_SW_RASTER
+
 // MOTS altered
 void jkHud_DrawGPU()
 {
@@ -1576,6 +1578,8 @@ LABEL_116:
     stdDisplay_VBufferUnlock(Video_pCanvas->vbuffer);
 #endif
 }
+
+#endif
 
 int jkHud_GetWeaponAmmo(sithThing *player)
 {

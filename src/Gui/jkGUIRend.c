@@ -365,7 +365,8 @@ int32_t jkGuiRend_DisplayAndReturnClicked(jkGuiMenu *menu)
         {
             jkGuiRend_thing_four = 0;
             if ( g_should_exit )
-                jk_exit(msgret);
+				return -1;
+                //jk_exit(msgret);
             if ( menu->idkFunc && !menu->lastClicked )
                 menu->idkFunc(menu);
         }

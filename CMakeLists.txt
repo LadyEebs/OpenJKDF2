@@ -216,6 +216,35 @@ include_directories(${PROJECT_SOURCE_DIR}/src/external/fcaseopen)
 # The rest of the conditional/TARGET_* dependencies
 include(cmake_modules/config_platform_deps.cmake)
 
+	# Build HLSL shaders
+	# https://code.stanford.edu/mpsilver/2208_kinect_sdk/-/blob/main/cmake/ShaderCompiler.cmake
+if(TARGET_WIN32)
+set(HLSL_SRC_DIR "${CMAKE_SOURCE_DIR}/Src/Platform/D3D/HLSL")
+set(HLSL_DST_DIR "${CMAKE_SOURCE_DIR}/Resource/HLSL")
+
+file(MAKE_DIRECTORY ${HLSL_DST_DIR})
+file(GLOB HLSL_FILES "${HLSL_SRC_DIR}/*.hlsl")
+
+add_custom_target(CompileShaders ALL)
+
+foreach(HLSL_FILE ${HLSL_FILES})
+    get_filename_component(FILENAME_WE ${HLSL_FILE} NAME_WE)
+    set(CSO_FILE "${HLSL_DST_DIR}/${FILENAME_WE}.cso")
+
+    add_custom_command(
+        OUTPUT ${CSO_FILE}
+        COMMAND fxc.exe /T cs_5_0 /Fo "${CSO_FILE}" "${HLSL_FILE}"
+        DEPENDS ${HLSL_FILE}
+        COMMENT "Compiling ${FILENAME_WE}.hlsl"
+        VERBATIM
+    )
+
+    add_custom_target(Shader_${FILENAME_WE} DEPENDS ${CSO_FILE})
+    add_dependencies(CompileShaders Shader_${FILENAME_WE})
+endforeach()
+
+endif()
+
 # globals.c/globals.c/precompiled resources preprocessing.
 # This includes selection for most of the files in src/platform/*
 include(cmake_modules/precompile_globals.cmake)

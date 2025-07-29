@@ -553,6 +553,11 @@ int main(int argc, char** argv)
         else if (openjkdf2_restartMode == OPENJKDF2_RESTART_PATH) {
             continue;
         }
+	#ifdef TILE_SW_RASTER
+		else if (openjkdf2_restartMode == OPENJKDF2_RESTART_DEVICE_CHANGE) {
+			continue;
+		}
+	#endif
 #ifndef ARCH_WASM
         break;
 #endif

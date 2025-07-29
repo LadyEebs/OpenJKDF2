@@ -447,6 +447,8 @@ LABEL_84:
     }
 }
 
+#ifndef TILE_SW_RASTER
+
 void jkHudInv_DrawGPU()
 {
     sithThing *player; // ebx MAPDST
@@ -779,6 +781,7 @@ LABEL_84:
         }
     }
 }
+#endif
 
 void jkHudInv_InputInit()
 {

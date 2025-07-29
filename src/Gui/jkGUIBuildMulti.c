@@ -642,7 +642,11 @@ int jkGuiBuildMulti_DisplayModel()
     int32_t tmp = jkGuiBuildMulti_bRendering; // Added
     jkGuiBuildMulti_bRendering = 1; // Added
 
-    rdOpen(0);
+	int use3d = 0; // added
+#ifdef TILE_SW_RASTER
+	use3d = Video_modeStruct.b3DAccel && d3d_device_ptr;
+#endif
+    rdOpen(use3d);
     rdColormap_LoadEntry("misc\\cmp\\UIColormap.cmp", &jkGuiBuildMulti_colormap);
     rdColormap_SetCurrent(&jkGuiBuildMulti_colormap);
     rdSetRenderOptions(jkGuiBuildMulti_renderOptions);

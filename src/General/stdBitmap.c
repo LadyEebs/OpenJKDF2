@@ -202,7 +202,7 @@ LABEL_17:
         std_pHS->fileRead(fp, palette_map, 0x300);
     }
 
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
     out->aTextureIds = (uint32_t*)std_pHS->alloc(out->numMips * sizeof(uint32_t));
     out->abLoadedToGPU = (int*)std_pHS->alloc(out->numMips * sizeof(int));
     out->paDataDepthConverted = (void**)std_pHS->alloc(out->numMips * sizeof(void*));
@@ -265,7 +265,7 @@ void stdBitmap_Free(stdBitmap *pBitmap)
     // Added: nullptr check
     if (!pBitmap) return;
 
-#ifdef SDL2_RENDER
+#if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
     std3D_PurgeBitmapRefs(pBitmap);
     std_pHS->free(pBitmap->aTextureIds);
     pBitmap->aTextureIds = NULL;

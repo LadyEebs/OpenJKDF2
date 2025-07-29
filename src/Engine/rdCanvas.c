@@ -52,10 +52,10 @@ int rdCanvas_NewEntry(rdCanvas *canvas, int bIdk, stdVBuffer *vbuf, stdVBuffer *
 	canvas->tileHeight = ((height + RDCACHE_FINE_TILE_SIZE - 1) / RDCACHE_FINE_TILE_SIZE);
 	canvas->tileCount = canvas->tileWidth * canvas->tileHeight;
 
-	canvas->coarseTileBits = rdroid_pHS->alloc(canvas->coarseTileCount * RDCACHE_TILE_BINNING_STRIDE * sizeof(uint64_t));
-	canvas->tileBits = rdroid_pHS->alloc(canvas->tileCount * RDCACHE_TILE_BINNING_STRIDE * sizeof(uint64_t));
-	memset(canvas->coarseTileBits, 0, canvas->coarseTileCount * RDCACHE_TILE_BINNING_STRIDE * sizeof(uint64_t));
-	memset(canvas->tileBits, 0, canvas->tileCount * RDCACHE_TILE_BINNING_STRIDE * sizeof(uint64_t));
+	canvas->coarseTileBits = rdroid_pHS->alloc(canvas->coarseTileCount * RDCACHE_TILE_BINNING_STRIDE * sizeof(uint32_t));
+	canvas->tileBits = rdroid_pHS->alloc(canvas->tileCount * RDCACHE_TILE_BINNING_STRIDE * sizeof(uint32_t));
+	memset(canvas->coarseTileBits, 0, canvas->coarseTileCount * RDCACHE_TILE_BINNING_STRIDE * sizeof(uint32_t));
+	memset(canvas->tileBits, 0, canvas->tileCount * RDCACHE_TILE_BINNING_STRIDE * sizeof(uint32_t));
 #endif
     return 1;
 }

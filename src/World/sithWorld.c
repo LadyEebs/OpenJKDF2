@@ -190,7 +190,7 @@ int sithWorld_Load(sithWorld *pWorld, char *map_jkl_fname)
 
     if ( !pWorld )
         return 0;
-#if defined(SDL2_RENDER) || defined(TARGET_TWL)
+#if (defined(SDL2_RENDER) || defined(TARGET_TWL)) && !defined(TILE_SW_RASTER)
     std3D_PurgeEntireTextureCache();
 #endif
 

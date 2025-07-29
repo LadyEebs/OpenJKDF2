@@ -257,6 +257,13 @@ if(TARGET_WIN32)
             set(LINK_LIBS ${LINK_LIBS} ole32.lib uuid.lib)
         endif()
     endif()
+
+	# D3D11
+    file(GLOB TARGET_D3D_SRCS ${PROJECT_SOURCE_DIR}/src/Platform/D3D/*.c)
+    file(GLOB TARGET_D3D_HLSL_SRCS ${PROJECT_SOURCE_DIR}/src/Platform/D3D/HLSL/*.hlsl)
+    list(APPEND ENGINE_SOURCE_FILES ${TARGET_D3D_SRCS})
+    list(APPEND TARGET_D3D_HLSL_SRCS ${TARGET_D3D_HLSL_SRCS})
+    set(D3D_LIBS ${D3D_LIBS} d3d11.lib dxgi.lib)
 endif()
 
 

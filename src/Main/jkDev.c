@@ -301,6 +301,8 @@ void jkDev_BlitLogToScreen()
     }
 }
 
+#ifndef TILE_SW_RASTER
+
 // MOTS altered
 void jkDev_BlitLogToScreenGPU()
 {
@@ -350,6 +352,7 @@ void jkDev_BlitLogToScreenGPU()
     }
     jkDev_dword_55A9D0 = (jkDev_dword_55A9D0 + 1) % 2;
 }
+#endif
 
 // MOTS altered? inlined?
 int jkDev_PrintUniString(const wchar_t *str)
@@ -1168,6 +1171,7 @@ void jkDev_DrawEntries()
     }
 }
 
+#ifndef TILE_SW_RASTER
 void jkDev_DrawEntriesGPU()
 {
     int v0; // ebp
@@ -1205,6 +1209,7 @@ void jkDev_DrawEntriesGPU()
         }
     }
 }
+#endif
 
 #ifdef QOL_IMPROVEMENTS
 int jkDev_CmdNoclip(stdDebugConsoleCmd *pCmd, const char *pArgStr)

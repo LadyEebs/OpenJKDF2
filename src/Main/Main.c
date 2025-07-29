@@ -419,7 +419,23 @@ int Main_Startup(const char *cmdline)
 
     if (Windows_InitWindow())
     {
+#ifdef TILE_SW_RASTER
+		std3D_Startup(); // Added
+#endif
+
         rdStartup(&hs);
+	#ifdef TILE_SW_RASTER
+		//TILETODO fixme
+		extern void jkGuiDisplay_InitMode();
+		jkGuiDisplay_InitMode();
+		Video_Startup();
+		stdDisplay_Open(Video_modeStruct.modeIdx);
+		Video_pOtherBuf = &Video_otherBuf;
+		Video_pMenuBuffer = &Video_menuBuffer;
+		//Video_SetVideoDesc(jkGuiDisplay_menu.palette);
+		std3D_FindClosestDevice(Video_modeStruct.Video_8605C8, 0);
+	#endif
+
         jkGuiRend_Startup();
         jkGui_Startup();
         jkGuiMultiplayer_Startup();
@@ -467,7 +483,9 @@ int Main_Startup(const char *cmdline)
         jkEpisode_Startup();
         jkDev_Startup();
         jkGame_Startup();
+	#ifndef TILE_SW_RASTER // moved up
         Video_Startup();
+	#endif
         jkControl_Startup(); // ~TODO
         jkHudInv_Startup();
         jkDSS_Startup();
@@ -475,7 +493,6 @@ int Main_Startup(const char *cmdline)
         jkCredits_Startup("ui\\credits.uni");
         jkSmack_Startup();
 
-        std3D_Startup(); // Added
 #ifdef QUAKE_CONSOLE
         jkQuakeConsole_Startup(); // Added
 #endif

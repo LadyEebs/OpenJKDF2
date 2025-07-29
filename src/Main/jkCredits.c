@@ -100,8 +100,12 @@ int jkCredits_Show()
     v1 = stdDisplay_FindClosestDevice(&v24);
     if ( !stdDisplay_bOpen )
         goto LABEL_10;
+	#ifdef TILE_SW_RASTER
+	if (stdDisplay_lastDisplayIdx != v1) // Video_dword_866D78 is getting clobbered..
+	#else
     if ( Video_dword_866D78 != v1 )
-    {
+    #endif
+	{
         if ( stdDisplay_bOpen )
             stdDisplay_Close();
 LABEL_10:

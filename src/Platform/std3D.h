@@ -58,6 +58,10 @@ extern "C" {
 #define std3D_42C030_ADDR (0x0042C030)
 
 extern int std3D_bReinitHudElements;
+#ifdef TILE_SW_RASTER
+extern d3d_device std3D_d3dDevices[16];
+extern int std3D_d3dDeviceCount;
+#endif
 
 // Added
 int std3D_HasAlpha();
@@ -119,6 +123,33 @@ int std3D_FindClosestDevice(uint32_t index, int a2);
 int std3D_SetRenderList(intptr_t a1);
 intptr_t std3D_GetRenderList();
 int std3D_CreateExecuteBuffer();
+
+#ifdef TILE_SW_RASTER
+void* std3D_LockVertexStream(int idx);
+void std3D_UnlockVertexStream(int idx);
+
+void std3D_EnumerateDevices();
+void std3D_EnumerateVideoModes(stdVideoDevice* device);
+int std3D_CreateDeviceContext();
+void std3D_DestroyDeviceContext();
+void std3D_ResizeViewport(int w, int h);
+void std3D_Flip();
+int std3D_CreateSwapChain();
+void std3D_FreeSwapChain();
+
+#if 1
+uint8_t* std3D_LockRenderList();
+void std3D_UnlockRenderList();
+uint64_t std3D_CreateSurface(int width, int height, int bpp);
+void std3D_ReleaseSurface(uint64_t handle);
+void* std3D_LockSurface(uint64_t handle);
+void std3D_UnlockSurface(uint64_t handle);
+void std3D_BlitSurface(uint64_t dst, int dstWidth, int dstHeight, int dstStride, const rdRect* dstRect, uint64_t src, int srcWidth, int srcHeight, int srcStride, const rdRect* srcRect, int flags);
+void std3D_FillSurface(uint64_t dst, uint32_t fill, int dstWidth, int dstHeight, int dstStride, const rdRect* rect);
+void std3D_Present(uint64_t src, int srcWidth, int srcHeight, int srcStride, const rdRect* dstRect);
+#endif
+#endif
+
 #endif
 
 void std3D_PurgeUIEntry(int i, int idx);

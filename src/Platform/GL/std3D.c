@@ -27,6 +27,8 @@
 #include "General/stdMath.h"
 #include "General/stdHashTable.h"
 
+#ifndef TILE_SW_RASTER
+
 #ifdef WIN32
 // Force Optimus/AMD to use non-integrated GPUs by default.
 __declspec(dllexport) DWORD NvOptimusEnablement = 1;
@@ -5059,3 +5061,5 @@ void std3D_DrawOccluder(rdVector3* position, float radius, rdVector3* verts)
 #endif
 
 #endif // !RENDER_DROID2
+
+#endif // !TILE_SW_RASTER

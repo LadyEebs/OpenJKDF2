@@ -1,6 +1,7 @@
 #include "rdMaterial.h"
 
 #include "General/stdString.h"
+#include "General/stdMath.h"
 #include "Engine/rdroid.h"
 #include "Win95/stdDisplay.h"
 #include "Win95/std.h"
@@ -493,8 +494,10 @@ void rdMaterial_FreeEntry(rdMaterial* material)
         return;
     }
 
+#ifndef TILE_SW_RASTER
     // Added
     rdMaterial_ResetCacheInfo(material);
+#endif
 
     for (size_t i = 0; i < material->num_texinfo; i++)
     {
@@ -509,7 +512,8 @@ void rdMaterial_FreeEntry(rdMaterial* material)
                 {
                     rdDDrawSurface* surface = &pTex->alphaMats[j];
 
-#if defined(SDL2_RENDER) || defined(TARGET_TWL)
+#if (defined(SDL2_RENDER) || defined(TARGET_TWL)) && !defined(TILE_SW_RASTER)
+
                     if (surface->texture_loaded) {
                         stdPlatform_Printf("OpenJKDF2: rdMaterial_FreeEntry %s %x\n", material->mat_fpath, surface->texture_id);
                         std3D_PurgeSurfaceRefs(&pTex->alphaMats[j]);
@@ -551,7 +555,7 @@ void rdMaterial_FreeEntry(rdMaterial* material)
         {
             rdDDrawSurface* surface = &pTex->alphaMats[j];
 
-#if defined(SDL2_RENDER) || defined(TARGET_TWL)
+#if (defined(SDL2_RENDER) || defined(TARGET_TWL)) && !defined(TILE_SW_RASTER)
             if (surface->texture_loaded) {
                 stdPlatform_Printf("OpenJKDF2: rdMaterial_FreeEntry %s %x\n", material->mat_fpath, surface->texture_id);
                 std3D_PurgeSurfaceRefs(&pTex->alphaMats[j]);
@@ -610,6 +614,7 @@ int rdMaterial_EnsureData(rdMaterial* pMaterial) {
     return 1;
 }
 
+#ifndef TILE_SW_RASTER
 // rdMaterial_Write
 extern int std3D_loadedTexturesAmt;
 // Added: cel_idx
@@ -724,6 +729,7 @@ void rdMaterial_ResetCacheInfo(rdMaterial *pMaterial)
 #endif
 }
 
+#endif
 #ifdef RGB_THING_LIGHTS
 int rdMaterial_GetFillColor(rdVector3* pOutColor, rdMaterial* pMaterial, rdColormap* pColormap, int cel, int lightLevel)
 {

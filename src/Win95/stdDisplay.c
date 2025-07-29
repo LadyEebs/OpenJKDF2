@@ -11,6 +11,9 @@
 #include "Modules/std/stdJob.h"
 #include "Modules/std/stdProfiler.h"
 
+#include "SDL.h"
+#include <SDL_syswm.h>
+
 void stdDisplay_SetGammaTable(int len, flex_d_t *table)
 {
     stdDisplay_gammaTableLen = len;
@@ -54,6 +57,40 @@ int stdDisplay_SortVideoModes(stdVideoMode* modeA, stdVideoMode* modeB)
 	return modeA->format.height - modeB->format.height;
 }
 
+// Added (from openjones)
+static void stdDisplay_SetPixels16(uint16_t* pPixels16, uint16_t pixel, size_t size)
+{
+	int v3;
+	uint16_t* pCurPixel;
+	unsigned int count;
+	int v6;
+
+	pCurPixel = pPixels16;
+	count = size;
+	if ((size & 1) != 0)
+	{
+		while (count)
+		{
+			*pCurPixel++ = pixel;
+			--count;
+		}
+	}
+	else
+	{
+		// The size is multiple of 2 so we can copy 2 pixels (32 bit) at a time
+		v3 = (uint16_t)(pixel & 0xFFFFU);
+		v6 = v3 << 16;
+		v6 |= (uint16_t)(pixel & 0xFFFFU);
+		memset(pPixels16, v6, (size / 2) * sizeof(int)); // Note, divide by 2 because 2 copy 2 uint16_t at a time in form of 32 bit number 
+	}
+}
+
+// Added (from openjones)
+static void stdDisplay_SetPixels32(uint32_t* pPixels32, uint32_t pixel, size_t size)
+{
+	memset(pPixels32, pixel, size * sizeof(pixel));
+}
+
 #ifndef SDL2_RENDER
 
 #else
@@ -68,11 +105,15 @@ int stdDisplay_numDevices;
 
 static struct SDL_Color stdDisplay_paletteScratch[256] = { 0 };
 
+int stdDisplay_lastDisplayIdx = 0;
+
 int stdDisplay_Startup()
 {
     stdDisplay_bStartup = 1;
 	stdDisplay_numDevices = 1;
 #ifdef TILE_SW_RASTER
+	Video_dword_866D78 = 0;
+
 	stdVideoDevice* device = &stdDisplay_aDevices[0];
 	stdDisplay_numDevices = 0;
 
@@ -100,17 +141,22 @@ int stdDisplay_Startup()
 	vdev->dwVidMemFree = 2000000;
 
 	stdDisplay_numDevices = 1;
-
-	// todo: enum like d3d
+	std3D_EnumerateDevices();
 
 #endif
     return 1;
 }
 
-int stdDisplay_FindClosestDevice(void* a)
+int stdDisplay_FindClosestDevice(stdDeviceParams* a)
 {
-    Video_dword_866D78 = 0;
-    return 0;
+	stdPlatform_Printf("Returning device %d\n", stdDisplay_lastDisplayIdx);
+
+    //Video_dword_866D78 = 0;
+	//stdDisplay_Open(Video_dword_866D78);
+#ifdef TILE_SW_RASTER
+	//std3D_FindClosestDevice(stdDisplay_lastDisplayIdx,0);
+#endif
+    return stdDisplay_lastDisplayIdx;
 }
 
 int stdDisplay_Open(int index)
@@ -121,65 +167,17 @@ int stdDisplay_Open(int index)
 	if (stdDisplay_numDevices <= index)
 		return 0;
 	
+	stdPlatform_Printf("Opening display device %d\n", index);
+
 #ifdef TILE_SW_RASTER
 	HWND HVar1;
 	int iVar2;
 	
-	Video_dword_866D78 = index;
+	stdDisplay_lastDisplayIdx = index;
 	stdDisplay_pCurDevice = &stdDisplay_aDevices[index];
 	iVar2 = stdDisplay_aDevices[index].video_device[0].device_active;
 	
-	//SDL_DisplayMode lastMode;
-	//memset(&lastMode, 0, sizeof(lastMode));
-	//
-	//int numVideoModes = SDL_GetNumDisplayModes(index);
-	//for (int i = 0; i < numVideoModes; ++i)
-	//{
-	//	if (i >= 64)
-	//		break;
-	//
-	//	SDL_DisplayMode mode;
-	//	if(!SDL_GetDisplayMode(index, i, &mode))
-	//	{
-	//		// we don't care about refresh modes so if the rest is the same, skip
-	//		if (mode.w == lastMode.w && mode.h == lastMode.h && mode.format == lastMode.format)
-	//			continue;
-	//		lastMode = mode;
-	//
-	//		SDL_PixelFormat* pf = SDL_AllocFormat(mode.format);
-	//		uint32_t bytesPerPixel = 1;//pf->BytesPerPixel;
-	//
-	//		// Calculate pitch (row size in bytes, including padding)
-	//		int modeIdx = stdDisplay_numVideoModes++;
-	//		stdVideoMode* videoMode = &Video_renderSurface[modeIdx];
-	//		videoMode->field_0 = 0;
-	//		videoMode->format.format.bpp = 8;//pf->BitsPerPixel;
-	//		videoMode->format.width = mode.w;
-	//		videoMode->format.height = mode.h;
-	//		videoMode->format.texture_size_in_bytes = mode.w * bytesPerPixel * mode.h;
-	//		videoMode->format.width_in_bytes = mode.w * bytesPerPixel;
-	//		videoMode->format.width_in_pixels = mode.w;
-	//		videoMode->format.format.colorMode = 0;//(pf->BitsPerPixel == 8) ? STDCOLOR_PAL : (pf->Amask == 0 ? STDCOLOR_RGB : STDCOLOR_RGBA);
-	//		videoMode->format.format.r_bits = 0;//stdCalcBitPos(pf->Rmask >> pf->Rshift) + 1;
-	//		videoMode->format.format.g_bits = 0;//stdCalcBitPos(pf->Gmask >> pf->Gshift) + 1;
-	//		videoMode->format.format.b_bits = 0;//stdCalcBitPos(pf->Bmask >> pf->Bshift) + 1;
-	//		videoMode->format.format.unk_40 = 0;//stdCalcBitPos(pf->Amask >> pf->Ashift) + 1;
-	//		videoMode->format.format.r_shift = 0;//pf->Rshift;
-	//		videoMode->format.format.g_shift = 0;//pf->Gshift;
-	//		videoMode->format.format.b_shift = 0;//pf->Bshift;
-	//		videoMode->format.format.r_bitdiff = 0;//pf->Rloss;
-	//		videoMode->format.format.g_bitdiff = 0;//pf->Gloss;
-	//		videoMode->format.format.b_bitdiff = 0;//pf->Bloss;
-	//		videoMode->format.format.unk_44 = 0;//pf->Ashift;
-	//		videoMode->format.format.unk_48 = 0;//pf->Aloss;
-	//		videoMode->aspectRatio = 1.0;
-	//		SDL_FreeFormat(pf);
-	//
-	//		stdVBufferTexFmt* fmt = &videoMode->format;
-	//		stdPlatform_Printf("Detected video mode: w %u, h %u, bpp %u, %u %u %u, %u %u %u\n", (unsigned)fmt->width, (unsigned)fmt->height, (unsigned)fmt->format.bpp, (unsigned)fmt->format.r_bits, (unsigned)fmt->format.g_bits, (unsigned)fmt->format.b_bits, (unsigned)fmt->format.r_shift, (unsigned)fmt->format.g_shift, (unsigned)fmt->format.b_shift);
-	//	}
-	//}
-
+	stdDisplay_numVideoModes = 0;
 	if (iVar2 == 0)
 	{
 		Video_renderSurface[2].format.width = 400;
@@ -321,21 +319,60 @@ int stdDisplay_Open(int index)
 		Video_renderSurface[9].format.format.g_shift = 0;
 		Video_renderSurface[9].format.format.b_shift = 0;
 		Video_renderSurface[9].aspectRatio = 1.0;//1280.0/720.0;
-		stdDisplay_numVideoModes = 10;
+
+		Video_renderSurface[10].field_0 = 0;
+		Video_renderSurface[10].format.width = 1920;
+		Video_renderSurface[10].format.height = 1080;
+		Video_renderSurface[10].format.texture_size_in_bytes = 1920 * 1080;
+		Video_renderSurface[10].format.width_in_bytes = 1920;
+		Video_renderSurface[10].format.width_in_pixels = 1920;
+		Video_renderSurface[10].format.format.colorMode = 0;
+		Video_renderSurface[10].format.format.bpp = 8;
+		Video_renderSurface[10].format.format.r_bits = 0;
+		Video_renderSurface[10].format.format.g_bits = 0;
+		Video_renderSurface[10].format.format.b_bits = 0;
+		Video_renderSurface[10].format.format.r_bitdiff = 0;
+		Video_renderSurface[10].format.format.g_bitdiff = 0;
+		Video_renderSurface[10].format.format.b_bitdiff = 0;
+		Video_renderSurface[10].format.format.r_shift = 0;
+		Video_renderSurface[10].format.format.g_shift = 0;
+		Video_renderSurface[10].format.format.b_shift = 0;
+		Video_renderSurface[10].aspectRatio = 1.0;//1280.0/720.0;
+
+
+		Video_renderSurface[11].field_0 = 0;
+		Video_renderSurface[11].format.width = 1920;
+		Video_renderSurface[11].format.height = 1080;
+		Video_renderSurface[11].format.texture_size_in_bytes = 1920 * 1080;
+		Video_renderSurface[11].format.width_in_bytes = 1920*2;
+		Video_renderSurface[11].format.width_in_pixels = 1920;
+		Video_renderSurface[11].format.format.colorMode = 1;
+		Video_renderSurface[11].format.format.bpp = 16;
+		Video_renderSurface[11].format.format.r_bits = 5;
+		Video_renderSurface[11].format.format.g_bits = 6;
+		Video_renderSurface[11].format.format.b_bits = 5;
+		Video_renderSurface[11].format.format.r_bitdiff = 3;
+		Video_renderSurface[11].format.format.g_bitdiff = 2;
+		Video_renderSurface[11].format.format.b_bitdiff = 3;
+		Video_renderSurface[11].format.format.r_shift = 11;
+		Video_renderSurface[11].format.format.g_shift = 5;
+		Video_renderSurface[11].format.format.b_shift = 0;
+		Video_renderSurface[11].aspectRatio = 1.0;//1280.0/720.0;
+		
+		stdDisplay_numVideoModes = 12;
 	}
 	else if (iVar2 == 1)
-		return 0;
-	
-	//else if (iVar2 == 1)
-	//{
-	//	HVar1 = stdGdi_GetHwnd();
-	//	iVar2 = DirectDraw_Startup(HVar1);
-	//	if (iVar2 == 0)
-	//	{
-	//		return 0;
-	//	}
-	//}
-	qsort(Video_renderSurface, stdDisplay_numVideoModes, 0x54, stdDisplay_SortVideoModes);
+	{
+		// Originally JK init DDraw here?
+		std3D_EnumerateVideoModes(stdDisplay_pCurDevice);
+
+		if(!std3D_CreateDeviceContext())
+			return 0;
+	}
+	qsort(Video_renderSurface, stdDisplay_numVideoModes, sizeof(stdVideoMode), stdDisplay_SortVideoModes);
+	stdPlatform_Printf("Successfully opened display device %d\n", index);
+
+	//stdDisplay_RestoreSurfaces();
 #else
 	stdDisplay_pCurDevice = &stdDisplay_aDevices[0];
 	stdDisplay_bOpen = 1;
@@ -345,6 +382,16 @@ int stdDisplay_Open(int index)
 
 void stdDisplay_Close()
 {
+	if (!stdDisplay_bOpen)
+		return;
+
+	stdPlatform_Printf("Opening display device %d?\n", stdDisplay_lastDisplayIdx);
+
+	//Video_dword_866D78 = 0;
+#ifdef TILE_SW_RASTER
+	std3D_DestroyDeviceContext();
+	stdDisplay_FreeBackBuffers();
+#endif
     stdDisplay_bOpen = 0;
 }
 
@@ -426,17 +473,30 @@ int stdDisplay_SetMode(unsigned int modeIdx, const void *palette, int paged)
 	Video_curMode = modeIdx;
 	stdDisplay_pCurVideoMode = &Video_renderSurface[modeIdx];
 
-	SDL_Surface* otherSurface = SDL_CreateRGBSurface(0, stdDisplay_pCurVideoMode->format.width, stdDisplay_pCurVideoMode->format.height, 8,
-													 0,
-													 0,
-													 0,
-													 0);
-	//SDL_Surface* menuSurface = SDL_CreateRGBSurface(0, stdDisplay_pCurVideoMode->format.width, stdDisplay_pCurVideoMode->format.height, 8,
-	//												0,
-	//												0,
-	//												0,
-	//												0);
-	SDL_Surface* overlaySurface = SDL_CreateRGBSurface(0, stdDisplay_pCurVideoMode->format.width, stdDisplay_pCurVideoMode->format.height, 8, 0, 0, 0, 0);
+	//SDL_Surface* otherSurface = SDL_CreateRGBSurface(0, stdDisplay_pCurVideoMode->format.width, stdDisplay_pCurVideoMode->format.height, 8,
+	//												 0,
+	//												 0,
+	//												 0,
+	//												 0);
+	//SDL_Surface* overlaySurface = SDL_CreateRGBSurface(0, stdDisplay_pCurVideoMode->format.width, stdDisplay_pCurVideoMode->format.height, 8, 0, 0, 0, 0);
+	
+	if (stdDisplay_pCurDevice->video_device[0].device_active)
+	{
+		uint64_t handle = std3D_CreateSurface(stdDisplay_pCurVideoMode->format.width, stdDisplay_pCurVideoMode->format.height, 8);
+		Video_otherBuf.gpuHandle = handle;
+		Video_menuBuffer.gpuHandle = handle;
+		Video_menuBuffer.bSurfaceLocked = 1;
+		Video_otherBuf.bSurfaceLocked = 1;
+	}
+	else
+	{
+		Video_menuBuffer.bSurfaceLocked = 0;
+		Video_otherBuf.bSurfaceLocked = 0;
+		Video_menuBuffer.surface_lock_alloc = _mm_malloc(stdDisplay_pCurVideoMode->format.width_in_bytes * stdDisplay_pCurVideoMode->format.height, 16);
+		Video_otherBuf.surface_lock_alloc = Video_menuBuffer.surface_lock_alloc;
+	}
+	Video_otherBuf.lock_cnt = 0;
+	Video_menuBuffer.lock_cnt = 0;
 
 	if (palette)
 	{
@@ -451,26 +511,22 @@ int stdDisplay_SetMode(unsigned int modeIdx, const void *palette, int paged)
 			memcpy(stdDisplay_gammaPalette, palette, 0x300);
 		}
 
-		const rdColor24* pal24 = (const rdColor24*)palette;
-		SDL_Color* tmp = stdDisplay_paletteScratch;
-		for (int i = 0; i < 256; i++)
-		{
-			tmp[i].r = pal24[i].r;
-			tmp[i].g = pal24[i].g;
-			tmp[i].b = pal24[i].b;
-			tmp[i].a = 0xFF;
-		}
-
-		SDL_SetPaletteColors(otherSurface->format->palette, tmp, 0, 256);
-		//SDL_SetPaletteColors(menuSurface->format->palette, tmp, 0, 256);
-		SDL_SetPaletteColors(overlaySurface->format->palette, tmp, 0, 256);
+		//const rdColor24* pal24 = (const rdColor24*)palette;
+		//SDL_Color* tmp = stdDisplay_paletteScratch;
+		//for (int i = 0; i < 256; i++)
+		//{
+		//	tmp[i].r = pal24[i].r;
+		//	tmp[i].g = pal24[i].g;
+		//	tmp[i].b = pal24[i].b;
+		//	tmp[i].a = 0xFF;
+		//}
+		//
+		//SDL_SetPaletteColors(otherSurface->format->palette, tmp, 0, 256);
+		//SDL_SetPaletteColors(overlaySurface->format->palette, tmp, 0, 256);
 	}
 
-	//SDL_SetSurfacePalette(otherSurface, palette);
-	//SDL_SetSurfacePalette(menuSurface, palette);
-
-	Video_otherBuf.sdlSurface = otherSurface;
-	Video_menuBuffer.sdlSurface = otherSurface;//menuSurface;
+	//Video_otherBuf.sdlSurface = otherSurface;
+	//Video_menuBuffer.sdlSurface = otherSurface;
 
 	_memcpy(&Video_otherBuf.format, &stdDisplay_pCurVideoMode->format, sizeof(Video_otherBuf.format));
 	_memcpy(&Video_menuBuffer.format, &stdDisplay_pCurVideoMode->format, sizeof(Video_menuBuffer.format));
@@ -479,6 +535,9 @@ int stdDisplay_SetMode(unsigned int modeIdx, const void *palette, int paged)
 	Video_menuBuffer.palette = palette;
 
 	stdDisplay_VBufferFill(&Video_menuBuffer, 0, NULL);
+
+	Video_pMenuBuffer = &Video_menuBuffer;
+	Video_pOtherBuf = &Video_otherBuf;
 
 	stdDisplay_bModeSet = 1;
 	return 1;
@@ -674,11 +733,41 @@ int stdDisplay_SetMasterPalette(uint8_t* pal)
 
 stdVBuffer* stdDisplay_VBufferNew(stdVBufferTexFmt *fmt, int create_ddraw_surface, int gpu_mem, const void* palette)
 {
-    stdVBuffer* out = (stdVBuffer*)std_pHS->alloc(sizeof(stdVBuffer));
-    
-    _memset(out, 0, sizeof(*out));
-    
+    stdVBuffer* out = (stdVBuffer*)std_pHS->alloc(sizeof(stdVBuffer));    
+	if (!out)
+	{
+		stdPrintf(std_pHS->errorPrint, ".\\Platform\\D3D\\std3D.c", __LINE__, "Error allocating vbuffer.\n");
+		return NULL;
+	}
+	_memset(out, 0, sizeof(*out));
     _memcpy(&out->format, fmt, sizeof(out->format));
+
+#ifdef TILE_SW_RASTER
+	out->surface_lock_alloc = NULL;
+	out->bSurfaceLocked = 0;
+	out->gap8 = 0;
+
+	unsigned int bbp = (unsigned int)out->format.format.bpp / 8;
+	out->format.width_in_bytes = out->format.width * bbp;
+	out->format.width_in_pixels = out->format.width;
+	out->format.texture_size_in_bytes = out->format.height * out->format.width * bbp;
+
+	if (stdDisplay_pCurDevice && stdDisplay_pCurDevice->video_device[0].device_active)
+	{	
+		out->bSurfaceLocked = 1;
+		out->gpuHandle = std3D_CreateSurface(out->format.width, out->format.height, out->format.format.bpp);
+		if (out->gpuHandle == 0)
+		{
+			stdPrintf(std_pHS->errorPrint, ".\\Platform\\D3D\\std3D.c", __LINE__, "Error when creating a DirectDraw vbuffer surface.\n");
+			return NULL;
+		}
+	}
+	else
+	{
+		out->bSurfaceLocked = 0;
+		out->surface_lock_alloc = _mm_malloc(out->format.texture_size_in_bytes, 16);
+	}
+#else
     
     // force 0 reads
     //out->format.width = 0;
@@ -735,6 +824,11 @@ stdVBuffer* stdDisplay_VBufferNew(stdVBufferTexFmt *fmt, int create_ddraw_surfac
 	//if(create_ddraw_surface)
 		std3D_AllocDrawSurface(out, fmt->width, fmt->height);
 #endif
+
+#if 0//def TILE_SW_RASTER
+	out->gpuHandle = std3D_Alloc(out->format.texture_size_in_bytes);
+#endif
+#endif
     
     return out;
 }
@@ -742,19 +836,39 @@ stdVBuffer* stdDisplay_VBufferNew(stdVBufferTexFmt *fmt, int create_ddraw_surfac
 int stdDisplay_VBufferLock(stdVBuffer *buf)
 {
     if (!buf) return 0;
-	if (buf->bSurfaceLocked)
+#ifdef TILE_SW_RASTER
+	if (buf->lock_cnt > 0)
 		return 0;
+	if (buf->bSurfaceLocked)
+		buf->surface_lock_alloc = std3D_LockSurface(buf->gpuHandle);
+	if(!buf->surface_lock_alloc)
+		return 0;
+	++buf->lock_cnt;
+	return 1;
+#else
     SDL_LockSurface(buf->sdlSurface);
     buf->surface_lock_alloc = (char*)buf->sdlSurface->pixels;
-    buf->bSurfaceLocked = 1;
 	return 1;
+#endif
 }
 
 void stdDisplay_VBufferUnlock(stdVBuffer *buf)
 {
     if (!buf) return;
-	if (!buf->bSurfaceLocked)
+#ifdef TILE_SW_RASTER
+	if (buf->lock_cnt <= 0)
 		return;
+	buf->lock_cnt--;
+	if(buf->lock_cnt == 0)
+	{
+		if(buf->bSurfaceLocked)
+		{
+			std3D_UnlockSurface(buf->gpuHandle);
+			buf->surface_lock_alloc = 0;
+		}
+	}
+#else
+
 #ifdef HW_VBUFFER
 	if (buf->device_surface && buf->surface_lock_alloc)
 	{
@@ -763,20 +877,412 @@ void stdDisplay_VBufferUnlock(stdVBuffer *buf)
    #endif
     buf->surface_lock_alloc = NULL;
     SDL_UnlockSurface(buf->sdlSurface);
-	buf->bSurfaceLocked = 0;
+#endif
 }
 
-int stdDisplay_VBufferCopy(stdVBuffer *vbuf, stdVBuffer *vbuf2, unsigned int blit_x, int blit_y, rdRect *rect, int alpha_maybe)
+int stdDisplay_VBufferCopy(stdVBuffer *vbuf, stdVBuffer *vbuf2, int blit_x, int blit_y, rdRect *rect, int alpha_maybe)
 {
     if (!vbuf || !vbuf2) return 1;
-    
-    rdRect fallback = {0,0,vbuf2->format.width, vbuf2->format.height};
-    if (!rect)
-    {
-        rect = &fallback;
-        //memcpy(vbuf->sdlSurface->pixels, vbuf2->sdlSurface->pixels, 640*480);
-        //return;
-    }
+	
+	rdRect fallback = { 0,0,vbuf2->format.width, vbuf2->format.height };
+	if (!rect)
+	{
+		rect = &fallback;
+		//memcpy(vbuf->sdlSurface->pixels, vbuf2->sdlSurface->pixels, 640*480);
+		//return;
+	}
+
+#ifdef TILE_SW_RASTER
+
+	// todo: conversions?
+	if (vbuf->format.format.bpp != vbuf2->format.format.bpp)
+		return 0;
+
+	rdRect dstRect = { (int)blit_x, (int)blit_y, (int)rect->width, (int)rect->height };
+	rdRect srcRect = { (int)rect->x, (int)rect->y, (int)rect->width, (int)rect->height };
+
+	if (vbuf->bSurfaceLocked && vbuf2->bSurfaceLocked) // should both be true when 1 is true
+	{
+		std3D_BlitSurface(vbuf->gpuHandle, vbuf->format.width, vbuf->format.height, vbuf->format.format.bpp>>3, &dstRect
+			, vbuf2->gpuHandle, vbuf2->format.width, vbuf2->format.height, vbuf2->format.format.bpp>>3, &srcRect, alpha_maybe);
+		return 1;
+	}
+
+	uint8_t* srcPixels = (uint8_t*)vbuf2->surface_lock_alloc;
+	uint8_t* dstPixels = (uint8_t*)vbuf->surface_lock_alloc;
+	uint32_t srcStride = vbuf2->format.width_in_bytes;
+	uint32_t dstStride = vbuf->format.width_in_bytes;
+
+	stdVBuffer * dst = vbuf;
+	stdVBuffer * src = vbuf2;
+	
+// Initial bounds
+	int srcX = rect->x;
+	int srcY = rect->y;
+	int width = rect->width;
+	int height = rect->height;
+
+	int dstX = blit_x;
+	int dstY = blit_y;
+
+	int x0 = srcX;
+	int y0 = srcY;
+	int x1 = srcX + width - 1;
+	int y1 = srcY + height - 1;
+
+	// Clamp dstX/Y to bounds (critical!)
+	if (dstX < 0)
+	{
+		// Skip pixels on left
+		int skip = -dstX;
+		srcX += skip;
+		width -= skip;
+		dstX = 0;
+	}
+	if (dstY < 0)
+	{
+		// Skip rows on top
+		int skip = -dstY;
+		srcY += skip;
+		height -= skip;
+		dstY = 0;
+	}
+	if (dstX + width > dst->format.width)
+	{
+		width = dst->format.width - dstX;
+	}
+	if (dstY + height > dst->format.height)
+	{
+		height = dst->format.height - dstY;
+	}
+
+	// Recheck after full clamp
+	if (width <= 0 || height <= 0)
+		return 0;
+
+	// Reject fully clipped
+	if (width <= 0 || height <= 0)
+		return 0;
+
+	int blitWidth = width;
+	int blitHeight = height;
+
+	int bpp = dst->format.format.bpp;
+	int transparency = (alpha_maybe & 1);
+
+	switch (bpp)
+	{
+	case 8:
+	{
+		int dstPitch = dst->format.width_in_pixels;
+		int srcPitch = src->format.width_in_pixels;
+		char* dstPtr = dst->surface_lock_alloc + dstX + dstY * dstPitch;
+		char* srcPtr = src->surface_lock_alloc + srcX + srcY * srcPitch;
+
+		if (!transparency)
+		{
+			for (int y = 0; y < blitHeight; y++)
+			{
+				memcpy(dstPtr, srcPtr, blitWidth);
+				dstPtr += dstPitch;
+				srcPtr += srcPitch;
+			}
+		}
+		else
+		{
+		#ifdef TARGET_SSE
+			uint8_t transi = (uint8_t)src->transparent_color;
+			__m128i trans = _mm_set1_epi8(transi);
+
+			for (int y = 0; y < blitHeight; y++)
+			{
+				int x = 0;
+				for (; x <= blitWidth - 16; x += 16)
+				{
+					__m128i src = _mm_loadu_si128((__m128i*)(srcPtr + x));
+					__m128i dst = _mm_loadu_si128((__m128i*)(dstPtr + x));
+					__m128i cmp = _mm_cmpeq_epi8(src, trans);
+					__m128i result = _mm_or_si128(_mm_andnot_si128(cmp, src), _mm_and_si128(cmp, dst));
+					_mm_storeu_si128((__m128i*)(dstPtr + x), result);
+				}
+
+				for (; x < blitWidth; x++)
+				{
+					if (srcPtr[x] != transi)
+						dstPtr[x] = srcPtr[x];
+				}
+
+				dstPtr += dstPitch;
+				srcPtr += srcPitch;
+			}
+		#else
+			uint8_t trans = (uint8_t)src->transparent_color;
+			for (int y = 0; y < blitHeight; y++)
+			{
+				for (int x = 0; x < blitWidth; x++)
+				{
+					if (srcPtr[x] != trans)
+						dstPtr[x] = srcPtr[x];
+				}
+				dstPtr += dstPitch;
+				srcPtr += srcPitch;
+			}
+		#endif
+		}
+		return 1;
+	}
+
+	case 16:
+	{
+		int dstPitch = dst->format.width_in_pixels;
+		int srcPitch = src->format.width_in_pixels;
+		short* dstPtr = (short*)(dst->surface_lock_alloc + 2 * (dstX + dstY * dstPitch));
+		short* srcPtr = (short*)(src->surface_lock_alloc + 2 * (srcX + srcY * srcPitch));
+
+		if (!transparency)
+		{
+			for (int y = 0; y < blitHeight; y++)
+			{
+				memcpy(dstPtr, srcPtr, 2 * blitWidth);
+				dstPtr += dstPitch;
+				srcPtr += srcPitch;
+			}
+		}
+		else
+		{
+		#ifdef TARGET_SSE
+			uint16_t transi = (uint16_t)src->transparent_color;
+			__m128i trans = _mm_set1_epi16(transi);
+
+			for (int y = 0; y < blitHeight; y++)
+			{
+				int x = 0;
+				for (; x <= blitWidth - 8; x += 8)
+				{
+					__m128i src = _mm_loadu_si128((__m128i*)(srcPtr + x));
+					__m128i dst = _mm_loadu_si128((__m128i*)(dstPtr + x));
+					__m128i cmp = _mm_cmpeq_epi16(src, trans);
+					__m128i result = _mm_or_si128(_mm_andnot_si128(cmp, src), _mm_and_si128(cmp, dst));
+					_mm_storeu_si128((__m128i*)(dstPtr + x), result);
+				}
+
+				for (; x < blitWidth; x++)
+				{
+					if (srcPtr[x] != transi)
+						dstPtr[x] = srcPtr[x];
+				}
+
+				dstPtr += dstPitch;
+				srcPtr += srcPitch;
+			}
+		#else
+			uint16_t trans = (uint16_t)src->transparent_color;
+			for (int y = 0; y < blitHeight; y++)
+			{
+				for (int x = 0; x < blitWidth; x++)
+				{
+					if (srcPtr[x] != trans)
+						dstPtr[x] = srcPtr[x];
+				}
+				dstPtr += dstPitch;
+				srcPtr += srcPitch;
+			}
+		#endif
+		}
+		return 1;
+	}
+
+	case 24:
+	{
+		int dstPitch = dst->format.width_in_bytes;
+		int srcPitch = src->format.width_in_bytes;
+		uint8_t* dstPtr = (uint8_t*)(dst->surface_lock_alloc + dstY * dstPitch + dstX * 3);
+		uint8_t* srcPtr = (uint8_t*)(src->surface_lock_alloc + srcY * srcPitch + srcX * 3);
+
+		for (int y = 0; y < blitHeight; y++)
+		{
+			memcpy(dstPtr, srcPtr, 3 * blitWidth);
+			dstPtr += dstPitch;
+			srcPtr += srcPitch;
+		}
+		return 1;
+	}
+
+	case 32:
+	{
+		int dstPitch = dst->format.width_in_pixels;
+		int srcPitch = src->format.width_in_pixels;
+		uint32_t* dstPtr = (uint32_t*)(dst->surface_lock_alloc + 4 * (dstX + dstY * dstPitch));
+		uint32_t* srcPtr = (uint32_t*)(src->surface_lock_alloc + 4 * (srcX + srcY * srcPitch));
+
+		if (!transparency)
+		{
+			for (int y = 0; y < blitHeight; y++)
+			{
+				memcpy(dstPtr, srcPtr, 4 * blitWidth);
+				dstPtr += dstPitch;
+				srcPtr += srcPitch;
+			}
+		}
+		else
+		{
+		#ifdef TARGET_SSE
+			uint32_t transi = src->transparent_color;
+			const __m128i trans = _mm_set1_epi32(transi);
+
+			int x = 0;
+			for (; x <= blitWidth - 4; x += 4)
+			{
+				__m128i src = _mm_loadu_si128((__m128i*)(srcPtr + x));
+				__m128i cmp = _mm_cmpeq_epi32(src, trans);
+				__m128i dst = _mm_loadu_si128((__m128i*)(dstPtr + x));
+				__m128i result = _mm_or_si128(_mm_andnot_si128(cmp, src), _mm_and_si128(cmp, dst));
+				_mm_storeu_si128((__m128i*)(dstPtr + x), result);
+			}
+
+			for (; x < blitWidth; x++)
+			{
+				if (srcPtr[x] != transi)
+					dstPtr[x] = srcPtr[x];
+			}
+
+			dstPtr += dstPitch;
+			srcPtr += srcPitch;
+		#else
+			const uint32_t trans = src->transparent_color;
+			for (int y = 0; y < blitHeight; y++)
+			{
+				for (int x = 0; x < blitWidth; x++)
+				{
+					if (srcPtr[x] != trans)
+						dstPtr[x] = srcPtr[x];
+				}
+				dstPtr += dstPitch;
+				srcPtr += srcPitch;
+			}
+		#endif
+		}
+		return 1;
+	}
+
+	default:
+		// Unsupported bpp
+		return 0;
+	}
+
+	#if 0
+
+	int self_copy = 0;
+	int has_alpha = !(rect->width == 640) && (alpha_maybe & 1);
+
+	// Handle self-copy case with temporary buffer
+	if (dstPixels == srcPixels)
+	{
+		size_t buf_len = srcStride * dstRect.height;
+		uint8_t* tempBuffer = (uint8_t*)_mm_malloc(buf_len, 16); // Aligned allocation
+		SDL_Rect dstRect_inter = { 0, 0, rect->width, rect->height };
+
+		// Process rows in blocks
+		for (int j = 0; j < rect->height; j++)
+		{
+			int srcY = j + srcRect.y;
+			if ((uint32_t)srcY >= (uint32_t)vbuf2->format.height) continue;
+
+			uint8_t* srcRow = srcPixels + srcY * srcStride + srcRect.x;
+			uint8_t* dstRow = tempBuffer + j * srcStride;
+
+			int i = 0;
+			// Process 16 bytes at a time
+			for (; i + 15 < rect->width; i += 16)
+			{
+				// Load 16 pixels
+				__m128i pixels = _mm_loadu_si128((__m128i*)(srcRow + i));
+
+				if (has_alpha)
+				{
+					// Create mask for non-zero pixels
+					__m128i zero = _mm_setzero_si128();
+					__m128i mask = _mm_cmpeq_epi8(pixels, zero);
+
+					// For self-copy, we just store all pixels (no alpha skip)
+					_mm_store_si128((__m128i*)(dstRow + i), pixels);
+				}
+				else
+				{
+					_mm_store_si128((__m128i*)(dstRow + i), pixels);
+				}
+			}
+
+			// Handle remaining pixels
+			for (; i < rect->width; i++)
+				dstRow[i] = srcRow[i];
+		}
+
+		srcPixels = tempBuffer;
+		srcRect.x = 0;
+		srcRect.y = 0;
+		self_copy = 1;
+	}
+
+	// Main blitting loop with SSE optimization
+	for (int j = 0; j < rect->height; j++)
+	{
+		int srcY = j + srcRect.y;
+		int dstY = j + dstRect.y;
+
+		if ((uint32_t)srcY >= (uint32_t)vbuf2->format.height) continue;
+		if ((uint32_t)dstY >= (uint32_t)vbuf->format.height) continue;
+
+		uint8_t* srcRow = srcPixels + srcY * srcStride + srcRect.x;
+		uint8_t* dstRow = dstPixels + dstY * dstStride + dstRect.x;
+
+		int i = 0;
+		if (!has_alpha)
+		{
+			// Fast path: no alpha handling, copy entire rows
+			for (; i + 15 < rect->width; i += 16)
+			{
+				__m128i pixels = _mm_loadu_si128((__m128i*)(srcRow + i));
+				_mm_storeu_si128((__m128i*)(dstRow + i), pixels);
+			}
+		}
+		else
+		{
+			 // Alpha handling path
+			__m128i zero = _mm_setzero_si128();
+			for (; i + 15 < rect->width; i += 16)
+			{
+				__m128i pixels = _mm_loadu_si128((__m128i*)(srcRow + i));
+				__m128i mask = _mm_cmpeq_epi8(pixels, zero);
+
+				// Load destination pixels
+				__m128i dstPx = _mm_loadu_si128((__m128i*)(dstRow + i));
+
+				// Blend: where mask is true (pixel==0), keep destination
+				__m128i result = _mm_or_si128(
+					_mm_and_si128(mask, dstPx),
+					_mm_andnot_si128(mask, pixels)
+				);
+
+				_mm_storeu_si128((__m128i*)(dstRow + i), result);
+			}
+		}
+
+		// Handle remaining pixels
+		for (; i < rect->width; i++)
+		{
+			uint8_t pixel = srcRow[i];
+			if (!(pixel == 0 && has_alpha))
+				dstRow[i] = pixel;
+		}
+	}
+
+	// Free temporary buffer if used
+	if (self_copy)
+		_mm_free(srcPixels);
+	#endif
+
+#else
     
     //if (vbuf == &Video_menuBuffer)
     //    stdPlatform_Printf("Vbuffer copy to menu %u,%u %ux%u %u,%u\n", rect->x, rect->y, rect->width, rect->height, blit_x, blit_y);
@@ -1004,7 +1510,8 @@ int stdDisplay_VBufferCopy(stdVBuffer *vbuf, stdVBuffer *vbuf2, unsigned int bli
 	}
 #endif
     
-    //SDL_BlitSurface(vbuf2->sdlSurface, &srcRect, vbuf->sdlSurface, &dstRect); //TODO error check
+#endif
+	//SDL_BlitSurface(vbuf2->sdlSurface, &srcRect, vbuf->sdlSurface, &dstRect); //TODO error check
     return 1;
 }
 
@@ -1012,12 +1519,110 @@ int stdDisplay_VBufferFill(stdVBuffer *vbuf, int fillColor, rdRect *rect)
 {    
 	STD_BEGIN_PROFILER_LABEL();
 
-    rdRect fallback = {0,0,vbuf->format.width, vbuf->format.height};
-    if (!rect)
-    {
-        rect = &fallback;
-    }
-    
+#ifdef TILE_SW_RASTER
+	if (vbuf->bSurfaceLocked)
+	{
+		std3D_FillSurface(vbuf->gpuHandle, fillColor, vbuf->format.width, vbuf->format.height, vbuf->format.format.bpp >> 3,rect);
+		return 1;
+	}
+
+	// Get surface dimensions
+	int width = vbuf->format.width_in_pixels;
+	int height = vbuf->format.height;
+
+	// Clamp rectangle
+	int x = rect ? rect->x : 0;
+	int y = rect ? rect->y : 0;
+	int w = rect ? rect->width : width;
+	int h = rect ? rect->height : height;
+
+	// Clamp left/top
+	if (x < 0)
+	{
+		w += x;  // shrink width
+		x = 0;
+	}
+	if (y < 0)
+	{
+		h += y;  // shrink height
+		y = 0;
+	}
+
+	// Clamp right/bottom
+	if (x + w > width)
+		w = width - x;
+	if (y + h > height)
+		h = height - y;
+
+	// Reject if fully clipped
+	if (w <= 0 || h <= 0)
+		return 0;
+
+	switch (vbuf->format.format.bpp)
+	{
+	case 8:
+		if (rect)
+		{
+			uint8_t* pPixels8 = &vbuf->surface_lock_alloc[vbuf->format.width * y + x];
+			for (int32_t height = 0; height < h; ++height)
+			{
+				memset(pPixels8, (uint8_t)fillColor, w);
+				pPixels8 += vbuf->format.width_in_bytes;
+			}
+		}
+		else
+		{
+			memset(vbuf->surface_lock_alloc, (uint8_t)fillColor, vbuf->format.texture_size_in_bytes);
+		}
+
+		break;
+
+	case 16:
+		if (rect)
+		{
+			uint16_t* pPixels16 = (uint16_t*)&vbuf->surface_lock_alloc[2 * vbuf->format.width * y + 2 * x];
+			for (int32_t height = 0; height < h; ++height)
+			{
+				stdDisplay_SetPixels16(pPixels16, fillColor, w);
+				pPixels16 = (uint16_t*)((char*)pPixels16 + vbuf->format.width_in_bytes);
+			}
+		}
+		else
+		{
+			stdDisplay_SetPixels16((uint16_t*)vbuf->surface_lock_alloc, fillColor, (size_t)(vbuf->format.texture_size_in_bytes / 2));
+		}
+
+		break;
+
+	case 24:
+		//STDLOG_FATAL("0"); // TODO: implement
+		break;
+
+	case 32:
+		if (rect)
+		{
+			uint32_t* pPixels32 = (uint32_t*)&vbuf->surface_lock_alloc[4 * vbuf->format.width * y + 4 * x];
+			for (int32_t height = 0; height < h; ++height)
+			{
+				stdDisplay_SetPixels32(pPixels32, fillColor, w);
+				pPixels32 = (uint32_t*)((char*)pPixels32 + vbuf->format.width_in_bytes);
+			}
+		}
+		else
+		{
+			stdDisplay_SetPixels32((uint32_t*)vbuf->surface_lock_alloc, fillColor, (size_t)(vbuf->format.texture_size_in_bytes / 4));
+		}
+
+		break;
+	}
+
+#else
+	rdRect fallback = { 0,0,vbuf->format.width, vbuf->format.height };
+	if (!rect)
+	{
+		rect = &fallback;
+	}
+
     //if (vbuf == &Video_menuBuffer)
     //    stdPlatform_Printf("Vbuffer fill to menu %u,%u %ux%u\n", rect->x, rect->y, rect->width, rect->height);
 
@@ -1048,7 +1653,7 @@ int stdDisplay_VBufferFill(stdVBuffer *vbuf, int fillColor, rdRect *rect)
 	if (vbuf->device_surface)
 		std3D_ClearDrawSurface(vbuf->device_surface, fillColor, rect);
 #endif
-
+#endif
 	STD_END_PROFILER_LABEL();
 
     return 1;
@@ -1083,11 +1688,20 @@ void stdDisplay_VBufferFree(stdVBuffer *vbuf)
         return;
     }
     stdDisplay_VBufferUnlock(vbuf);
+#ifdef TILE_SW_RASTER
+	if (vbuf->bSurfaceLocked)
+		std3D_ReleaseSurface(vbuf->gpuHandle);
+	else if (vbuf->surface_lock_alloc)
+		_mm_free(vbuf->surface_lock_alloc);
+	vbuf->gpuHandle = 0;
+	vbuf->surface_lock_alloc = 0;
+#else
     SDL_FreeSurface(vbuf->sdlSurface);
 #ifdef HW_VBUFFER
 	std3D_FreeDrawSurface(vbuf);
 #endif
-    std_pHS->free(vbuf);
+#endif
+	std_pHS->free(vbuf);
 }
 
 void stdDisplay_ddraw_surface_flip2()
@@ -1160,20 +1774,36 @@ void stdDisplay_FreeBackBuffers()
 #ifdef TILE_SW_RASTER
 	if (stdDisplay_bModeSet)
 	{
-		if (Video_otherBuf.sdlSurface)
-			SDL_FreeSurface(Video_otherBuf.sdlSurface);
-		//if (Video_menuBuffer.sdlSurface)
-		//	SDL_FreeSurface(Video_menuBuffer.sdlSurface);
-		//if (Video_overlayMapBuffer.sdlSurface)
-			//SDL_FreeSurface(Video_overlayMapBuffer.sdlSurface);
+		//if (Video_otherBuf.sdlSurface)
+		//	SDL_FreeSurface(Video_otherBuf.sdlSurface);
+
+		stdDisplay_VBufferUnlock(&Video_otherBuf);
+
+		if(Video_otherBuf.surface_lock_alloc)
+			//std_pHS->free(Video_otherBuf.surface_lock_alloc);
+			_mm_free(Video_otherBuf.surface_lock_alloc);
+		Video_otherBuf.surface_lock_alloc = 0;
+		Video_menuBuffer.surface_lock_alloc = 0;
 
 		Video_otherBuf.palette = 0;
 		Video_menuBuffer.palette = 0;
 
-		Video_otherBuf.sdlSurface = 0;
-		Video_menuBuffer.sdlSurface = 0;
-		//Video_overlayMapBuffer.sdlSurface = 0;
+		//Video_otherBuf.sdlSurface = 0;
+		//Video_menuBuffer.sdlSurface = 0;
 		stdDisplay_bModeSet = 0;
+
+		//std3D_FreeSwapChain();
+
+		//SDL_RestoreWindow(stdGdi_GetHwnd());
+		//SDL_UpdateWindowSurface(stdGdi_GetHwnd());
+		//SDL_PumpEvents();
+		//
+		//SDL_SysWMinfo wmInfo;
+		//SDL_VERSION(&wmInfo.version);
+		//SDL_GetWindowWMInfo((SDL_Window*)stdGdi_GetHwnd(), &wmInfo);
+		//HWND hwnd = wmInfo.info.win.window;
+		//InvalidateRect(hwnd, NULL, TRUE);
+		//UpdateWindow(hwnd);
 	}
 #endif
 }
@@ -1203,6 +1833,372 @@ void stdDisplay_GammaCorrect(const void *pPal)
 // Added
 void stdDisplay_VBufferCopyScaled(stdVBuffer* vbuf, stdVBuffer* vbuf2, unsigned int blit_x, unsigned int blit_y, rdRect* rect, int has_alpha, float scaleX, float scaleY)
 {
+	if (vbuf->bSurfaceLocked)
+		return;
+
+	rdRect fallback = { 0,0,vbuf2->format.width, vbuf2->format.height };
+	if (!rect)
+	{
+		rect = &fallback;
+		//memcpy(vbuf->sdlSurface->pixels, vbuf2->sdlSurface->pixels, 640*480);
+		//return;
+	}
+
+	uint8_t* srcPixels = (uint8_t*)vbuf2->surface_lock_alloc;
+	uint8_t* dstPixels = (uint8_t*)vbuf->surface_lock_alloc;
+	uint32_t srcStride = vbuf2->format.width_in_bytes;
+	uint32_t dstStride = vbuf->format.width_in_bytes;
+
+	stdVBuffer* dst = vbuf;
+	stdVBuffer* src = vbuf2;
+
+	int srcX = rect->x;
+	int srcY = rect->y;
+	int dstX = blit_x;
+	int dstY = blit_y;
+	int width = rect->width;
+	int height = rect->height;
+
+	// Early out: completely out of bounds
+	if (srcX >= src->format.width || srcY >= src->format.height ||
+		(srcX + width) <= 0 || (srcY + height) <= 0)
+	{
+		return 0;
+	}
+
+	// Clamp to source bounds
+	if (srcY < 0)
+	{
+		dstY -= srcY;
+		height += srcY; // shrink height
+		srcY = 0;
+	}
+	if (srcX < 0)
+	{
+		dstX -= srcX;
+		width += srcX; // shrink width
+		srcX = 0;
+	}
+
+	int maxX = src->format.width - 1;
+	int maxY = src->format.height - 1;
+
+	if (srcX + width > src->format.width)
+		width = src->format.width - srcX;
+
+	if (srcY + height > src->format.height)
+		height = src->format.height - srcY;
+
+	// Early out after clamping
+	if (width <= 0 || height <= 0)
+		return 1;
+
+	int blitWidth = width;
+	int blitHeight = height;
+
+	if (blitWidth <= 0 || blitHeight <= 0) return 1;
+
+	int bpp = dst->format.format.bpp;
+	int transparency = (has_alpha & 1);
+
+	int destWidth = (int)(blitWidth * scaleX);
+	int destHeight = (int)(blitHeight * scaleY);
+
+	// Avoid zero dimensions
+	if (destWidth <= 0) destWidth = 1;
+	if (destHeight <= 0) destHeight = 1;
+
+	uint32_t xStep = ((blitWidth << 16)) / destWidth;
+	uint32_t yStep = ((blitHeight << 16)) / destHeight;
+
+	switch (bpp)
+	{
+	case 8:
+	{
+		int dstPitch = dst->format.width_in_pixels;
+		int srcPitch = src->format.width_in_pixels;
+		uint8_t* dstPtr = dst->surface_lock_alloc + dstX + dstY * dstPitch;
+		uint8_t* srcPtr = src->surface_lock_alloc + srcX + srcY * srcPitch;
+
+		if (!transparency)
+		{
+			for (int y = 0, yPos = 0; y < destHeight; y++, yPos += yStep)
+			{
+				const uint8_t* srcRow = srcPtr + (yPos >> 16) * srcPitch;
+				uint8_t* dstRow = dstPtr + y * dstPitch;
+
+				for (int x = 0, xPos = 0; x < destWidth; x++, xPos += xStep)
+					dstRow[x] = srcRow[xPos >> 16];
+			}
+		}
+		else
+		{
+#ifdef TARGET_SSE
+			uint8_t transi = (uint8_t)src->transparent_color;
+			__m128i trans = _mm_set1_epi8(transi);
+
+			for (int y = 0, yPos = 0; y < destHeight; y++, yPos += yStep)
+			{
+				const uint8_t* srcRow = srcPtr + (yPos >> 16) * srcPitch;
+				uint8_t* dstRow = dstPtr + y * dstPitch;
+
+				int x = 0;
+				uint32_t xPos = 0;
+
+				for (; x <= destWidth - 16; x += 16, xPos += 16 * xStep)
+				{
+					uint8_t tmp[16];
+					for (int i = 0; i < 16; i++)
+						tmp[i] = srcRow[(xPos + i * xStep) >> 16];
+
+					__m128i src = _mm_loadu_si128((__m128i*)tmp);
+					__m128i dst = _mm_loadu_si128((__m128i*)(dstRow + x));
+					__m128i cmp = _mm_cmpeq_epi8(src, trans);
+					__m128i result = _mm_or_si128(_mm_andnot_si128(cmp, src), _mm_and_si128(cmp, dst));
+					_mm_storeu_si128((__m128i*)(dstRow + x), result);
+				}
+
+				for (; x < destWidth; x++, xPos += xStep)
+				{
+					uint8_t srcPix = srcRow[xPos >> 16];
+					if (srcPix != transi)
+						dstRow[x] = srcPix;
+				}
+			}
+#else
+			uint8_t trans = (uint8_t)src->transparent_color;
+
+			for (int y = 0, yPos = 0; y < destHeight; y++, yPos += yStep)
+			{
+				const uint8_t* srcRow = srcPtr + (yPos >> 16) * srcPitch;
+				uint8_t* dstRow = dstPtr + y * dstPitch;
+
+				uint32_t xPos = 0;
+				for (int x = 0; x < destWidth; x++, xPos += xStep)
+				{
+					uint8_t srcPix = srcRow[xPos >> 16];
+					if (srcPix != trans)
+						dstRow[x] = srcPix;
+				}
+			}
+#endif
+}
+		return 1;
+}
+
+	case 16:
+	{
+		int dstPitch = dst->format.width_in_pixels;
+		int srcPitch = src->format.width_in_pixels;
+		uint16_t* dstPtr = (uint16_t*)(dst->surface_lock_alloc + 2 * (dstX + dstY * dstPitch));
+		uint16_t* srcPtr = (uint16_t*)(src->surface_lock_alloc + 2 * (srcX + srcY * srcPitch));
+
+		if (!transparency)
+		{
+			for (int y = 0, yPos = 0; y < destHeight; y++, yPos += yStep)
+			{
+				const uint16_t* srcRow = srcPtr + (yPos >> 16) * srcPitch;
+				uint16_t* dstRow = dstPtr + y * dstPitch;
+
+				for (int x = 0, xPos = 0; x < destWidth; x++, xPos += xStep)
+					dstRow[x] = srcRow[xPos >> 16];
+			}
+		}
+		else
+		{
+#ifdef TARGET_SSE
+			uint16_t transi = (uint16_t)src->transparent_color;
+			__m128i trans = _mm_set1_epi16(transi);
+
+			for (int y = 0, yPos = 0; y < destHeight; y++, yPos += yStep)
+			{
+				const uint16_t* srcRow = srcPtr + (yPos >> 16) * srcPitch;
+				uint16_t* dstRow = dstPtr + y * dstPitch;
+
+				int x = 0;
+				uint32_t xPos = 0;
+
+				for (; x <= destWidth - 8; x += 8, xPos += 8 * xStep)
+				{
+					uint16_t sx[8];
+					for (int i = 0; i < 8; i++)
+						sx[i] = srcRow[(xPos + i * xStep) >> 16];
+
+					__m128i src = _mm_loadu_si128((__m128i*)sx);
+					__m128i dst = _mm_loadu_si128((__m128i*)(dstRow + x));
+					__m128i cmp = _mm_cmpeq_epi16(src, trans);
+					__m128i result = _mm_or_si128(_mm_andnot_si128(cmp, src), _mm_and_si128(cmp, dst));
+					_mm_storeu_si128((__m128i*)(dstRow + x), result);
+				}
+
+				for (; x < destWidth; x++, xPos += xStep)
+				{
+					uint16_t srcPix = srcRow[xPos >> 16];
+					if (srcPix != transi)
+						dstRow[x] = srcPix;
+				}
+			}
+#else
+			uint16_t trans = (uint16_t)src->transparent_color;
+
+			for (int y = 0, yPos = 0; y < destHeight; y++, yPos += yStep)
+			{
+				const uint16_t* srcRow = srcPtr + (yPos >> 16) * srcPitch;
+				uint16_t* dstRow = dstPtr + y * dstPitch;
+
+				uint32_t xPos = 0;
+				for (int x = 0; x < destWidth; x++, xPos += xStep)
+				{
+					uint16_t srcPix = srcRow[xPos >> 16];
+					if (srcPix != trans)
+						dstRow[x] = srcPix;
+				}
+			}
+#endif
+		}
+		return 1;
+	}
+
+	case 24:
+	{
+		int dstPitch = dst->format.width_in_bytes;
+		int srcPitch = src->format.width_in_bytes;
+		uint8_t* dstPtr = (uint8_t*)(dst->surface_lock_alloc + dstY * dstPitch + dstX * 3);
+		uint8_t* srcPtr = (uint8_t*)(src->surface_lock_alloc + srcY * srcPitch + srcX * 3);
+	#ifdef TARGET_SSE
+		for (int y = 0, yPos = 0; y < destHeight; y++, yPos += yStep)
+		{
+			const uint8_t* srcRow = srcPtr + (yPos >> 16) * srcPitch;
+			uint8_t* dstRow = dstPtr + y * dstPitch;
+
+			int x = 0;
+			uint32_t xPos = 0;
+			for (; x <= destWidth - 4; x += 4, xPos += 4 * xStep)
+			{
+				int sx[4];
+				for (int i = 0; i < 4; i++)
+					sx[i] = (xPos + i * xStep) >> 16;
+
+				ALIGNED_(16) uint8_t pixels[12];
+				for (int i = 0; i < 4; i++)
+				{
+					pixels[i * 3 + 0] = srcRow[sx[i] * 3 + 0];
+					pixels[i * 3 + 1] = srcRow[sx[i] * 3 + 1];
+					pixels[i * 3 + 2] = srcRow[sx[i] * 3 + 2];
+				}
+				__m128i pixelData = _mm_loadu_si128((__m128i*)pixels);
+
+				_mm_storel_epi64((__m128i*)(dstRow + x * 3), pixelData);
+				*(uint32_t*)(dstRow + x * 3 + 8) = *(uint32_t*)(pixels + 8);
+			}
+
+			for (; x < destWidth; x++, xPos += xStep)
+			{
+				int sx = xPos >> 16;
+				if (sx >= blitWidth) sx = blitWidth - 1;
+
+				dstRow[x * 3 + 0] = srcRow[sx * 3 + 0];
+				dstRow[x * 3 + 1] = srcRow[sx * 3 + 1];
+				dstRow[x * 3 + 2] = srcRow[sx * 3 + 2];
+			}
+		}
+	#else
+		for (int y = 0, yPos = 0; y < destHeight; y++, yPos += yStep)
+		{
+			const uint8_t* srcRow = srcPtr + (yPos >> 16) * srcPitch;
+			uint8_t* dstRow = dstPtr + y * dstPitch;
+
+			for (int x = 0, xPos = 0; x < destWidth; x++, xPos += xStep)
+			{
+				int sx = xPos >> 16;
+				dstRow[x * 3 + 0] = srcRow[sx * 3 + 0];
+				dstRow[x * 3 + 1] = srcRow[sx * 3 + 1];
+				dstRow[x * 3 + 2] = srcRow[sx * 3 + 2];
+			}
+		}
+	#endif
+		return 1;
+	}
+
+	case 32:
+	{
+		int dstPitch = dst->format.width_in_pixels;
+		int srcPitch = src->format.width_in_pixels;
+		uint32_t* dstPtr = (uint32_t*)(dst->surface_lock_alloc + 4 * (dstX + dstY * dstPitch));
+		uint32_t* srcPtr = (uint32_t*)(src->surface_lock_alloc + 4 * (srcX + srcY * srcPitch));
+
+		if (!transparency)
+		{
+			for (int y = 0, yPos = 0; y < destHeight; y++, yPos += yStep)
+			{
+				const uint32_t* srcRow = srcPtr + (yPos >> 16) * srcPitch;
+				uint32_t* dstRow = dstPtr + y * dstPitch;
+
+				for (int x = 0, xPos = 0; x < destWidth; x++, xPos += xStep)
+					dstRow[x] = srcRow[xPos >> 16];
+			}
+		}
+		else
+		{
+#ifdef TARGET_SSE
+			uint32_t transi = src->transparent_color;
+			__m128i trans = _mm_set1_epi32(transi);
+
+			for (int y = 0, yPos = 0; y < destHeight; y++, yPos += yStep)
+			{
+				const uint32_t* srcRow = srcPtr + (yPos >> 16) * srcPitch;
+				uint32_t* dstRow = dstPtr + y * dstPitch;
+
+				int x = 0;
+				uint32_t xPos = 0;
+
+				for (; x <= destWidth - 4; x += 4, xPos += 4 * xStep)
+				{
+					uint32_t tmp[4];
+					for (int i = 0; i < 4; i++)
+						tmp[i] = srcRow[(xPos + i * xStep) >> 16];
+
+					__m128i s = _mm_loadu_si128((__m128i*)tmp);
+					__m128i d = _mm_loadu_si128((__m128i*)(dstRow + x));
+					__m128i cmp = _mm_cmpeq_epi32(s, trans);
+					__m128i result = _mm_or_si128(_mm_andnot_si128(cmp, s), _mm_and_si128(cmp, d));
+					_mm_storeu_si128((__m128i*)(dstRow + x), result);
+				}
+
+				for (; x < destWidth; x++, xPos += xStep)
+				{
+					uint32_t srcPix = srcRow[xPos >> 16];
+					if (srcPix != transi)
+						dstRow[x] = srcPix;
+				}
+			}
+#else
+			uint32_t trans = src->transparent_color;
+
+			for (int y = 0, yPos = 0; y < destHeight; y++, yPos += yStep)
+			{
+				const uint32_t* srcRow = srcPtr + (yPos >> 16) * srcPitch;
+				uint32_t* dstRow = dstPtr + y * dstPitch;
+
+				uint32_t xPos = 0;
+				for (int x = 0; x < destWidth; x++, xPos += xStep)
+				{
+					uint32_t srcPix = srcRow[xPos >> 16];
+					if (srcPix != trans)
+						dstRow[x] = srcPix;
+				}
+			}
+#endif
+		}
+		return 1;
+	}
+
+	default:
+		// Unsupported bpp
+		return 0;
+}
+
+#if 0
 	rdRect srcRect;
 	if (!rect)
 	{
@@ -1223,8 +2219,8 @@ void stdDisplay_VBufferCopyScaled(stdVBuffer* vbuf, stdVBuffer* vbuf2, unsigned 
 	if (blit_x + dstW > vbuf->format.width || blit_y + dstH > vbuf->format.height)
 		return; 
 
-	uint8_t* srcPixels = (uint8_t*)vbuf2->sdlSurface->pixels;
-	uint8_t* dstPixels = (uint8_t*)vbuf->sdlSurface->pixels;
+	uint8_t* srcPixels = (uint8_t*)vbuf2->surface_lock_alloc;//sdlSurface->pixels;
+	uint8_t* dstPixels = (uint8_t*)vbuf->surface_lock_alloc;//sdlSurface->pixels;
 	const int srcStride = vbuf2->format.width_in_bytes;
 	const int dstStride = vbuf->format.width_in_bytes;
 
@@ -1286,6 +2282,7 @@ void stdDisplay_VBufferCopyScaled(stdVBuffer* vbuf, stdVBuffer* vbuf2, unsigned 
 			}
 		}
 	}
+#endif
 }
 
 stdDisplayEnvironment* stdBuildDisplayEnvironment()
@@ -1337,32 +2334,34 @@ stdDisplayEnvironment* stdBuildDisplayEnvironment()
 
 		numModes = stdDisplay_numVideoModes;
 		dst->max_modes = numModes;
+		dst->field_2A4 = 0;
+		dst->halDevices = NULL;
 
 		if (numModes > 0)
 		{
 			modes = (stdVideoMode*)std_pHS->alloc(numModes * sizeof(stdVideoMode));
 			if (!modes)
 				goto fail;
-			dst->stdVideoMode = modes;
+			dst->videoModes = modes;
 			memcpy(modes, Video_renderSurface, numModes * sizeof(stdVideoMode));
 
 			dst->field_2A4 = 0;
-			dst->hwModeList = 0;
-			//if (dst->device.video_device[0].has3DAccel)
-			//{
-			//	if (std3D_Startup() == 0)
-			//		goto fail;
-			//
-			//	dst->field_2A4 = std3D_numHwModesMaybe;
-			//	if (dst->field_2A4 > 0)
-			//	{
-			//		void* modeList = std_pHS->alloc(dst->field_2A4 * 0x22C);
-			//		if (!modeList) goto fail;
-			//		dst->hwModeList = (uint32_t)modeList;
-			//		memcpy(modeList, &std3D_hwModeListMaybe, dst->field_2A4 * 0x22C);
-			//	}
-			//	std3D_Shutdown();
-			//}
+			if (dst->device.video_device[0].has3DAccel)
+			{
+				//if (std3D_Startup() == 0)
+				//	goto fail;
+			
+				dst->field_2A4 = std3D_d3dDeviceCount;
+				if (dst->field_2A4 > 0)
+				{
+					stdVideoMode* modeList = std_pHS->alloc(dst->field_2A4 * sizeof(d3d_device)); // d3d_device isn't the same size? should be 0x22c?
+					if (!modeList)
+						goto fail;
+					dst->halDevices = modeList;
+					memcpy(modeList, std3D_d3dDevices, dst->field_2A4 * sizeof(d3d_device));
+				}
+				//std3D_Shutdown();
+			}
 		}
 
 		stdDisplay_Close();
@@ -1377,10 +2376,10 @@ fail:
 		for (uint32_t i = 0; i < result->numDevices; ++i)
 		{
 			stdVideoDeviceEntry* dev = &result->devices[i];
-			if (dev->hwModeList)
-				std_pHS->free((void*)dev->hwModeList);
-			if (dev->stdVideoMode)
-				std_pHS->free((void*)dev->stdVideoMode);
+			if (dev->halDevices)
+				std_pHS->free((void*)dev->halDevices);
+			if (dev->videoModes)
+				std_pHS->free((void*)dev->videoModes);
 		}
 		std_pHS->free(result->devices);
 	}
@@ -1395,10 +2394,10 @@ void stdFreeDisplayEnvironment(stdDisplayEnvironment* displayEnv)
 		for (uint32_t i = 0; i < displayEnv->numDevices; ++i)
 		{
 			stdVideoDeviceEntry* dev = &displayEnv->devices[i];
-			if (dev->hwModeList)
-				std_pHS->free((void*)dev->hwModeList);
-			if (dev->stdVideoMode)
-				std_pHS->free((void*)dev->stdVideoMode);
+			if (dev->halDevices)
+				std_pHS->free((void*)dev->halDevices);
+			if (dev->videoModes)
+				std_pHS->free((void*)dev->videoModes);
 		}
 
 		std_pHS->free(displayEnv->devices);
