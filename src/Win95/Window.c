@@ -627,6 +627,27 @@ inline Uint32 SDL_MapRGBFast(const SDL_PixelFormat* format, Uint8 r, Uint8 g, Ui
 		| (b >> format->Bloss) << format->Bshift | format->Amask;
 }
 
+#ifdef TARGET_SSE
+__m128i SDL_MapRGBFastSIMD(const SDL_PixelFormat* fmt, __m128i r, __m128i g, __m128i b) {
+	// Right shift by loss bits
+	r = _mm_srli_epi32(r, fmt->Rloss);
+	g = _mm_srli_epi32(g, fmt->Gloss);
+	b = _mm_srli_epi32(b, fmt->Bloss);
+
+	// Shift to correct position
+	r = _mm_slli_epi32(r, fmt->Rshift);
+	g = _mm_slli_epi32(g, fmt->Gshift);
+	b = _mm_slli_epi32(b, fmt->Bshift);
+
+	__m128i rgb = _mm_or_si128(r, _mm_or_si128(g, b));
+	// Add alpha mask if necessary
+	rgb = _mm_or_si128(rgb, _mm_set1_epi32(fmt->Amask));
+
+	return rgb;
+}
+
+#endif
+
 #ifdef USE_JOBS
 #include "Modules/std/stdJob.h"
 
@@ -658,12 +679,25 @@ static void SwapWindowJob(uint32_t jobIndex, uint32_t groupIndex)
 	if (jobIndex >= copyHeight)
 		return;
 
+	// Row outside vertical copy area, fill entire destination row with black
+	if (jobIndex < dstRect.y || jobIndex >= dstRect.y + copyHeight)
+	{
+		int dstRowWidth = dstRect.w + dstRect.x;
+		uint32_t* dstRow = (uint32_t*)(dstPixels + jobIndex * dstPitch);
+		memset(dstRow, 0, dstRowWidth * sizeof(uint32_t));
+		return;
+	}
+
 	int y = jobIndex;
 
 	int srcY = srcRect.y + ((y * scale_y_fp) >> fixed_shift);
 	uint8_t* srcRow = srcPixels + srcY * srcPitch;
 
-	uint32_t* dstRow = (uint32_t*)(dstPixels + (dstRect.y + y) * dstPitch + dstRect.x * 4);
+	uint32_t* dstRowStart = (uint32_t*)(dstPixels + (dstRect.y + y) * dstPitch);
+	uint32_t* dstRow = dstRowStart + dstRect.x;
+
+	if (dstRect.x > 0)
+		memset(dstRowStart, 0, dstRect.x * sizeof(uint32_t));
 
 #ifdef TARGET_SSE
 	int x = 0;
@@ -717,110 +751,95 @@ static void SwapWindowJob(uint32_t jobIndex, uint32_t groupIndex)
 		dstRow[x] = paletteCache[index];
 	}
 #endif
-}
 
+	int fullRowWidth = dstPitch / 4;  // full row pixel count
+	int suffixLength = windowSurf->w - (dstRect.x + copyWidth);
+	if (suffixLength > 0)
+		memset(dstRow + copyWidth, 0, suffixLength * sizeof(uint32_t));
+}
 
 static void SwapWindowJobRGB16(uint32_t jobIndex, uint32_t groupIndex)
 {
 	if (jobIndex >= copyHeight)
 		return;
 
-	int y = jobIndex;
+	// Row outside vertical copy area, fill entire destination row with black
+	if (jobIndex < dstRect.y || jobIndex >= dstRect.y + copyHeight)
+	{
+		int dstRowWidth = dstRect.w + dstRect.x;
+		uint32_t* dstRow = (uint32_t*)(dstPixels + jobIndex * dstPitch);
+		memset(dstRow, 0, dstRowWidth * sizeof(uint32_t));
+		return;
+	}
 
+	int y = jobIndex;
 	int srcY = srcRect.y + (int)(((int64_t)y * scale_y_fp) >> fixed_shift);
-	//int srcY = srcRect.y + ((y * srcRect.h) * dstScaleH); // or scale as above
 	uint8_t* srcRowBase = srcPixels + srcY * srcPitch;
 
-	uint32_t* dstRow = (uint32_t*)(dstPixels + (dstRect.y + y) * dstPitch + dstRect.x * 4);
+	uint32_t* dstRowStart = (uint32_t*)(dstPixels + (dstRect.y + y) * dstPitch);
+	uint32_t* dstRow = dstRowStart + dstRect.x;
 
-	int x = 0;
+	if (dstRect.x > 0)
+		memset(dstRowStart, 0, dstRect.x * sizeof(uint32_t));
 
 	int srcFormatIs16Bit = Video_pOtherBuf->format.format.bpp == 16;
+	const rdTexformat* srcFmt = &Video_pOtherBuf->format.format;
+	const SDL_PixelFormat* dstFmt = windowSurf->format;
 
-	uint32_t canvas_r_mask = (1u << Video_pOtherBuf->format.format.r_bits) - 1;
-	uint32_t canvas_g_mask = (1u << Video_pOtherBuf->format.format.g_bits) - 1;
-	uint32_t canvas_b_mask = (1u << Video_pOtherBuf->format.format.b_bits) - 1;
+#ifdef TARGET_SSE
 
-#if 0//def TARGET_SSE
+	__m128i step = _mm_set1_epi32(scale_x_fp);
+	__m128i fixed_shift_v = _mm_set1_epi32(fixed_shift);
+	__m128i srcRectX_v = _mm_set1_epi32(srcRect.x);
 
-	for (; x <= copyWidth - 4; x += 4)
+	for (int x = 0; x < copyWidth; x += 4)
 	{
-		// Compute srcX for 4 pixels
-		__m128i x_vec = _mm_setr_epi32(x, x + 1, x + 2, x + 3);
-		__m128i srcX_fp = _mm_add_epi32(x_offset_vec, _mm_mullo_epi32(x_vec, scale_x_fp_vec));
-		__m128i srcX = _mm_srli_epi32(srcX_fp, fixed_shift);
+		// x: [x+0, x+1, x+2, x+3]
+		__m128i x_vec = _mm_setr_epi32(x + 0, x + 1, x + 2, x + 3);
+		__m128i scaled_fp = _mm_mullo_epi32(x_vec, step);               // x * scale_x_fp
+		__m128i srcX_fp = _mm_srai_epi32(scaled_fp, fixed_shift);       // >> fixed_shift
+		__m128i srcX = _mm_add_epi32(srcX_fp, srcRectX_v);              // + srcRect.x
 
-		int srcX_arr[4];
-		_mm_storeu_si128((__m128i*)srcX_arr, srcX);
+		// Gather manually (SSE2 workaround)
+		int srcXs[4];
+		_mm_storeu_si128((__m128i*)srcXs, srcX);
 
 		if (srcFormatIs16Bit)
 		{
-			// Load 4 16-bit pixels
-			uint16_t srcPixels16[4] = {
-				((uint16_t*)srcRowBase)[srcX_arr[0]],
-				((uint16_t*)srcRowBase)[srcX_arr[1]],
-				((uint16_t*)srcRowBase)[srcX_arr[2]],
-				((uint16_t*)srcRowBase)[srcX_arr[3]],
+			uint16_t pix[4] = {
+				*(uint16_t*)(srcRowBase + srcXs[0] * 2),
+				*(uint16_t*)(srcRowBase + srcXs[1] * 2),
+				*(uint16_t*)(srcRowBase + srcXs[2] * 2),
+				*(uint16_t*)(srcRowBase + srcXs[3] * 2),
 			};
 
-			__m128i pix16 = _mm_loadl_epi64((__m128i*)srcPixels16); // load 4 uint16 packed in 64bits + garbage, safe if aligned
+			__m128i pixels16 = _mm_loadl_epi64((__m128i*)pix); // load 4x16-bit packed
+			__m128i pixels32 = _mm_cvtepu16_epi32(pixels16);   // expand to 4x32-bit ints
 
-			// Unpack 16-bit pixels to 32-bit lanes (zero extend)
-			__m128i pix_lo = _mm_unpacklo_epi16(pix16, _mm_setzero_si128());
+			__m128i r, g, b;
+			stdColor_DecodeRGBSIMD(pixels32, srcFmt, &r, &g, &b);
 
-			// Decode channels by masking & shifting
-			__m128i r = _mm_and_si128(_mm_srli_epi32(pix_lo, Video_pOtherBuf->format.format.r_shift), _mm_set1_epi32(canvas_r_mask));
-			__m128i g = _mm_and_si128(_mm_srli_epi32(pix_lo, Video_pOtherBuf->format.format.g_shift), _mm_set1_epi32(canvas_g_mask));
-			__m128i b = _mm_and_si128(_mm_srli_epi32(pix_lo, Video_pOtherBuf->format.format.b_shift), _mm_set1_epi32(canvas_b_mask));
-
-			// Apply loss (shift left to expand)
-			r = _mm_slli_epi32(r, Video_pOtherBuf->format.format.r_bitdiff);
-			g = _mm_slli_epi32(g, Video_pOtherBuf->format.format.g_bitdiff);
-			b = _mm_slli_epi32(b, Video_pOtherBuf->format.format.b_bitdiff);
-
-			// Pack channels back into 32-bit output pixels (R in bits 0-7, G in 8-15, B in 16-23)
-			__m128i r_shifted = _mm_slli_epi32(r, windowSurf->format->Rshift);
-			__m128i g_shifted = _mm_slli_epi32(g, windowSurf->format->Gshift);
-			__m128i b_shifted = _mm_slli_epi32(b, windowSurf->format->Bshift);
-
-			__m128i outPixels = _mm_or_si128(r_shifted, _mm_or_si128(g_shifted, b_shifted));
-
-			_mm_storeu_si128((__m128i*) & dstRow[x], outPixels);
+			__m128i mapped = SDL_MapRGBFastSIMD(dstFmt, r, g, b);
+			_mm_storeu_si128((__m128i*) & dstRow[x], mapped);
 		}
 		else
 		{
-			// 32-bit source pixels (e.g. ARGB, RGBA)
-			uint32_t srcPixels32[4] = {
-				((uint32_t*)srcRowBase)[srcX_arr[0]],
-				((uint32_t*)srcRowBase)[srcX_arr[1]],
-				((uint32_t*)srcRowBase)[srcX_arr[2]],
-				((uint32_t*)srcRowBase)[srcX_arr[3]],
+			uint32_t pix[4] = {
+				*(uint32_t*)(srcRowBase + srcXs[0] * 4),
+				*(uint32_t*)(srcRowBase + srcXs[1] * 4),
+				*(uint32_t*)(srcRowBase + srcXs[2] * 4),
+				*(uint32_t*)(srcRowBase + srcXs[3] * 4),
 			};
+			__m128i pixels = _mm_loadu_si128((__m128i*)pix);
 
-			__m128i pix32 = _mm_loadu_si128((__m128i*)srcPixels32);
+			__m128i r, g, b;
+			stdColor_DecodeRGBSIMD(pixels, srcFmt, &r, &g, &b);
 
-			// Decode channels by masking & shifting
-			__m128i r = _mm_and_si128(_mm_srli_epi32(pix32, Video_pOtherBuf->format.format.r_shift), _mm_set1_epi32(canvas_r_mask));
-			__m128i g = _mm_and_si128(_mm_srli_epi32(pix32, Video_pOtherBuf->format.format.g_shift), _mm_set1_epi32(canvas_g_mask));
-			__m128i b = _mm_and_si128(_mm_srli_epi32(pix32, Video_pOtherBuf->format.format.b_shift), _mm_set1_epi32(canvas_b_mask));
-
-			// Apply loss (shift left)
-			r = _mm_slli_epi32(r, Video_pOtherBuf->format.format.r_bitdiff);
-			g = _mm_slli_epi32(g, Video_pOtherBuf->format.format.g_bitdiff);
-			b = _mm_slli_epi32(b, Video_pOtherBuf->format.format.b_bitdiff);
-
-			__m128i r_shifted = _mm_slli_epi32(r, windowSurf->format->Rshift);
-			__m128i g_shifted = _mm_slli_epi32(g, windowSurf->format->Gshift);
-			__m128i b_shifted = _mm_slli_epi32(b, windowSurf->format->Bshift);
-
-			__m128i outPixels = _mm_or_si128(r_shifted, _mm_or_si128(g_shifted, b_shifted));
-
-			_mm_storeu_si128((__m128i*) & dstRow[x], outPixels);
+			__m128i mapped = SDL_MapRGBFastSIMD(dstFmt, r, g, b);
+			_mm_storeu_si128((__m128i*) & dstRow[x], mapped);
 		}
 	}
-
-#endif
-
+#else
 	for (int x = 0; x < copyWidth; ++x)
 	{
 		int srcX = srcRect.x + (int)(((int64_t)x * scale_x_fp) >> fixed_shift);
@@ -841,14 +860,18 @@ static void SwapWindowJobRGB16(uint32_t jobIndex, uint32_t groupIndex)
 				(srcRowBase[byteOffset + 2] << 16) |
 				(srcRowBase[byteOffset + 3] << 24);
 
-			uint32_t r = ((pix >> Video_pOtherBuf->format.format.r_shift) & canvas_r_mask) << Video_pOtherBuf->format.format.r_bitdiff;
-			uint32_t g = ((pix >> Video_pOtherBuf->format.format.g_shift) & canvas_g_mask) << Video_pOtherBuf->format.format.g_bitdiff;
-			uint32_t b = ((pix >> Video_pOtherBuf->format.format.b_shift) & canvas_b_mask) << Video_pOtherBuf->format.format.b_bitdiff;
-
+			uint8_t r, g, b;
+			stdColor_DecodeRGB(pix, &Video_pOtherBuf->format.format, &r, &g, &b);
 			dstRow[x] = SDL_MapRGBFast(windowSurf->format, r, g, b);
 		}
 	}
+#endif
 
+
+	int fullRowWidth = dstPitch / 4;  // full row pixel count
+	int suffixLength = windowSurf->w - (dstRect.x + copyWidth);
+	if (suffixLength > 0)
+		memset(dstRow + copyWidth, 0, suffixLength * sizeof(uint32_t));
 }
 
 #endif
@@ -878,6 +901,8 @@ void SwapWindow(SDL_Window* window)
 #endif
 		windowSurf = SDL_GetWindowSurface(window);
 		SDL_LockSurface(windowSurf);
+
+		//SDL_FillRect(windowSurf, NULL, 0);
 
 		srcRect.x = 0;
 		srcRect.y = 0;
