@@ -195,29 +195,28 @@ __m128i stdColor_ScaleColorComponentSIMD(__m128i cc, int srcBPP, int deltaBPP)
 {
 	if (deltaBPP <= 0)
 	{
-		// Upscale (e.g., 5-bit -> 8-bit)
-		int shift = -deltaBPP;
+		int shiftLeft = -deltaBPP;
 		int dsrcBPP = srcBPP + deltaBPP;
 
-		__m128i cc_shifted = _mm_sll_epi32(cc, _mm_cvtsi32_si128(shift)); // cc << shift
+		__m128i shiftedLeft = _mm_slli_epi32(cc, shiftLeft);
 
+		__m128i shiftedRight;
 		if (dsrcBPP >= 0)
 		{
-			__m128i cc_rounded = _mm_srl_epi32(cc, _mm_cvtsi32_si128(dsrcBPP)); // cc >> dsrcBPP
-			return _mm_or_si128(cc_shifted, cc_rounded); // cc << shift | cc >> dsrcBPP
+			shiftedRight = _mm_srli_epi32(cc, dsrcBPP);
 		}
 		else
 		{
-			int scale = (1 << shift) - 1;
-			__m128i scale_vec = _mm_set1_epi32(scale);
-			__m128i cc_scaled = _mm_mullo_epi32(cc, scale_vec); // cc * scale
-			return cc_scaled;
+			int mulVal = (1 << shiftLeft) - 1;
+			__m128i mulVec = _mm_set1_epi32(mulVal);
+			shiftedRight = _mm_mullo_epi32(cc, mulVec);
 		}
+
+		return _mm_or_si128(shiftedLeft, shiftedRight);
 	}
 	else
 	{
-	 // Downscale (e.g., 8-bit -> 5-bit)
-		return _mm_srl_epi32(cc, _mm_cvtsi32_si128(deltaBPP)); // cc >> deltaBPP
+		return _mm_srli_epi32(cc, deltaBPP);
 	}
 }
 
@@ -311,46 +310,33 @@ uint32_t stdColor_EncodeRGBA(const rdTexformat* ci, uint8_t r, uint8_t g, uint8_
 
 __m128i stdColor_EncodeRGBSIMD(const rdTexformat* ci, __m128i r, __m128i g, __m128i b)
 {
-	int r_shift = ci->r_shift;
-	int g_shift = ci->g_shift;
-	int b_shift = ci->b_shift;
-	int r_bitdiff = ci->r_bitdiff;
-	int g_bitdiff = ci->g_bitdiff;
-	int b_bitdiff = ci->b_bitdiff;
+	// If the component has fewer bits than 8, scale down
+	if (ci->r_bits < 8)
+		r = _mm_srli_epi32(r, 8 - ci->r_bits);
+	if (ci->g_bits < 8)
+		g = _mm_srli_epi32(g, 8 - ci->g_bits);
+	if (ci->b_bits < 8)
+		b = _mm_srli_epi32(b, 8 - ci->b_bits);
 
-	int r_bits = ci->r_bits;
-	int g_bits = ci->g_bits;
-	int b_bits = ci->b_bits;
-
-	if (r_bits < 8)
-		r = _mm_srli_epi16(r, 8 - r_bits);
-	if (g_bits < 8)
-		g = _mm_srli_epi16(g, 8 - g_bits);
-	if (b_bits < 8)
-		b = _mm_srli_epi16(b, 8 - b_bits);
-
-	__m128i encoded = _mm_setzero_si128();
-
-	__m128i r_part, g_part, b_part;
-	if (r_shift >= 0)
-		r_part = _mm_sll_epi32(r, _mm_cvtsi32_si128(r_shift));
+	// Shift components into their correct positions
+	if (ci->r_shift >= 0)
+		r = _mm_slli_epi32(r, ci->r_shift);
 	else
-		r_part = _mm_srl_epi32(r, _mm_cvtsi32_si128(r_bitdiff));
+		r = _mm_srli_epi32(r, ci->r_bitdiff);
 
-	if (g_shift >= 0)
-		g_part = _mm_sll_epi32(g, _mm_cvtsi32_si128(g_shift));
+	if (ci->g_shift >= 0)
+		g = _mm_slli_epi32(g, ci->g_shift);
 	else
-		g_part = _mm_srl_epi32(g, _mm_cvtsi32_si128(g_bitdiff));
+		g = _mm_srli_epi32(g, ci->g_bitdiff);
 
-	if (b_shift >= 0)
-		b_part = _mm_sll_epi32(b, _mm_cvtsi32_si128(b_shift));
+	if (ci->b_shift >= 0)
+		b = _mm_slli_epi32(b, ci->b_shift);
 	else
-		b_part = _mm_srl_epi32(b, _mm_cvtsi32_si128(b_bitdiff));
+		b = _mm_srli_epi32(b, ci->b_bitdiff);
 
-	encoded = _mm_or_si128(r_part, g_part);
-	encoded = _mm_or_si128(encoded, b_part);
-
-	return encoded;
+	// Combine final encoded value
+	__m128i encoded = _mm_or_si128(r, _mm_or_si128(g, b));
+	return encoded; // 4x packed pixels
 }
 
 __m128i stdColor_EncodeRGBASIMD(const rdTexformat* ci, __m128i r, __m128i g, __m128i b, __m128i a)
@@ -358,16 +344,21 @@ __m128i stdColor_EncodeRGBASIMD(const rdTexformat* ci, __m128i r, __m128i g, __m
 	__m128i encoded = stdColor_EncodeRGBSIMD(ci, r, g, b);
 	if (ci->unk_40 > 0)
 	{
-		__m128i alpha = a;
+		__m128i alphaScaled = a;
+
+		// Adjust for alpha bit depth if needed
 		if (ci->unk_40 < 8)
-			alpha = _mm_srli_epi16(alpha, 8 - ci->unk_40);
+			alphaScaled = _mm_srli_epi32(alphaScaled, 8 - ci->unk_40);
 
+		// Shift alpha into position
+		__m128i alphaPart;
 		if (ci->unk_44 >= 0)
-			alpha = _mm_sll_epi32(alpha, _mm_cvtsi32_si128(ci->unk_44));
+			alphaPart = _mm_slli_epi32(alphaScaled, ci->unk_44);
 		else
-			alpha = _mm_srl_epi32(alpha, _mm_cvtsi32_si128(ci->unk_48));
+			alphaPart = _mm_srli_epi32(alphaScaled, ci->unk_48);
 
-		encoded = _mm_or_si128(encoded, alpha);
+		// Combine alpha with RGB
+		encoded = _mm_or_si128(encoded, alphaPart);
 	}
 
 	return encoded;
@@ -472,83 +463,92 @@ void stdColor_DecodeRGBA(uint32_t encoded, const rdTexformat* ci, uint8_t* r, ui
 }
 
 #ifdef TARGET_SSE
-
-static inline __m128i replicate_bits_epi16(__m128i val, int bits)
-{
-	if (bits >= 8)
-		return val;
-
-	int shift = 8 - bits;
-	int revShift = 2 * bits - 8;
-
-	// val << shift
-	__m128i left_shifted = _mm_slli_epi16(val, shift);
-	// val >> revShift (arithmetic shift not needed since val is unsigned)
-	__m128i right_shifted = _mm_srli_epi16(val, revShift);
-
-	return _mm_or_si128(left_shifted, right_shifted);
-}
-
 void stdColor_DecodeRGBSIMD(__m128i encoded, const rdTexformat* ci, __m128i* r, __m128i* g, __m128i* b)
 {
-	uint32_t rMask = (1u << ci->r_bits) - 1;
-	uint32_t gMask = (1u << ci->g_bits) - 1;
-	uint32_t bMask = (1u << ci->b_bits) - 1;
+	__m128i rMask = _mm_set1_epi32((1u << ci->r_bits) - 1);
+	__m128i gMask = _mm_set1_epi32((1u << ci->g_bits) - 1);
+	__m128i bMask = _mm_set1_epi32((1u << ci->b_bits) - 1);
 
-	__m128i rMaskVec = _mm_set1_epi32(rMask);
-	__m128i gMaskVec = _mm_set1_epi32(gMask);
-	__m128i bMaskVec = _mm_set1_epi32(bMask);
+	__m128i red, green, blue;
 
-	__m128i red;
+	// Extract channels
 	if (ci->r_shift >= 0)
-		red = _mm_and_si128(_mm_srli_epi32(encoded, ci->r_shift), rMaskVec);
+		red = _mm_and_si128(_mm_srli_epi32(encoded, ci->r_shift), rMask);
 	else
-		red = _mm_and_si128(_mm_slli_epi32(encoded, ci->r_bitdiff), rMaskVec);
+		red = _mm_and_si128(_mm_slli_epi32(encoded, ci->r_bitdiff), rMask);
 
-	__m128i green;
 	if (ci->g_shift >= 0)
-		green = _mm_and_si128(_mm_srli_epi32(encoded, ci->g_shift), gMaskVec);
+		green = _mm_and_si128(_mm_srli_epi32(encoded, ci->g_shift), gMask);
 	else
-		green = _mm_and_si128(_mm_slli_epi32(encoded, ci->g_bitdiff), gMaskVec);
+		green = _mm_and_si128(_mm_slli_epi32(encoded, ci->g_bitdiff), gMask);
 
-	__m128i blue;
 	if (ci->b_shift >= 0)
-		blue = _mm_and_si128(_mm_srli_epi32(encoded, ci->b_shift), bMaskVec);
+		blue = _mm_and_si128(_mm_srli_epi32(encoded, ci->b_shift), bMask);
 	else
-		blue = _mm_and_si128(_mm_slli_epi32(encoded, ci->b_bitdiff), bMaskVec);
+		blue = _mm_and_si128(_mm_slli_epi32(encoded, ci->b_bitdiff), bMask);
 
-	red = _mm_packus_epi32(red, _mm_setzero_si128());
-	green = _mm_packus_epi32(green, _mm_setzero_si128());
-	blue = _mm_packus_epi32(blue, _mm_setzero_si128());
+	// Expand to 8-bit range if needed
+	if (ci->r_bits < 8)
+	{
+		int shift = 8 - ci->r_bits;
+		int revShift = 2 * ci->r_bits - 8;
+		red = _mm_or_si128(_mm_slli_epi32(red, shift), _mm_srli_epi32(red, revShift));
+	}
 
-	*r = replicate_bits_epi16(red, ci->r_bits);
-	*g = replicate_bits_epi16(green, ci->g_bits);
-	*b = replicate_bits_epi16(blue, ci->b_bits);
+	if (ci->g_bits < 8)
+	{
+		int shift = 8 - ci->g_bits;
+		int revShift = 2 * ci->g_bits - 8;
+		green = _mm_or_si128(_mm_slli_epi32(green, shift), _mm_srli_epi32(green, revShift));
+	}
+
+	if (ci->b_bits < 8)
+	{
+		int shift = 8 - ci->b_bits;
+		int revShift = 2 * ci->b_bits - 8;
+		blue = _mm_or_si128(_mm_slli_epi32(blue, shift), _mm_srli_epi32(blue, revShift));
+	}
+
+	*r = red;
+	*g = green;
+	*b = blue;
 }
 
 void stdColor_DecodeRGBASIMD(__m128i encoded, const rdTexformat* ci, __m128i* r, __m128i* g, __m128i* b, __m128i* a)
 {
 	stdColor_DecodeRGBSIMD(encoded, ci, r, g, b);
 
+	__m128i alpha;
 	if (ci->unk_40 > 0)
 	{
-		uint32_t alphaMask = (1u << ci->unk_40) - 1;
-		__m128i alphaMaskVec = _mm_set1_epi32(alphaMask);
-		__m128i alpha;
+		__m128i alphaMask = _mm_set1_epi32((1u << ci->unk_40) - 1);
 
 		if (ci->unk_44 >= 0)
-			alpha = _mm_and_si128(_mm_srli_epi32(encoded, ci->unk_44), alphaMaskVec);
+		{
+			alpha = _mm_and_si128(_mm_srli_epi32(encoded, ci->unk_44), alphaMask);
+		}
 		else
-			alpha = _mm_and_si128(_mm_slli_epi32(encoded, ci->unk_48), alphaMaskVec);
+		{
+			alpha = _mm_and_si128(_mm_slli_epi32(encoded, ci->unk_48), alphaMask);
+		}
 
-		alpha = _mm_packus_epi32(alpha, _mm_setzero_si128());
+		if (ci->unk_40 < 8)
+		{
+			int lshift = 8 - ci->unk_40;
+			int rshift = 2 * ci->unk_40 - 8;
 
-		*a = replicate_bits_epi16(alpha, ci->unk_40);
+			alpha = _mm_or_si128(
+				_mm_slli_epi32(alpha, lshift),
+				_mm_srli_epi32(alpha, rshift)
+			);
+		}
 	}
 	else
 	{
-		*a = _mm_set1_epi16(255);
+		// If no alpha, set all lanes to 255
+		alpha = _mm_set1_epi32(255);
 	}
+	*a = alpha;
 }
 #endif
 
@@ -611,55 +611,95 @@ uint32_t stdColor_Recode(uint32_t encoded, const rdTexformat* pSrcCI, const rdTe
 
 __m128i stdColor_RecodeSIMD(__m128i encoded, const rdTexformat* pSrcCI, const rdTexformat* pDestCI)
 {
-	uint32_t redMask_val = 0xFFFFFFFF >> (32 - (pSrcCI->r_bits & 0xFF));
-	uint32_t greenMask_val = 0xFFFFFFFF >> (32 - (pSrcCI->g_bits & 0xFF));
-	uint32_t blueMask_val = 0xFFFFFFFF >> (32 - (pSrcCI->b_bits & 0xFF));
-	__m128i redMask = _mm_set1_epi32(redMask_val);
-	__m128i greenMask = _mm_set1_epi32(greenMask_val);
-	__m128i blueMask = _mm_set1_epi32(blueMask_val);
+	unsigned int rMask = 0xFFFFFFFF >> (32 - (pSrcCI->r_bits & 0xFF));
+	unsigned int gMask = 0xFFFFFFFF >> (32 - (pSrcCI->g_bits & 0xFF));
+	unsigned int bMask = 0xFFFFFFFF >> (32 - (pSrcCI->b_bits & 0xFF));
+	unsigned int aMask = 0;
+	int maxAlphaValue = 0;
 
-	int redDelta = pSrcCI->r_bits - pDestCI->r_bits;
-	int greenDelta = pSrcCI->g_bits - pDestCI->g_bits;
-	int blueDelta = pSrcCI->b_bits - pDestCI->b_bits;
-
-	__m128i aMask = _mm_setzero_si128();
-	int alphaDelta = 0;
-	int hasAlpha = (pSrcCI->unk_40 > 0);
-	__m128i alphaMask = _mm_setzero_si128();
-
-	if (hasAlpha)
+	if (pSrcCI->unk_40)
 	{
-		uint32_t alphaMask_val = 0xFFFFFFFF >> (32 - (pSrcCI->unk_40 & 0xFF));
-		alphaMask = _mm_set1_epi32(alphaMask_val);
-		alphaDelta = pSrcCI->unk_40 - pDestCI->unk_40;
+		aMask = 0xFFFFFFFF >> (32 - (pSrcCI->unk_40 & 0xFF));
+		if ((255 >> pSrcCI->unk_48) / 2 <= 1)
+			maxAlphaValue = 1;
+		else
+			maxAlphaValue = (255 >> pSrcCI->unk_48) / 2;
 	}
 
-	__m128i r = _mm_and_si128(_mm_srli_epi32(encoded, pSrcCI->r_shift), redMask);
-	__m128i g = _mm_and_si128(_mm_srli_epi32(encoded, pSrcCI->g_shift), greenMask);
-	__m128i b = _mm_and_si128(_mm_srli_epi32(encoded, pSrcCI->b_shift), blueMask);
+	int rDelta = pSrcCI->r_bits - pDestCI->r_bits;
+	int gDelta = pSrcCI->g_bits - pDestCI->g_bits;
+	int bDelta = pSrcCI->b_bits - pDestCI->b_bits;
+	int aDelta = 0;
+	if (pSrcCI->unk_40)
+		aDelta = pSrcCI->unk_40 - pDestCI->unk_40;
 
-	__m128i a = _mm_setzero_si128();
-	if (hasAlpha)
+	__m128i rMaskVec = _mm_set1_epi32(rMask);
+	__m128i gMaskVec = _mm_set1_epi32(gMask);
+	__m128i bMaskVec = _mm_set1_epi32(bMask);
+	__m128i aMaskVec = _mm_set1_epi32(aMask);
+
+	__m128i r, g, b, a;
+
+	if (pSrcCI->r_shift >= 0)
+		r = _mm_and_si128(_mm_srli_epi32(encoded, pSrcCI->r_shift), rMaskVec);
+	else
+		r = _mm_and_si128(_mm_slli_epi32(encoded, pSrcCI->r_bitdiff), rMaskVec);
+
+	if (pSrcCI->g_shift >= 0)
+		g = _mm_and_si128(_mm_srli_epi32(encoded, pSrcCI->g_shift), gMaskVec);
+	else
+		g = _mm_and_si128(_mm_slli_epi32(encoded, pSrcCI->g_bitdiff), gMaskVec);
+
+	if (pSrcCI->b_shift >= 0)
+		b = _mm_and_si128(_mm_srli_epi32(encoded, pSrcCI->b_shift), bMaskVec);
+	else
+		b = _mm_and_si128(_mm_slli_epi32(encoded, pSrcCI->b_bitdiff), bMaskVec);
+
+	if (pSrcCI->unk_40)
 	{
-		a = _mm_and_si128(_mm_srli_epi32(encoded, pSrcCI->unk_44), alphaMask);
+		if (pSrcCI->unk_44 >= 0)
+			a = _mm_and_si128(_mm_srli_epi32(encoded, pSrcCI->unk_44), aMaskVec);
+		else
+			a = _mm_and_si128(_mm_slli_epi32(encoded, pSrcCI->unk_48), aMaskVec);
+	}
+	else
+	{
+		a = _mm_setzero_si128();
 	}
 
-	r = stdColor_ScaleColorComponentSIMD(r, pSrcCI->r_bits, redDelta);
-	g = stdColor_ScaleColorComponentSIMD(g, pSrcCI->g_bits, greenDelta);
-	b = stdColor_ScaleColorComponentSIMD(b, pSrcCI->b_bits, blueDelta);
+	r = stdColor_ScaleColorComponentSIMD(r, pSrcCI->r_bits, rDelta);
+	g = stdColor_ScaleColorComponentSIMD(g, pSrcCI->g_bits, gDelta);
+	b = stdColor_ScaleColorComponentSIMD(b, pSrcCI->b_bits, bDelta);
 
-	__m128i encoded_out = _mm_or_si128(
-		_mm_or_si128(_mm_slli_epi32(b, pDestCI->b_shift), _mm_slli_epi32(g, pDestCI->g_shift)),
-		_mm_slli_epi32(r, pDestCI->r_shift)
-	);
+	if (pDestCI->b_shift >= 0)
+		b = _mm_slli_epi32(b, pDestCI->b_shift);
+	else
+		b = _mm_srli_epi32(b, -pDestCI->b_shift);
 
-	if (hasAlpha)
+	if (pDestCI->g_shift >= 0)
+		g = _mm_slli_epi32(g, pDestCI->g_shift);
+	else
+		g = _mm_srli_epi32(g, -pDestCI->g_shift);
+
+	if (pDestCI->r_shift >= 0)
+		r = _mm_slli_epi32(r, pDestCI->r_shift);
+	else
+		r = _mm_srli_epi32(r, -pDestCI->r_shift);
+
+	__m128i result = _mm_or_si128(_mm_or_si128(r, g), b);
+
+	if (pSrcCI->unk_40)
 	{
-		a = stdColor_ScaleColorComponentSIMD(a, pSrcCI->unk_40, alphaDelta);
-		encoded_out = _mm_or_si128(encoded_out, _mm_slli_epi32(a, pDestCI->unk_44));
+		a = stdColor_ScaleColorComponentSIMD(a, pSrcCI->unk_40, aDelta);
+		if (pDestCI->unk_44 >= 0)
+			a = _mm_slli_epi32(a, pDestCI->unk_44);
+		else
+			a = _mm_srli_epi32(a, -pDestCI->unk_44);
+
+		result = _mm_or_si128(result, a);
 	}
 
-	return encoded_out;
+	return result;
 }
 
 #endif
