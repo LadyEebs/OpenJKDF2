@@ -51,6 +51,9 @@ extern rdColor24 stdDisplay_masterPalette[256];
 void stdDisplay_SetGammaTable(int len, flex_d_t *table);
 uint8_t* stdDisplay_GetPalette();
 void stdDisplay_GammaCorrect(const void *pPal);
+#ifdef TILE_SW_RASTER
+uint8_t* stdDisplay_GetPaletteCube();
+#endif
 
 #if !defined(SDL2_RENDER) && defined(WIN32)
 static int (*stdDisplay_DrawAndFlipGdi)(uint32_t) = (void*)stdDisplay_DrawAndFlipGdi_ADDR;
@@ -86,6 +89,7 @@ extern uint32_t Video_menuTexId;
 int stdDisplay_Startup();
 #ifdef TILE_SW_RASTER
 //void stdDisplay_Shutdown();
+int stdDisplay_SetMasterPaletteCube(uint8_t* palette);
 #endif
 extern int stdDisplay_lastDisplayIdx;
 int stdDisplay_VBufferFill(stdVBuffer *a2, int fillColor, rdRect *a4);

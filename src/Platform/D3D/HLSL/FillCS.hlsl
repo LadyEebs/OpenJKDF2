@@ -1,4 +1,5 @@
 #define VRAM_REGISTER u0
+#define DESCRIPTOR_REGISTER t0
 
 #include"VRAM.h"
 
@@ -21,5 +22,22 @@ void main(int3 dispatchThreadID : SV_DispatchThreadID)
 	if (any(coord.xy >= SrcSize.xy))
 		return;
 		
-	Store8(Fill, coord, SrcAddressAndStride);
+	int bpp = 8;
+	switch (bpp)
+	{
+	case 8:
+		Store8(Fill & 0xFF, coord, SrcAddressAndStride);
+		return;
+
+	case 16:
+		Store16(Fill & 0xFFFF, coord, SrcAddressAndStride);
+		return;
+
+	case 32:
+		Store32(Fill, coord, SrcAddressAndStride);
+		return;
+
+	default:
+		return;
+	}		
 }

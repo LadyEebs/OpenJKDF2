@@ -33,11 +33,6 @@ stdVBuffer* Video_pOverlayMapBuffer = NULL;
 stdVBuffer Video_overlayMapBuffer;
 #endif
 
-#ifdef TILE_SW_RASTER
-stdVBuffer* Video_pTileColor = NULL;;
-stdVBuffer* Video_pTileDepth = NULL;;
-#endif
-
 void Video_SwitchToGDI()
 {
     jkDev_Close();
@@ -90,8 +85,12 @@ int Video_Startup()
 #if defined(SDL2_RENDER) && !defined(TILE_SW_RASTER)
         Video_pOverlayMapBuffer = &Video_overlayMapBuffer;
 #endif
+#ifdef TILE_SW_RASTER
+		stdPalEffects_Open(stdDisplay_SetMasterPalette, stdDisplay_SetMasterPaletteCube);
+#else
         stdPalEffects_Open(stdDisplay_SetMasterPalette);
-        sithCamera_Startup();
+#endif
+		sithCamera_Startup();
         Video_bInitted = 1;
         return 1;
     }

@@ -1005,13 +1005,13 @@ void rdRaster_DrawToTileSIMD(/*rdTilePrimitive* prim,*/rdTileDrawCommand* pComma
 							for (int lane = 0; lane < 4; lane++)
 							{
 								if constexpr (UseGouraud)
-									index_arr[lane] = laneMasks[lane] ? lightLevels[stdMath_ClampInt((uint32_t)l_arr[lane] + dither, 0, 63) * 256 + index_arr[lane]] : 0;
+									index_arr[lane] = laneMasks[lane] ? lightLevels[(stdMath_ClampInt((uint32_t)l_arr[lane] + dither, 0, 63) << 8) + index_arr[lane]] : 0;
 						
 								if constexpr (UseFlatLight)
-									index_arr[lane] = laneMasks[lane] ? lightLevels[stdMath_ClampInt(pCommand->flatLight + dither, 0, 63) * 256 + index_arr[lane]] : 0;
+									index_arr[lane] = laneMasks[lane] ? lightLevels[(stdMath_ClampInt(pCommand->flatLight + dither, 0, 63) << 8) + index_arr[lane]] : 0;
 						
 								if constexpr (UseAlpha)
-									index_arr[lane] = laneMasks[lane] ? transparency[oldIndex_arr[lane] * 256 + index_arr[lane]] : 0;
+									index_arr[lane] = laneMasks[lane] ? transparency[(oldIndex_arr[lane] << 8) + index_arr[lane]] : 0;
 							}
 
 							// Pack back into SIMD
@@ -1314,15 +1314,15 @@ void rdRaster_DrawToTile(/*rdTilePrimitive* prim,*/rdTileDrawCommand* pCommand, 
 
 					// Lighting
 					if constexpr (UseGouraud)
-						index = write_mask ? lightLevels[stdMath_ClampInt((uint32_t)l + dither, 0, 63) * 256 + index] : 0;
+						index = write_mask ? lightLevels[stdMath_ClampInt(((uint32_t)l + dither, 0, 63) << 8) + index] : 0;
 
 					if constexpr (UseFlatLight)
-						index = write_mask ? lightLevels[stdMath_ClampInt(pCommand->flatLight + dither, 0, 63) * 256 + index] : 0;
+						index = write_mask ? lightLevels[(stdMath_ClampInt(pCommand->flatLight + dither, 0, 63) << 8) + index] : 0;
 
 					// Blending
 					uint8_t oldIndex = rdRaster_TileColor[offset];
 					if constexpr (UseAlpha)
-						index = write_mask ? transparency[oldIndex * 256 + index] : 0;
+						index = write_mask ? transparency[(oldIndex << 8) + index] : 0;
 
 					rdRaster_TileColor[offset] = (write_mask & index) | (read_mask & oldIndex);
 				}

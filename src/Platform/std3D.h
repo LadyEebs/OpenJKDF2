@@ -140,11 +140,11 @@ void std3D_FreeSwapChain();
 #if 1
 uint8_t* std3D_LockRenderList();
 void std3D_UnlockRenderList();
-uint64_t std3D_CreateSurface(int width, int height, int bpp);
+uint64_t std3D_CreateSurface(stdVBufferTexFmt* pTexFormat);
 void std3D_ReleaseSurface(uint64_t handle);
 void* std3D_LockSurface(uint64_t handle);
 void std3D_UnlockSurface(uint64_t handle);
-void std3D_BlitSurface(uint64_t dst, int dstWidth, int dstHeight, int dstStride, const rdRect* dstRect, uint64_t src, int srcWidth, int srcHeight, int srcStride, const rdRect* srcRect, int flags);
+void std3D_BlitSurface(uint64_t dst, const rdRect* dstRect, uint64_t src, const rdRect* srcRect, uint32_t transparentColor, int flags);
 void std3D_FillSurface(uint64_t dst, uint32_t fill, int dstWidth, int dstHeight, int dstStride, const rdRect* rect);
 void std3D_Present(uint64_t src, int srcWidth, int srcHeight, int srcStride, const rdRect* dstRect);
 #endif

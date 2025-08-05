@@ -32,33 +32,56 @@
 
 #pragma comment( lib, "dxguid" )
 
+void std3D_VerifySwapchain();
+
+typedef struct int4
+{
+	int32_t r, g, b, a;
+} int4;
+
 int std3D_bReinitHudElements = 0;
+
+// d3d device list
+typedef struct std3DDeviceDriver
+{
+	const char* name;
+	const char* desc;
+} std3DDeviceDriver;
+
+static const std3DDeviceDriver kDriverTypes[] =
+{
+	{ "Direct3D 11", "Microsoft Direct3D Hardware Renderer" }
+};
 
 d3d_device std3D_d3dDevices[16];
 int std3D_d3dDeviceCount = 0;
 
+// ID3D11Buffer wrapper
 typedef struct std3DGpuBuffer
 {
-	ID3D11Buffer* pBuffer;
-	ID3D11ShaderResourceView* pShaderView;
+	ID3D11Buffer*              pBuffer;
+	ID3D11ShaderResourceView*  pShaderView;
 	ID3D11UnorderedAccessView* pUnorderedView;
-	D3D11_MAPPED_SUBRESOURCE mapped;
+	D3D11_MAPPED_SUBRESOURCE   mapped;
 } std3DGpuBuffer;
 
+// Surface blitting
+// Todo: use descriptors
 typedef struct std3DBlitInfo
 {
-	int32_t SrcAddress, SrcStride;
-	int32_t DstAddress, DstStride;
-	int32_t SrcWidth, SrcHeight;
-	int32_t DstWidth, DstHeight;
-
 	int32_t SrcRectX, SrcRectY, SrcRectW, SrcRectH;
 	int32_t DstRectX, DstRectY, DstRectW, DstRectH;
 
 	int  Flags;
-	int  Pad0, Pad1, Pad2;
+	uint32_t TransparentColor;
+	uint32_t  SrcHandle, DstHandle;
 } std3DBlitInfo;
 
+static ID3D11ComputeShader* std3D_pBlitShader = NULL;
+static ID3D11Buffer* std3D_pBlitConstants = NULL;
+
+// Surface filling
+// Todo: use descriptors
 typedef struct std3DFillInfo
 {
 	int32_t SrcAddress, SrcStride;
@@ -69,26 +92,11 @@ typedef struct std3DFillInfo
 	int  Pad0, Pad1, Pad2;
 } std3DFillInfo;
 
-static ID3D11Device* std3D_device = NULL;
-static ID3D11DeviceContext* std3D_deviceContext = NULL;
-static stdHwnd std3D_swapWindow = NULL;
-static IDXGISwapChain* std3D_swapChain = NULL;
-static ID3D11UnorderedAccessView* std3D_backBufferUAV = NULL;
-
-static ID3D11ComputeShader* std3D_pBlitShader = NULL;
-static ID3D11Buffer* std3D_pBlitConstants = NULL;
-
 static ID3D11ComputeShader* std3D_pFillShader = NULL;
 static ID3D11Buffer* std3D_pFillConstants = NULL;
 
-static ID3D11ComputeShader* std3D_pPresentShader = NULL;
-static ID3D11Buffer* std3D_pPresentConstants = NULL;
-
-typedef struct int4
-{
-	int32_t r, g, b, a;
-} int4;
-
+// Surface present (draw to swap chain)
+// Todo: use descriptors
 typedef struct std3DPresentInfo
 {
 	int32_t SrcAddress, SrcStride;
@@ -98,26 +106,139 @@ typedef struct std3DPresentInfo
 	int32_t DstRectX, DstRectY, DstRectW, DstRectH;
 } std3DPresentInfo;
 
+static ID3D11ComputeShader* std3D_pPresentShader = NULL;
+static ID3D11Buffer* std3D_pPresentConstants = NULL;
+
+// Active device state
+static ID3D11Device1* std3D_device = NULL;
+static ID3D11DeviceContext1* std3D_deviceContext = NULL;
+static stdHwnd std3D_swapWindow = NULL;
+static IDXGISwapChain* std3D_swapChain = NULL;
+static ID3D11UnorderedAccessView* std3D_backBufferUAV = NULL;
+
+// Virtual Video Memory
+typedef struct std3DBlock std3DBlock;
+
+// Allocation block (points into vram buffer)
 typedef struct std3DBlock
 {
 	uint32_t    offset;
 	uint32_t    size;
-	struct std3DBlock* pNext;
+	std3DBlock* pNext;
 } std3DBlock;
 
 static std3DBlock* std3D_vramBlocks = NULL;
-static int         std3D_vramMapped = 0;
+static int         std3D_vramMapped = 0; // vram map status flag, increments on every map, decrements on every unmap, only does map/unmap once
 
-std3DGpuBuffer std3D_vram;
-std3DGpuBuffer std3D_palette;
+static std3DGpuBuffer std3D_vram;
 
-const struct {
-	const char* name;
-	const char* desc;
-} kDriverTypes[] = {
-	{ "Direct3D 11", "Microsoft Direct3D Hardware Renderer" },
-};
+// Packed form of rdTexformat for GPU access
+typedef struct std3DDescriptorFormat
+{
+	// low 32
+	uint32_t colorMode  : 2;
+	uint32_t bpp        : 6;
+	uint32_t r_bits     : 4;
+	uint32_t r_shift    : 6;
+	uint32_t r_bitdiff  : 4;
+	uint32_t g_bits     : 4;
+	uint32_t g_shift    : 6;
 
+	// high 32
+	uint32_t g_bitdiff  : 4;
+	uint32_t b_bits     : 4;
+	uint32_t b_shift    : 6;
+	uint32_t b_bitdiff  : 4;
+	uint32_t a_bits     : 4;
+	uint32_t a_shift    : 6;
+	uint32_t a_bitdiff  : 4;
+} std3DDescriptorFormat;
+static_assert(sizeof(std3DDescriptorFormat) == sizeof(uint64_t), "std3DDescriptorFormat must be 64 bits in size");
+
+void std3D_PackFormat(std3DDescriptorFormat* pSmallFormat, const rdTexformat* pFormat)
+{
+	pSmallFormat->colorMode = pFormat->colorMode;
+	pSmallFormat->bpp = pFormat->bpp;
+	pSmallFormat->r_bits = pFormat->r_bits;
+	pSmallFormat->r_shift = pFormat->r_shift;
+	pSmallFormat->r_bitdiff = pFormat->r_bitdiff;
+	pSmallFormat->g_bits = pFormat->g_bits;
+	pSmallFormat->g_shift = pFormat->g_shift;
+	pSmallFormat->g_bitdiff = pFormat->g_bitdiff;
+	pSmallFormat->b_bits = pFormat->b_bits;
+	pSmallFormat->b_shift = pFormat->b_shift;
+	pSmallFormat->b_bitdiff = pFormat->b_bitdiff;
+	pSmallFormat->a_bits = pFormat->unk_40;
+	pSmallFormat->a_shift = pFormat->unk_44;
+	pSmallFormat->a_bitdiff = pFormat->unk_48;
+}
+
+// Texture descriptor, describes a texture living in the vram buffer
+typedef struct std3DDescriptor
+{
+	uint32_t              width, height;
+	uint32_t              freeInt;
+	uint32_t              totalSize;
+	uint32_t              offset; // offset into vram
+	uint32_t              rowStride;
+	std3DDescriptorFormat format;
+} std3DDescriptor;
+static_assert(sizeof(std3DDescriptor) == sizeof(uint32_t) * 8, "std3DDescriptor must be 32 bytes in size");
+
+#define STD3D_MAX_DESCRIPTORS 1024 // todo: what's a good max? we could maybe batch upload textures every frame (cache) to get under 128, then we can bind them as normal textures...
+static std3DGpuBuffer std3D_descriptors;
+static uint32_t std3D_numDescriptors = 0;
+static int std3D_freeDescriptors[STD3D_MAX_DESCRIPTORS];
+static uint32_t std3D_numFreeDescriptors = 0;
+
+void std3D_UpdateDescriptor(uint32_t index, std3DDescriptor* pData)
+{
+	UINT structSize = sizeof(std3DDescriptor);
+
+	D3D11_BOX box;
+	memset(&box, 0, sizeof(D3D11_BOX));
+	box.left = index * structSize;
+	box.right = box.left + structSize;
+	box.top = 0;
+	box.bottom = 1;
+	box.front = 0;
+	box.back = 1;
+
+	ID3D11DeviceContext_UpdateSubresource(std3D_deviceContext, std3D_descriptors.pBuffer, 0, &box, pData, 0, 0);
+}
+
+int std3D_CreateDescriptor(std3DDescriptor* pDescriptor)
+{
+	int idx;
+	if (std3D_numFreeDescriptors)
+	{
+		idx = std3D_freeDescriptors[std3D_numFreeDescriptors--];
+	}
+	else
+	{
+		idx = std3D_numDescriptors++;
+		if (idx >= STD3D_MAX_DESCRIPTORS)
+		{
+			stdPrintf(std_pHS->errorPrint, ".\\Platform\\D3D\\std3D.c", __LINE__, "Error: max descriptor count reached\n");
+			return -1;
+		}
+	}
+
+	std3D_UpdateDescriptor(idx, pDescriptor);
+
+	return idx;
+}
+
+void std3D_ReleaseDescriptor(int idx)
+{
+	std3D_freeDescriptors[std3D_numFreeDescriptors++] = idx;
+}
+
+// Display palette (8 bit palette)
+// todo: display cube?
+static std3DGpuBuffer std3D_palette;
+
+// Vertex streams
 enum std3DVertexBufferIdx
 {
 	STD3D_VERTEX_ARRAY,
@@ -130,10 +251,14 @@ enum std3DVertexBufferIdx
 #endif
 };
 
-const struct {
+typedef struct std3DVertexStreamFormat
+{
 	DXGI_FORMAT deviceFormat;
 	int stride;
-} kVertexStreams[] = {
+} std3DVertexStreamFormat;
+
+static const std3DVertexStreamFormat kVertexStreams[] =
+{
 	{ DXGI_FORMAT_R32G32B32_FLOAT, sizeof(rdVector3) },
 	{ DXGI_FORMAT_R32G32_FLOAT, sizeof(rdVector2) },
 	{ DXGI_FORMAT_R32_FLOAT, sizeof(float) },
@@ -144,11 +269,55 @@ const struct {
 #endif
 };
 
-std3DGpuBuffer std3D_primitiveStream;
-std3DGpuBuffer std3D_primitiveOffsets;
-std3DGpuBuffer std3D_vertexStreams[ARRAY_SIZE(kVertexStreams)];
+static std3DGpuBuffer std3D_primitiveStream;
+static std3DGpuBuffer std3D_primitiveOffsets;
+static std3DGpuBuffer std3D_vertexStreams[ARRAY_SIZE(kVertexStreams)];
 
-void std3D_CreateGpuBuffer(std3DGpuBuffer* pGpuBuffer, int numElements, int stride, DXGI_FORMAT format, int writeable, int byteAddressable)
+// Shader interface
+int std3D_CreateComputeShader(ID3D11ComputeShader** pShader, const char* filePath)
+{
+	size_t len;
+	char* pShaderByteCode = stdEmbeddedRes_Load(filePath, &len);
+	if (!pShaderByteCode)
+		return 0;
+	// todo: error checking
+	HRESULT res = ID3D11Device_CreateComputeShader(std3D_device, (void*)pShaderByteCode, len - 1, NULL, pShader);
+	return res == S_OK;
+}
+
+void std3D_ReleaseComputeShader(ID3D11ComputeShader** pShader)
+{
+	if (*pShader)
+	{
+		ID3D11ComputeShader_Release(*pShader);
+	}
+	*pShader = NULL;
+}
+
+// Constant buffer interface
+int std3D_CreateConstantBuffer(ID3D11Buffer** pConstantBuffer, int byteWidth)
+{
+	D3D11_BUFFER_DESC desc;
+	desc.ByteWidth = byteWidth;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	desc.CPUAccessFlags = 0;
+	desc.MiscFlags = 0;
+	desc.StructureByteStride = 0;
+	HRESULT res = ID3D11Device_CreateBuffer(std3D_device, &desc, NULL, pConstantBuffer);
+	return res == S_OK;
+}
+
+void std3D_ReleaseConstantBuffer(ID3D11Buffer** pConstantBuffer)
+{
+	if (*pConstantBuffer)
+		ID3D11Buffer_Release(*pConstantBuffer);
+	*pConstantBuffer = 0;
+}
+
+
+// GPU Buffer interface
+void std3D_CreateGpuBuffer(std3DGpuBuffer* pGpuBuffer, int numElements, int stride, DXGI_FORMAT format, int writeable, D3D11_RESOURCE_MISC_FLAG miscFlags)
 {
 	memset(pGpuBuffer, 0, sizeof(std3DGpuBuffer));
 
@@ -156,9 +325,11 @@ void std3D_CreateGpuBuffer(std3DGpuBuffer* pGpuBuffer, int numElements, int stri
 	ZeroMemory(&desc, sizeof(desc));
 	desc.Usage = D3D11_USAGE_DEFAULT;//(writeable ? D3D11_USAGE_DEFAULT : D3D11_USAGE_DYNAMIC);
 	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	desc.MiscFlags = byteAddressable ? D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS : 0;
+	desc.MiscFlags = miscFlags;
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | (writeable ? D3D11_BIND_UNORDERED_ACCESS : 0);
 	desc.ByteWidth = numElements * stride;
+	if (miscFlags & D3D11_RESOURCE_MISC_BUFFER_STRUCTURED)
+		desc.StructureByteStride = stride;
 	ID3D11Device_CreateBuffer(std3D_device, &desc, NULL, &pGpuBuffer->pBuffer);
 
 	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
@@ -166,7 +337,7 @@ void std3D_CreateGpuBuffer(std3DGpuBuffer* pGpuBuffer, int numElements, int stri
 	//srvDesc.Buffer.FirstElement = 0;
 	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
 	srvDesc.Format = format;
-	if (byteAddressable)
+	if (miscFlags & D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS)
 	{
 		srvDesc.BufferEx.Flags = D3D11_BUFFEREX_SRV_FLAG_RAW;
 		srvDesc.BufferEx.NumElements = desc.ByteWidth / 4;
@@ -184,7 +355,7 @@ void std3D_CreateGpuBuffer(std3DGpuBuffer* pGpuBuffer, int numElements, int stri
 		ZeroMemory(&uavDesc, sizeof(uavDesc));
 		uavDesc.Format = format;
 		uavDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
-		if (byteAddressable)
+		if (miscFlags & D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS)
 		{
 			uavDesc.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_RAW;
 			uavDesc.Buffer.NumElements = desc.ByteWidth / 4;
@@ -226,12 +397,13 @@ void std3D_UnmapGpuBuffer(std3DGpuBuffer* pGpuBuffer)
 	pGpuBuffer->mapped.pData = 0;
 }
 
+// Vertex stream interface
 void std3D_CreateVertexStreams()
 {
 	for (int i = 0; i < ARRAY_SIZE(kVertexStreams); ++i)
 		std3D_CreateGpuBuffer(&std3D_vertexStreams[i], RDCACHE_MAX_VERTICES, kVertexStreams[i].stride, kVertexStreams[i].deviceFormat, 0, 0);
 
-	std3D_CreateGpuBuffer(&std3D_primitiveStream, RDCACHE_MAX_TILE_TRIS * 1024 / 4, sizeof(uint32_t), DXGI_FORMAT_R32_TYPELESS, 0, 1);
+	std3D_CreateGpuBuffer(&std3D_primitiveStream, RDCACHE_MAX_TILE_TRIS * 1024 / 4, sizeof(uint32_t), DXGI_FORMAT_R32_TYPELESS, 0, D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS);
 	std3D_CreateGpuBuffer(&std3D_primitiveOffsets, RDCACHE_MAX_TILE_TRIS, sizeof(uint32_t), DXGI_FORMAT_R32_UINT, 0, 0);
 }
 
@@ -244,6 +416,27 @@ void std3D_ReleaseVertexStreams()
 		std3D_ReleaseGpuBuffer(&std3D_vertexStreams[i]);
 }
 
+void* std3D_LockVertexStream(int idx)
+{
+	return std3D_MapGpuBuffer(&std3D_vertexStreams[idx]);
+}
+
+void std3D_UnlockVertexStream(int idx)
+{
+	std3D_UnmapGpuBuffer(&std3D_vertexStreams[idx]);
+}
+
+uint8_t* std3D_LockRenderList()
+{
+	return std3D_MapGpuBuffer(&std3D_primitiveStream);
+}
+
+void std3D_UnlockRenderList()
+{
+	std3D_UnmapGpuBuffer(&std3D_primitiveStream);
+}
+
+// VRAM interface
 int std3D_CreateVRAM()
 {
 	std3D_CreateGpuBuffer(&std3D_vram, 64 * 1024 * 1024, sizeof(uint8_t), DXGI_FORMAT_R8_UINT, 1, 0);
@@ -274,6 +467,283 @@ void std3D_ReleaseVRAM()
 	std3D_ReleaseGpuBuffer(&std3D_palette);
 }
 
+// Surface interface
+#if 1
+
+uint64_t std3D_CreateSurface(stdVBufferTexFmt* pTexFormat)
+{
+	int size = pTexFormat->texture_size_in_bytes;
+
+	std3DBlock** curr = &std3D_vramBlocks;
+	while (*curr)
+	{
+		std3DBlock* block = *curr;
+		int offset = block->offset;
+		if (block->size >= size)
+		{
+			if (size == block->size)
+			{
+				// Exact fit, remove block
+				*curr = block->pNext;
+				std_pHS->free(block);
+			}
+			else
+			{
+				// Partial use of block
+				block->offset = offset + size;
+				block->size -= size;
+			}
+
+			std3DDescriptor desc;
+			std3D_PackFormat(&desc.format, &pTexFormat->format);
+			desc.width = pTexFormat->width;
+			desc.height = pTexFormat->height;
+			desc.offset = offset;
+			desc.rowStride = pTexFormat->width_in_bytes;
+			desc.totalSize = size;
+
+			int descriptor = std3D_CreateDescriptor(&desc);
+
+			return ((uint64_t)(descriptor & 0x3FF) << 54) | ((uint64_t)(size & 0x3FFFFF) << 32) | ((uint64_t)offset & 0xFFFFFFFF);
+		}
+		curr = &block->pNext;
+	}
+	return 0;
+}
+
+void std3D_ReleaseSurface(uint64_t handle)
+{
+	std3DBlock* new_block = (std3DBlock*)std_pHS->alloc(sizeof(std3DBlock));
+	if (!new_block)
+		return;
+
+	uint32_t offset = (uint32_t)(handle & 0xFFFFFFFF);
+	uint32_t size = (uint32_t)(handle >> 32) & 0x3FFFFF;
+	int descriptor = (int)(handle >> 54);
+
+	std3D_ReleaseDescriptor(descriptor);
+
+	new_block->offset = offset;
+	new_block->size = size;
+	new_block->pNext = NULL;
+
+	std3DBlock** curr = &std3D_vramBlocks;
+	while (*curr && (*curr)->offset < offset)
+		curr = &(*curr)->pNext;
+
+	new_block->pNext = *curr;
+	*curr = new_block;
+
+	// Coalesce adjacent blocks
+	std3DBlock* prev = NULL;
+	std3DBlock* iter = std3D_vramBlocks;
+
+	while (iter && iter->pNext)
+	{
+		if ((iter->offset + iter->size) == iter->pNext->offset)
+		{
+			std3DBlock* to_merge = iter->pNext;
+			iter->size += to_merge->size;
+			iter->pNext = to_merge->pNext;
+			std_pHS->free(to_merge);
+		}
+		else
+		{
+			iter = iter->pNext;
+		}
+	}
+}
+
+void* std3D_LockSurface(uint64_t handle)
+{
+	if (!std3D_device)
+		return 0;
+
+	uint32_t offset = (uint32_t)(handle & 0xFFFFFFFF);
+	if (!std3D_vramMapped)
+		std3D_MapGpuBuffer(&std3D_vram);
+	++std3D_vramMapped;
+	return (uint8_t*)std3D_vram.mapped.pData + offset;
+}
+
+void std3D_UnlockSurface(uint64_t handle)
+{
+	if (!std3D_device)
+		return;
+	if (std3D_vramMapped == 0)
+	{
+		stdPrintf(std_pHS->errorPrint, ".\\Platform\\D3D\\std3D.c", __LINE__, "Tried to unlock a surface when it wasn't locked.\n");
+		return;
+	}
+	std3D_vramMapped--;
+	if (std3D_vramMapped == 0)
+		std3D_UnmapGpuBuffer(&std3D_vram);
+	return;
+}
+
+void std3D_BlitSurface(uint64_t dst, const rdRect* dstRect, uint64_t src, const rdRect* srcRect, uint32_t transparentColor, int flags)
+{
+	if (!std3D_deviceContext || !std3D_pBlitConstants)
+		return;
+
+	// make sure vram isn't mapped
+	if (std3D_vram.mapped.pData)
+	{
+		std3D_UnmapGpuBuffer(&std3D_vram);
+		std3D_vramMapped = 0;
+	}
+
+	std3DBlitInfo copyInfo;
+	copyInfo.SrcRectX = srcRect->x;
+	copyInfo.SrcRectY = srcRect->y;
+	copyInfo.SrcRectW = srcRect->width;
+	copyInfo.SrcRectH = srcRect->height;
+
+	copyInfo.DstRectX = dstRect->x;
+	copyInfo.DstRectY = dstRect->y;
+	copyInfo.DstRectW = dstRect->width;
+	copyInfo.DstRectH = dstRect->height;
+
+	copyInfo.Flags = flags;
+	copyInfo.TransparentColor = transparentColor;
+	copyInfo.SrcHandle = (uint32_t)(src >> 54);
+	copyInfo.DstHandle = (uint32_t)(dst >> 54);
+	
+	ID3D11DeviceContext_UpdateSubresource(std3D_deviceContext, std3D_pBlitConstants, 0, NULL, &copyInfo, 0, 0);
+
+	ID3D11DeviceContext_CSSetShader(std3D_deviceContext, std3D_pBlitShader, NULL, 0);
+	ID3D11DeviceContext_CSSetConstantBuffers(std3D_deviceContext, 0, 1, &std3D_pBlitConstants);
+	ID3D11DeviceContext_CSSetShaderResources(std3D_deviceContext, 0, 1, &std3D_descriptors.pShaderView);
+	ID3D11DeviceContext_CSSetUnorderedAccessViews(std3D_deviceContext, 0, 1, &std3D_vram.pUnorderedView, 0);
+	ID3D11DeviceContext_Dispatch(std3D_deviceContext, (dstRect->width + 255) / 256, dstRect->height, 1);
+
+	ID3D11Buffer* nullBuf[] = { NULL };
+	ID3D11DeviceContext_CSSetConstantBuffers(std3D_deviceContext, 0, 1, &nullBuf);
+
+	ID3D11UnorderedAccessView* nullUAV[] = { NULL };
+	ID3D11DeviceContext_CSSetUnorderedAccessViews(std3D_deviceContext, 0, 1, &nullUAV, 0);
+
+	ID3D11ShaderResourceView* nullSRV[] = { NULL };
+	ID3D11DeviceContext_CSSetShaderResources(std3D_deviceContext, 0, 1, &nullSRV);
+}
+
+void std3D_FillSurface(uint64_t dst, uint32_t fill, int dstWidth, int dstHeight, int dstStride, const rdRect* rect)
+{
+	if (!std3D_deviceContext || !std3D_pBlitConstants)
+		return;
+
+	// make sure vram isn't mapped
+	if (std3D_vram.mapped.pData)
+	{
+		std3D_UnmapGpuBuffer(&std3D_vram);
+		std3D_vramMapped = 0;
+	}
+
+	std3DFillInfo fillInfo;
+	fillInfo.SrcAddress = dst & 0xFFFFFFFF;
+	fillInfo.SrcStride = dstWidth * dstStride;
+	fillInfo.SrcWidth = dstWidth;
+	fillInfo.SrcHeight = dstHeight;
+
+	fillInfo.SrcRectX = rect->x;
+	fillInfo.SrcRectY = rect->y;
+	fillInfo.SrcRectW = rect->width;
+	fillInfo.SrcRectH = rect->height;
+
+	fillInfo.Fill = fill;
+	ID3D11DeviceContext_UpdateSubresource(std3D_deviceContext, std3D_pFillConstants, 0, NULL, &fillInfo, 0, 0);
+
+	ID3D11DeviceContext_CSSetShader(std3D_deviceContext, std3D_pFillShader, NULL, 0);
+	ID3D11DeviceContext_CSSetConstantBuffers(std3D_deviceContext, 0, 1, &std3D_pFillConstants);
+	ID3D11DeviceContext_CSSetShaderResources(std3D_deviceContext, 0, 1, &std3D_descriptors.pShaderView);
+	ID3D11DeviceContext_CSSetUnorderedAccessViews(std3D_deviceContext, 0, 1, &std3D_vram.pUnorderedView, 0);
+	ID3D11DeviceContext_Dispatch(std3D_deviceContext, (rect->width + 255) / 256, rect->height, 1);
+
+	ID3D11Buffer* nullBuf[] = { NULL };
+	ID3D11DeviceContext_CSSetConstantBuffers(std3D_deviceContext, 0, 1, &nullBuf);
+
+	ID3D11UnorderedAccessView* nullUAV[] = { NULL };
+	ID3D11DeviceContext_CSSetUnorderedAccessViews(std3D_deviceContext, 0, 1, &nullUAV, 0);
+
+	ID3D11ShaderResourceView* nullSRV[] = { NULL };
+	ID3D11DeviceContext_CSSetShaderResources(std3D_deviceContext, 0, 1, &nullSRV);
+}
+
+void std3D_Present(uint64_t src, int srcWidth, int srcHeight, int srcStride, const rdRect* dstRect)
+{
+	if (!std3D_deviceContext || !std3D_swapChain)
+		return;
+
+	std3D_VerifySwapchain();
+
+	DXGI_SWAP_CHAIN_DESC sd;
+	IDXGISwapChain_GetDesc(std3D_swapChain, &sd);
+
+	UINT width = sd.BufferDesc.Width;
+	UINT height = sd.BufferDesc.Height;
+
+	std3DPresentInfo presentInfo;
+	presentInfo.SrcAddress = src & 0xFFFFFFFF;
+	presentInfo.SrcStride = srcWidth * srcStride;
+	presentInfo.SrcWidth = srcWidth;
+	presentInfo.SrcHeight = srcHeight;
+
+	presentInfo.DstWidth = width;
+	presentInfo.DstHeight = height;
+
+	presentInfo.DstRectX = dstRect->x;
+	presentInfo.DstRectY = dstRect->y;
+	presentInfo.DstRectW = dstRect->width;
+	presentInfo.DstRectH = dstRect->height;
+
+	// todo: move this to another function and call it from stdDisplay_setMasterPalette
+	rdColor24* pal_master = (rdColor24*)stdDisplay_masterPalette;
+	uint32_t* pal_write = std3D_MapGpuBuffer(&std3D_palette);
+	for (int i = 0; i < 256; ++i)
+	{
+		rdColor24 rgb = pal_master[i];
+		pal_write[i] = (rgb.r << 0) | (rgb.g << 8) | (rgb.b << 16) | (255 << 24);
+	}
+	std3D_UnmapGpuBuffer(&std3D_palette);
+
+	ID3D11DeviceContext_UpdateSubresource(std3D_deviceContext, std3D_pPresentConstants, 0, NULL, &presentInfo, 0, 0);
+
+	ID3D11ShaderResourceView* srvs[] = { std3D_vram.pShaderView, std3D_palette.pShaderView, std3D_descriptors.pShaderView };
+
+	ID3D11DeviceContext_CSSetShader(std3D_deviceContext, std3D_pPresentShader, NULL, 0);
+	ID3D11DeviceContext_CSSetConstantBuffers(std3D_deviceContext, 0, 1, &std3D_pPresentConstants);
+	ID3D11DeviceContext_CSSetUnorderedAccessViews(std3D_deviceContext, 0, 1, &std3D_backBufferUAV, 0);
+	ID3D11DeviceContext_CSSetShaderResources(std3D_deviceContext, 0, 3, srvs);
+	ID3D11DeviceContext_Dispatch(std3D_deviceContext, (dstRect->width + 255) / 256, dstRect->height, 1);
+
+	ID3D11Buffer* nullBuf[] = { NULL };
+	ID3D11DeviceContext_CSSetConstantBuffers(std3D_deviceContext, 0, 1, &nullBuf);
+
+	ID3D11UnorderedAccessView* nullUAV[] = { NULL };
+	ID3D11DeviceContext_CSSetUnorderedAccessViews(std3D_deviceContext, 0, 1, &nullUAV, 0);
+
+	ID3D11ShaderResourceView* nullSRV[] = { NULL, NULL, NULL };
+	ID3D11DeviceContext_CSSetShaderResources(std3D_deviceContext, 0, 3, &nullSRV);
+
+	std3D_Flip();
+}
+
+#endif
+
+// Palette
+int std3D_SetCurrentPalette(rdColor24* a1, int a2)
+{
+	uint32_t* pal_write = std3D_MapGpuBuffer(&std3D_palette);
+	for (int i = 0; i < 256; ++i)
+	{
+		rdColor24 rgb = a1[i];
+		pal_write[i] = (rgb.r << 0) | (rgb.g << 8) | (rgb.b << 16) | (255 << 24);
+	}
+	std3D_UnmapGpuBuffer(&std3D_palette);
+	return 1;
+}
+
+// Setup
 int std3D_Startup()
 {
 	UINT createDeviceFlags = 0;
@@ -281,7 +751,7 @@ int std3D_Startup()
 	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 
-	const D3D_FEATURE_LEVEL featureLevelArray[1] = { D3D_FEATURE_LEVEL_11_0 };
+	const D3D_FEATURE_LEVEL featureLevelArray[1] = { D3D_FEATURE_LEVEL_11_1 };
 	int feature_level = 0;
 
 	std3D_d3dDeviceCount = 0;
@@ -482,10 +952,10 @@ void std3D_EnumerateVideoModes(stdVideoDevice* device)
 			stdVideoMode* mode = &Video_renderSurface[stdDisplay_numVideoModes++];
 			mode->format.width = displayModes[i].Width;
 			mode->format.width_in_pixels = displayModes[i].Width;
-			mode->format.width_in_bytes = displayModes[i].Width * (bpp >> 2);
+			mode->format.width_in_bytes = displayModes[i].Width * (bpp >> 3);
 			mode->format.height = displayModes[i].Height;
 			mode->format.texture_size_in_bytes = mode->format.width_in_bytes * mode->format.height;
-			mode->format.format.colorMode = STDCOLOR_RGBA;
+			mode->format.format.colorMode = bpp == 8 ? STDCOLOR_PAL : STDCOLOR_RGBA;
 			mode->format.format.bpp = bpp;
 			mode->format.format.r_bits = r_bits[j];
 			mode->format.format.g_bits = g_bits[j];
@@ -510,37 +980,7 @@ void std3D_EnumerateVideoModes(stdVideoDevice* device)
 	std_pHS->free(displayModes);
 }
 
-int std3D_CreateComputeShader(ID3D11ComputeShader** pShader, const char* filePath)
-{
-	size_t len;
-	char* pShaderByteCode = stdEmbeddedRes_Load(filePath, &len);
-	if (!pShaderByteCode)
-		return 0;
-	// todo: error checking
-	HRESULT res = ID3D11Device_CreateComputeShader(std3D_device, (void*)pShaderByteCode, len-1, NULL, pShader);
-	return res == S_OK;
-}
-
-int std3D_CreateConstantBuffer(ID3D11Buffer** pConstantBuffer, int byteWidth)
-{
-	D3D11_BUFFER_DESC desc;
-	desc.ByteWidth = byteWidth;
-	desc.Usage = D3D11_USAGE_DEFAULT;
-	desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	desc.CPUAccessFlags = 0;
-	desc.MiscFlags = 0;
-	desc.StructureByteStride = 0;
-	HRESULT res = ID3D11Device_CreateBuffer(std3D_device, &desc, NULL, pConstantBuffer);
-	return res == S_OK;
-}
-
-void std3D_ReleaseConstantBuffer(ID3D11Buffer** pConstantBuffer)
-{
-	if (*pConstantBuffer)
-		ID3D11Buffer_Release(*pConstantBuffer);
-	*pConstantBuffer = 0;
-}
-
+// Device context
 int std3D_CreateDeviceContext()
 {
 	UINT createDeviceFlags = 0;
@@ -548,11 +988,14 @@ int std3D_CreateDeviceContext()
 	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 
-	const D3D_FEATURE_LEVEL featureLevelArray[1] = { D3D_FEATURE_LEVEL_11_0 };
+	const D3D_FEATURE_LEVEL featureLevelArray[1] = { D3D_FEATURE_LEVEL_11_1 };
 	int feature_level = 0;
 	
+	ID3D11Device* d3d11Device;
+	ID3D11DeviceContext* d3d11DeviceContext;
+
 	HRESULT res;
-	if ((res = D3D11CreateDevice(/*(IDXGIAdapter*)stdDisplay_pCurDevice->adapter*/0, D3D_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags, featureLevelArray, 1, D3D11_SDK_VERSION, &std3D_device, (D3D_FEATURE_LEVEL*)&feature_level, &std3D_deviceContext)) != S_OK)
+	if ((res = D3D11CreateDevice(/*(IDXGIAdapter*)stdDisplay_pCurDevice->adapter*/0, D3D_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags, featureLevelArray, 1, D3D11_SDK_VERSION, &d3d11Device, (D3D_FEATURE_LEVEL*)&feature_level, &d3d11DeviceContext)) != S_OK)
 	{
 		const char* reason = "";
 		if (res == E_FAIL)
@@ -562,6 +1005,15 @@ int std3D_CreateDeviceContext()
 		stdPrintf(std_pHS->errorPrint, ".\\Platform\\D3D\\std3D.c", __LINE__, "Error: Failed to create d3d device, reason: %s\n", reason);
 		return 0;
 	}
+
+	ID3D11Device_QueryInterface(d3d11Device, &IID_ID3D11Device1, (void**)&std3D_device);
+	ID3D11Device_Release(d3d11Device);
+		
+	ID3D11DeviceContext_QueryInterface(d3d11DeviceContext, &IID_ID3D11DeviceContext1, (void**)&std3D_deviceContext);
+	ID3D11DeviceContext_Release(d3d11DeviceContext);
+
+	if (!std3D_device || !std3D_deviceContext)
+		return 0;
 
 	if(!std3D_CreateConstantBuffer(&std3D_pBlitConstants, sizeof(std3DBlitInfo)))
 	   return 0;
@@ -577,11 +1029,41 @@ int std3D_CreateDeviceContext()
 		return 0;
 
 	std3D_CreateVertexStreams();
+
+	std3D_CreateGpuBuffer(&std3D_descriptors, STD3D_MAX_DESCRIPTORS, sizeof(std3DDescriptor), DXGI_FORMAT_UNKNOWN, 0, D3D11_RESOURCE_MISC_BUFFER_STRUCTURED);
+
 	return std3D_CreateVRAM();
 }
 
 
+void std3D_DestroyDeviceContext()
+{
+	std3D_ReleaseConstantBuffer(&std3D_pBlitConstants);
+	std3D_ReleaseComputeShader(&std3D_pBlitShader);
+	std3D_ReleaseConstantBuffer(&std3D_pFillConstants);
+	std3D_ReleaseComputeShader(&std3D_pFillShader);
+	std3D_ReleaseConstantBuffer(&std3D_pPresentConstants);
+	std3D_ReleaseComputeShader(&std3D_pPresentShader);
 
+	std3D_ReleaseGpuBuffer(&std3D_descriptors);
+
+	std3D_ReleaseVertexStreams();
+	std3D_ReleaseVRAM();
+
+	stdPlatform_Printf("Destroying swap chain\n");
+
+	std3D_FreeSwapChain();
+
+	if (std3D_deviceContext)
+		ID3D11DeviceContext_Release(std3D_deviceContext);
+	std3D_deviceContext = NULL;
+
+	if (std3D_device)
+		ID3D11Device_Release(std3D_device);
+	std3D_device = NULL;
+}
+
+// Swap chain
 int std3D_CreateSwapChain()
 {
 	if (!std3D_device)
@@ -692,27 +1174,6 @@ void std3D_Flip()
 		IDXGISwapChain_Present(std3D_swapChain, 0, DXGI_PRESENT_ALLOW_TEARING);
 }
 
-void std3D_DestroyDeviceContext()
-{
-	std3D_ReleaseConstantBuffer(&std3D_pBlitConstants);
-	std3D_ReleaseConstantBuffer(&std3D_pFillConstants);
-	std3D_ReleaseConstantBuffer(&std3D_pPresentConstants);
-
-	std3D_ReleaseVertexStreams();
-	std3D_ReleaseVRAM();
-
-	stdPlatform_Printf("Destroying swap chain\n");
-
-	std3D_FreeSwapChain();
-
-	if (std3D_deviceContext)
-		ID3D11DeviceContext_Release(std3D_deviceContext);
-	std3D_deviceContext = NULL;
-
-	if (std3D_device)
-		ID3D11Device_Release(std3D_device);
-	std3D_device = NULL;
-}
 
 int std3D_StartScene(){}
 int std3D_EndScene() {}
@@ -740,17 +1201,6 @@ void std3D_InitializeViewport(rdRect* viewRect)
 }
 
 
-int std3D_SetCurrentPalette(rdColor24* a1, int a2)
-{
-	uint32_t* pal_write = std3D_MapGpuBuffer(&std3D_palette);
-	for (int i = 0; i < 256; ++i)
-	{
-		rdColor24 rgb = a1[i];
-		pal_write[i] = (rgb.r << 0) | (rgb.g << 8) | (rgb.b << 16) | (255 << 24);
-	}
-	std3D_UnmapGpuBuffer(&std3D_palette);
-	return 1;
-}
 
 int std3D_DrawOverlay() { return 0; }
 
@@ -759,26 +1209,6 @@ void std3D_UpdateSettings() {}
 
 // d3dtodo the render lists would be the precomputed triangle setup from the tiled rasterizer?
 void std3D_ResetRenderList() {}
-
-void* std3D_LockVertexStream(int idx)
-{
-	return std3D_MapGpuBuffer(&std3D_vertexStreams[idx]);
-}
-
-void std3D_UnlockVertexStream(int idx)
-{
-	std3D_UnmapGpuBuffer(&std3D_vertexStreams[idx]);
-}
-
-uint8_t* std3D_LockRenderList()
-{
-	return std3D_MapGpuBuffer(&std3D_primitiveStream);
-}
-
-void std3D_UnlockRenderList()
-{
-	std3D_UnmapGpuBuffer(&std3D_primitiveStream);
-}
 
 
 int std3D_GetValidDimensions(int a1, int a2, int a3, int a4)
@@ -818,246 +1248,6 @@ intptr_t std3D_GetRenderList()
 void std3D_FreeResources()
 {
 }
-#if 1
-
-uint64_t std3D_CreateSurfaceInternal(int size, int stride)
-{
-}
-
-uint64_t std3D_CreateSurface(int width, int height, int bpp)
-{
-	int stride = (bpp >> 3);
-	int size = width * height * stride;
-	
-	std3DBlock** curr = &std3D_vramBlocks;
-	while (*curr)
-	{
-		std3DBlock* block = *curr;
-		int offset = block->offset;
-		if (block->size >= size)
-		{
-			if (size == block->size)
-			{
-				// Exact fit, remove block
-				*curr = block->pNext;
-				std_pHS->free(block);
-			}
-			else
-			{
-				// Partial use of block
-				block->offset = offset + size;
-				block->size -= size;
-			}
-
-			return ((uint64_t)size << 32) | ((uint64_t)offset & 0xFFFFFFFF);
-		}
-		curr = &block->pNext;
-	}
-	return 0;
-}
-
-void std3D_ReleaseSurface(uint64_t handle)
-{
-	std3DBlock* new_block = (std3DBlock*)std_pHS->alloc(sizeof(std3DBlock));
-	if (!new_block)
-		return;
-
-	uint32_t offset = (uint32_t)(handle & 0xFFFFFFFF);
-	uint32_t size = (uint32_t)(handle >> 32);
-
-	new_block->offset = offset;
-	new_block->size = size;
-	new_block->pNext = NULL;
-
-	std3DBlock** curr = &std3D_vramBlocks;
-	while (*curr && (*curr)->offset < offset)
-		curr = &(*curr)->pNext;
-
-	new_block->pNext = *curr;
-	*curr = new_block;
-
-	// Coalesce adjacent blocks
-	std3DBlock* prev = NULL;
-	std3DBlock* iter = std3D_vramBlocks;
-
-	while (iter && iter->pNext)
-	{
-		if ((iter->offset + iter->size) == iter->pNext->offset)
-		{
-			std3DBlock* to_merge = iter->pNext;
-			iter->size += to_merge->size;
-			iter->pNext = to_merge->pNext;
-			std_pHS->free(to_merge);
-		}
-		else
-		{
-			iter = iter->pNext;
-		}
-	}
-}
-
-
-void* std3D_LockSurface(uint64_t handle)
-{
-	if (!std3D_device)
-		return 0;
-
-	uint32_t offset = (uint32_t)(handle & 0xFFFFFFFF);
-	if(!std3D_vramMapped)
-		std3D_MapGpuBuffer(&std3D_vram);
-	++std3D_vramMapped;
-	return (uint8_t*)std3D_vram.mapped.pData + offset;
-}
-
-void std3D_UnlockSurface(uint64_t handle)
-{
-	if (!std3D_device)
-		return;
-	std3D_vramMapped--;
-	if (std3D_vramMapped == 0)
-		std3D_UnmapGpuBuffer(&std3D_vram);
-	return;
-}
-
-void std3D_BlitSurface(uint64_t dst, int dstWidth, int dstHeight, int dstStride, const rdRect* dstRect, uint64_t src, int srcWidth, int srcHeight, int srcStride, const rdRect* srcRect, int flags)
-{
-	if (!std3D_deviceContext || !std3D_pBlitConstants)
-		return;
-
-	if (std3D_vram.mapped.pData)
-		std3D_UnmapGpuBuffer(&std3D_vram);
-
-	std3DBlitInfo copyInfo;
-	copyInfo.SrcAddress = src & 0xFFFFFFFF;
-	copyInfo.SrcStride = srcWidth * srcStride;
-	copyInfo.SrcWidth = srcWidth;
-	copyInfo.SrcHeight = srcHeight;
-
-	copyInfo.DstAddress = dst & 0xFFFFFFFF;
-	copyInfo.DstStride = dstWidth * dstStride;
-	copyInfo.DstWidth = dstWidth;
-	copyInfo.DstHeight = dstHeight;
-
-
-	copyInfo.SrcRectX = srcRect->x;
-	copyInfo.SrcRectY = srcRect->y;
-	copyInfo.SrcRectW = srcRect->width;
-	copyInfo.SrcRectH = srcRect->height;
-	
-
-	copyInfo.DstRectX = dstRect->x;
-	copyInfo.DstRectY = dstRect->y;
-	copyInfo.DstRectW = dstRect->width;
-	copyInfo.DstRectH = dstRect->height; 
-	
-	copyInfo.Flags = flags;
-	ID3D11DeviceContext_UpdateSubresource(std3D_deviceContext, std3D_pBlitConstants, 0, NULL, &copyInfo, 0, 0);
-
-	ID3D11DeviceContext_CSSetShader(std3D_deviceContext, std3D_pBlitShader, NULL, 0);
-	ID3D11DeviceContext_CSSetConstantBuffers(std3D_deviceContext, 0, 1, &std3D_pBlitConstants);
-	ID3D11DeviceContext_CSSetUnorderedAccessViews(std3D_deviceContext, 0, 1, &std3D_vram.pUnorderedView, 0);
-	ID3D11DeviceContext_Dispatch(std3D_deviceContext, (dstRect->width + 255) / 256, dstRect->height, 1);
-
-	ID3D11Buffer* nullBuf[] = {NULL};
-	ID3D11DeviceContext_CSSetConstantBuffers(std3D_deviceContext, 0, 1, &nullBuf);
-
-	ID3D11UnorderedAccessView* nullUAV[] = {NULL};
-	ID3D11DeviceContext_CSSetUnorderedAccessViews(std3D_deviceContext, 0, 1, &nullUAV, 0);
-}
-
-void std3D_FillSurface(uint64_t dst, uint32_t fill, int dstWidth, int dstHeight, int dstStride, const rdRect* rect)
-{
-	if (!std3D_deviceContext || !std3D_pBlitConstants)
-		return;
-
-	if (std3D_vram.mapped.pData)
-		std3D_UnmapGpuBuffer(&std3D_vram);
-
-	std3DFillInfo fillInfo;
-	fillInfo.SrcAddress = dst & 0xFFFFFFFF;
-	fillInfo.SrcStride = dstWidth * dstStride;
-	fillInfo.SrcWidth = dstWidth;
-	fillInfo.SrcHeight = dstHeight;
-
-	fillInfo.SrcRectX = rect->x;
-	fillInfo.SrcRectY = rect->y;
-	fillInfo.SrcRectW = rect->width;
-	fillInfo.SrcRectH = rect->height;
-
-	fillInfo.Fill = fill;
-	ID3D11DeviceContext_UpdateSubresource(std3D_deviceContext, std3D_pFillConstants, 0, NULL, &fillInfo, 0, 0);
-
-	ID3D11DeviceContext_CSSetShader(std3D_deviceContext, std3D_pFillShader, NULL, 0);
-	ID3D11DeviceContext_CSSetConstantBuffers(std3D_deviceContext, 0, 1, &std3D_pFillConstants);
-	ID3D11DeviceContext_CSSetUnorderedAccessViews(std3D_deviceContext, 0, 1, &std3D_vram.pUnorderedView, 0);
-	ID3D11DeviceContext_Dispatch(std3D_deviceContext, (rect->width + 255) / 256, rect->height, 1);
-
-	ID3D11Buffer* nullBuf[] = { NULL };
-	ID3D11DeviceContext_CSSetConstantBuffers(std3D_deviceContext, 0, 1, &nullBuf);
-
-	ID3D11UnorderedAccessView* nullUAV[] = { NULL };
-	ID3D11DeviceContext_CSSetUnorderedAccessViews(std3D_deviceContext, 0, 1, &nullUAV, 0);
-}
-
-void std3D_Present(uint64_t src, int srcWidth, int srcHeight, int srcStride, const rdRect* dstRect)
-{
-	if (!std3D_deviceContext || !std3D_swapChain)
-		return;
-	std3D_VerifySwapchain();
-
-	DXGI_SWAP_CHAIN_DESC sd;
-	IDXGISwapChain_GetDesc(std3D_swapChain, &sd);
-
-	UINT width = sd.BufferDesc.Width;
-	UINT height = sd.BufferDesc.Height;
-
-	std3DPresentInfo presentInfo;
-	presentInfo.SrcAddress = src & 0xFFFFFFFF;
-	presentInfo.SrcStride = srcWidth * srcStride;
-	presentInfo.SrcWidth = srcWidth;
-	presentInfo.SrcHeight = srcHeight;
-
-	presentInfo.DstWidth = width;
-	presentInfo.DstHeight = height;
-
-	presentInfo.DstRectX = dstRect->x;
-	presentInfo.DstRectY = dstRect->y;
-	presentInfo.DstRectW = dstRect->width;
-	presentInfo.DstRectH = dstRect->height;
-
-	// todo: move this?
-	rdColor24* pal_master = (rdColor24*)stdDisplay_masterPalette;
-	uint32_t* pal_write = std3D_MapGpuBuffer(&std3D_palette);
-	for (int i = 0; i < 256; ++i)
-	{
-		rdColor24 rgb = pal_master[i];
-		pal_write[i] = (rgb.r << 0) | (rgb.g << 8) | (rgb.b << 16) | (255 << 24);
-	}
-	std3D_UnmapGpuBuffer(&std3D_palette);
-
-	ID3D11DeviceContext_UpdateSubresource(std3D_deviceContext, std3D_pPresentConstants, 0, NULL, &presentInfo, 0, 0);
-
-	ID3D11ShaderResourceView* srvs[] = { std3D_vram.pShaderView, std3D_palette.pShaderView };
-
-	ID3D11DeviceContext_CSSetShader(std3D_deviceContext, std3D_pPresentShader, NULL, 0);
-	ID3D11DeviceContext_CSSetConstantBuffers(std3D_deviceContext, 0, 1, &std3D_pPresentConstants);
-	ID3D11DeviceContext_CSSetUnorderedAccessViews(std3D_deviceContext, 0, 1, &std3D_backBufferUAV, 0);
-	ID3D11DeviceContext_CSSetShaderResources(std3D_deviceContext, 0, 2, srvs);
-	ID3D11DeviceContext_Dispatch(std3D_deviceContext, (dstRect->width + 255) / 256, dstRect->height, 1);
-	
-	ID3D11Buffer* nullBuf[] = { NULL };
-	ID3D11DeviceContext_CSSetConstantBuffers(std3D_deviceContext, 0, 1, &nullBuf);
-	
-	ID3D11UnorderedAccessView* nullUAV[] = { NULL };
-	ID3D11DeviceContext_CSSetUnorderedAccessViews(std3D_deviceContext, 0, 1, &nullUAV, 0);
-	
-	ID3D11ShaderResourceView* nullSRV[] = { NULL, NULL };
-	ID3D11DeviceContext_CSSetShaderResources(std3D_deviceContext, 0, 2, &nullSRV);
-
-	std3D_Flip();
-}
-
-#endif
 
 #else
 

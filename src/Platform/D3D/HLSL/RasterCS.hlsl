@@ -1,13 +1,15 @@
 #define VRAM_REGISTER u0
 #define STREAM_REGISTER t7
+#define DESCRIPTOR_REGISTER t9
 
 #include "Canvas.h"
 #include "VRAM.h"
 #include "Stream.h"
+#include "Descriptors.h"
 
 // todo: get from engine
 #define RDCACHE_MAX_TRIS (0x1000)
-#define RDCACHE_FINE_TILE_SIZE 32
+#define RDCACHE_FINE_TILE_SIZE 16
 #define RDCACHE_TILE_BINNING_STRIDE  ((RDCACHE_MAX_TRIS+31) / 32)
 
 cbuffer CanvasBuffer : register( b0 )
@@ -146,26 +148,9 @@ void main(int3 groupID : SV_GroupID, int groupIndex : SV_GroupIndex, int3 groupT
 						int x_wrapped = (x_fixed & tex.uWrap) >> 16;
 						int y_wrapped = (y_fixed >> (16 - tex.texRowShift)) & tex.vWrap;
 
-						if (header.colorDepth == 1)
-						{
-							index = depthMask ? Load8(int2(x_wrapped, y_wrapped), tex.textureOffsetAndStride) : 0;
-						}
-						else // RGB->index conversion
-						{
-							uint pix = 0;
-							if (header.colorDepth == 2)
-								pix = depthMask ? Load16(int2(x_wrapped, y_wrapped), tex.textureOffsetAndStride) : 0;
-							else
-								pix = depthMask ? Load32(int2(x_wrapped, y_wrapped), tex.textureOffsetAndStride) : 0;
-
-							int dither = 0;
-
-							uint r = ((((pix >> fmt.r_shift) & fmt.r_mask) << fmt.r_loss) >> 2) + dither;
-							uint g = ((((pix >> fmt.g_shift) & fmt.g_mask) << fmt.g_loss) >> 2) + dither;
-							uint b = ((((pix >> fmt.b_shift) & fmt.b_mask) << fmt.b_loss) >> 2) + dither;
-							uint offset = (b << 12) | (g << 6) | r;
-							index = 0;//depthMask ? pCommand->pHeader->pColormap->searchTable[offset] : 0;
-						}
+						// TODO: RGBA
+						Descriptor desc = Descriptors[tex.textureOffsetAndStride.x];
+						index = depthMask ? SampleTexture(desc, int2(x_wrapped, y_wrapped)) : 0;
 					}
 
 					// Alpha test

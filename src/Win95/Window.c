@@ -786,6 +786,38 @@ static void SwapWindowJobRGB16(uint32_t jobIndex, uint32_t groupIndex)
 	const rdTexformat* srcFmt = &Video_pOtherBuf->format.format;
 	const SDL_PixelFormat* dstFmt = windowSurf->format;
 
+	const int fx = stdPalEffects_state.effect.filter.x;
+	const int fy = stdPalEffects_state.effect.filter.y;
+	const int fz = stdPalEffects_state.effect.filter.z;
+	const int useFilter = fx || fy || fz;
+
+	const flex_t tx = stdPalEffects_state.effect.tint.x;
+	const flex_t ty = stdPalEffects_state.effect.tint.y;
+	const flex_t tz = stdPalEffects_state.effect.tint.z;
+	const int useTint = tx != 0.0f || ty != 0.0f || tz != 0.0f;
+
+	const flex_t halfR = tx * 0.5f;
+	const flex_t halfG = ty * 0.5f;
+	const flex_t halfB = tz * 0.5f;
+
+	const __m128 mulR = _mm_set1_ps(tx - (halfB + halfG));
+	const __m128 mulG = _mm_set1_ps(ty - (halfR + halfB));
+	const __m128 mulB = _mm_set1_ps(tz - (halfR + halfG));
+	const __m128 halfOffset = _mm_set1_ps(0.5f);
+
+	const int ax = stdPalEffects_state.effect.add.x;
+	const int ay = stdPalEffects_state.effect.add.y;
+	const int az = stdPalEffects_state.effect.add.z;
+
+	const int useAdd = (ax || ay || az);
+
+	const __m128i addR = _mm_set1_epi32(ax);
+	const __m128i addG = _mm_set1_epi32(ay);
+	const __m128i addB = _mm_set1_epi32(az);
+	
+	const __m128 fade = _mm_set1_ps(stdPalEffects_state.effect.fade);
+	const int useFade = stdPalEffects_state.effect.fade < 1.0;
+
 #ifdef TARGET_SSE
 
 	__m128i step = _mm_set1_epi32(scale_x_fp);
@@ -804,6 +836,7 @@ static void SwapWindowJobRGB16(uint32_t jobIndex, uint32_t groupIndex)
 		int srcXs[4];
 		_mm_storeu_si128((__m128i*)srcXs, srcX);
 
+		__m128i pixels;
 		if (srcFormatIs16Bit)
 		{
 			uint16_t pix[4] = {
@@ -814,13 +847,7 @@ static void SwapWindowJobRGB16(uint32_t jobIndex, uint32_t groupIndex)
 			};
 
 			__m128i pixels16 = _mm_loadl_epi64((__m128i*)pix); // load 4x16-bit packed
-			__m128i pixels32 = _mm_cvtepu16_epi32(pixels16);   // expand to 4x32-bit ints
-
-			__m128i r, g, b;
-			stdColor_DecodeRGBSIMD(pixels32, srcFmt, &r, &g, &b);
-
-			__m128i mapped = SDL_MapRGBFastSIMD(dstFmt, r, g, b);
-			_mm_storeu_si128((__m128i*) & dstRow[x], mapped);
+			pixels = _mm_cvtepu16_epi32(pixels16);   // expand to 4x32-bit ints
 		}
 		else
 		{
@@ -830,14 +857,50 @@ static void SwapWindowJobRGB16(uint32_t jobIndex, uint32_t groupIndex)
 				*(uint32_t*)(srcRowBase + srcXs[2] * 4),
 				*(uint32_t*)(srcRowBase + srcXs[3] * 4),
 			};
-			__m128i pixels = _mm_loadu_si128((__m128i*)pix);
-
-			__m128i r, g, b;
-			stdColor_DecodeRGBSIMD(pixels, srcFmt, &r, &g, &b);
-
-			__m128i mapped = SDL_MapRGBFastSIMD(dstFmt, r, g, b);
-			_mm_storeu_si128((__m128i*) & dstRow[x], mapped);
+			pixels = _mm_loadu_si128((__m128i*)pix);
 		}
+
+		__m128i r, g, b;
+		stdColor_DecodeRGBSIMD(pixels, srcFmt, &r, &g, &b);
+
+		// todo: can use cube palette here when the palette effects are extended to do more complex math
+		// but as of right now the memory access overhead isn't worth it (filter + add + fade + tint are just a few math ops)
+		if (useFilter)
+		{
+			if (!fx) r = _mm_setzero_si128();
+			if (!fy) g = _mm_setzero_si128();
+			if (!fz) b = _mm_setzero_si128();
+		}
+
+		if (useTint)
+		{
+			// x + (int)((float)x * mulR + 0.5)
+			r = _mm_add_epi32(r, _mm_cvtps_epi32(_mm_fmadd_ps(_mm_cvtepi32_ps(r), mulR, halfOffset)));
+			g = _mm_add_epi32(g, _mm_cvtps_epi32(_mm_fmadd_ps(_mm_cvtepi32_ps(g), mulG, halfOffset)));
+			b = _mm_add_epi32(b, _mm_cvtps_epi32(_mm_fmadd_ps(_mm_cvtepi32_ps(b), mulB, halfOffset)));
+		}
+
+		if (useAdd)
+		{
+			r = _mm_add_epi32(r, addR);
+			g = _mm_add_epi32(g, addR);
+			b = _mm_add_epi32(b, addR);
+		}
+
+		if (useFade)
+		{
+			r = _mm_cvtps_epi32(_mm_mul_ps(_mm_cvtepi32_ps(r), fade));
+			g = _mm_cvtps_epi32(_mm_mul_ps(_mm_cvtepi32_ps(g), fade));
+			b = _mm_cvtps_epi32(_mm_mul_ps(_mm_cvtepi32_ps(b), fade));
+		}
+
+		// note: normally the clamping is done after both tint + add which will have different behavior when oversaturating
+		r = _mm_max_epi32(_mm_min_epi32(r, _mm_set1_epi32(255)), _mm_setzero_si128());
+		g = _mm_max_epi32(_mm_min_epi32(g, _mm_set1_epi32(255)), _mm_setzero_si128());
+		b = _mm_max_epi32(_mm_min_epi32(b, _mm_set1_epi32(255)), _mm_setzero_si128());
+
+		__m128i mapped = SDL_MapRGBFastSIMD(dstFmt, r, g, b);
+		_mm_storeu_si128((__m128i*) & dstRow[x], mapped);
 	}
 #else
 	for (int x = 0; x < copyWidth; ++x)
@@ -875,9 +938,6 @@ static void SwapWindowJobRGB16(uint32_t jobIndex, uint32_t groupIndex)
 }
 
 #endif
-
-
-
 
 // TILETODO move me
 void SwapWindow(SDL_Window* window)
@@ -951,6 +1011,9 @@ void SwapWindow(SDL_Window* window)
 
 		copyWidth = SDL_min(dstRect.w, windowSurf->w - dstRect.x);
 		copyHeight = SDL_min(dstRect.h, windowSurf->h - dstRect.y);
+
+		// Perhaps we should do palette indexing/RGB format resolving to an intermediate buffer that matches the size of the source
+		// and then rescale that, instead of performing the indexing/resolving per pixel when scaling (pretty redundant for smaller formats)
 
 		if (buffer->format.format.colorMode == STDCOLOR_PAL)
 		{

@@ -1,7 +1,9 @@
 #define VRAM_READ_ONLY
 #define VRAM_REGISTER t0
+#define DESCRIPTOR_REGISTER t0
 
-#include"VRAM.h"
+#include "VRAM.h"
+#include "Descriptors.h"
 
 cbuffer PresentInfo : register( b0 )
 {
@@ -25,6 +27,7 @@ void main(int3 dispatchThreadID : SV_DispatchThreadID)
 		return;
 	
 	uint2 srcCoord = (coord.xy * SrcSize.xy) / DstRect.zw;
+	
 	uint pixel = Load8(srcCoord.xy, SrcAddressAndStride);
 	BackBuffer[coord.xy + DstRect.xy] = Palette[pixel];
 }

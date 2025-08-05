@@ -31,8 +31,11 @@ extern "C" {
 #define stdPalEffects_ApplyFade_ADDR (0x00429290)
 
 #define stdPalEffects_Close_idk_ADDR (0x004C8620)
-
-int stdPalEffects_Open(stdPalEffectSetPaletteFunc_t a1);
+#ifdef TILE_SW_RASTER
+	int stdPalEffects_Open(stdPalEffectSetPaletteFunc_t a1, stdPalEffectSetPaletteFunc_t a2);
+#else
+	int stdPalEffects_Open(stdPalEffectSetPaletteFunc_t a1);
+#endif
 void stdPalEffects_Close();
 int stdPalEffects_NewRequest(int idx);
 void stdPalEffects_FreeRequest(uint32_t idx);
@@ -60,6 +63,10 @@ void stdPalEffects_ResetEffect(stdPalEffect *effect);
 //static int (*stdPalEffects_ResetEffect)(stdPalEffect* effect) = (void*)stdPalEffects_ResetEffect_ADDR;
 //static void (*stdPalEffects_UpdatePalette)(void*) = (void*)stdPalEffects_UpdatePalette_ADDR;
 //static void (*stdPalEffects_RefreshPalette)() = (void*)stdPalEffects_RefreshPalette_ADDR;
+
+#ifdef TILE_SW_RASTER
+MATH_FUNC void stdPalEffects_UpdatePaletteCube(const void* palette);
+#endif
 
 #ifdef __cplusplus
 }

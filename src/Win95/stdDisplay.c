@@ -14,6 +14,11 @@
 #include "SDL.h"
 #include <SDL_syswm.h>
 
+#ifdef TILE_SW_RASTER
+rdColor24 stdDisplay_paletteCube[STDPAL_CUBE_SIZE];
+rdColor24 stdDisplay_masterPaletteCube[STDPAL_CUBE_SIZE];
+#endif
+
 void stdDisplay_SetGammaTable(int len, flex_d_t *table)
 {
     stdDisplay_gammaTableLen = len;
@@ -24,6 +29,28 @@ uint8_t* stdDisplay_GetPalette()
 {
     return (uint8_t*)stdDisplay_gammaPalette;
 }
+
+#ifdef TILE_SW_RASTER
+uint8_t* stdDisplay_GetPaletteCube()
+{
+	return (uint8_t*)stdDisplay_paletteCube;
+}
+
+void stdDisplay_BuildIdentityPaletteCube()
+{
+	for (int b = 0; b < 16; ++b)
+	{
+		for (int g = 0; g < 16; ++g)
+		{
+			for (int r = 0; r < 16; ++r)
+			{
+				rdColor24 rgb = {r << 4, g << 4, b << 4};
+				stdDisplay_paletteCube[(b << 8) | (g << 4) | r] = rgb;
+			}
+		}
+	}
+}
+#endif
 
 int stdDisplay_SortVideoModes(stdVideoMode* modeA, stdVideoMode* modeB)
 {
@@ -142,6 +169,8 @@ int stdDisplay_Startup()
 
 	stdDisplay_numDevices = 1;
 	std3D_EnumerateDevices();
+
+	stdDisplay_BuildIdentityPaletteCube();
 
 #endif
     return 1;
@@ -344,10 +373,10 @@ int stdDisplay_Open(int index)
 		Video_renderSurface[11].format.width = 1920;
 		Video_renderSurface[11].format.height = 1080;
 		Video_renderSurface[11].format.texture_size_in_bytes = 1920 * 1080;
-		Video_renderSurface[11].format.width_in_bytes = 1920*2;
+		Video_renderSurface[11].format.width_in_bytes = 1920;//*2;
 		Video_renderSurface[11].format.width_in_pixels = 1920;
-		Video_renderSurface[11].format.format.colorMode = 1;
-		Video_renderSurface[11].format.format.bpp = 16;
+		Video_renderSurface[11].format.format.colorMode = 0;
+		Video_renderSurface[11].format.format.bpp = 8;//16;
 		Video_renderSurface[11].format.format.r_bits = 5;
 		Video_renderSurface[11].format.format.g_bits = 6;
 		Video_renderSurface[11].format.format.b_bits = 5;
@@ -482,7 +511,7 @@ int stdDisplay_SetMode(unsigned int modeIdx, const void *palette, int paged)
 	
 	if (stdDisplay_pCurDevice->video_device[0].device_active)
 	{
-		uint64_t handle = std3D_CreateSurface(stdDisplay_pCurVideoMode->format.width, stdDisplay_pCurVideoMode->format.height, 8);
+		uint64_t handle = std3D_CreateSurface(&stdDisplay_pCurVideoMode->format);
 		Video_otherBuf.gpuHandle = handle;
 		Video_menuBuffer.gpuHandle = handle;
 		Video_menuBuffer.bSurfaceLocked = 1;
@@ -731,6 +760,15 @@ int stdDisplay_SetMasterPalette(uint8_t* pal)
     return 1;
 }
 
+#ifdef TILE_SW_RASTER
+int stdDisplay_SetMasterPaletteCube(uint8_t* pal)
+{
+	rdColor24* pal24 = (rdColor24*)pal;
+	memcpy(stdDisplay_masterPaletteCube, pal24, sizeof(stdDisplay_masterPaletteCube));
+	return 1;
+}
+#endif
+
 stdVBuffer* stdDisplay_VBufferNew(stdVBufferTexFmt *fmt, int create_ddraw_surface, int gpu_mem, const void* palette)
 {
     stdVBuffer* out = (stdVBuffer*)std_pHS->alloc(sizeof(stdVBuffer));    
@@ -755,7 +793,7 @@ stdVBuffer* stdDisplay_VBufferNew(stdVBufferTexFmt *fmt, int create_ddraw_surfac
 	if (stdDisplay_pCurDevice && stdDisplay_pCurDevice->video_device[0].device_active)
 	{	
 		out->bSurfaceLocked = 1;
-		out->gpuHandle = std3D_CreateSurface(out->format.width, out->format.height, out->format.format.bpp);
+		out->gpuHandle = std3D_CreateSurface(&out->format);
 		if (out->gpuHandle == 0)
 		{
 			stdPrintf(std_pHS->errorPrint, ".\\Platform\\D3D\\std3D.c", __LINE__, "Error when creating a DirectDraw vbuffer surface.\n");
@@ -898,25 +936,10 @@ int stdDisplay_VBufferCopy(stdVBuffer *vbuf, stdVBuffer *vbuf2, int blit_x, int 
 	if (vbuf->format.format.bpp != vbuf2->format.format.bpp)
 		return 0;
 
-	rdRect dstRect = { (int)blit_x, (int)blit_y, (int)rect->width, (int)rect->height };
-	rdRect srcRect = { (int)rect->x, (int)rect->y, (int)rect->width, (int)rect->height };
+	stdVBuffer* dst = vbuf;
+	stdVBuffer* src = vbuf2;
 
-	if (vbuf->bSurfaceLocked && vbuf2->bSurfaceLocked) // should both be true when 1 is true
-	{
-		std3D_BlitSurface(vbuf->gpuHandle, vbuf->format.width, vbuf->format.height, vbuf->format.format.bpp>>3, &dstRect
-			, vbuf2->gpuHandle, vbuf2->format.width, vbuf2->format.height, vbuf2->format.format.bpp>>3, &srcRect, alpha_maybe);
-		return 1;
-	}
-
-	uint8_t* srcPixels = (uint8_t*)vbuf2->surface_lock_alloc;
-	uint8_t* dstPixels = (uint8_t*)vbuf->surface_lock_alloc;
-	uint32_t srcStride = vbuf2->format.width_in_bytes;
-	uint32_t dstStride = vbuf->format.width_in_bytes;
-
-	stdVBuffer * dst = vbuf;
-	stdVBuffer * src = vbuf2;
-	
-// Initial bounds
+	// Initial bounds
 	int srcX = rect->x;
 	int srcY = rect->y;
 	int width = rect->width;
@@ -930,7 +953,7 @@ int stdDisplay_VBufferCopy(stdVBuffer *vbuf, stdVBuffer *vbuf2, int blit_x, int 
 	int x1 = srcX + width - 1;
 	int y1 = srcY + height - 1;
 
-	// Clamp dstX/Y to bounds (critical!)
+	// Clamp dstX/Y to bounds
 	if (dstX < 0)
 	{
 		// Skip pixels on left
@@ -966,6 +989,20 @@ int stdDisplay_VBufferCopy(stdVBuffer *vbuf, stdVBuffer *vbuf2, int blit_x, int 
 
 	int blitWidth = width;
 	int blitHeight = height;
+
+	if (vbuf->bSurfaceLocked && vbuf2->bSurfaceLocked) // should both be true when 1 is true
+	{
+		rdRect dstRect = { dstX, dstY, blitWidth, blitHeight };
+		rdRect srcRect = { srcX, srcY, blitWidth, blitHeight };
+
+		std3D_BlitSurface(vbuf->gpuHandle, &dstRect, vbuf2->gpuHandle, &srcRect, vbuf2->transparent_color, alpha_maybe);
+		return 1;
+	}
+
+	uint8_t* srcPixels = (uint8_t*)vbuf2->surface_lock_alloc;
+	uint8_t* dstPixels = (uint8_t*)vbuf->surface_lock_alloc;
+	uint32_t srcStride = vbuf2->format.width_in_bytes;
+	uint32_t dstStride = vbuf->format.width_in_bytes;
 
 	int bpp = dst->format.format.bpp;
 	int transparency = (alpha_maybe & 1);
@@ -1520,11 +1557,6 @@ int stdDisplay_VBufferFill(stdVBuffer *vbuf, int fillColor, rdRect *rect)
 	STD_BEGIN_PROFILER_LABEL();
 
 #ifdef TILE_SW_RASTER
-	if (vbuf->bSurfaceLocked)
-	{
-		std3D_FillSurface(vbuf->gpuHandle, fillColor, vbuf->format.width, vbuf->format.height, vbuf->format.format.bpp >> 3,rect);
-		return 1;
-	}
 
 	// Get surface dimensions
 	int width = vbuf->format.width_in_pixels;
@@ -1557,6 +1589,13 @@ int stdDisplay_VBufferFill(stdVBuffer *vbuf, int fillColor, rdRect *rect)
 	// Reject if fully clipped
 	if (w <= 0 || h <= 0)
 		return 0;
+
+	if (vbuf->bSurfaceLocked)
+	{
+		rdRect r = { x, y, w, h };
+		std3D_FillSurface(vbuf->gpuHandle, fillColor, vbuf->format.width, vbuf->format.height, vbuf->format.format.bpp >> 3, &r);
+		return 1;
+	}
 
 	switch (vbuf->format.format.bpp)
 	{

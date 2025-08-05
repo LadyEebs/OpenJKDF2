@@ -235,20 +235,20 @@ LABEL_26:
 		}
 	}
 
-	if (stdDisplay_pCurDevice && stdDisplay_pCurDevice->video_device[0].device_active)
-	{
-		if (colormap->flags & 1)
-		{
-			colormap->gpualpha = std3D_CreateSurface(256, 256, 8);
-			void* alphadata = std3D_LockSurface(colormap->gpualpha);
-			memcpy(alphadata, colormap->lightlevel, 0x10000);
-			std3D_UnlockSurface(colormap->gpualpha);
-		}
-		colormap->gpulight = std3D_CreateSurface(64, 256, 8);
-		void* lightdata = std3D_LockSurface(colormap->gpulight);
-		memcpy(lightdata, colormap->lightlevel, 0x4000);
-		std3D_UnlockSurface(colormap->gpulight);
-	}
+	//if (stdDisplay_pCurDevice && stdDisplay_pCurDevice->video_device[0].device_active)
+	//{
+	//	if (colormap->flags & 1)
+	//	{
+	//		colormap->gpualpha = std3D_CreateSurface(256, 256, 8);
+	//		void* alphadata = std3D_LockSurface(colormap->gpualpha);
+	//		memcpy(alphadata, colormap->lightlevel, 0x10000);
+	//		std3D_UnlockSurface(colormap->gpualpha);
+	//	}
+	//	colormap->gpulight = std3D_CreateSurface(64, 256, 8);
+	//	void* lightdata = std3D_LockSurface(colormap->gpulight);
+	//	memcpy(lightdata, colormap->lightlevel, 0x4000);
+	//	std3D_UnlockSurface(colormap->gpulight);
+	//}
 #endif
 
     rdroid_pHS->fileClose(colormap_fptr);

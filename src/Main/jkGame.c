@@ -198,6 +198,10 @@ int jkGame_Update()
     jkHud_ClearRects(0);
     jkGame_Update_ClearScreen = stdPlatform_GetTimeMsec();
 
+#ifdef TILE_SW_RASTER
+	if (!Video_modeStruct.b3DAccel && Video_pMenuBuffer->format.format.colorMode > 0)
+		stdPalEffects_UpdatePaletteCube(stdDisplay_GetPaletteCube());
+#endif
     stdPalEffects_UpdatePalette(stdDisplay_GetPalette());
 #if !defined(SDL2_RENDER) && !defined(TARGET_TWL) || defined(TILE_SW_RASTER)
     if ( Video_modeStruct.b3DAccel )

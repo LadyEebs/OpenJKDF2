@@ -1,3 +1,6 @@
+#ifndef VRAM_H
+#define VRAM_H
+
 static const uint VRAM_SIZE = 64 * 1024 * 1024;
 static const uint VRAM_MASK = ((VRAM_SIZE >> 1) - 1);
 
@@ -34,8 +37,8 @@ uint Load32(int2 coord, int2 offset)
 	uint texel;
 	texel  = (VRAM[CalculateAddress(coord.x + 0, coord.y, offset.x, offset.y)] & 0xFF) <<  0;
 	texel |= (VRAM[CalculateAddress(coord.x + 1, coord.y, offset.x, offset.y)] & 0xFF) <<  8;
-	texel |= (VRAM[CalculateAddress(coord.x + 1, coord.y, offset.x, offset.y)] & 0xFF) << 16;
-	texel |= (VRAM[CalculateAddress(coord.x + 1, coord.y, offset.x, offset.y)] & 0xFF) << 24;
+	texel |= (VRAM[CalculateAddress(coord.x + 2, coord.y, offset.x, offset.y)] & 0xFF) << 16;
+	texel |= (VRAM[CalculateAddress(coord.x + 3, coord.y, offset.x, offset.y)] & 0xFF) << 24;
 	return texel;
 }
 
@@ -60,4 +63,6 @@ void Store32(uint value, int2 coord, int2 offset)
 	VRAM[CalculateAddress(coord.x + 2, coord.y, offset.x, offset.y)] = (value >> 16) & 0xFF;
 	VRAM[CalculateAddress(coord.x + 3, coord.y, offset.x, offset.y)] = (value >> 24) & 0xFF;
 }
+#endif
+
 #endif
