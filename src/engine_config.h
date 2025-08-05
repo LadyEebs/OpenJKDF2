@@ -17,6 +17,12 @@
 #define TILE_SW_RASTER
 #endif
 
+#ifdef TILE_SW_RASTER
+#ifdef TARGET_CAN_JKGM
+#undef TARGET_CAN_JKGM
+#endif
+#endif
+
 // Gameplay features
 #define FP_LEGS              // Draws legs in first person
 #define DYNAMIC_POV          // POV enhancements, such as the weapon following the autoaim target, muzzle flashes, sway improvements
