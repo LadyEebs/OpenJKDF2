@@ -1,10 +1,13 @@
 # This fork
-This fork introduces a variety of new features and experiments. Among them (not all enabled by default):
+This fork introduces a variety of new features and experiments. The content is currently not in the branch, until an official package is uploaded you'll need to contact me to try it out.
+
+Among the features (not all enabled by default):
 
 General:
 - Simple Job System
 - Extra math functions and utils
 - Function profiler (use jn66 command to activate)
+- HD animated menu with music
 
 Mutliplayer:
 - Steam integration
