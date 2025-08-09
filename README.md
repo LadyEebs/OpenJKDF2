@@ -4,6 +4,7 @@ This fork introduces a variety of new features and experiments. Among them (not 
 General:
 - Simple Job System
 - Extra math functions and utils
+- Function profiler (use jn66 command to activate)
 
 Mutliplayer:
 - Steam integration
@@ -15,8 +16,8 @@ Mutliplayer:
 - QoL improvements
 
 Rendering (General):
-- Tiled software renderer path (with D3D11 hardware version, WIP)
-- Fog (Infernal Machine style), requires JKL version 2.0 to use
+- Tiled software renderer path with threading and SSE (with full D3D11 hardware version, very early WIP)
+- Fog (Infernal Machine style), requires JKL version 2.0 to use (or a level cog)
 - Underwater distortion PostFX
 - Specular lighting (RD_LIGHTMODE_SPECULAR)
 - Simple subsurface scattering (RD_LIGHTMODE_SUBSURFACE)
@@ -31,6 +32,7 @@ Rendering (General):
 
 Render Droid 2:
 - Completely new render pipeline that moves transform and lighting to the GPU
+- Selectable color depth for bandwidth limited systems
 - MSAA (and a form of variable rate shading on hardware that supports it, like a reverse MSAA)
 - Clustered forward rendering, with per pixel lighting, decals and AO/shadow support (just like the old deferred path, but works on transparencies)
 - Spotlights and rectangular area lights
@@ -41,7 +43,7 @@ Render Droid 2:
 - Still works under GL 3.3 as of now (clustering is done on CPU for now)
 - Leverages some extensions for improved performance when available
 
-Deprecated Pipeline:
+Legacy OpenJKDF2 Renderer:
 - Reworked emissives to better match OG JK (using max() rather than add for non-bloom case)
 - Half Lambert diffuse for dynamic lights to soften low poly model shading
 - Stencil buffering to mark dynamic objects
@@ -50,9 +52,9 @@ Deprecated Pipeline:
 - Particle lights are flat face normals only due to old pipeline limitations
 
 Physics/Animation:
-- Physicalized puppet animation/ragdolls and physics constraints
+- Physics constraints and physicalized puppet animation/ragdolls
 - Named joints for puppet files with extended syntax to make editing easier
-- 
+
 Gameplay:
 - First person legs
 - Lightsaber trails
