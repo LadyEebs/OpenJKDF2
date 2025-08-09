@@ -15,6 +15,7 @@ Mutliplayer:
 - QoL improvements
 
 Rendering (General):
+- Tiled software renderer path (with D3D11 hardware version, WIP)
 - Fog (Infernal Machine style), requires JKL version 2.0 to use
 - Underwater distortion PostFX
 - Specular lighting (RD_LIGHTMODE_SPECULAR)
@@ -25,39 +26,44 @@ Rendering (General):
 - AO shadows (via "capsule" style sphere occluders)
 - Dynamic particle lights
 - Faster downsample based bloom/glow
-- Additive blending face flag
+- Additive blending
 - Vertex color tinting
-- Reworked emissives to better match OG JK (using max() rather than add for non-bloom case)
 
 Render Droid 2:
 - Completely new render pipeline that moves transform and lighting to the GPU
-- Clustered forward rendering, with per pixel lighting, decals and AO/shadow support (just like the old deferred path, but works on transparencies and will work with MSAA once implemented).
-- Quadrilinear texturing for polylines
+- MSAA (and a form of variable rate shading on hardware that supports it, like a reverse MSAA)
+- Clustered forward rendering, with per pixel lighting, decals and AO/shadow support (just like the old deferred path, but works on transparencies)
+- Spotlights and rectangular area lights
+- Quadrilinear texturing for polylines (removes UV distortion artifacts)
 - Pixel shader VM for custom vfx (akin to Xbox asm shaders)
-- Emissive surface flag, generates a point light at the surface for dynamic lighting (ex. breakable neon signs)
-- Backdrop sector for skyboxes
-- Still works under GL 3.3
+- Emissive surface flag, generates a rectangle light at the surface for dynamic lighting (ex. breakable neon signs)
+- Backdrop sector for skyboxes and dynamic skies including geometry
+- Still works under GL 3.3 as of now (clustering is done on CPU for now)
+- Leverages some extensions for improved performance when available
 
 Deprecated Pipeline:
+- Reworked emissives to better match OG JK (using max() rather than add for non-bloom case)
 - Half Lambert diffuse for dynamic lights to soften low poly model shading
 - Stencil buffering to mark dynamic objects
 - Optimized GBuffer using reconstructed position and smaller formats (16/32 bit options for color/depth, octahedron encoded normals, 2-3x bandwidth savings)
 - New SSAO with less halos
 - Particle lights are flat face normals only due to old pipeline limitations
 
+Physics/Animation:
+- Physicalized puppet animation/ragdolls and physics constraints
+- Named joints for puppet files with extended syntax to make editing easier
+- 
 Gameplay:
 - First person legs
 - Lightsaber trails
 - Lightsaber marks
-- JO style saber glow
+- WIP JO style saber glow (not working)
 - Muzzle flashes (new cog verbs + muzzle hierarchy + keyframe markers to activate)
 - Dynamic POV animation, crosshair and autoaim (gun follows aim targets, crosshair reacts to geometry/blockers and better represents trajectory, gun moves dynamically when player moves, requires using new verbs to enable)
 - Extra static.jkl loading, allows stacking up to 4 extra static.jkls (mod stacking)
-- Physicalized puppet animation and physics constraints (ex. ragdolls, includes extended joint data in .pup files)
 - Polyline upgrades and rendering fixes (new .pln file to specify a polyline def that can be assigned to a thing via template params the same as models and sprites)
 - Regional damage and lightsaber limb dismemberment (with new params to damaged and killed cog messages)
 - Gameplay system cogs (currently only g_combat.cog) that can be used to perform shared game logic (ex. regional damage and dismemberment)
-- Named joints for puppet files with extended syntax to make editing easier
 
 # OpenJKDF2
 
